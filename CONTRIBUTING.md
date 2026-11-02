@@ -17,7 +17,9 @@
   être livré (checklist de tâches, règles à implémenter, critères d'acceptation), pas seulement un
   titre. Une issue vide ou trop vague se complète avant de coder.
 - La PR référence son issue dans sa description (`Closes #12`). `dev` n'étant pas la branche par
-  défaut, GitHub ne ferme pas l'issue à la fusion dans `dev` : la fermer à la main une fois la PR fusionnée.
+  défaut, GitHub ne ferme pas l'issue à la fusion dans `dev` : **une fois la PR validée et fusionnée,
+  fermer l'issue comme complétée** (*Close as completed*, ou `gh issue close 12 --reason completed`),
+  après avoir coché les cases de sa checklist. *Close as not planned* est réservé aux issues abandonnées.
 
 ### Nommage
 
@@ -39,6 +41,10 @@ En minuscules, mots séparés par des tirets, sans accents.
    - front, dans `frontend/` : `npm run format && npm run lint && npm test && npm run build` ;
    - backend, dans `backend/` : `mvn spotless:apply` puis `mvn verify` (voir [Backend](#backend)).
 4. Ouvrir une pull request vers `dev` (jamais vers `main`), la garder courte et ciblée (un sujet par PR).
+   **Tant que le travail n'est pas terminé, la PR est en draft** (`gh pr create --draft`, ou
+   *Convert to draft* / `gh pr ready 12 --undo` sur une PR déjà ouverte). Une draft ne se relit pas et ne
+   se fusionne pas : la passer en *Ready for review* (`gh pr ready 12`) quand tout est livré et la CI verte,
+   et la repasser en draft si un retour de relecture demande encore du travail.
 5. **CI verte et 1 relecture approuvée minimum** avant de fusionner :
    - une PR qui ne touche que `frontend/src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut
      être relue par l'équipe du jeu ;
@@ -47,7 +53,11 @@ En minuscules, mots séparés par des tirets, sans accents.
    - une PR qui touche la plateforme (`backend/`, `frontend/src/auth`, `frontend/src/lib`,
      `frontend/src/games/sdk.ts`, `frontend/src/games/types.ts`, `frontend/src/pages`, `supabase/`) doit
      être relue par l'équipe plateforme.
-6. Fusion en **squash merge**, puis suppression de la branche.
+6. Fusion en **squash merge**, puis :
+   - fermer l'issue comme complétée (voir [Issues](#issues)) ;
+   - **supprimer la branche** sur GitHub (*Delete branch* après la fusion, ou `gh pr merge 12 --squash
+     --delete-branch`) et en local : `git switch dev && git pull && git branch -D <branche>`
+     (`-D` car le squash merge ne garde pas les commits de la branche).
 7. Garder sa branche à jour avec `dev` (`git pull --rebase origin dev`) plutôt que de laisser
    s'accumuler les conflits.
 
