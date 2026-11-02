@@ -33,3 +33,8 @@ tiki:
     service-role-key: ${SUPABASE_SERVICE_ROLE_KEY}
     jwt-secret: ${SUPABASE_JWT_SECRET}
     token-ttl: 1h
+
+# Logs via SLF4J/Logback. En production, LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs les écrit en JSON (une ligne par log).
+logging:
+  level:
+    fr.tikigaming: ${LOG_LEVEL:INFO}

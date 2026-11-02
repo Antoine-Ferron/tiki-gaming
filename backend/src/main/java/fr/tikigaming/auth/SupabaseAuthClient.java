@@ -143,14 +143,20 @@ public class SupabaseAuthClient {
     private static String errorMessage(ObjectMapper mapper, java.io.InputStream body) {
         try {
             JsonNode json = mapper.readTree(body);
+            if (json == null) return SupabaseErrors.DEFAULT_MESSAGE;
+            // Selon la version de GoTrue, le code est dans error_code, ou dans code (sinon code = statut HTTP).
+            String code = json.hasNonNull("error_code")
+                    ? json.get("error_code").asText()
+                    : json.path("code").isTextual() ? json.get("code").asText() : null;
             for (String field : List.of("msg", "error_description", "message", "error")) {
-                if (json != null && json.hasNonNull(field)) {
-                    return json.get(field).asText();
+                if (json.hasNonNull(field)) {
+                    return SupabaseErrors.message(code, json.get(field).asText());
                 }
             }
+            return SupabaseErrors.message(code, null);
         } catch (IOException ignored) {
             // corps non JSON : message générique
+            return SupabaseErrors.DEFAULT_MESSAGE;
         }
-        return "Erreur du service d'authentification";
     }
 }

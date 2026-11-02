@@ -3,6 +3,11 @@ package fr.tikigaming.auth;
 import fr.tikigaming.config.TikiProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,30 +15,53 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.ResourceAccessException;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    record Credentials(String email, String password) {}
-
-    record SignUpRequest(String email, String password, String username) {}
-
-    record EmailRequest(String email) {}
-
-    record PasswordRequest(String password) {}
-
-    record PasswordResetRequest(String accessToken, String password) {}
-
+    // Règles et messages alignés sur frontend/src/lib/validation.ts.
+    private static final String EMAIL_REQUIRED = "Indique ton adresse email.";
+    private static final String EMAIL_INVALID = "Cette adresse email n’est pas valide.";
     private static final int MIN_PASSWORD_LENGTH = 8;
+    private static final String PASSWORD_TOO_SHORT =
+            "Le mot de passe doit contenir au moins " + MIN_PASSWORD_LENGTH + " caractères.";
+
+    record Credentials(
+            @NotBlank(message = EMAIL_REQUIRED) @Email(message = EMAIL_INVALID)
+            String email,
+
+            @NotBlank(message = "Indique ton mot de passe.") String password) {}
+
+    record SignUpRequest(
+            @NotBlank(message = EMAIL_REQUIRED) @Email(message = EMAIL_INVALID)
+            String email,
+
+            @NotNull(message = PASSWORD_TOO_SHORT) @Size(min = MIN_PASSWORD_LENGTH, message = PASSWORD_TOO_SHORT)
+            String password,
+
+            @Username String username) {}
+
+    record EmailRequest(
+            @NotBlank(message = EMAIL_REQUIRED) @Email(message = EMAIL_INVALID)
+            String email) {}
+
+    record PasswordRequest(
+            @NotNull(message = PASSWORD_TOO_SHORT) @Size(min = MIN_PASSWORD_LENGTH, message = PASSWORD_TOO_SHORT)
+            String password) {}
+
+    record PasswordResetRequest(
+            @NotBlank(message = "Le lien de réinitialisation est invalide : demandes-en un nouveau.")
+            String accessToken,
+
+            @NotNull(message = PASSWORD_TOO_SHORT) @Size(min = MIN_PASSWORD_LENGTH, message = PASSWORD_TOO_SHORT)
+            String password) {}
 
     private final SupabaseAuthClient supabase;
     private final SupabaseTokenService tokens;
@@ -69,14 +97,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    ResponseEntity<Void> login(@RequestBody Credentials body, HttpServletRequest request) {
+    ResponseEntity<Void> login(@Valid @RequestBody Credentials body, HttpServletRequest request) {
         AuthSession.signIn(request, supabase.signInWithPassword(body.email(), body.password()));
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/signup")
-    Map<String, Boolean> signUp(@RequestBody SignUpRequest body, HttpServletRequest request) {
-        requireStrongPassword(body.password());
+    Map<String, Boolean> signUp(@Valid @RequestBody SignUpRequest body, HttpServletRequest request) {
         SupabaseAuthClient.SignUpResult result =
                 supabase.signUp(body.email(), body.password(), body.username(), frontendUrl);
         if (result.signedIn()) AuthSession.signIn(request, result.user());
@@ -84,24 +111,22 @@ public class AuthController {
     }
 
     @PostMapping("/password/forgot")
-    ResponseEntity<Void> forgotPassword(@RequestBody EmailRequest body) {
+    ResponseEntity<Void> forgotPassword(@Valid @RequestBody EmailRequest body) {
         supabase.sendPasswordRecovery(body.email(), frontendUrl + "/update-password");
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/password/reset")
-    ResponseEntity<Void> resetPassword(@RequestBody PasswordResetRequest body, HttpServletRequest request) {
-        requireStrongPassword(body.password());
+    ResponseEntity<Void> resetPassword(@Valid @RequestBody PasswordResetRequest body, HttpServletRequest request) {
         AuthUser user = supabase.updatePasswordWithRecoveryToken(body.accessToken(), body.password());
         AuthSession.signIn(request, user);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/password")
-    ResponseEntity<Void> changePassword(@RequestBody PasswordRequest body, HttpServletRequest request) {
+    ResponseEntity<Void> changePassword(@Valid @RequestBody PasswordRequest body, HttpServletRequest request) {
         AuthUser user = AuthSession.currentUser(request);
         if (user == null) throw new AuthException(401, "Non connecté");
-        requireStrongPassword(body.password());
         supabase.updatePassword(user.id(), body.password());
         return ResponseEntity.noContent().build();
     }
@@ -112,25 +137,5 @@ public class AuthController {
         if (session != null) session.invalidate();
         SecurityContextHolder.clearContext();
         return ResponseEntity.noContent().build();
-    }
-
-    @ExceptionHandler(AuthException.class)
-    ResponseEntity<Map<String, String>> handleAuthError(AuthException e) {
-        // Les erreurs 5xx de Supabase sont remontées comme une passerelle en échec.
-        int status = e.status() >= 400 && e.status() < 500 ? e.status() : HttpStatus.BAD_GATEWAY.value();
-        return ResponseEntity.status(status).body(Map.of("error", e.getMessage()));
-    }
-
-    @ExceptionHandler(ResourceAccessException.class)
-    ResponseEntity<Map<String, String>> handleSupabaseUnreachable(ResourceAccessException e) {
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(Map.of("error", "Service d'authentification injoignable. Réessaie plus tard."));
-    }
-
-    private static void requireStrongPassword(String password) {
-        if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
-            throw new AuthException(
-                    400, "Le mot de passe doit contenir au moins " + MIN_PASSWORD_LENGTH + " caractères.");
-        }
     }
 }
