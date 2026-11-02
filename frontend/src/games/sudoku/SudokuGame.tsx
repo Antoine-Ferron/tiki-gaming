@@ -3,8 +3,13 @@ import type { KeyboardEvent } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import type { GameProps, LeaderboardEntry } from '../types'
 import {
-  DIFFICULTIES, computeScore, findConflicts, formatTime, generatePuzzle,
-  type Difficulty, type Grid,
+  DIFFICULTIES,
+  computeScore,
+  findConflicts,
+  formatTime,
+  generatePuzzle,
+  type Difficulty,
+  type Grid,
 } from './logic'
 import './sudoku.css'
 
@@ -36,13 +41,22 @@ export default function SudokuGame({ ctx }: GameProps) {
   const cellRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const refreshScores = useCallback(() => {
-    ctx.getLeaderboard(10).then(setLeaderboard).catch((e) => setError(e.message))
-    ctx.getMyBest().then((b) => setBest(b?.best_score ?? null)).catch((e) => setError(e.message))
+    ctx
+      .getLeaderboard(10)
+      .then(setLeaderboard)
+      .catch((e) => setError(e.message))
+    ctx
+      .getMyBest()
+      .then((b) => setBest(b?.best_score ?? null))
+      .catch((e) => setError(e.message))
   }, [ctx])
 
   useEffect(() => {
     refreshScores()
-    ctx.loadSave<Save>().then((s) => setHasSave(!!s && s.values.length === 81)).catch((e) => setError(e.message))
+    ctx
+      .loadSave<Save>()
+      .then((s) => setHasSave(!!s && s.values.length === 81))
+      .catch((e) => setError(e.message))
   }, [ctx, refreshScores])
 
   // Chrono
@@ -127,7 +141,10 @@ export default function SudokuGame({ ctx }: GameProps) {
       const r = Math.floor(selected / 9)
       const c = selected % 9
       const move: Record<string, [number, number]> = {
-        ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1],
+        ArrowUp: [-1, 0],
+        ArrowDown: [1, 0],
+        ArrowLeft: [0, -1],
+        ArrowRight: [0, 1],
       }
       const d = move[e.key]
       if (!d) return
@@ -158,12 +175,15 @@ export default function SudokuGame({ ctx }: GameProps) {
                 const classes = ['sudoku-cell']
                 if (fixed) classes.push('sudoku-fixed')
                 if (i === selected) classes.push('sudoku-selected')
-                else if (selected !== null && (Math.floor(i / 9) === selRow || i % 9 === selCol)) classes.push('sudoku-related')
+                else if (selected !== null && (Math.floor(i / 9) === selRow || i % 9 === selCol))
+                  classes.push('sudoku-related')
                 if (conflicts.has(i)) classes.push('sudoku-conflict')
                 return (
                   <button
                     key={i}
-                    ref={(el) => { cellRefs.current[i] = el }}
+                    ref={(el) => {
+                      cellRefs.current[i] = el
+                    }}
                     className={classes.join(' ')}
                     onClick={() => setSelected(i)}
                     aria-label={`Ligne ${Math.floor(i / 9) + 1}, colonne ${(i % 9) + 1}, ${v === 0 ? 'vide' : v}`}
@@ -175,9 +195,13 @@ export default function SudokuGame({ ctx }: GameProps) {
             </div>
             <div className="sudoku-pad">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                <button key={n} className="small" onClick={() => place(n)}>{n}</button>
+                <button key={n} className="small" onClick={() => place(n)}>
+                  {n}
+                </button>
               ))}
-              <button className="small" onClick={() => place(0)} aria-label="Effacer la case">Effacer</button>
+              <button className="small" onClick={() => place(0)} aria-label="Effacer la case">
+                Effacer
+              </button>
             </div>
             <p className="muted">Sélectionne une case, puis tape un chiffre au clavier ou utilise le pavé.</p>
           </>
@@ -185,18 +209,28 @@ export default function SudokuGame({ ctx }: GameProps) {
           <>
             {phase === 'over' && (
               <>
-                <p className="result">Bravo ! Score : <strong>{score}</strong></p>
-                <p className="muted">Résolu en {formatTime(seconds)} avec {mistakes} erreur{mistakes > 1 ? 's' : ''}.</p>
+                <p className="result">
+                  Bravo ! Score : <strong>{score}</strong>
+                </p>
+                <p className="muted">
+                  Résolu en {formatTime(seconds)} avec {mistakes} erreur{mistakes > 1 ? 's' : ''}.
+                </p>
                 {ctx.isGuest && <p className="muted">Connecte-toi pour apparaître au classement.</p>}
               </>
             )}
             <p>Choisis une difficulté :</p>
             <div className="sudoku-levels">
               {(Object.keys(DIFFICULTIES) as Difficulty[]).map((level) => (
-                <button key={level} onClick={() => start(level)}>{DIFFICULTIES[level].label}</button>
+                <button key={level} onClick={() => start(level)}>
+                  {DIFFICULTIES[level].label}
+                </button>
               ))}
             </div>
-            {hasSave && <button className="link" onClick={resume}>Reprendre ma partie</button>}
+            {hasSave && (
+              <button className="link" onClick={resume}>
+                Reprendre ma partie
+              </button>
+            )}
             {best !== null && <p className="muted">Ton meilleur score : {best}</p>}
           </>
         )}

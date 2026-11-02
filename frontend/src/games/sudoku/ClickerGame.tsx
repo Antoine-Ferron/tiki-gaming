@@ -22,12 +22,18 @@ export default function ClickerGame({ ctx }: GameProps) {
   const clicksRef = useRef(0)
 
   const refreshLeaderboard = useCallback(() => {
-    ctx.getLeaderboard(10).then(setLeaderboard).catch((e) => setError(e.message))
+    ctx
+      .getLeaderboard(10)
+      .then(setLeaderboard)
+      .catch((e) => setError(e.message))
   }, [ctx])
 
   useEffect(() => {
     refreshLeaderboard()
-    ctx.loadSave<Save>().then((s) => setTotalClicks(s?.totalClicks ?? 0)).catch((e) => setError(e.message))
+    ctx
+      .loadSave<Save>()
+      .then((s) => setTotalClicks(s?.totalClicks ?? 0))
+      .catch((e) => setError(e.message))
   }, [ctx, refreshLeaderboard])
 
   const finish = useCallback(async () => {
@@ -79,13 +85,21 @@ export default function ClickerGame({ ctx }: GameProps) {
         {phase === 'playing' ? (
           <>
             <p className="timer">{(remaining / 1000).toFixed(1)} s</p>
-            <button className="big" onClick={click}>{clicks}</button>
+            <button className="big" onClick={click}>
+              {clicks}
+            </button>
           </>
         ) : (
           <>
-            {phase === 'over' && <p className="result">Score : <strong>{clicks}</strong></p>}
+            {phase === 'over' && (
+              <p className="result">
+                Score : <strong>{clicks}</strong>
+              </p>
+            )}
             {phase === 'over' && ctx.isGuest && <p className="muted">Connecte-toi pour apparaître au classement.</p>}
-            <button className="big" onClick={start}>{phase === 'over' ? 'Rejouer' : 'Jouer'}</button>
+            <button className="big" onClick={start}>
+              {phase === 'over' ? 'Rejouer' : 'Jouer'}
+            </button>
             <p className="muted">Clics cumulés (sauvegarde) : {totalClicks}</p>
           </>
         )}
