@@ -12,7 +12,7 @@ Le contrat actuel exige `category`, absent de la liste de champs du ticket : `du
 
 Le template clicker a été copié puis réduit à une page d’attente : aucun minuteur, score, classement, sauvegarde ou règle du clicker conservé. Le composant reçoit `GameProps`, utilise `ctx.isGuest` et `ctx.player` sans importer Supabase. Racine `.dame`, CSS préfixé et composants visuels existants ; aucune vignette fictive. La migration ajoute uniquement le catalogue et n’est pas appliquée.
 
-Le package `fr.tikigaming.games.dame` est préparé par `package-info.java`. Aucun type métier vide ou comportement prématuré : ils seront introduits quand un test RED le demandera. Aucun fichier partagé du backend, dépendance, configuration Spring ou sécurité modifié. Ce package constitue un module logique dans le Maven existant, sans nouveau module Maven.
+Le package `fr.tikigaming.games.dame` est documenté par `package-info.java`. `Board` fournit les dimensions 10 × 10 et l'observation des cases initialement vides, introduites par deux tests RED puis passées GREEN par l'utilisateur. Les autres types viendront lorsque leurs tests le demanderont. Aucun fichier partagé du backend, dépendance, configuration Spring ou sécurité modifié. Ce package constitue un module logique dans le Maven existant, sans nouveau module Maven.
 
 ## Architecture cible proposée
 
@@ -46,7 +46,7 @@ Le 2 novembre 2026, la branche a été avancée de `78cff91` à `79f5376` par fa
 
 Le code Dames suit maintenant le formatter collectif. Le domaine reste indépendant de Spring ; les annotations Swagger concerneront uniquement les futurs contrôleurs sous `/api/games/dame/...`. Aucun contrôleur n'a été ajouté.
 
-Les commandes de qualité sont décrites dans la [stratégie de tests](strategie-tests.md). Les résultats des cycles TDD seront consignés pendant l'implémentation. La future PR devra rester en draft tant que le travail est en cours. Les exemples de commits incluent désormais `(#18)`. Vérifier la spécification sur l'issue avant tout nouveau comportement, conformément à CONTRIBUTING.
+Les commandes de qualité sont décrites dans la [stratégie de tests](strategie-tests.md). Les deux premiers tests sont GREEN ; leurs résultats figurent dans le [journal TDD](journal-tdd.md). La future PR devra rester en draft tant que le travail est en cours. Les exemples de commits incluent désormais `(#18)`. Vérifier la spécification sur l'issue avant tout nouveau comportement, conformément à CONTRIBUTING.
 
 ## Vérifications de cette initialisation (historique)
 
@@ -61,7 +61,7 @@ Les commandes de qualité sont décrites dans la [stratégie de tests](strategie
 
 ## Procédure de démarrage US-01
 
-Maven est maintenant installé. La procédure ci-dessous décrit le cycle prévu pour introduire progressivement le plateau.
+Maven est maintenant installé et les deux premiers tests sont GREEN. L'état courant figure dans le [journal TDD](journal-tdd.md). La procédure ci-dessous décrit le cycle suivi pour introduire progressivement le plateau.
 
 1. Rendre Maven disponible avec Java 21, puis exécuter `mvn -f backend/pom.xml test` pour établir l’état de référence de la suite existante.
 2. Lire US-01 ; confirmer les coordonnées 0–9 et la parité des cases jouables. Créer `BoardTest` dans le package de test du domaine ; commencer par le seul comportement « un plateau comporte dix lignes et dix colonnes ».

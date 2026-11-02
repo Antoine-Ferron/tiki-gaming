@@ -2,7 +2,7 @@
 
 Ces US sont des sous-tâches documentaires : aucune issue GitHub créée. Les règles ci-dessous constituent la spécification proposée à confirmer pour les détails internationaux. Coordonnées et orientation sont des conventions internes proposées.
 
-Les étapes RED / GREEN seront consignées au fil de la réalisation de chaque US. Ce backlog décrit le périmètre prévu ; il ne vaut pas validation des US.
+Avancement : les deux premiers tests de US-01 (dimensions et 100 cases vides) sont GREEN. US-01 reste en cours : cases jouables et coordonnées hors limites à couvrir. Voir le [journal TDD](journal-tdd.md).
 
 ## Definition of Done commune
 

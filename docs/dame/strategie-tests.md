@@ -1,6 +1,6 @@
 # Stratégie de tests — dames internationales
 
-Stratégie prévue pour les étapes successives : voir le [backlog](backlog.md) et les [décisions d’architecture](architecture.md). Les premiers tests de US-01 porteront sur les dimensions puis sur les cases vides.
+Stratégie prévue pour les étapes successives : voir le [backlog](backlog.md) et les [décisions d’architecture](architecture.md). Les deux premiers tests de US-01 (dimensions et cases vides) sont GREEN ; leurs résultats RED puis GREEN sont consignés dans le [journal TDD](journal-tdd.md).
 
 ## Niveaux et outils
 
@@ -112,7 +112,7 @@ npm test
 npm run build
 ```
 
-Les tests de US-01 seront regroupés dans `BoardTest`. Maven 3.9.11 est disponible avec Java 21. Aucun wrapper Maven ni script E2E présent ; les tests unitaires frontend utilisent Vitest. Aucun credential Supabase nécessaire pour les tests unitaires métier.
+`BoardTest` contient les deux premiers tests de US-01, actuellement GREEN. Maven 3.9.11 est disponible avec Java 21 (installation détaillée dans le journal). Aucun wrapper Maven ni script E2E présent ; les tests unitaires frontend utilisent Vitest. Aucun credential Supabase nécessaire pour les tests unitaires métier.
 
 La CI utilise Node 24 pour le frontend et Java 21 pour le backend. `verify` lance Checkstyle, la compilation, les tests et Spotless ; pendant RED, il s'arrête à l'échec du test. Exécuter `spotless:check` séparément permet de confirmer le format même dans cet état. Ne pas désactiver le test pour obtenir une CI verte. Pour formater, utiliser `npm run format` côté frontend (ou Prettier ciblé sur les fichiers modifiés) et `mvn spotless:apply` côté backend.
 
