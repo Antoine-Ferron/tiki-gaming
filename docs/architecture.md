@@ -177,13 +177,19 @@ backend/src/main/java/fr/tikigaming/
 ├── config/
 │   ├── SecurityConfig.java            OAuth2 Google, CSRF par cookie, session
 │   └── TikiProperties.java            Configuration tiki.* (application.yml)
-└── auth/
-    ├── AuthController.java            Endpoints /api/auth/*
-    ├── AuthSession.java               Utilisateur en session, redirections sûres
-    ├── GoogleLoginSuccessHandler.java Rattache le compte Google à auth.users
-    ├── SupabaseAuthClient.java        API Auth / RPC Supabase (clé service_role)
-    └── SupabaseTokenService.java      JWT au format Supabase pour la RLS
+├── auth/
+│   ├── AuthController.java            Endpoints /api/auth/*
+│   ├── AuthSession.java               Utilisateur en session, redirections sûres
+│   ├── GoogleLoginSuccessHandler.java Rattache le compte Google à auth.users
+│   ├── SupabaseAuthClient.java        API Auth / RPC Supabase (clé service_role)
+│   └── SupabaseTokenService.java      JWT au format Supabase pour la RLS
+└── games/
+    └── <slug>/                        Code serveur d'un jeu, endpoints /api/games/<slug>/*
 ```
+
+Un jeu n'a un package serveur que s'il en a besoin (validation de score, multijoueur…) ; les règles
+sont dans [CONTRIBUTING.md](../CONTRIBUTING.md#packages). Formatter (Spotless), linter (Checkstyle) et
+tests passent par `mvn verify`, relancé par la CI.
 
 La configuration est lue depuis `backend/.env` (non versionné, modèle : `backend/.env.example`).
 
