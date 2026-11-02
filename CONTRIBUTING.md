@@ -145,6 +145,16 @@ fr.tikigaming
 
 Une PR ne se fusionne qu'avec une CI verte.
 
+### Dependabot
+
+`.github/dependabot.yml` vérifie chaque lundi les dépendances du front (`frontend/`, npm) et du backend
+(`backend/`, Maven) et ouvre des PR vers `dev` :
+
+- les mises à jour mineures et correctifs sont regroupés en **une PR par partie et par semaine** ;
+- chaque version majeure a sa propre PR : lire les notes de version, elle peut demander des adaptations ;
+- elles suivent les mêmes règles que les autres PR (CI verte, relecture par l'équipe plateforme, squash
+  merge). Une PR Dependabot n'a pas d'issue liée : c'est la seule exception à la règle des issues.
+
 ## Créer un jeu
 
 Chaque jeu est un module React autonome dans `frontend/src/games/<slug>/`. La plateforme gère le compte,
