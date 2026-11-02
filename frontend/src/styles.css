@@ -159,6 +159,16 @@ input:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+input[aria-invalid='true'] {
+  border-color: var(--error);
+}
+.field-error {
+  color: var(--error);
+}
+.field-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
 
 .hero {
   margin-bottom: 1.5rem;
