@@ -110,6 +110,9 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, et échec si le code n'est pas formaté |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
 
+Une fois le serveur lancé, l'API est documentée et testable sur **http://localhost:8080/swagger-ui.html**
+(voir [docs/architecture.md](docs/architecture.md#swagger-openapi)).
+
 Lancer `mvn spotless:apply` avant chaque commit : la CI refuse un code non formaté. Le style n'est pas
 négociable en relecture, c'est le formatter qui tranche. Une règle du linter qui gêne se discute dans une
 PR `chore/` qui modifie `checkstyle.xml`, pas avec des `@SuppressWarnings` au cas par cas.
@@ -128,6 +131,10 @@ fr.tikigaming
   anti-triche…) a **son propre package** `fr.tikigaming.games.<slug>`, le slug étant écrit avec des `_`
   à la place des tirets (`mon-jeu` → `mon_jeu`). Ses tests vont dans le même package sous `src/test/java`.
 - Ses endpoints sont préfixés par le slug : `/api/games/<slug>/...`.
+- Ils apparaissent automatiquement dans Swagger. Chaque contrôleur porte `@Tag(name = "<slug>")` et
+  chaque endpoint un `@Operation(summary = "...")` ainsi que ses `@ApiResponse` (codes d'erreur
+  compris), sur le modèle d'`AuthController`. Pas de secret ni de vraie donnée utilisateur dans les
+  exemples (`@Schema(example = ...)`).
 - Un jeu **n'importe jamais** le package d'un autre jeu. Ce qui sert à plusieurs jeux est ajouté à la
   plateforme (nouveau package hors de `games/`), comme pour le SDK du front.
 - Un jeu sans logique serveur n'a pas de package backend : tout passe par le `GameContext` et Supabase.
