@@ -42,7 +42,9 @@ export default function LoginPage() {
   return (
     <form className="card form" onSubmit={handleSubmit}>
       <h1>Connexion</h1>
-      <button type="button" onClick={handleGoogleLogin} disabled={busy}>Se connecter avec Google</button>
+      <button type="button" onClick={handleGoogleLogin} disabled={busy}>
+        Se connecter avec Google
+      </button>
       <p className="muted">ou</p>
       <label>
         Email
@@ -50,10 +52,18 @@ export default function LoginPage() {
       </label>
       <label>
         Mot de passe
-        <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
       </label>
       {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={busy}>{busy ? 'Connexion…' : 'Se connecter'}</button>
+      <button type="submit" disabled={busy}>
+        {busy ? 'Connexion…' : 'Se connecter'}
+      </button>
       <p className="muted">
         <Link to="/forgot-password">Mot de passe oublié ?</Link> · <Link to="/signup">Créer un compte</Link>
       </p>

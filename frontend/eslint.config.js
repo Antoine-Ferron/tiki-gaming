@@ -3,6 +3,7 @@ import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
+import prettier from 'eslint-config-prettier'
 
 export default tseslint.config(
   { ignores: ['dist', 'src/lib/database.types.ts'] },
@@ -16,4 +17,6 @@ export default tseslint.config(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
+  // Désactive les règles de mise en forme d'ESLint : c'est Prettier qui formate.
+  prettier,
 )

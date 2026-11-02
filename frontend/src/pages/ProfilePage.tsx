@@ -38,7 +38,9 @@ function ProfileForm({ profile }: { profile: Profile }) {
       </label>
       {message && <p className={message.type === 'ok' ? 'success' : 'error'}>{message.text}</p>}
       <button type="submit">Enregistrer</button>
-      <p className="muted"><Link to="/update-password">Changer de mot de passe</Link></p>
+      <p className="muted">
+        <Link to="/update-password">Changer de mot de passe</Link>
+      </p>
     </form>
   )
 }
