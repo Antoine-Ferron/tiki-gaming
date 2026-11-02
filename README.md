@@ -1,23 +1,55 @@
 # Tiki Gaming
 
-Espace de jeux en ligne : comptes joueurs, catalogue de jeux, scores, classements et sauvegardes, sur **Supabase**.
+Espace de jeux en ligne : comptes joueurs, catalogue de jeux, scores, classements et sauvegardes.
 
-- **Jeux solo** : jouables sans compte (mode invité : sauvegarde locale, scores non classés).
-- **Jeux multijoueur** : connexion obligatoire.
+- Chaque jeu a une **catégorie** : **Solo** (1 joueur), **Duel** (2 joueurs) ou **Multi** (3 joueurs et +).
+- Indépendamment de sa catégorie, un jeu est **sans compte** (mode invité : sauvegarde locale, scores
+  non classés) ou à **compte requis**.
 
-**Stack** : Vite · React 19 · TypeScript · React Router · Supabase (Auth + Postgres + RLS)
+**Stack**
+- `frontend/` : Vite · React 19 · TypeScript · React Router · supabase-js (données uniquement)
+- `backend/` : Java 21 · Spring Boot 3.5 · Spring Security OAuth2 Client · Maven (authentification)
+- Supabase : Postgres + RLS (et `auth.users` comme registre des comptes)
 
 ## Démarrage
 
 ```bash
+# Backend (http://localhost:8080)
+cp backend/.env.example backend/.env      # puis renseigner Google + Supabase
+mvn -f backend/pom.xml spring-boot:run
+
+# Front (http://localhost:5173) — proxifie /api, /oauth2 et /login/oauth2 vers le backend
+cd frontend
 npm install
-cp .env.example .env        # puis renseigner URL + clé anon
-npm run dev                 # http://localhost:5173
+cp .env.example .env                      # puis renseigner URL + clé anon
+npm run dev
 ```
+
+### Authentification
+
+Le backend Java gère toute l'authentification (Google, email/mot de passe, réinitialisation) et la
+session. Il émet pour le front un JWT au format Supabase, qui permet à la RLS de reconnaître le joueur.
+Le fonctionnement et les endpoints sont décrits dans [docs/architecture.md](docs/architecture.md#authentification).
+
+#### Configurer Google
+
+1. Google Cloud Console → APIs & Services → Credentials → **OAuth client ID** (type *Web application*).
+2. **Authorized redirect URIs** : `http://localhost:5173/login/oauth2/code/google` et
+   `<URL de prod>/login/oauth2/code/google`.
+3. Reporter Client ID / Secret dans `backend/.env` (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`).
+
+Un compte Google est rattaché au compte Supabase de même email (email vérifié par Google obligatoire),
+sinon un compte est créé et le trigger `handle_new_user` crée le profil.
+
+#### Secrets Supabase du backend
+
+`SUPABASE_SERVICE_ROLE_KEY` (Project Settings → API) et `SUPABASE_JWT_SECRET` (Project Settings → JWT
+Keys → *Legacy JWT secret*). Le secret JWT doit être celui qui sert à vérifier les jetons du projet. Si
+le projet passe aux clés de signature asymétriques, il faudra adapter `SupabaseTokenService`.
 
 ### Base de données
 
-Renseigner `SUPABASE_PROJECT_REF` et `SUPABASE_DB_PASSWORD` dans `.env`, puis :
+Dans `frontend/`, renseigner `SUPABASE_PROJECT_REF` et `SUPABASE_DB_PASSWORD` dans `.env`, puis :
 
 ```bash
 npm run db:migrate                                   # applique les migrations non encore appliquées
@@ -34,50 +66,22 @@ CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, r
 - **Site URL** : l'URL de production
 - **Redirect URLs** : `http://localhost:5173/**` et l'URL de prod `/**` (nécessaire pour la confirmation d'email et le reset de mot de passe)
 
-## Architecture
+### Contraintes pour le déploiement (à redéfinir)
 
-```
-src/
-├── main.tsx                 Router + AuthProvider
-├── App.tsx                  Déclaration des routes
-├── lib/
-│   ├── supabase.ts          Client Supabase unique (clé anon)
-│   └── database.types.ts    Types générés depuis la base
-├── auth/
-│   ├── AuthContext.ts       useAuth() → session, user, profile, signOut…
-│   ├── AuthProvider.tsx     Écoute la session Supabase, charge le profil
-│   └── ProtectedRoute.tsx   ProtectedRoute / GuestOnlyRoute
-├── components/              Layout, Leaderboard…
-├── pages/                   Login, Signup, ForgotPassword, UpdatePassword, Profile, Home, Game
-└── games/
-    ├── types.ts             Contrat GameDefinition / GameContext  ← à lire en premier
-    ├── sdk.ts               Implémentation du GameContext (scores, saves, classement)
-    ├── registry.ts          Catalogue des jeux
-    └── clicker/             Jeu d'exemple = template
-supabase/migrations/         Schéma SQL versionné
-scripts/db.mjs               Outil local : migrations + requêtes SQL directes
-```
+- Le backend Java tourne à part, avec les variables de `backend/.env.example`, `FRONTEND_URL` = URL de
+  prod et `COOKIE_SECURE=true`.
+- `/api/*`, `/oauth2/*` et `/login/oauth2/*` doivent être servis sur **la même origine que le front**
+  (reverse proxy / rewrites) pour que le cookie de session reste first-party.
+- Ajouter `<URL de prod>/login/oauth2/code/google` aux redirect URIs du client OAuth Google.
 
-### Modèle de données
+## Documentation
 
-| Table / vue    | Rôle                                         | Lecture          | Écriture client                |
-|----------------|----------------------------------------------|------------------|--------------------------------|
-| `profiles`     | Pseudo/avatar, créé auto à l'inscription     | tout le monde    | son propre profil              |
-| `games`        | Catalogue (slug, titre, actif)               | tout le monde    | aucune (migrations)            |
-| `scores`       | Une ligne par partie                         | tout le monde    | insert de ses scores seulement |
-| `game_saves`   | Sauvegarde JSON par joueur × jeu             | les siennes      | les siennes                    |
-| `leaderboard`  | Vue : meilleur score par joueur × jeu        | tout le monde    | —                              |
-
-Toutes les tables ont la **RLS activée**.
-
-### Sécurité
-
-- Le front n'utilise **que la clé `anon`**. La clé `service_role` contourne la RLS : elle ne doit jamais
-  apparaître dans ce dépôt ni dans une variable `VITE_*`. Usage réservé aux Edge Functions / scripts serveur.
-- `.env` est ignoré par git.
-- En mode invité, aucune écriture n'est faite en base : seule la lecture publique (catalogue, classement) est utilisée.
-- Les scores sont envoyés par le client, donc falsifiables. Pour un jeu compétitif, valider la partie
-  côté serveur (Edge Function) avant d'insérer le score.
+| Document                                             | Contenu                                                     |
+|------------------------------------------------------|-------------------------------------------------------------|
+| [docs/architecture.md](docs/architecture.md)         | Briques, flux d'authentification, structure du code, modèle et catégories des jeux, sécurité |
+| [docs/modele-donnees.md](docs/modele-donnees.md)     | Schéma, tables, RLS et droits, fonctions, migrations        |
+| [docs/charte-graphique.md](docs/charte-graphique.md) | Couleurs, typographie, composants, règles pour les jeux, rédaction |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                   | Branches, PR, commits, création d'un jeu                    |
 
 ## Contribuer
 

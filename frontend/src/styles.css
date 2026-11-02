@@ -1,0 +1,94 @@
+:root {
+  --bg: #0f1020;
+  --surface: #1a1c33;
+  --border: #2c2f52;
+  --text: #ecebff;
+  --muted: #9a9cc4;
+  --accent: #ff8a3d;
+  --accent-text: #1a0d00;
+  --error: #ff6b6b;
+  --success: #4ade80;
+  /* Catégories de jeux (voir docs/charte-graphique.md) */
+  --cat-solo: #5cc8ff;
+  --cat-duel: #b794ff;
+  --cat-multi: #f5d14a;
+  --radius: 12px;
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2 { margin: 0 0 0.5rem; line-height: 1.2; }
+
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.header {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.brand { font-weight: 800; font-size: 1.2rem; color: var(--text); }
+.nav { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.nav a { color: var(--muted); }
+.nav a.active { color: var(--text); }
+.main { width: 100%; max-width: 1000px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.25rem; color: inherit;
+}
+.muted { color: var(--muted); }
+.error { color: var(--error); margin: 0; }
+.success { color: var(--success); margin: 0; }
+
+button, .button {
+  font: inherit; font-weight: 600; cursor: pointer; border: 0;
+  background: var(--accent); color: var(--accent-text);
+  padding: 0.6rem 1rem; border-radius: 8px; display: inline-block;
+}
+button:disabled { opacity: 0.6; cursor: default; }
+.nav a.button { color: var(--accent-text); }
+.small { padding: 0.35rem 0.75rem; }
+button.link { background: none; color: var(--muted); padding: 0; font-weight: 400; }
+button.link:hover { color: var(--text); }
+
+.form { max-width: 420px; margin: 2rem auto; display: flex; flex-direction: column; gap: 1rem; }
+.form label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.9rem; color: var(--muted); }
+input {
+  font: inherit; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.75rem;
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.hero { margin-bottom: 1.5rem; }
+.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.game-card { display: flex; flex-direction: column; gap: 0.25rem; transition: border-color 0.15s; }
+.game-card:hover { border-color: var(--accent); text-decoration: none; }
+.game-card img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; }
+
+.game-page h1 { margin-bottom: 1rem; }
+.clicker { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.clicker-board { display: flex; flex-direction: column; align-items: center; gap: 1rem; text-align: center; }
+.timer { font-size: 1.5rem; font-variant-numeric: tabular-nums; margin: 0; }
+.result { font-size: 1.25rem; margin: 0; }
+button.big { font-size: 2rem; min-width: 180px; min-height: 120px; border-radius: 20px; }
+
+.leaderboard { list-style: none; margin: 0; padding: 0; }
+.leaderboard li { display: flex; gap: 0.75rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.leaderboard li.me { color: var(--accent); font-weight: 600; }
+.leaderboard .rank { width: 2ch; color: var(--muted); }
+.leaderboard .name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.leaderboard .score { font-variant-numeric: tabular-nums; }
+
+.notice {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 8px; padding: 0.6rem 0.9rem; margin: 0 0 1rem;
+}
+.tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.game-page .tags { margin: -0.5rem 0 1rem; }
+.tag { align-self: flex-start; font-size: 0.75rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.6rem; }
+.tag-solo { color: var(--cat-solo); border-color: color-mix(in srgb, var(--cat-solo) 50%, transparent); }
+.tag-duel { color: var(--cat-duel); border-color: color-mix(in srgb, var(--cat-duel) 50%, transparent); }
+.tag-multi { color: var(--cat-multi); border-color: color-mix(in srgb, var(--cat-multi) 50%, transparent); }
