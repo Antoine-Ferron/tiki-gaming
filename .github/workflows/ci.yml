@@ -10,9 +10,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Les noms des jobs sont des checks obligatoires de la règle « Protected » (dev, main) :
+# renommer un job bloque toutes les PR tant que la règle n'est pas mise à jour dans les settings du dépôt.
 jobs:
   frontend:
-    name: Frontend (format + lint + tests + build)
+    name: Frontend (format + lint + build)
     runs-on: ubuntu-latest
     defaults:
       run:

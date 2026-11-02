@@ -193,6 +193,9 @@ fr.tikigaming
 | `backend`  | `mvn -B verify` (linter, compilation, tests, format) |
 
 Une PR ne se fusionne qu'avec une CI verte.
+Les noms des jobs (`Frontend (format + lint + build)`, `Backend (format + lint + tests)`) sont des checks
+**obligatoires** de la protection de `dev` et `main` : ne pas les renommer sans mettre à jour la règle
+dans *Settings → Rules*, sinon les PR restent bloquées en attente d'un check qui n'arrive jamais.
 
 ### Dependabot
 
