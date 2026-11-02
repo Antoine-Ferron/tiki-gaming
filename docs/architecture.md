@@ -96,6 +96,22 @@ accepté), sinon un compte est créé.
 Les `POST` exigent l'en-tête `X-XSRF-TOKEN` (copie du cookie `XSRF-TOKEN`), ajouté par
 `frontend/src/lib/api.ts`. Les erreurs sont renvoyées sous la forme `{ "error": "message" }`.
 
+### Swagger (OpenAPI)
+
+La documentation interactive de l'API est générée depuis le code (springdoc-openapi) :
+
+| URL (backend lancé)                     | Contenu                                    |
+|-----------------------------------------|--------------------------------------------|
+| http://localhost:8080/swagger-ui.html   | Swagger UI : endpoints, schémas, « Try it out » |
+| http://localhost:8080/v3/api-docs       | Spécification OpenAPI 3.1 (JSON)           |
+
+- Seuls les chemins `/api/**` sont documentés, regroupés par tag (`Authentification`, puis un tag par jeu).
+- « Try it out » gère le CSRF comme le front : appeler `GET /api/auth/session` une fois, et Swagger
+  recopie ensuite le cookie `XSRF-TOKEN` dans l'en-tête `X-XSRF-TOKEN`. La session (cookie `JSESSIONID`)
+  est partagée avec le front, car les cookies ne dépendent pas du port.
+- Activé par défaut ; `SWAGGER_ENABLED=false` (à mettre en production) désactive l'interface et la
+  spécification (404).
+
 ### Même origine
 
 Le front et le backend doivent être servis sur **la même origine** pour que le cookie de session soit
@@ -178,6 +194,7 @@ backend/src/main/java/fr/tikigaming/
 ├── TikiGamingApplication.java
 ├── config/
 │   ├── ApiExceptionHandler.java       Format { error, fields } des erreurs de l'API + logs
+│   ├── OpenApiConfig.java             Informations de la documentation Swagger
 │   ├── SecurityConfig.java            OAuth2 Google, CSRF par cookie, session
 │   └── TikiProperties.java            Configuration tiki.* (application.yml)
 ├── auth/

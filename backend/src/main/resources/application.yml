@@ -25,6 +25,17 @@ server:
         same-site: lax
         secure: ${COOKIE_SECURE:false}
 
+springdoc:
+  # Swagger UI : /swagger-ui.html · spécification : /v3/api-docs. SWAGGER_ENABLED=false en production.
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
+    # « Try it out » recopie le cookie XSRF-TOKEN dans l'en-tête X-XSRF-TOKEN, comme le front.
+    csrf:
+      enabled: true
+  paths-to-match: /api/**
+
 tiki:
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
   supabase:

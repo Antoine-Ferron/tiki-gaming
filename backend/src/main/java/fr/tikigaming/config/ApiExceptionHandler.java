@@ -1,6 +1,8 @@
 package fr.tikigaming.config;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import fr.tikigaming.auth.AuthException;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -26,6 +28,17 @@ import org.springframework.web.client.ResourceAccessException;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    /** Corps de toutes les réponses d'erreur (documenté dans Swagger). */
+    public record ApiError(
+            @Schema(example = "Email ou mot de passe incorrect.")
+            String error,
+
+            @Schema(
+                    description = "Message par champ refusé (absent si l'erreur ne concerne pas un champ)",
+                    example = "{\"username\": \"Le pseudo doit contenir au moins 3 caractères.\"}")
+            @JsonInclude(JsonInclude.Include.NON_EMPTY)
+            Map<String, String> fields) {}
+
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     static final String INVALID_FIELDS = "Certains champs sont invalides.";
@@ -38,24 +51,24 @@ public class ApiExceptionHandler {
     private static final List<String> REQUIRED_CODES = List.of("NotNull", "NotBlank", "NotEmpty");
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<Map<String, Object>> handleInvalidFields(MethodArgumentNotValidException e) {
+    ResponseEntity<ApiError> handleInvalidFields(MethodArgumentNotValidException e) {
         Map<String, String> fields = new LinkedHashMap<>();
         e.getBindingResult().getFieldErrors().stream()
                 .sorted(Comparator.comparing(error -> REQUIRED_CODES.contains(error.getCode()) ? 0 : 1))
                 .forEach(error -> fields.putIfAbsent(error.getField(), message(error)));
         log.debug("Requête refusée, champs invalides : {}", fields.keySet());
         String error = fields.size() == 1 ? fields.values().iterator().next() : INVALID_FIELDS;
-        return ResponseEntity.badRequest().body(Map.of("error", error, "fields", fields));
+        return ResponseEntity.badRequest().body(new ApiError(error, fields));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<Map<String, Object>> handleUnreadableBody(HttpMessageNotReadableException e) {
+    ResponseEntity<ApiError> handleUnreadableBody(HttpMessageNotReadableException e) {
         log.debug("Corps de requête illisible : {}", e.getMessage());
         return error(HttpStatus.BAD_REQUEST, INVALID_REQUEST);
     }
 
     @ExceptionHandler(AuthException.class)
-    ResponseEntity<Map<String, Object>> handleAuthError(AuthException e) {
+    ResponseEntity<ApiError> handleAuthError(AuthException e) {
         if (e.status() >= 400 && e.status() < 500) {
             log.debug("Refus du service d'authentification ({}) : {}", e.status(), e.getMessage());
             return error(HttpStatusCode.valueOf(e.status()), e.getMessage());
@@ -66,13 +79,13 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(ResourceAccessException.class)
-    ResponseEntity<Map<String, Object>> handleSupabaseUnreachable(ResourceAccessException e) {
+    ResponseEntity<ApiError> handleSupabaseUnreachable(ResourceAccessException e) {
         log.error("Supabase injoignable", e);
         return error(HttpStatus.BAD_GATEWAY, AUTH_UNREACHABLE);
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<Map<String, Object>> handleUnexpected(Exception e, HttpServletRequest request) {
+    ResponseEntity<ApiError> handleUnexpected(Exception e, HttpServletRequest request) {
         // Exceptions standard de Spring MVC (404, 405, 415…) : leur statut est le bon.
         if (e instanceof ErrorResponse response && !response.getStatusCode().is5xxServerError()) {
             log.debug("{} {} : {}", request.getMethod(), request.getRequestURI(), e.getMessage());
@@ -86,7 +99,7 @@ public class ApiExceptionHandler {
         return error.getDefaultMessage() != null ? error.getDefaultMessage() : INVALID_REQUEST;
     }
 
-    private static ResponseEntity<Map<String, Object>> error(HttpStatusCode status, String message) {
-        return ResponseEntity.status(status).body(Map.of("error", message));
+    private static ResponseEntity<ApiError> error(HttpStatusCode status, String message) {
+        return ResponseEntity.status(status).body(new ApiError(message, Map.of()));
     }
 }
