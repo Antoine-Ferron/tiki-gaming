@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
     return (
       <div className="card">
         <h1>Email envoyé</h1>
-        <p>Si un compte existe pour <strong>{email}</strong>, vous recevrez un lien de réinitialisation.</p>
+        <p>Si un compte existe pour <strong>{email}</strong>, tu recevras un lien de réinitialisation.</p>
       </div>
     )
   }

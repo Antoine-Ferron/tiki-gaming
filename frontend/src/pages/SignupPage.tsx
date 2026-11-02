@@ -37,7 +37,7 @@ export default function SignupPage() {
   if (pendingConfirmation) {
     return (
       <div className="card">
-        <h1>Vérifiez vos emails</h1>
+        <h1>Vérifie tes emails</h1>
         <p>Un lien de confirmation a été envoyé à <strong>{email}</strong>.</p>
       </div>
     )
