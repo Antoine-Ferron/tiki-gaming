@@ -15,21 +15,32 @@ cp .env.example .env        # puis renseigner URL + clé anon
 npm run dev                 # http://localhost:5173
 ```
 
-### Base de données (une seule fois, puis à chaque nouvelle migration)
+### Base de données
+
+Renseigner `SUPABASE_PROJECT_REF` et `SUPABASE_DB_PASSWORD` dans `.env`, puis :
 
 ```bash
-npx supabase login
-npx supabase link --project-ref scuqcjtuohcaqyjaytul   # demande le mot de passe de la base
-npx supabase db push                                     # applique supabase/migrations/*
-npm run db:types                                         # régénère src/lib/database.types.ts
+npm run db:migrate                                   # applique les migrations non encore appliquées
+npm run db:sql -- "select * from public.games"       # requête SQL directe (admin, contourne la RLS)
+npm run db:sql -- -f chemin/requete.sql
 ```
 
-À défaut, coller le contenu du fichier de migration dans *Dashboard → SQL Editor*.
+Les migrations appliquées sont suivies dans `supabase_migrations.schema_migrations` (même table que la
+CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, régénérer les types avec
+`npm run db:types` (nécessite `npx supabase login`).
 
 ### Configuration Auth (Dashboard → Authentication → URL Configuration)
 
 - **Site URL** : l'URL de production
 - **Redirect URLs** : `http://localhost:5173/**` et l'URL de prod `/**` (nécessaire pour la confirmation d'email et le reset de mot de passe)
+
+## Déploiement (Vercel)
+
+- Chaque push sur `main` déploie en production ; chaque pull request obtient une URL de preview.
+- Variables d'environnement Vercel : **uniquement** `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY`.
+- `vercel.json` renvoie toutes les routes vers `index.html` (routing côté client) et met en cache longue durée `/assets/*`.
+- Supabase → Authentication → URL Configuration : Site URL = URL de prod ; Redirect URLs = URL de prod `/**`
+  et `https://*-<équipe-vercel>.vercel.app/**` pour les previews.
 
 ## Architecture
 
@@ -52,6 +63,7 @@ src/
     ├── registry.ts          Catalogue des jeux
     └── clicker/             Jeu d'exemple = template
 supabase/migrations/         Schéma SQL versionné
+scripts/db.mjs               Outil local : migrations + requêtes SQL directes
 ```
 
 ### Modèle de données
