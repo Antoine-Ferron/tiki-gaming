@@ -2,8 +2,19 @@
 
 ## Branches
 
-`main` est la branche de production : **on ne pousse jamais directement dessus**. Tout passe par une
-pull request.
+| Branche | Rôle                                                                                   |
+|---------|----------------------------------------------------------------------------------------|
+| `dev`   | Branche d'intégration : **toutes les issues et toutes les pull requests ciblent `dev`** |
+| `main`  | Branche de production, mise à jour uniquement par une PR `dev` → `main` (équipe plateforme) |
+
+**On ne pousse jamais directement sur `dev` ni sur `main`** : tout passe par une pull request.
+
+### Issues
+
+- Chaque tâche ou bug fait l'objet d'une issue avant le développement ; l'issue décrit le travail à
+  livrer sur `dev`.
+- La PR référence son issue dans sa description (`Closes #12`). `dev` n'étant pas la branche par
+  défaut, GitHub ne ferme pas l'issue à la fusion dans `dev` : la fermer à la main une fois la PR fusionnée.
 
 ### Nommage
 
@@ -19,17 +30,17 @@ En minuscules, mots séparés par des tirets, sans accents.
 
 ### Workflow
 
-1. Partir de `main` à jour : `git switch main && git pull && git switch -c game/mon-jeu/premiere-version`
+1. Partir de `dev` à jour : `git switch dev && git pull && git switch -c game/mon-jeu/premiere-version`
 2. Faire des commits petits et explicites (voir ci-dessous).
 3. Avant de pousser : `npm run lint && npm run build` doivent passer.
-4. Ouvrir une pull request vers `main`, la garder courte et ciblée (un sujet par PR).
+4. Ouvrir une pull request vers `dev` (jamais vers `main`), la garder courte et ciblée (un sujet par PR).
 5. **1 relecture approuvée minimum** avant de fusionner :
    - une PR qui ne touche que `src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut être
      relue par l'équipe du jeu ;
    - une PR qui touche la plateforme (`src/auth`, `src/lib`, `src/games/sdk.ts`, `src/games/types.ts`,
      `src/pages`, `supabase/`) doit être relue par l'équipe plateforme.
 6. Fusion en **squash merge**, puis suppression de la branche.
-7. Garder sa branche à jour avec `main` (`git pull --rebase origin main`) plutôt que de laisser
+7. Garder sa branche à jour avec `dev` (`git pull --rebase origin dev`) plutôt que de laisser
    s'accumuler les conflits.
 
 ### Messages de commit
