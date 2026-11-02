@@ -5,6 +5,7 @@ const clicker: GameDefinition = {
   slug: 'clicker',
   title: 'Clicker 10s',
   description: 'Clique le plus vite possible pendant 10 secondes.',
+  category: 'solo',
   mode: 'solo',
   component: lazy(() => import('./ClickerGame')),
 }

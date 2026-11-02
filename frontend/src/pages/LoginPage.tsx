@@ -4,8 +4,8 @@ import { useAuth } from '@/auth/AuthContext'
 import { apiPost } from '@/lib/api'
 
 const GOOGLE_ERRORS: Record<string, string> = {
-  google: 'La connexion avec Google a échoué. Réessayez.',
-  'google-email': 'Votre compte Google doit avoir une adresse email vérifiée.',
+  google: 'La connexion avec Google a échoué. Réessaie.',
+  'google-email': 'Ton compte Google doit avoir une adresse email vérifiée.',
 }
 
 export default function LoginPage() {

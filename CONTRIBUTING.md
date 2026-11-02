@@ -97,12 +97,18 @@ const monJeu: GameDefinition = {
   slug: 'mon-jeu',
   title: 'Mon Jeu',
   description: 'Une phrase de présentation.',
-  mode: 'solo',            // 'solo' = jouable sans compte · 'multiplayer' = connexion obligatoire
-  thumbnail: '/thumbnails/mon-jeu.png', // optionnel, fichier dans public/
+  category: 'duel',        // obligatoire : 'solo' (1 joueur) · 'duel' (2) · 'multi' (3 et +)
+  mode: 'solo',            // accès : 'solo' = jouable sans compte · 'multiplayer' = connexion obligatoire
+  thumbnail: '/games/mon-jeu/thumbnail.webp', // optionnel, fichier dans frontend/public/games/mon-jeu/
   component: lazy(() => import('./MonJeu')),
 }
 export default monJeu
 ```
+
+La **catégorie** décrit le format de jeu, le **mode** dit seulement si un compte est nécessaire. Les
+deux sont indépendants : un jeu d'échecs contre une IA peut être `category: 'duel'` et `mode: 'solo'`.
+La liste des catégories est dans `frontend/src/games/categories.ts` ; en ajouter une passe par
+l'équipe plateforme (voir [docs/architecture.md](docs/architecture.md#catégories)).
 
 Puis l'ajouter dans `frontend/src/games/registry.ts` :
 
@@ -118,11 +124,12 @@ npx supabase migration new add_game_mon_jeu
 ```
 
 ```sql
-insert into public.games (slug, title, description)
-values ('mon-jeu', 'Mon Jeu', 'Une phrase de présentation.');
+insert into public.games (slug, title, description, category)
+values ('mon-jeu', 'Mon Jeu', 'Une phrase de présentation.', 'duel');
 ```
 
-Sans cette ligne, l'envoi de score et la sauvegarde sont refusés (clé étrangère + RLS).
+Sans cette ligne, l'envoi de score et la sauvegarde sont refusés (clé étrangère + RLS). La
+`category` est obligatoire et doit être la même que dans `index.ts`.
 
 ### 4. Utiliser le `GameContext`
 
@@ -160,7 +167,9 @@ joueur à se connecter pour être classé (voir le clicker).
 - **Ne pas importer `@/lib/supabase` dans un jeu.** Tout passe par `ctx`. Si une fonctionnalité manque
   (multijoueur temps réel, succès, inventaire…), on l'ajoute au SDK pour tous les jeux.
 - Le jeu ne touche pas au routing ni à l'auth : la page de jeu applique la règle du `mode` (solo / multijoueur).
-- Code et assets du jeu restent dans `frontend/src/games/<slug>/` (ou `public/games/<slug>/`).
+- Code et assets du jeu restent dans `frontend/src/games/<slug>/` (ou `frontend/public/games/<slug>/`).
+- Interface : suivre la [charte graphique](docs/charte-graphique.md) (tokens de couleur, composants,
+  CSS du jeu préfixé par le slug, tutoiement).
 - Le jeu est chargé à la demande (`lazy`) : les dépendances lourdes (Phaser, Three.js…) n'alourdissent pas la plateforme.
 - Besoin de tables propres au jeu ? Les préfixer par le slug (`mon_jeu_xxx`), activer la RLS, et
   passer en revue avec l'équipe plateforme.

@@ -8,6 +8,10 @@
   --accent-text: #1a0d00;
   --error: #ff6b6b;
   --success: #4ade80;
+  /* Catégories de jeux (voir docs/charte-graphique.md) */
+  --cat-solo: #5cc8ff;
+  --cat-duel: #b794ff;
+  --cat-multi: #f5d14a;
   --radius: 12px;
   color-scheme: dark;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -82,4 +86,9 @@ button.big { font-size: 2rem; min-width: 180px; min-height: 120px; border-radius
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 8px; padding: 0.6rem 0.9rem; margin: 0 0 1rem;
 }
+.tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.game-page .tags { margin: -0.5rem 0 1rem; }
 .tag { align-self: flex-start; font-size: 0.75rem; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.6rem; }
+.tag-solo { color: var(--cat-solo); border-color: color-mix(in srgb, var(--cat-solo) 50%, transparent); }
+.tag-duel { color: var(--cat-duel); border-color: color-mix(in srgb, var(--cat-duel) 50%, transparent); }
+.tag-multi { color: var(--cat-multi); border-color: color-mix(in srgb, var(--cat-multi) 50%, transparent); }

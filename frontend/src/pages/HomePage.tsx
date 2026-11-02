@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import { games } from '@/games/registry'
 import { useAuth } from '@/auth/AuthContext'
+import { GameTags } from '@/components/GameTags'
 
 export default function HomePage() {
   const { profile } = useAuth()
@@ -16,7 +17,7 @@ export default function HomePage() {
           <Link key={game.slug} to={`/games/${game.slug}`} className="card game-card">
             {game.thumbnail && <img src={game.thumbnail} alt="" />}
             <h2>{game.title}</h2>
-            <span className="tag">{game.mode === 'solo' ? 'Solo · sans compte' : 'Multijoueur · compte requis'}</span>
+            <GameTags game={game} />
             <p className="muted">{game.description}</p>
           </Link>
         ))}

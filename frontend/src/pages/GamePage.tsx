@@ -1,6 +1,7 @@
 import { Suspense, useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
+import { GameTags } from '@/components/GameTags'
 import { getGame } from '@/games/registry'
 import { createGameContext } from '@/games/sdk'
 import NotFoundPage from './NotFoundPage'
@@ -29,6 +30,7 @@ export default function GamePage() {
     <div className="game-page">
       <p><Link to="/">← Tous les jeux</Link></p>
       <h1>{game.title}</h1>
+      <GameTags game={game} />
       {ctx.isGuest && (
         <p className="notice">
           Tu joues en invité : ta progression reste sur cet appareil et tes scores ne sont pas classés.{' '}

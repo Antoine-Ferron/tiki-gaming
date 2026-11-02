@@ -118,7 +118,7 @@ public class AuthController {
     @ExceptionHandler(ResourceAccessException.class)
     ResponseEntity<Map<String, String>> handleSupabaseUnreachable(ResourceAccessException e) {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-            .body(Map.of("error", "Service d'authentification injoignable. Réessayez plus tard."));
+            .body(Map.of("error", "Service d'authentification injoignable. Réessaie plus tard."));
     }
 
     private static void requireStrongPassword(String password) {

@@ -1,5 +1,6 @@
 import type { ComponentType, LazyExoticComponent } from 'react'
 import type { Json, Views } from '@/lib/database.types'
+import type { GameCategory } from './categories'
 
 export type Player = { id: string; username: string }
 
@@ -40,7 +41,9 @@ export interface GameDefinition {
   title: string
   description: string
   thumbnail?: string
-  /** 'solo' : jouable sans compte (invité). 'multiplayer' : connexion obligatoire. */
+  /** Format de jeu (nombre de joueurs), = games.category en base. Voir ./categories.ts */
+  category: GameCategory
+  /** Accès, indépendant de la catégorie. 'solo' : jouable sans compte (invité). 'multiplayer' : connexion obligatoire. */
   mode: GameMode
   /** Chargé à la demande : le code du jeu n'est téléchargé qu'à l'ouverture. */
   component: LazyExoticComponent<ComponentType<GameProps>>
