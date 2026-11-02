@@ -13,6 +13,9 @@
 
 - Chaque tâche ou bug fait l'objet d'une issue avant le développement ; l'issue décrit le travail à
   livrer sur `dev`.
+- **La spécification doit exister sur l'issue avant de commencer le développement** : ce qui doit
+  être livré (checklist de tâches, règles à implémenter, critères d'acceptation), pas seulement un
+  titre. Une issue vide ou trop vague se complète avant de coder.
 - La PR référence son issue dans sa description (`Closes #12`). `dev` n'étant pas la branche par
   défaut, GitHub ne ferme pas l'issue à la fusion dans `dev` : la fermer à la main une fois la PR fusionnée.
 
