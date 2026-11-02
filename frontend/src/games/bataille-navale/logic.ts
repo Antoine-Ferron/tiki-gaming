@@ -51,11 +51,7 @@ export function placeFleetRandomly(random: () => number = Math.random): PlacedSh
   return fleet
 }
 
-export function fireShot(
-  fleet: PlacedShip[],
-  shots: Set<string>,
-  target: Coord,
-): { result: ShotResult; sunk?: Ship } {
+export function fireShot(fleet: PlacedShip[], shots: Set<string>, target: Coord): { result: ShotResult; sunk?: Ship } {
   const key = coordKey(target)
   if (shots.has(key)) return { result: 'repeat' }
   shots.add(key)
