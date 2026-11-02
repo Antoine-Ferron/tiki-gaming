@@ -36,7 +36,7 @@ En minuscules, mots séparés par des tirets, sans accents.
 1. Partir de `dev` à jour : `git switch dev && git pull && git switch -c game/mon-jeu/premiere-version`
 2. Faire des commits petits et explicites (voir ci-dessous).
 3. Avant de pousser, les vérifications de la partie modifiée doivent passer (la CI les relance sur la PR) :
-   - front, dans `frontend/` : `npm run format && npm run lint && npm run build` ;
+   - front, dans `frontend/` : `npm run format && npm run lint && npm test && npm run build` ;
    - backend, dans `backend/` : `mvn spotless:apply` puis `mvn verify` (voir [Backend](#backend)).
 4. Ouvrir une pull request vers `dev` (jamais vers `main`), la garder courte et ciblée (un sujet par PR).
 5. **CI verte et 1 relecture approuvée minimum** avant de fusionner :
