@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend (format + lint + build)
+    name: Frontend (format + lint + tests + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,6 +27,7 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      - run: npm test
       - run: npm run build
 
   backend:
