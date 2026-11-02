@@ -92,9 +92,25 @@ serveur (Google OAuth, `SUPABASE_JWT_SECRET`, clé `service_role`) vont uniqueme
 | `npm run format:check` | Vérifie le formatage sans rien modifier (utilisé par la CI)           |
 | `npm run lint`         | **Linter** : ESLint (TypeScript, règles des hooks React)              |
 | `npm run build`        | Vérification des types + build de production                          |
+| `npm test`             | Tests unitaires (Vitest), fichiers `*.test.ts` à côté du code testé   |
 
 Lancer `npm run format` avant chaque commit : la CI refuse un code non formaté. Comme pour le backend,
 c'est le formatter qui tranche les questions de style.
+
+### Validation et erreurs
+
+- Les règles des formulaires sont des schémas **Zod** (`zod/mini`, léger pour le navigateur) dans
+  `src/lib/validation.ts`, testés dans `validation.test.ts`. Les formulaires sont en `noValidate` : pas
+  de bulle du navigateur, le message s'affiche sous le champ avec le composant `Field`.
+- Un message d'erreur dit **quoi corriger** (« Caractère non autorisé : ' — … »), sans code technique.
+- Toute règle existe aussi côté backend (Bean Validation) avec le même message : le front n'est pas une
+  sécurité. Le backend renvoie `{ error, fields: { champ: message } }` ; `toFormErrors()` (`src/lib/api.ts`)
+  place chaque message sous son champ.
+
+### Logs
+
+Pas de `console.*` : utiliser `logger` (**Pino**, `src/lib/logger.ts`) avec l'erreur en premier argument,
+`logger.error({ err }, 'Ce qui a échoué')`. Jamais de mot de passe ni de jeton dans un log.
 
 ## Backend
 
@@ -106,13 +122,29 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 |--------------------------|--------------------------------------------------------------------------|
 | `mvn spotless:apply`     | **Formatter** : reformate le code (palantir-java-format, 4 espaces, 120 colonnes) |
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
-| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ)                                      |
+| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, et échec si le code n'est pas formaté |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
 
 Lancer `mvn spotless:apply` avant chaque commit : la CI refuse un code non formaté. Le style n'est pas
 négociable en relecture, c'est le formatter qui tranche. Une règle du linter qui gêne se discute dans une
 PR `chore/` qui modifie `checkstyle.xml`, pas avec des `@SuppressWarnings` au cas par cas.
+
+### Validation et erreurs
+
+- Les corps de requête sont des `record` annotés (Bean Validation : `@NotBlank`, `@Size`, `@Email`, ou une
+  contrainte maison comme `@Username`) et reçus avec `@Valid` ; les messages, en français, sont les mêmes
+  que ceux du front.
+- Les erreurs sont mises en forme par `config/ApiExceptionHandler` : `400 { error, fields }` pour une saisie
+  refusée, `502` si Supabase échoue, `500` générique pour le reste. Pas de `@ExceptionHandler` dans les
+  contrôleurs, et jamais de détail technique dans la réponse.
+
+### Logs
+
+SLF4J (`LoggerFactory.getLogger(MaClasse.class)`), avec Logback fourni par Spring Boot. Une erreur
+inattendue se logue avec son exception en dernier argument (`log.error("…", e)`) pour garder la trace.
+`LOG_LEVEL` règle le niveau des logs `fr.tikigaming` ; en production, `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs`
+les écrit en JSON. Jamais de mot de passe, de jeton ni de clé dans un log.
 
 ### Packages
 
@@ -140,7 +172,7 @@ fr.tikigaming
 
 | Job        | Étapes                                             |
 |------------|----------------------------------------------------|
-| `frontend` | `npm ci` → `npm run format:check` → `npm run lint` → `npm run build` |
+| `frontend` | `npm ci` → `npm run format:check` → `npm run lint` → `npm test` → `npm run build` |
 | `backend`  | `mvn -B verify` (linter, compilation, tests, format) |
 
 Une PR ne se fusionne qu'avec une CI verte.
