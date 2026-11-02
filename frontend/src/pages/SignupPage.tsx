@@ -38,7 +38,9 @@ export default function SignupPage() {
     return (
       <div className="card">
         <h1>Vérifie tes emails</h1>
-        <p>Un lien de confirmation a été envoyé à <strong>{email}</strong>.</p>
+        <p>
+          Un lien de confirmation a été envoyé à <strong>{email}</strong>.
+        </p>
       </div>
     )
   }
@@ -63,11 +65,22 @@ export default function SignupPage() {
       </label>
       <label>
         Mot de passe
-        <input type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
       </label>
       {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={busy}>{busy ? 'Création…' : 'Créer mon compte'}</button>
-      <p className="muted">Déjà inscrit ? <Link to="/login">Se connecter</Link></p>
+      <button type="submit" disabled={busy}>
+        {busy ? 'Création…' : 'Créer mon compte'}
+      </button>
+      <p className="muted">
+        Déjà inscrit ? <Link to="/login">Se connecter</Link>
+      </p>
     </form>
   )
 }

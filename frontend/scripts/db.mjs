@@ -53,7 +53,9 @@ async function migrate(client) {
   const { rows } = await client.query('select version from supabase_migrations.schema_migrations')
   const applied = new Set(rows.map((r) => r.version))
   const dir = fileURLToPath(new URL('../../supabase/migrations', import.meta.url))
-  const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
   let count = 0
   for (const file of files) {
     const [version, ...rest] = file.replace(/\.sql$/, '').split('_')

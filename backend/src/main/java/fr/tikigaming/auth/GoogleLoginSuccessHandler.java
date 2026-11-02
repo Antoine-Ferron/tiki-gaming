@@ -27,7 +27,8 @@ public class GoogleLoginSuccessHandler implements AuthenticationSuccessHandler {
     }
 
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+    public void onAuthenticationSuccess(
+            HttpServletRequest request, HttpServletResponse response, Authentication authentication)
             throws IOException {
         OAuth2User google = (OAuth2User) authentication.getPrincipal();
         String email = google.getAttribute("email");

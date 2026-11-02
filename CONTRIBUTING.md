@@ -35,11 +35,15 @@ En minuscules, mots séparés par des tirets, sans accents.
 
 1. Partir de `dev` à jour : `git switch dev && git pull && git switch -c game/mon-jeu/premiere-version`
 2. Faire des commits petits et explicites (voir ci-dessous).
-3. Avant de pousser : `npm run lint && npm run build` doivent passer.
+3. Avant de pousser, les vérifications de la partie modifiée doivent passer (la CI les relance sur la PR) :
+   - front, dans `frontend/` : `npm run format && npm run lint && npm run build` ;
+   - backend, dans `backend/` : `mvn spotless:apply` puis `mvn verify` (voir [Backend](#backend)).
 4. Ouvrir une pull request vers `dev` (jamais vers `main`), la garder courte et ciblée (un sujet par PR).
-5. **1 relecture approuvée minimum** avant de fusionner :
+5. **CI verte et 1 relecture approuvée minimum** avant de fusionner :
    - une PR qui ne touche que `frontend/src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut
      être relue par l'équipe du jeu ;
+   - une PR qui touche le package serveur d'un jeu (`backend/.../games/<slug>/`) doit aussi être relue
+     par l'équipe plateforme : ce code s'exécute avec les secrets du serveur ;
    - une PR qui touche la plateforme (`backend/`, `frontend/src/auth`, `frontend/src/lib`,
      `frontend/src/games/sdk.ts`, `frontend/src/games/types.ts`, `frontend/src/pages`, `supabase/`) doit
      être relue par l'équipe plateforme.
@@ -60,8 +64,9 @@ fix(auth): corrige la redirection après reset du mot de passe (#15)
 db: ajoute la table achievements (#9)
 ```
 
-Types : `feat`, `fix`, `db`, `refactor`, `docs`, `chore`, `style`, `test`. La portée est le slug du
-jeu ou la zone de la plateforme (`auth`, `sdk`, `ui`…). Chaque commit doit référencer l'issue sur
+Types : `feat`, `fix`, `db`, `refactor`, `docs`, `chore`, `style`, `test`, `ci`. La portée est le slug du
+jeu (front comme backend) ou la zone de la plateforme : `auth`, `sdk`, `ui` pour le front, `backend`
+pour le serveur Java (`fix(backend): corrige l'expiration du JWT (#21)`). Chaque commit doit référencer l'issue sur
 laquelle il travaille : le `#<numéro>` est obligatoire, même sur un commit intermédiaire.
 
 ### Migrations de base de données
@@ -75,7 +80,70 @@ laquelle il travaille : le `#<numéro>` est obligatoire, même sur un commit int
 ### Secrets
 
 Ne jamais committer `.env`, de mot de passe ni de clé `service_role`. Seules les variables
-`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` sont destinées au front.
+`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` sont destinées au front (`frontend/.env`). Les secrets
+serveur (Google OAuth, `SUPABASE_JWT_SECRET`, clé `service_role`) vont uniquement dans `backend/.env`
+(modèle : `backend/.env.example`) et ne sont jamais lus par le front.
+
+## Front
+
+| Commande               | Rôle                                                                  |
+|------------------------|-----------------------------------------------------------------------|
+| `npm run format`       | **Formatter** : reformate le code (Prettier, `.prettierrc.json`)       |
+| `npm run format:check` | Vérifie le formatage sans rien modifier (utilisé par la CI)           |
+| `npm run lint`         | **Linter** : ESLint (TypeScript, règles des hooks React)              |
+| `npm run build`        | Vérification des types + build de production                          |
+
+Lancer `npm run format` avant chaque commit : la CI refuse un code non formaté. Comme pour le backend,
+c'est le formatter qui tranche les questions de style.
+
+## Backend
+
+Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](docs/architecture.md#backend).
+
+### Outillage
+
+| Commande                 | Rôle                                                                     |
+|--------------------------|--------------------------------------------------------------------------|
+| `mvn spotless:apply`     | **Formatter** : reformate le code (palantir-java-format, 4 espaces, 120 colonnes) |
+| `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
+| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ)                                      |
+| `mvn verify`             | Tout à la fois : linter, compilation, tests, et échec si le code n'est pas formaté |
+| `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
+
+Lancer `mvn spotless:apply` avant chaque commit : la CI refuse un code non formaté. Le style n'est pas
+négociable en relecture, c'est le formatter qui tranche. Une règle du linter qui gêne se discute dans une
+PR `chore/` qui modifie `checkstyle.xml`, pas avec des `@SuppressWarnings` au cas par cas.
+
+### Packages
+
+```
+fr.tikigaming
+├── config/          Configuration Spring (sécurité, propriétés)      → équipe plateforme
+├── auth/            Authentification et session                      → équipe plateforme
+└── games/
+    └── <slug>/      Code serveur d'un jeu (ex. games/mon_jeu/)       → équipe du jeu + plateforme
+```
+
+- Comme côté front, chaque jeu qui a besoin du serveur (validation de score, multijoueur, logique
+  anti-triche…) a **son propre package** `fr.tikigaming.games.<slug>`, le slug étant écrit avec des `_`
+  à la place des tirets (`mon-jeu` → `mon_jeu`). Ses tests vont dans le même package sous `src/test/java`.
+- Ses endpoints sont préfixés par le slug : `/api/games/<slug>/...`.
+- Un jeu **n'importe jamais** le package d'un autre jeu. Ce qui sert à plusieurs jeux est ajouté à la
+  plateforme (nouveau package hors de `games/`), comme pour le SDK du front.
+- Un jeu sans logique serveur n'a pas de package backend : tout passe par le `GameContext` et Supabase.
+- Même [approche TDD](#approche-tdd) que côté front : le test de la règle (validation, calcul,
+  sécurité) s'écrit avant son implémentation.
+
+## Intégration continue
+
+`.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main` :
+
+| Job        | Étapes                                             |
+|------------|----------------------------------------------------|
+| `frontend` | `npm ci` → `npm run format:check` → `npm run lint` → `npm run build` |
+| `backend`  | `mvn -B verify` (linter, compilation, tests, format) |
+
+Une PR ne se fusionne qu'avec une CI verte.
 
 ## Créer un jeu
 
@@ -191,4 +259,4 @@ valides…) plutôt qu'au rendu visuel.
 - Le jeu est chargé à la demande (`lazy`) : les dépendances lourdes (Phaser, Three.js…) n'alourdissent pas la plateforme.
 - Besoin de tables propres au jeu ? Les préfixer par le slug (`mon_jeu_xxx`), activer la RLS, et
   passer en revue avec l'équipe plateforme.
-- Avant de pousser (dans `frontend/`) : `npm run lint && npm run build`.
+- Avant de pousser (dans `frontend/`) : `npm run format && npm run lint && npm run build`.

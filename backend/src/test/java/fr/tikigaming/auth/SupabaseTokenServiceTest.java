@@ -16,16 +16,17 @@ class SupabaseTokenServiceTest {
 
     @Test
     void issuesTokenVerifiableWithProjectSecretAndRecognisedByRls() {
-        TikiProperties props = new TikiProperties("http://localhost:5173",
-            new TikiProperties.Supabase("https://ref.supabase.co", "anon", "service", SECRET, Duration.ofHours(1)));
+        TikiProperties props = new TikiProperties(
+                "http://localhost:5173",
+                new TikiProperties.Supabase("https://ref.supabase.co", "anon", "service", SECRET, Duration.ofHours(1)));
         AuthUser user = new AuthUser("7d0e3c1a-0000-4000-8000-000000000001", "joueur@example.com");
 
         SupabaseTokenService.IssuedToken token = new SupabaseTokenService(props).issue(user);
 
-        Jwt jwt = NimbusJwtDecoder
-            .withSecretKey(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
-            .build()
-            .decode(token.value());
+        Jwt jwt = NimbusJwtDecoder.withSecretKey(
+                        new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
+                .build()
+                .decode(token.value());
         assertThat(jwt.getSubject()).isEqualTo(user.id());
         assertThat(jwt.getClaimAsString("role")).isEqualTo("authenticated");
         assertThat(jwt.getAudience()).containsExactly("authenticated");

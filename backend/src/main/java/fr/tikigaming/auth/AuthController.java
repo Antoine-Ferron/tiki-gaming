@@ -24,9 +24,13 @@ import org.springframework.web.client.ResourceAccessException;
 public class AuthController {
 
     record Credentials(String email, String password) {}
+
     record SignUpRequest(String email, String password, String username) {}
+
     record EmailRequest(String email) {}
+
     record PasswordRequest(String password) {}
+
     record PasswordResetRequest(String accessToken, String password) {}
 
     private static final int MIN_PASSWORD_LENGTH = 8;
@@ -59,7 +63,9 @@ public class AuthController {
     @GetMapping("/google")
     ResponseEntity<Void> google(@RequestParam(required = false) String redirect, HttpServletRequest request) {
         request.getSession(true).setAttribute(AuthSession.GOOGLE_REDIRECT, AuthSession.safeRedirect(redirect));
-        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create("/oauth2/authorization/google")).build();
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create("/oauth2/authorization/google"))
+                .build();
     }
 
     @PostMapping("/login")
@@ -72,7 +78,7 @@ public class AuthController {
     Map<String, Boolean> signUp(@RequestBody SignUpRequest body, HttpServletRequest request) {
         requireStrongPassword(body.password());
         SupabaseAuthClient.SignUpResult result =
-            supabase.signUp(body.email(), body.password(), body.username(), frontendUrl);
+                supabase.signUp(body.email(), body.password(), body.username(), frontendUrl);
         if (result.signedIn()) AuthSession.signIn(request, result.user());
         return Map.of("confirmationRequired", !result.signedIn());
     }
@@ -118,12 +124,13 @@ public class AuthController {
     @ExceptionHandler(ResourceAccessException.class)
     ResponseEntity<Map<String, String>> handleSupabaseUnreachable(ResourceAccessException e) {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-            .body(Map.of("error", "Service d'authentification injoignable. Réessaie plus tard."));
+                .body(Map.of("error", "Service d'authentification injoignable. Réessaie plus tard."));
     }
 
     private static void requireStrongPassword(String password) {
         if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
-            throw new AuthException(400, "Le mot de passe doit contenir au moins " + MIN_PASSWORD_LENGTH + " caractères.");
+            throw new AuthException(
+                    400, "Le mot de passe doit contenir au moins " + MIN_PASSWORD_LENGTH + " caractères.");
         }
     }
 }

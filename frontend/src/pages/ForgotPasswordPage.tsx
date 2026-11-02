@@ -22,7 +22,9 @@ export default function ForgotPasswordPage() {
     return (
       <div className="card">
         <h1>Email envoyé</h1>
-        <p>Si un compte existe pour <strong>{email}</strong>, tu recevras un lien de réinitialisation.</p>
+        <p>
+          Si un compte existe pour <strong>{email}</strong>, tu recevras un lien de réinitialisation.
+        </p>
       </div>
     )
   }
@@ -36,7 +38,9 @@ export default function ForgotPasswordPage() {
       </label>
       {error && <p className="error">{error}</p>}
       <button type="submit">Envoyer le lien</button>
-      <p className="muted"><Link to="/login">Retour à la connexion</Link></p>
+      <p className="muted">
+        <Link to="/login">Retour à la connexion</Link>
+      </p>
     </form>
   )
 }

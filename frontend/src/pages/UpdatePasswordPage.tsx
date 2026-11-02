@@ -47,10 +47,19 @@ export default function UpdatePasswordPage() {
       <h1>Nouveau mot de passe</h1>
       <label>
         Mot de passe
-        <input type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
       </label>
       {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={busy}>Enregistrer</button>
+      <button type="submit" disabled={busy}>
+        Enregistrer
+      </button>
     </form>
   )
 }
