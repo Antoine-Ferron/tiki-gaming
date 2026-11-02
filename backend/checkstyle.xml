@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!--
+  Linter du backend. La mise en forme (indentation, longueur de ligne, ordre des imports) est
+  du ressort de Spotless : ces règles ne portent que sur les erreurs probables et le nommage.
+-->
+<module name="Checker">
+  <property name="severity" value="warning"/>
+  <property name="charset" value="UTF-8"/>
+
+  <module name="TreeWalker">
+    <!-- Imports -->
+    <module name="AvoidStarImport"/>
+    <module name="RedundantImport"/>
+    <module name="UnusedImports"/>
+    <module name="IllegalImport"/>
+
+    <!-- Nommage. Les packages de jeux utilisent le slug avec des _ (mon-jeu -> mon_jeu). -->
+    <module name="PackageName">
+      <property name="format" value="^fr\.tikigaming(\.[a-z][a-z0-9_]*)*$"/>
+    </module>
+    <module name="TypeName"/>
+    <module name="MethodName"/>
+    <module name="ConstantName">
+      <property name="format" value="^(log|[A-Z][A-Z0-9]*(_[A-Z0-9]+)*)$"/>
+    </module>
+    <module name="MemberName"/>
+    <module name="ParameterName"/>
+    <module name="LocalVariableName"/>
+    <module name="LocalFinalVariableName"/>
+    <module name="StaticVariableName"/>
+
+    <!-- Erreurs probables -->
+    <module name="EmptyCatchBlock"/>
+    <module name="EmptyStatement"/>
+    <module name="EqualsHashCode"/>
+    <module name="FallThrough"/>
+    <module name="MissingSwitchDefault"/>
+    <module name="StringLiteralEquality"/>
+    <module name="SimplifyBooleanExpression"/>
+    <module name="SimplifyBooleanReturn"/>
+    <module name="OneStatementPerLine"/>
+    <module name="MultipleVariableDeclarations"/>
+    <!-- `if (x) return y;` sur une seule ligne reste permis. -->
+    <module name="NeedBraces">
+      <property name="allowSingleLineStatement" value="true"/>
+    </module>
+    <module name="ModifierOrder"/>
+    <module name="UpperEll"/>
+    <module name="ArrayTypeStyle"/>
+  </module>
+</module>
