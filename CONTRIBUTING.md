@@ -35,10 +35,11 @@ En minuscules, mots séparés par des tirets, sans accents.
 3. Avant de pousser : `npm run lint && npm run build` doivent passer.
 4. Ouvrir une pull request vers `dev` (jamais vers `main`), la garder courte et ciblée (un sujet par PR).
 5. **1 relecture approuvée minimum** avant de fusionner :
-   - une PR qui ne touche que `src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut être
-     relue par l'équipe du jeu ;
-   - une PR qui touche la plateforme (`src/auth`, `src/lib`, `src/games/sdk.ts`, `src/games/types.ts`,
-     `src/pages`, `supabase/`) doit être relue par l'équipe plateforme.
+   - une PR qui ne touche que `frontend/src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut
+     être relue par l'équipe du jeu ;
+   - une PR qui touche la plateforme (`backend/`, `frontend/src/auth`, `frontend/src/lib`,
+     `frontend/src/games/sdk.ts`, `frontend/src/games/types.ts`, `frontend/src/pages`, `supabase/`) doit
+     être relue par l'équipe plateforme.
 6. Fusion en **squash merge**, puis suppression de la branche.
 7. Garder sa branche à jour avec `dev` (`git pull --rebase origin dev`) plutôt que de laisser
    s'accumuler les conflits.
@@ -73,20 +74,20 @@ Ne jamais committer `.env`, de mot de passe ni de clé `service_role`. Seules le
 
 ## Créer un jeu
 
-Chaque jeu est un module React autonome dans `src/games/<slug>/`. La plateforme gère le compte,
+Chaque jeu est un module React autonome dans `frontend/src/games/<slug>/`. La plateforme gère le compte,
 la connexion, la navigation ; le jeu reçoit un objet `ctx` (`GameContext`) pour parler au backend.
 
 ### 1. Copier le template
 
 ```bash
-cp -r src/games/clicker src/games/mon-jeu
+cp -r frontend/src/games/clicker frontend/src/games/mon-jeu
 ```
 
 `slug` : minuscules, chiffres et tirets (`mon-jeu`). Il sert d'URL (`/games/mon-jeu`) et de clé en base.
 
 ### 2. Déclarer le jeu
 
-`src/games/mon-jeu/index.ts`
+`frontend/src/games/mon-jeu/index.ts`
 
 ```ts
 import { lazy } from 'react'
@@ -103,7 +104,7 @@ const monJeu: GameDefinition = {
 export default monJeu
 ```
 
-Puis l'ajouter dans `src/games/registry.ts` :
+Puis l'ajouter dans `frontend/src/games/registry.ts` :
 
 ```ts
 import monJeu from './mon-jeu'
@@ -159,8 +160,8 @@ joueur à se connecter pour être classé (voir le clicker).
 - **Ne pas importer `@/lib/supabase` dans un jeu.** Tout passe par `ctx`. Si une fonctionnalité manque
   (multijoueur temps réel, succès, inventaire…), on l'ajoute au SDK pour tous les jeux.
 - Le jeu ne touche pas au routing ni à l'auth : la page de jeu applique la règle du `mode` (solo / multijoueur).
-- Code et assets du jeu restent dans `src/games/<slug>/` (ou `public/games/<slug>/`).
+- Code et assets du jeu restent dans `frontend/src/games/<slug>/` (ou `public/games/<slug>/`).
 - Le jeu est chargé à la demande (`lazy`) : les dépendances lourdes (Phaser, Three.js…) n'alourdissent pas la plateforme.
 - Besoin de tables propres au jeu ? Les préfixer par le slug (`mon_jeu_xxx`), activer la RLS, et
   passer en revue avec l'équipe plateforme.
-- Avant de pousser : `npm run lint && npm run build`.
+- Avant de pousser (dans `frontend/`) : `npm run lint && npm run build`.

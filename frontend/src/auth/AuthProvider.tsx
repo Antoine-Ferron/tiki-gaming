@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { apiPost } from '@/lib/api'
+import { clearSession, fetchSession, onSessionChange, type AuthUser } from '@/lib/session'
 import { AuthContext, type AuthContextValue, type Profile } from './AuthContext'
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
@@ -10,23 +11,19 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
   // Profil mémorisé avec l'id de son propriétaire : un profil d'un autre user n'est jamais exposé.
   const [loaded, setLoaded] = useState<{ userId: string; profile: Profile | null } | null>(null)
   const [loading, setLoading] = useState(true)
-  const userId = session?.user.id
+  const userId = user?.id
   const profile = loaded && loaded.userId === userId ? loaded.profile : null
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
-    // Ne pas appeler supabase de façon synchrone dans ce callback (risque de deadlock).
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-    })
-    return () => sub.subscription.unsubscribe()
+    const unsubscribe = onSessionChange((next) => setUser((prev) => (prev?.id === next?.id ? prev : next)))
+    fetchSession()
+      .catch((e) => console.error('Backend d’authentification injoignable', e))
+      .finally(() => setLoading(false))
+    return unsubscribe
   }, [])
 
   useEffect(() => {
@@ -44,13 +41,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userId) setLoaded({ userId, profile: await fetchProfile(userId) })
   }, [userId])
 
+  const refreshSession = useCallback(async () => {
+    await fetchSession()
+  }, [])
+
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut()
+    await apiPost('/auth/logout')
+    clearSession()
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ session, user: session?.user ?? null, profile, loading, refreshProfile, signOut }),
-    [session, profile, loading, refreshProfile, signOut],
+    () => ({ user, profile, loading, refreshProfile, refreshSession, signOut }),
+    [user, profile, loading, refreshProfile, refreshSession, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
