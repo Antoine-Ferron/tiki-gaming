@@ -127,7 +127,9 @@ frontend/src/
 ├── App.tsx                  Déclaration des routes
 ├── styles.css               Tokens et composants (voir charte-graphique.md)
 ├── lib/
-│   ├── api.ts               Appels au backend (cookie de session + CSRF)
+│   ├── api.ts               Appels au backend (cookie de session + CSRF), ApiError
+│   ├── logger.ts            Logger Pino du navigateur
+│   ├── validation.ts        Schémas Zod des formulaires (messages d'erreur)
 │   ├── session.ts           Session backend + JWT, rafraîchi avant expiration
 │   ├── supabase.ts          Client Supabase unique (clé anon + JWT du backend)
 │   └── database.types.ts    Types de la base
@@ -135,7 +137,7 @@ frontend/src/
 │   ├── AuthContext.ts       useAuth() → user, profile, refreshSession, signOut…
 │   ├── AuthProvider.tsx     Lit la session du backend, charge le profil
 │   └── ProtectedRoute.tsx   ProtectedRoute / GuestOnlyRoute
-├── components/              Layout, Leaderboard, GameTags…
+├── components/              Layout, Leaderboard, GameTags, Field (champ + message d'erreur)…
 ├── pages/                   Home, Game, Login, Signup, ForgotPassword, UpdatePassword, Profile
 └── games/
     ├── types.ts             Contrat GameDefinition / GameContext  ← à lire en premier
@@ -191,6 +193,7 @@ contrainte + une entrée dans `GAME_CATEGORIES` + un token `--cat-<nom>` dans la
 backend/src/main/java/fr/tikigaming/
 ├── TikiGamingApplication.java
 ├── config/
+│   ├── ApiExceptionHandler.java       Format { error, fields } des erreurs de l'API + logs
 │   ├── OpenApiConfig.java             Informations de la documentation Swagger
 │   ├── SecurityConfig.java            OAuth2 Google, CSRF par cookie, session
 │   └── TikiProperties.java            Configuration tiki.* (application.yml)
@@ -199,6 +202,8 @@ backend/src/main/java/fr/tikigaming/
 │   ├── AuthSession.java               Utilisateur en session, redirections sûres
 │   ├── GoogleLoginSuccessHandler.java Rattache le compte Google à auth.users
 │   ├── SupabaseAuthClient.java        API Auth / RPC Supabase (clé service_role)
+│   ├── SupabaseErrors.java            Codes d'erreur Supabase → messages en français
+│   ├── Username.java                  Contrainte @Username (+ UsernameValidator)
 │   └── SupabaseTokenService.java      JWT au format Supabase pour la RLS
 └── games/
     └── <slug>/                        Code serveur d'un jeu, endpoints /api/games/<slug>/*
