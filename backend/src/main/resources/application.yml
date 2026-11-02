@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: tiki-gaming-backend
+  config:
+    import: optional:file:.env[.properties]
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: openid,email,profile
+            # Le front proxifie /oauth2 et /login/oauth2 vers ce backend : le callback passe par son origine.
+            redirect-uri: "${FRONTEND_URL:http://localhost:5173}/login/oauth2/code/{registrationId}"
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 7d
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${COOKIE_SECURE:false}
+
+tiki:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  supabase:
+    url: ${SUPABASE_URL}
+    anon-key: ${SUPABASE_ANON_KEY}
+    service-role-key: ${SUPABASE_SERVICE_ROLE_KEY}
+    jwt-secret: ${SUPABASE_JWT_SECRET}
+    token-ttl: 1h
