@@ -34,14 +34,6 @@ CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, r
 - **Site URL** : l'URL de production
 - **Redirect URLs** : `http://localhost:5173/**` et l'URL de prod `/**` (nécessaire pour la confirmation d'email et le reset de mot de passe)
 
-## Déploiement (Vercel)
-
-- Chaque push sur `main` déploie en production ; chaque pull request obtient une URL de preview.
-- Variables d'environnement Vercel : **uniquement** `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY`.
-- `vercel.json` renvoie toutes les routes vers `index.html` (routing côté client) et met en cache longue durée `/assets/*`.
-- Supabase → Authentication → URL Configuration : Site URL = URL de prod ; Redirect URLs = URL de prod `/**`
-  et `https://*-<équipe-vercel>.vercel.app/**` pour les previews.
-
 ## Architecture
 
 ```
@@ -87,6 +79,6 @@ Toutes les tables ont la **RLS activée**.
 - Les scores sont envoyés par le client, donc falsifiables. Pour un jeu compétitif, valider la partie
   côté serveur (Edge Function) avant d'insérer le score.
 
-## Ajouter un jeu
+## Contribuer
 
-Voir [CONTRIBUTING-GAMES.md](CONTRIBUTING-GAMES.md).
+Règles de branches, workflow de PR et création d'un jeu : voir [CONTRIBUTING.md](CONTRIBUTING.md).
