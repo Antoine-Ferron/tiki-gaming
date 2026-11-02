@@ -46,18 +46,20 @@ En minuscules, mots séparés par des tirets, sans accents.
 
 ### Messages de commit
 
-Format [Conventional Commits](https://www.conventionalcommits.org/fr/) :
+Format [Conventional Commits](https://www.conventionalcommits.org/fr/), avec le numéro de l'issue
+liée entre parenthèses en fin de description :
 
 ```
-<type>(<portée>): <description à l'impératif>
+<type>(<portée>): <description à l'impératif> (#<numéro-issue>)
 
-feat(snake): ajoute le mode chrono
-fix(auth): corrige la redirection après reset du mot de passe
-db: ajoute la table achievements
+feat(snake): ajoute le mode chrono (#12)
+fix(auth): corrige la redirection après reset du mot de passe (#15)
+db: ajoute la table achievements (#9)
 ```
 
 Types : `feat`, `fix`, `db`, `refactor`, `docs`, `chore`, `style`, `test`. La portée est le slug du
-jeu ou la zone de la plateforme (`auth`, `sdk`, `ui`…).
+jeu ou la zone de la plateforme (`auth`, `sdk`, `ui`…). Chaque commit doit référencer l'issue sur
+laquelle il travaille : le `#<numéro>` est obligatoire, même sur un commit intermédiaire.
 
 ### Migrations de base de données
 
@@ -161,6 +163,19 @@ Un jeu `solo` doit fonctionner sans compte. En invité, le `ctx` a la même API 
 
 Pensez à gérer `ctx.player === null` (affichage du pseudo, etc.) et, en fin de partie, à inviter le
 joueur à se connecter pour être classé (voir le clicker).
+
+### Approche TDD
+
+**On développe en TDD : le test de la règle de jeu s'écrit avant son implémentation.**
+
+1. Écrire un test qui décrit le comportement attendu (une règle du jeu, un cas limite) — il doit
+   échouer puisque rien n'est implémenté.
+2. Écrire le minimum de code pour le faire passer.
+3. Refactorer si besoin, tests toujours au vert.
+4. Recommencer pour la règle suivante.
+
+Priorité aux règles du jeu et à la logique métier (calcul du score, conditions de victoire, coups
+valides…) plutôt qu'au rendu visuel.
 
 ### Règles
 
