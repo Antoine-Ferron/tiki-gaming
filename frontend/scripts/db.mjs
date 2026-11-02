@@ -7,6 +7,7 @@
 import 'dotenv/config'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import pg from 'pg'
 
 const ref = process.env.SUPABASE_PROJECT_REF
@@ -51,7 +52,7 @@ async function migrate(client) {
     );`)
   const { rows } = await client.query('select version from supabase_migrations.schema_migrations')
   const applied = new Set(rows.map((r) => r.version))
-  const dir = 'supabase/migrations'
+  const dir = fileURLToPath(new URL('../../supabase/migrations', import.meta.url))
   const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()
   let count = 0
   for (const file of files) {

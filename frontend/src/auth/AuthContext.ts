@@ -1,16 +1,17 @@
 import { createContext, useContext } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
 import type { Tables } from '@/lib/database.types'
+import type { AuthUser } from '@/lib/session'
 
 export type Profile = Tables<'profiles'>
 
 export type AuthContextValue = {
-  session: Session | null
-  user: User | null
+  user: AuthUser | null
   profile: Profile | null
   /** true tant que la session initiale n'est pas résolue */
   loading: boolean
   refreshProfile: () => Promise<void>
+  /** À appeler après une connexion/inscription pour relire la session du backend */
+  refreshSession: () => Promise<void>
   signOut: () => Promise<void>
 }
 

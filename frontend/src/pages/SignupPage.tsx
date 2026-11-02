@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/auth/AuthContext'
+import { apiPost } from '@/lib/api'
 import { USERNAME_PATTERN } from '@/lib/validation'
-
 
 export default function SignupPage() {
   const navigate = useNavigate()
+  const { refreshSession } = useAuth()
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,18 +18,20 @@ export default function SignupPage() {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { username }, // lu par le trigger handle_new_user pour créer le profil
-        emailRedirectTo: window.location.origin,
-      },
-    })
-    setBusy(false)
-    if (error) return setError(error.message)
-    if (data.session) navigate('/', { replace: true })
-    else setPendingConfirmation(true) // confirmation email activée sur le projet
+    try {
+      const { confirmationRequired } = await apiPost<{ confirmationRequired: boolean }>('/auth/signup', {
+        email,
+        password,
+        username,
+      })
+      if (confirmationRequired) return setPendingConfirmation(true) // confirmation email activée sur le projet
+      await refreshSession()
+      navigate('/', { replace: true })
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (pendingConfirmation) {

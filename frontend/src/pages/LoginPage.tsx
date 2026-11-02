@@ -1,29 +1,49 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
-import { supabase } from '@/lib/supabase'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
+import { useAuth } from '@/auth/AuthContext'
+import { apiPost } from '@/lib/api'
+
+const GOOGLE_ERRORS: Record<string, string> = {
+  google: 'La connexion avec Google a échoué. Réessayez.',
+  'google-email': 'Votre compte Google doit avoir une adresse email vérifiée.',
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const { refreshSession } = useAuth()
   const from = (location.state as { from?: string } | null)?.from ?? '/'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(GOOGLE_ERRORS[searchParams.get('error') ?? ''] ?? null)
   const [busy, setBusy] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setBusy(false)
-    if (error) return setError(error.message)
-    navigate(from, { replace: true })
+    try {
+      await apiPost('/auth/login', { email, password })
+      await refreshSession()
+      navigate(from, { replace: true })
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function handleGoogleLogin() {
+    setBusy(true)
+    window.location.assign(`/api/auth/google?redirect=${encodeURIComponent(from)}`)
   }
 
   return (
     <form className="card form" onSubmit={handleSubmit}>
       <h1>Connexion</h1>
+      <button type="button" onClick={handleGoogleLogin} disabled={busy}>Se connecter avec Google</button>
+      <p className="muted">ou</p>
       <label>
         Email
         <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
