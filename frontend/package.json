@@ -11,6 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -b",
+    "test": "vitest run",
     "db:types": "supabase gen types typescript --project-id scuqcjtuohcaqyjaytul --schema public > src/lib/database.types.ts",
     "db:sql": "node scripts/db.mjs",
     "db:migrate": "node scripts/db.mjs --migrate"
@@ -39,6 +40,7 @@
     "supabase": "^3.0.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "vitest": "^4.1.12"
   }
 }
