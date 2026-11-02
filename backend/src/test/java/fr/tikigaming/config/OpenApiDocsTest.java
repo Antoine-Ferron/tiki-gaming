@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasKey;
@@ -47,11 +48,11 @@ class OpenApiDocsTest {
         MockMvc mvc;
 
         @Test
-        void exposesEveryAuthEndpointWithASummary() throws Exception {
+        void exposesEveryEndpointWithASummary() throws Exception {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.info.title").value("Tiki Gaming API"))
-                    .andExpect(jsonPath("$.paths", aMapWithSize(14)))
+                    .andExpect(jsonPath("$.paths", aMapWithSize(16)))
                     .andExpect(jsonPath("$.paths['/api/auth/session'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/google'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/login'].post.summary", not(emptyOrNullString())))
@@ -72,7 +73,12 @@ class OpenApiDocsTest {
                             everyItem(anyOf(
                                     containsString("Authentification"),
                                     containsString("mastermind"),
-                                    containsString("bang")))));
+                                    containsString("bang"),
+                                    equalTo("Sudoku")))))
+                    .andExpect(jsonPath("$.paths['/api/sudoku/puzzle'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/sudoku/check'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/sudoku/puzzle'].get.tags[*]", hasItem("Sudoku")))
+                    .andExpect(jsonPath("$.paths['/api/sudoku/check'].post.tags[*]", hasItem("Sudoku")));
         }
 
         @Test
