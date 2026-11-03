@@ -64,3 +64,48 @@ describe('parseBoard : le plateau fait 6 × 6 cases (R1)', () => {
     else expect(parse).toThrow('Le plateau doit faire 6 lignes de 6 cases')
   })
 })
+
+describe('parseBoard : véhicules de 2 ou 3 cases, d’un seul tenant (R2)', () => {
+  // Valeurs limites sur la longueur : 1 et 4 refusées, 2 et 3 acceptées
+  test.each([
+    { row: 'A.....', valid: false },
+    { row: 'AA....', valid: true },
+    { row: 'AAA...', valid: true },
+    { row: 'AAAA..', valid: false },
+  ])('véhicule "$row" → valide : $valid', ({ row, valid }) => {
+    // Arrange
+    const map = [row, ...VALID.slice(1)]
+
+    // Act
+    const parse = () => parseBoard(map)
+
+    // Assert
+    if (valid) expect(parse).not.toThrow()
+    else expect(parse).toThrow('Le véhicule A doit mesurer 2 ou 3 cases')
+  })
+
+  test.each([
+    { shape: 'en pointillés', top: ['A.A...', EMPTY_ROW] },
+    { shape: 'en L', top: ['AA....', 'A.....'] },
+  ])('refuse un véhicule $shape', ({ top }) => {
+    // Arrange
+    const map = [...top, ...VALID.slice(2)]
+
+    // Act
+    const parse = () => parseBoard(map)
+
+    // Assert
+    expect(parse).toThrow('Le véhicule A doit être d’un seul tenant')
+  })
+
+  test.each(['##....', 'aa....', '11....'])('refuse un caractère interdit ("%s")', (row) => {
+    // Arrange
+    const map = [row, ...VALID.slice(1)]
+
+    // Act
+    const parse = () => parseBoard(map)
+
+    // Assert
+    expect(parse).toThrow('Caractère interdit')
+  })
+})
