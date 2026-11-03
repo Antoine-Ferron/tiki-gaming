@@ -14,7 +14,8 @@
     "db:types": "supabase gen types typescript --project-id scuqcjtuohcaqyjaytul --schema public > src/lib/database.types.ts",
     "db:sql": "node scripts/db.mjs",
     "db:migrate": "node scripts/db.mjs --migrate",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:mutation": "stryker run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
@@ -26,6 +27,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^26.6.6",
     "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
@@ -37,6 +42,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.14.0",
+    "jsdom": "^29.1.1",
     "pg": "^8.23.1",
     "prettier": "3.9.10",
     "supabase": "^3.0.0",

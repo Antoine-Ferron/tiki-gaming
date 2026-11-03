@@ -261,6 +261,9 @@ button.big {
   padding: 0.6rem 0.9rem;
   margin: 0 0 1rem;
 }
+.game-crash h2 {
+  margin-top: 0;
+}
 .tags {
   display: flex;
   flex-wrap: wrap;

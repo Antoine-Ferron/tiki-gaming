@@ -142,7 +142,14 @@ frontend/src/
 └── games/
     ├── types.ts             Contrat GameDefinition / GameContext  ← à lire en premier
     ├── categories.ts        Catégories de jeux (solo, duel, multi)
-    ├── sdk.ts               Implémentation du GameContext (scores, saves, classement)
+    ├── sdk.ts               Implémentation du GameContext (scores, saves, classement, file d'attente)
+    ├── ports.ts             Interfaces ScoreRepository / SaveStore (architecture hexagonale)
+    ├── adapters/            Adaptateurs Supabase (connecté) et localStorage (invité)
+    ├── domain/              Règles pures : classement (ex æquo), validation des scores, accès aux jeux
+    ├── errors.ts            GameError : erreurs traduites en messages pour le joueur
+    ├── scoreQueue.ts        Scores en attente après une coupure réseau
+    ├── GameErrorBoundary.tsx Isole un jeu qui plante du reste du lobby
+    ├── testing/fakes.ts     Fakes en mémoire des ports, pour les tests
     ├── registry.ts          Catalogue des jeux
     └── clicker/             Jeu d'exemple = template
 ```
@@ -167,10 +174,25 @@ Chaque jeu est un module autonome dans `frontend/src/games/<slug>/` qui exporte 
 | `title`, `description`, `thumbnail?` | Affichage dans le catalogue                       |
 | `category`    | **Obligatoire.** Format de jeu : `solo`, `duel` ou `multi` (voir ci-dessous) |
 | `mode`        | Accès : `solo` = jouable sans compte, `multiplayer` = connexion obligatoire |
+| `scoreLimits?`| Score maximal accepté (`{ max }`), vérifié avant l'envoi ; = `games.max_score` en base |
 | `component`   | Composant chargé à la demande (`lazy`)                                    |
 
 Le jeu reçoit un `GameContext` (`ctx`) déjà limité au jeu et au joueur courants : scores,
 classement, sauvegarde. Un jeu **n'importe jamais `@/lib/supabase`** directement.
+
+#### SDK : architecture hexagonale
+
+```
+GamePage ──> createGameContext(game, player, platformDeps()) ──> domaine pur (checkScore, rankLeaderboard)
+                         │
+                         ├─ ScoreRepository ──> supabaseScores      (fake : FakeScores)
+                         ├─ SaveStore       ──> supabaseSaves / localSaves (fake : FakeSaves)
+                         └─ KeyValueStorage ──> localStorage        (fake : MemoryStorage)
+```
+
+Le contexte ne connaît que les ports (`ports.ts`) : `sdk.ts` n'importe aucun adaptateur. C'est la page
+de jeu (point d'assemblage) qui branche les adaptateurs avec `platformDeps()` (`adapters/index.ts`). Les
+adaptateurs traduisent toute erreur en `GameError`. Les tests injectent des fakes en mémoire : aucun test unitaire ne touche le réseau.
 
 #### Catégories
 
