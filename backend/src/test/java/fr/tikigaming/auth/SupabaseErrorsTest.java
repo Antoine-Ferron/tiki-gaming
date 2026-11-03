@@ -19,4 +19,11 @@ class SupabaseErrorsTest {
         assertThat(SupabaseErrors.message("brand_new_code", "Something new")).isEqualTo("Something new");
         assertThat(SupabaseErrors.message(null, null)).isEqualTo("Erreur du service d'authentification.");
     }
+
+    @Test
+    void fallsBackToDefaultMessageWhenSupabaseMessageIsMissingOrBlank() {
+        assertThat(SupabaseErrors.message(null, "Message brut")).isEqualTo("Message brut");
+        assertThat(SupabaseErrors.message("brand_new_code", null)).isEqualTo(SupabaseErrors.DEFAULT_MESSAGE);
+        assertThat(SupabaseErrors.message("brand_new_code", "  ")).isEqualTo(SupabaseErrors.DEFAULT_MESSAGE);
+    }
 }

@@ -23,6 +23,8 @@
     <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
     <checkstyle.version>14.4.0</checkstyle.version>
     <!-- Ligne 2.x = Spring Boot 3.x (la 3.x de springdoc cible Spring Boot 4). -->
+    <pitest.version>1.19.1</pitest.version>
+    <pitest-junit5.version>1.2.2</pitest-junit5.version>
     <springdoc.version>2.10.0</springdoc.version>
   </properties>
 
@@ -118,4 +120,51 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!-- Mutation testing : `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage`
+         (rapport dans target/pit-reports). Échoue sous 75 % de mutants tués sur le cœur métier. -->
+    <profile>
+      <id>mutation</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-maven</artifactId>
+            <version>${pitest.version}</version>
+            <dependencies>
+              <dependency>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-junit5-plugin</artifactId>
+                <version>${pitest-junit5.version}</version>
+              </dependency>
+            </dependencies>
+            <configuration>
+              <targetClasses>
+                <param>fr.tikigaming.auth.UsernameValidator</param>
+                <param>fr.tikigaming.auth.SupabaseErrors</param>
+                <param>fr.tikigaming.auth.SupabaseTokenService</param>
+              </targetClasses>
+              <targetTests>
+                <param>fr.tikigaming.auth.*Test</param>
+              </targetTests>
+              <mutators>
+                <mutator>STRONGER</mutator>
+              </mutators>
+              <!-- Les appels de journalisation n'ont pas d'effet observable : mutants équivalents. -->
+              <avoidCallsTo>
+                <avoidCallsTo>org.slf4j</avoidCallsTo>
+              </avoidCallsTo>
+              <mutationThreshold>75</mutationThreshold>
+              <outputFormats>
+                <param>HTML</param>
+                <param>XML</param>
+              </outputFormats>
+              <timestampedReports>false</timestampedReports>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>
