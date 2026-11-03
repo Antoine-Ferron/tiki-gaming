@@ -3,7 +3,10 @@ package fr.tikigaming.games.bang;
 import fr.tikigaming.auth.AuthException;
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
+import fr.tikigaming.config.ApiExceptionHandler.ApiError;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,19 +33,34 @@ public class PrivateTableController {
     @PostMapping
     @Operation(summary = "Créer une table privée", description = "Le compte connecté occupe la première place.")
     @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
-    @ApiResponse(responseCode = "401", description = "Non connecté")
-    @ApiResponse(responseCode = "403", description = "Jeton CSRF absent ou invalide")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(responseCode = "403", description = "Jeton CSRF absent ou invalide", content = @Content)
     ResponseEntity<TableSeat> create(HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(tables.create(connectedAccountId(request)));
     }
 
     @PostMapping("/{code}/join")
-    @Operation(summary = "Rejoindre une table privée", description = "Présente le code partagé pour occuper une place.")
+    @Operation(
+            summary = "Rejoindre une table privée",
+            description = "Le code partagé donne une place libre. Un compte déjà assis retrouve sa place, "
+                    + "même à table pleine et avec une nouvelle session HTTP.")
     @ApiResponse(responseCode = "200", description = "Code et place du compte connecté")
-    @ApiResponse(responseCode = "401", description = "Non connecté")
-    @ApiResponse(responseCode = "403", description = "Jeton CSRF absent ou invalide")
-    @ApiResponse(responseCode = "404", description = "Code de table inconnu")
-    @ApiResponse(responseCode = "409", description = "Les quatre places sont déjà occupées par d'autres comptes")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(responseCode = "403", description = "Jeton CSRF absent ou invalide", content = @Content)
+    @ApiResponse(
+            responseCode = "404",
+            description = "Code de table inconnu",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Les quatre places sont déjà occupées par d'autres comptes",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     TableSeat join(@PathVariable String code, HttpServletRequest request) {
         return tables.join(code, connectedAccountId(request));
     }

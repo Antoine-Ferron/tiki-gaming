@@ -164,6 +164,33 @@ class PrivateTablesHttpTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void swaggerDescribesTheTableRoutesAndTheirErrorBodies() throws Exception {
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['" + TABLES + "'].post.tags[0]").value("bang"))
+                .andExpect(jsonPath("$.paths['" + TABLES + "'].post.summary", not(emptyOrNullString())))
+                .andExpect(jsonPath("$.paths['" + TABLES + "'].post.responses['201']")
+                        .exists())
+                .andExpect(jsonPath("$.paths['" + TABLES + "/{code}/join'].post.summary", not(emptyOrNullString())))
+                .andExpect(jsonPath("$.paths['" + TABLES + "/{code}/join'].post.tags[0]")
+                        .value("bang"));
+
+        for (String path : List.of(TABLES, TABLES + "/{code}/join")) {
+            mvc.perform(get("/v3/api-docs"))
+                    .andExpect(jsonPath("$.paths['" + path + "'].post.responses['401'].content.*.schema['$ref']")
+                            .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")))
+                    .andExpect(jsonPath("$.paths['" + path + "'].post.responses['403'].content")
+                            .doesNotExist());
+        }
+        for (int error : List.of(404, 409)) {
+            mvc.perform(get("/v3/api-docs"))
+                    .andExpect(jsonPath("$.paths['" + TABLES + "/{code}/join'].post.responses['" + error
+                                    + "'].content.*.schema['$ref']")
+                            .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
+        }
+    }
+
     private MvcResult joinAtTheSameTime(String code, String accountId, CyclicBarrier start) throws Exception {
         start.await(5, TimeUnit.SECONDS);
         return postAs(TABLES + "/" + code + "/join", sessionFor(accountId)).andReturn();
