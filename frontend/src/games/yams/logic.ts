@@ -72,6 +72,15 @@ export function isUpperCategory(category: Category): category is UpperCategory {
   return (UPPER_CATEGORIES as readonly string[]).includes(category)
 }
 
+/** Section haute + bonus + section basse. */
+export function totalScore(sheet: Sheet): number {
+  return upperSubtotal(sheet) + upperBonus(sheet) + sumOf(sheet, LOWER_CATEGORIES)
+}
+
+export function isSheetComplete(sheet: Sheet): boolean {
+  return availableCategories(sheet).length === 0
+}
+
 // --- Score d'une combinaison ---------------------------------------------
 
 /** Nombre de dés par face : counts[4] = nombre de 4. */
