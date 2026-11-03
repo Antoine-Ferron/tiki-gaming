@@ -94,7 +94,7 @@ Police système, sans téléchargement : `system-ui, -apple-system, 'Segoe UI', 
 
 | État      | Règle                                                                     |
 |-----------|---------------------------------------------------------------------------|
-| Survol    | Bordure `--accent` sur les cartes cliquables ; soulignement sur les liens |
+| Survol    | Bordure `--accent` sur les cartes cliquables ; soulignement sur les liens (toujours souligné dans un paragraphe, WCAG 1.4.1) |
 | Focus     | `outline: 2px solid var(--accent)`, décalé de 1px. **Ne jamais supprimer le focus** |
 | Désactivé | `opacity: 0.6`, curseur normal                                            |
 | Chargement | Texte `.muted` (« Chargement… ») ; libellé du bouton changé (« Connexion… ») |

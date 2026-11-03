@@ -15,5 +15,12 @@
     "strict": true,
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["vite.config.ts", "vitest.integration.config.ts", "tests", "scripts/*.d.mts"]
+  "include": [
+    "vite.config.ts",
+    "vitest.integration.config.ts",
+    "playwright.config.ts",
+    "tests",
+    "e2e",
+    "scripts/*.d.mts"
+  ]
 }
