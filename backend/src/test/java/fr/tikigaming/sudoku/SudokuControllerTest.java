@@ -1,88 +1,74 @@
 package fr.tikigaming.sudoku;
 
-import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.Arrays;
 import java.util.Random;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.HttpStatus;
 
+/** Test unitaire pur : le controller est appelé comme un objet Java, sans contexte Spring ni HTTP. */
 class SudokuControllerTest {
 
-    private MockMvc mvc;
+    private final SudokuController controller =
+            new SudokuController(new SudokuGenerator(new Random(1)), new SudokuService());
     private final SudokuGenerator.Puzzle game = new SudokuGenerator(new Random(11)).generate(Difficulty.EASY);
 
-    @BeforeEach
-    void setUp() {
-        mvc = standaloneSetup(new SudokuController(new SudokuGenerator(new Random(1)), new SudokuService()))
-                .build();
+    @Test
+    void puzzleReturnsRequestedDifficultyWithFullGrid() {
+        SudokuController.PuzzleResponse response = controller.puzzle("medium");
+
+        assertThat(response.difficulty()).isEqualTo("medium");
+        assertThat(response.puzzle()).hasSize(SudokuSolver.CELLS);
     }
 
     @Test
-    void puzzleReturnsGridWithoutSolution() throws Exception {
-        mvc.perform(get("/api/sudoku/puzzle").param("difficulty", "medium"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.difficulty").value("medium"))
-                .andExpect(jsonPath("$.puzzle", hasSize(81)))
-                .andExpect(jsonPath("$.solution").doesNotExist());
+    void puzzleResponseExposesNoSolution() {
+        assertThat(SudokuController.PuzzleResponse.class.getRecordComponents())
+                .extracting(c -> c.getName())
+                .containsExactly("difficulty", "puzzle");
     }
 
     @Test
-    void puzzleDefaultsToEasy() throws Exception {
-        mvc.perform(get("/api/sudoku/puzzle"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.difficulty").value("easy"));
+    void puzzleRejectsUnknownDifficulty() {
+        assertThatThrownBy(() -> controller.puzzle("extreme")).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void puzzleRejectsUnknownDifficulty() throws Exception {
-        mvc.perform(get("/api/sudoku/puzzle").param("difficulty", "extreme"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+    void checkAcceptsSolvedGrid() {
+        SudokuService.CheckResult result = controller.check(request(game.solution(), 100, 0));
+
+        assertThat(result.solved()).isTrue();
+        // 500 s gagnées : 120 + 240 + 260 x 3 = 1140 ; (1000 + 1140) + 10 % sans faute
+        assertThat(result.score()).isEqualTo(2354);
+        assertThat(result.breakdown().perfectBonus()).isEqualTo(214);
     }
 
     @Test
-    void checkAcceptsSolvedGrid() throws Exception {
-        mvc.perform(post("/api/sudoku/check")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(game.solution(), 100, 0)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.solved").value(true))
-                .andExpect(jsonPath("$.score").value(2354))
-                .andExpect(jsonPath("$.breakdown.perfectBonus").value(214));
+    void checkReportsIncompleteGrid() {
+        SudokuService.CheckResult result = controller.check(request(game.puzzle(), 5, 0));
+
+        assertThat(result.complete()).isFalse();
+        assertThat(result.solved()).isFalse();
     }
 
     @Test
-    void checkReportsIncompleteGrid() throws Exception {
-        mvc.perform(post("/api/sudoku/check")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(game.puzzle(), 5, 0)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.complete").value(false))
-                .andExpect(jsonPath("$.solved").value(false));
+    void checkRejectsMalformedGrid() {
+        SudokuController.CheckRequest body =
+                new SudokuController.CheckRequest("easy", new int[] {1, 2}, new int[] {1, 2}, 0, 0);
+
+        assertThatThrownBy(() -> controller.check(body)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void checkRejectsMalformedGrid() throws Exception {
-        String json = "{\"difficulty\":\"easy\",\"puzzle\":[1,2],\"values\":[1,2],\"seconds\":0,\"mistakes\":0}";
+    void badRequestHandlerMapsErrorToHttp400WithMessage() {
+        var response = controller.handleBadRequest(new IllegalArgumentException("Difficulté inconnue : x"));
 
-        mvc.perform(post("/api/sudoku/check")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").exists());
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("error", "Difficulté inconnue : x");
     }
 
-    private String body(int[] values, int seconds, int mistakes) {
-        return "{\"difficulty\":\"easy\",\"puzzle\":" + Arrays.toString(game.puzzle())
-                + ",\"values\":" + Arrays.toString(values)
-                + ",\"seconds\":" + seconds + ",\"mistakes\":" + mistakes + "}";
+    private SudokuController.CheckRequest request(int[] values, int seconds, int mistakes) {
+        return new SudokuController.CheckRequest("easy", game.puzzle(), values, seconds, mistakes);
     }
 }
