@@ -28,16 +28,16 @@ const spend = (p: Progress, n: number): Progress => ({ ...p, money: Math.max(0, 
 export const calls: { name: string; args: unknown[] }[] = []
 
 /** Panne simulée : le prochain appel rejette avec cette erreur. */
-export let nextFailure: Error | null = null
+const failure: { next: Error | null } = { next: null }
 export function failNext(error: Error) {
-  nextFailure = error
+  failure.next = error
 }
 
 async function serve<T>(name: string, args: unknown[], answer: () => T): Promise<T> {
   calls.push({ name, args })
-  if (nextFailure) {
-    const e = nextFailure
-    nextFailure = null
+  if (failure.next) {
+    const e = failure.next
+    failure.next = null
     throw e
   }
   return answer()
@@ -69,7 +69,7 @@ export const api = {
     serve('purchase', [progress, item, weapon], () => {
       const d = weapon ? defs[weapon] : undefined
       const price = item === 'armor' ? 250 : item === 'weapon' ? d!.price : d!.ammoPrice
-      const rounds = item === 'armor' ? 0 : item === 'weapon' ? d!.ammoPack : d!.ammoPack
+      const rounds = item === 'armor' ? 0 : d!.ammoPack
       if (progress.money < price) return { ok: false, price, rounds: 0, progress }
       const next = spend(progress, price)
       return { ok: true, price, rounds, progress: item === 'armor' ? { ...next, armor: 100 } : next }

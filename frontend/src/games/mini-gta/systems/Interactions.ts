@@ -41,7 +41,7 @@ export class Interactions {
     }
     if (near(L.safehouseInside, 4.5)) {
       this.prompt = `${E} : sauvegarder la partie`
-      if (input.wasPressed('KeyE')) saveGame(game)
+      if (input.wasPressed('KeyE')) void saveGame(game) // saveGame signale lui-même ses erreurs
       return
     }
     const v = p.nearbyVehicle()

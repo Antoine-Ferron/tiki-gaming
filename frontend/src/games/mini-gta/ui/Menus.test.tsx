@@ -334,11 +334,11 @@ describe('carte', () => {
     expect(useUiStore.getState().waypoint).toBeNull()
   })
 
-  test('cliquer hors de la carte la ferme', () => {
+  test('le bouton « Fermer la carte » la ferme', () => {
     useUiStore.setState({ waypoint: { x: 3, z: 4 } })
-    const { container } = openMap()
+    openMap()
 
-    fireEvent.click(container.querySelector('.mini-gta-map')!)
+    fireEvent.click(screen.getByRole('button', { name: 'Fermer la carte' }))
 
     expect(useUiStore.getState().menu).toBeNull()
   })

@@ -280,7 +280,7 @@ export class Game {
     this.camPos.copy(this.camera.position)
     for (const a of this.allActors()) a.render(alpha, frameDt, this.camPos)
     this.combat.render()
-    this.env.update(frameDt, this.player.alive ? frameDt : frameDt, this.player.position, this.camPos)
+    this.env.update(frameDt, frameDt, this.player.position, this.camPos)
     this.world.update(frameDt, this.camPos, this.player.position, night)
     this.effects.update(frameDt)
     this.reflections.update(this.renderer, this.scene, this.player.position.clone().setY(this.player.position.y + 2.5))

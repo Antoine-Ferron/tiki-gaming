@@ -13,7 +13,8 @@ import { mapColors } from './palette'
 import { formatMoney } from '../domain/format'
 
 function lockPointer() {
-  document.querySelector('canvas')?.requestPointerLock?.()
+  // Le navigateur peut refuser le verrouillage (fenêtre sans focus) : on reste simplement sans.
+  Promise.resolve(document.querySelector('canvas')?.requestPointerLock?.()).catch(() => {})
 }
 
 function close() {
@@ -273,7 +274,7 @@ function FullMap() {
     mark(p.x, p.z, mapColors.player, 'Toi')
   }, [waypoint])
   return (
-    <div className="mini-gta-overlay mini-gta-map" onClick={(e) => e.target === e.currentTarget && close()}>
+    <div className="mini-gta-overlay mini-gta-map">
       <canvas
         ref={ref}
         width={760}
@@ -290,6 +291,9 @@ function FullMap() {
         }}
       />
       <p className="mini-gta-hint">Clic : placer un repère GPS · Clic droit : l’effacer · {k('KeyM')} : fermer</p>
+      <button className="link" onClick={close}>
+        Fermer la carte
+      </button>
     </div>
   )
 }

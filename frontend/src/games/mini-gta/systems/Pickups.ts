@@ -112,7 +112,10 @@ export class Pickups {
       if (!p.alive || Math.hypot(pos.x - it.x, pos.z - it.z) > 1.6 || Math.abs(pos.y - it.y) > 2.5) continue
       const k = it.kind
       if (k.type === 'money') {
-        useGameStore.getState().addMoney(k.amount)
+        useGameStore
+          .getState()
+          .addMoney(k.amount)
+          .catch((err: Error) => this.game.events.emit('notify', { text: err.message, kind: 'fail' }))
         this.game.events.emit('notify', { text: `+${formatMoney(k.amount)}`, kind: 'success' })
       } else if (k.type === 'weapon') {
         addWeapon(p.inventory, k.id, k.rounds || WEAPONS[k.id].ammoPack)

@@ -5,7 +5,7 @@ export * from './engine'
 
 /** Collision layers (bit index). */
 export const Layer = {
-  Static: 1 << 0,
+  Static: 1,
   Player: 1 << 1,
   Vehicle: 1 << 2,
   Npc: 1 << 3,

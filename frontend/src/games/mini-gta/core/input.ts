@@ -38,7 +38,7 @@ class Input {
     }
     const onMouseDown = (e: MouseEvent) => {
       this.buttons = e.buttons
-      if (this.lockOnClick && !this.pointerLocked) element.requestPointerLock?.()
+      if (this.lockOnClick && !this.pointerLocked) Promise.resolve(element.requestPointerLock?.()).catch(() => {})
     }
     const onMouseUp = (e: MouseEvent) => (this.buttons = e.buttons)
     const onWheel = (e: WheelEvent) => {

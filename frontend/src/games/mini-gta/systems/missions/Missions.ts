@@ -272,7 +272,7 @@ export class Missions {
         .completeMission(a.def.id)
         .then((reward) => {
           game.events.emit('notify', { text: `MISSION RÉUSSIE  +${formatMoney(reward)}`, kind: 'success' })
-          saveGame(game)
+          void saveGame(game) // saveGame signale lui-même ses erreurs
           if (this.available().length === 0)
             game.events.emit('notify', {
               text: 'Toutes les missions sont terminées. La ville est à toi.',

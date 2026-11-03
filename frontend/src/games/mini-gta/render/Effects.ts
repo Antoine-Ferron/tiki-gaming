@@ -178,7 +178,7 @@ export class Effects {
   }
 
   private flashLight(p: Vector3, power: number, life: number) {
-    const slot = this.lights.reduce((a, b) => (a.life < b.life ? a : b))
+    const slot = this.lights.reduce((a, b) => (a.life < b.life ? a : b), this.lights[0])
     slot.light.position.copy(p)
     slot.life = life
     slot.max = life

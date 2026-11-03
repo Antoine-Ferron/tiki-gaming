@@ -47,7 +47,8 @@ export class RoadGraph {
    * Point on a lane. dir=+1 travels a→b, dir=-1 travels b→a. s = distance along travel direction.
    * Right-hand traffic: lanes are offset to the right of the travel direction.
    */
-  lanePoint(edge: RoadEdge, dir: 1 | -1, lane: number, s: number, out = { x: 0, y: 0, z: 0 }) {
+  lanePoint(edge: RoadEdge, dir: 1 | -1, lane: number, s: number, target?: { x: number; y: number; z: number }) {
+    const out = target ?? { x: 0, y: 0, z: 0 }
     const from = this.nodes[dir === 1 ? edge.a : edge.b]
     const to = this.nodes[dir === 1 ? edge.b : edge.a]
     const dx = (to.x - from.x) / edge.length
