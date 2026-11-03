@@ -15,3 +15,8 @@ export function levelScore({ moves, optimal, hintsUsed }: LevelResult): number {
   const penalty = EXTRA_MOVE_PENALTY * (moves - optimal) + HINT_PENALTY * hintsUsed
   return Math.max(0, MAX_LEVEL_SCORE - penalty)
 }
+
+/** Score total d'un joueur : somme de ses records par niveau (c'est ce score qui va au classement). */
+export function totalScore(best: Record<number, number>): number {
+  return Object.values(best).reduce((sum, score) => sum + score, 0)
+}

@@ -29,3 +29,9 @@ export function parseBoard(map: string[]): Board {
   })
   return { vehicles }
 }
+
+/** Un coup : glisser le véhicule `id` de `delta` cases (négatif = gauche ou haut). */
+export interface Move {
+  id: string
+  delta: number
+}
