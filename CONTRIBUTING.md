@@ -214,7 +214,7 @@ fr.tikigaming
 | `integration`       | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
 | `mutation-frontend` | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
 | `mutation-backend`  | Pitest (seuil 75 %), rapport en artefact |
-| `security`          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
+| `security`          | `npm audit --audit-level=high` (bloquant dès une vulnérabilité *high*) |
 
 `.github/workflows/codeql.yml` lance en plus l'analyse de sécurité **CodeQL** (TypeScript et Java) sur
 chaque PR, chaque push et chaque lundi ; les alertes sont dans l'onglet *Security* du dépôt.

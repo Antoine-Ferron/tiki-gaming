@@ -107,7 +107,7 @@ jobs:
           path: backend/target/pit-reports/
 
   security:
-    name: Security (npm audit + dependency review)
+    name: Security (npm audit)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -117,10 +117,6 @@ jobs:
         with:
           node-version: 24
       # Bloquant à partir d'une vulnérabilité « high » (dépendances de prod et de dev).
+      # Le dependency review (actions/dependency-review-action) demande d'activer le Dependency graph du dépôt.
       - run: npm audit --audit-level=high
         working-directory: frontend
-      # Sur une PR : refuse l'ajout d'une dépendance vulnérable (high+) ou sous licence incompatible.
-      - if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v5
-        with:
-          fail-on-severity: high
