@@ -27,6 +27,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(
@@ -84,11 +85,13 @@ class PrivateTablesHttpTest {
         String code = createTable("creator");
         postAs(TABLES + "/" + code + "/join", sessionFor("second")).andExpect(status().isOk());
         postAs(TABLES + "/" + code + "/join", sessionFor("third")).andExpect(status().isOk());
+        var firstRequest = preparePost(TABLES + "/" + code + "/join", sessionFor("challenger-a"));
+        var secondRequest = preparePost(TABLES + "/" + code + "/join", sessionFor("challenger-b"));
         CyclicBarrier start = new CyclicBarrier(2);
 
         try (var executor = Executors.newFixedThreadPool(2)) {
-            var first = executor.submit(() -> joinAtTheSameTime(code, "challenger-a", start));
-            var second = executor.submit(() -> joinAtTheSameTime(code, "challenger-b", start));
+            var first = executor.submit(() -> joinAtTheSameTime(firstRequest, start));
+            var second = executor.submit(() -> joinAtTheSameTime(secondRequest, start));
             MvcResult firstResult = first.get(5, TimeUnit.SECONDS);
             MvcResult secondResult = second.get(5, TimeUnit.SECONDS);
 
@@ -101,6 +104,9 @@ class PrivateTablesHttpTest {
                     .isEqualTo(new TableSeat(code, 4, 4));
         }
 
+        postAs(TABLES + "/" + code + "/join", sessionFor("creator"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.playerCount").value(4));
         postAs(TABLES + "/" + code + "/join", sessionFor("latecomer"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("Cette table est pleine."));
@@ -190,9 +196,9 @@ class PrivateTablesHttpTest {
         }
     }
 
-    private MvcResult joinAtTheSameTime(String code, String accountId, CyclicBarrier start) throws Exception {
+    private MvcResult joinAtTheSameTime(MockHttpServletRequestBuilder request, CyclicBarrier start) throws Exception {
         start.await(5, TimeUnit.SECONDS);
-        return postAs(TABLES + "/" + code + "/join", sessionFor(accountId)).andReturn();
+        return mvc.perform(request).andReturn();
     }
 
     private String createTable(String accountId) throws Exception {
@@ -209,12 +215,16 @@ class PrivateTablesHttpTest {
     }
 
     private ResultActions postAs(String path, MockHttpSession session) throws Exception {
+        return mvc.perform(preparePost(path, session));
+    }
+
+    private MockHttpServletRequestBuilder preparePost(String path, MockHttpSession session) throws Exception {
         Cookie csrf = mvc.perform(get("/api/auth/session").session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getCookie("XSRF-TOKEN");
-        return mvc.perform(post(path).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue()));
+        return post(path).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
     }
 
     private static MockHttpSession sessionFor(String accountId) {
