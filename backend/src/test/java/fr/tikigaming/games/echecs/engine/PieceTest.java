@@ -1,6 +1,7 @@
 package fr.tikigaming.games.echecs.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PieceTest {
 
@@ -45,5 +47,13 @@ class PieceTest {
     void chaqueLettreFenDonneLaBonnePiece(char lettre, Color couleur, PieceType type) {
         // Act + Assert
         assertThat(Piece.fromFen(lettre)).isEqualTo(new Piece(couleur, type));
+    }
+
+    @ParameterizedTest(name = "''{0}'' est refusée")
+    @ValueSource(chars = {'x', 'X', '1', ' '})
+    @DisplayName("une lettre qui n'est pas une pièce est refusée")
+    void uneLettreQuiNestPasUnePieceEstRefusee(char lettre) {
+        // Act + Assert
+        assertThatThrownBy(() -> Piece.fromFen(lettre)).isInstanceOf(IllegalArgumentException.class);
     }
 }
