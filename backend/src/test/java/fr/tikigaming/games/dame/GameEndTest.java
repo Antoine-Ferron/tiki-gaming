@@ -13,11 +13,34 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @DisplayName("US-11 — Fin de partie et victoire")
 class GameEndTest {
 
     private final GameRules rules = new GameRules();
+
+    @ParameterizedTest
+    @CsvSource({"WHITE, BLACK_WON", "BLACK, WHITE_WON"})
+    void aReconstructedGameIsAlreadyFinishedWhenTheCampToMoveHasNoPiece(Player toMove, GameStatus expected) {
+        Player opponent = toMove == Player.WHITE ? Player.BLACK : Player.WHITE;
+
+        Game game = game(toMove, at(4, 5, man(opponent)));
+
+        assertThat(game.status()).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"WHITE, 1, 0, 0, 1, BLACK_WON", "BLACK, 8, 9, 9, 8, WHITE_WON"})
+    void aReconstructedGameIsAlreadyFinishedWhenTheCampToMoveIsBlocked(
+            Player toMove, int row, int column, int otherRow, int otherColumn, GameStatus expected) {
+        Player opponent = toMove == Player.WHITE ? Player.BLACK : Player.WHITE;
+
+        Game game = game(toMove, at(row, column, man(toMove)), at(otherRow, otherColumn, man(opponent)));
+
+        assertThat(game.status()).isEqualTo(expected);
+    }
 
     @Test
     void blackWinsWhenWhiteHasNoPieceToPlay() {

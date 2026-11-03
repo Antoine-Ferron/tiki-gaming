@@ -1,6 +1,6 @@
 # Stratégie de tests — dames internationales
 
-Stratégie prévue pour les étapes successives : voir le [backlog](backlog.md) et les [décisions d’architecture](architecture.md). À la demande du 3 novembre, les tests unitaires des douze US sont maintenant écrits avant le moteur : 220 cas, dont 191 RED et 29 verts. Les trois premiers comportements GREEN sont conservés. Voir l'[index des tests métier](tests-metier.md) et le [journal TDD](journal-tdd.md).
+Stratégie prévue pour les étapes successives : voir le [backlog](backlog.md) et les [décisions d’architecture](architecture.md). Le RED global des douze US est enregistré dans `2c03072`. Les 220 cas métier initiaux sont passés GREEN sans modification de leurs assertions ; quatre cas de régression US-11 ont ensuite suivi leur propre RED puis GREEN. La suite compte maintenant **224 cas métier verts**, soit **242 cas réussis** avec les 18 tests collectifs, sans erreur ni test ignoré. Voir l'[index des tests métier](tests-metier.md) et le [journal TDD](journal-tdd.md). Aucune mesure de couverture n'est déduite de ce nombre de tests.
 
 ## Niveaux et outils
 
@@ -61,7 +61,7 @@ Tests paramétrés pour directions et coordonnées ; sélectionner des représen
 **US-01 : dimensions**
 
 - Arrange : aucune dépendance ; conventions du backlog.
-- Act : créer un plateau vide via la future API Board.
+- Act : créer un plateau vide via l'API Board.
 - Assert : 10 lignes × 10 colonnes, 100 positions, 50 jouables, aucune pièce. Introduire ces attentes une par une pour des cycles courts.
 
 **US-07 : capture disponible ailleurs**
@@ -84,7 +84,7 @@ Tests paramétrés pour directions et coordonnées ; sélectionner des représen
 
 ## Cycles RED / GREEN / REFACTOR
 
-Le 3 novembre, l'utilisateur a choisi une phase RED globale : tous les scénarios métier du backlog sont préparés avant leur logique. Ce fonctionnement diffère des petits cycles initialement prévus ci-dessous. La suite ne constitue pas un moteur achevé ni une validation de toutes les US. Pour la prochaine phase GREEN, traiter les classes dans l'ordre de l'index, sans désactiver les scénarios plus avancés. Les API et E2E restent planifiés tant que le contrat d'intégration n'existe pas.
+Le 3 novembre, l'utilisateur a choisi une phase RED globale : tous les scénarios métier du backlog ont été préparés avant leur logique, puis le moteur a été implémenté jusqu'au GREEN des 220 cas initiaux. La relecture a ensuite trouvé un statut de reconstruction incorrect pour une position déjà terminée : quatre cas ont été ajoutés, leurs quatre échecs observés, puis le constructeur de Game corrigé. Les 224 cas métier sont maintenant verts. Ce fonctionnement diffère des petits cycles initialement prévus ci-dessous, qui restent recommandés pour les prochaines évolutions. Les résultats valident le périmètre testé du moteur ; les nulles, l'API et les E2E restent à spécifier ou à intégrer avant la livraison du jeu.
 
 1. Lire l’US et sélectionner un seul comportement observable.
 2. Écrire un test minimal dans `backend/src/test/java/fr/tikigaming/games/dame/`. Ajouter uniquement les signatures nécessaires pour observer un échec comportemental explicite.
@@ -114,9 +114,9 @@ npm test
 npm run build
 ```
 
-La suite métier comprend 13 classes de tests JUnit 5 et un constructeur de fixtures commun `DameTestSupport`. Les tests paramétrés portent le total à 220 cas ; les statuts par classe figurent dans l'index. Maven 3.9.11 est disponible avec Java 21. Aucun wrapper Maven ni script E2E présent ; les tests unitaires frontend utilisent Vitest. Aucun credential Supabase nécessaire pour les tests unitaires métier.
+La suite métier comprend 13 classes de tests JUnit 5 et un constructeur de fixtures commun `DameTestSupport`. Les tests paramétrés portent le total à 224 cas, tous verts ; les statuts par classe figurent dans l'index. Maven 3.9.11 est disponible avec Java 21. Aucun wrapper Maven ni script E2E présent ; les tests unitaires frontend utilisent Vitest. Aucun credential Supabase nécessaire pour les tests unitaires métier.
 
-La CI utilise Node 24 pour le frontend et Java 21 pour le backend. `verify` lance Checkstyle, la compilation, les tests et Spotless ; pendant RED, il s'arrête à l'échec du test. Exécuter `spotless:check` séparément permet de confirmer le format même dans cet état. Ne pas désactiver le test pour obtenir une CI verte. Pour formater, utiliser `npm run format` côté frontend (ou Prettier ciblé sur les fichiers modifiés) et `mvn spotless:apply` côté backend.
+La CI utilise Node 24 pour le frontend et Java 21 pour le backend. `verify` lance Checkstyle, la compilation, les tests et Spotless ; sa dernière exécution locale réussit avec 242 tests. Pendant une phase RED, il s'arrête à l'échec du test : exécuter `spotless:check` séparément permet alors de confirmer le format. Ne pas désactiver de test pour obtenir une CI verte. Pour formater, utiliser `npm run format` côté frontend (ou Prettier ciblé sur les fichiers modifiés) et `mvn spotless:apply` côté backend.
 
 ## Commits TDD proposés
 
@@ -127,3 +127,5 @@ Exemples de messages pour les prochains cycles TDD, lorsque les commits sont aut
 3. `refactor(dame): clarifie la représentation du plateau (#18)` : seulement si nécessaire, tests verts.
 
 Conserver commandes et résultats RED/GREEN dans le journal de travail et la future PR. La fusion collective en squash ne conservera pas nécessairement ces commits dans `dev` : les traces doivent rester consultables dans la branche et la PR avant fusion. Dernier état soumis à revue vert ; future PR vers `dev`, liée à #18, en draft pendant le travail puis prête à relire une fois terminée avec CI verte ; revue plateforme pour le backend. Aucun push, commit, PR ou nouvelle issue automatique.
+
+État courant : le commit local RED `2c03072` est conservé ; l'implémentation GREEN et les quatre régressions ajoutées restent non committées. Aucun nouveau commit ni push n'a été effectué pendant cette phase GREEN.

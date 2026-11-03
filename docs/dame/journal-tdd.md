@@ -166,3 +166,55 @@ Vérifications effectuées :
 Les règles de nulle et le traitement d'une fixture artificielle avec un pion déjà posé sur sa rangée de promotion restent à spécifier, sans comportement arbitraire imposé par les tests. Les tests d'intégration API et E2E React restent planifiés après définition de leurs contrats.
 
 Prochaine phase : prendre les classes dans l'ordre US-01 à US-12, implémenter le minimum nécessaire, puis vérifier la progression du nombre d'échecs jusqu'à la suite verte. Les prochains développements ne doivent ni désactiver les scénarios avancés ni affaiblir les assertions pour masquer RED.
+
+## 3 novembre 2026 — commit RED, puis GREEN de US-01
+
+À la demande de l'utilisateur, le commit local `2c03072` est créé : `test(dame): spécifie les règles du jeu en phase RED (#18)`. Il contient les 27 fichiers du domaine Dames, de tests et de documentation revus. L'état RED a été revérifié avant commit : 238 cas backend, 191 échecs attendus, aucune erreur, tests collectifs verts, format et linter verts. Les réglages `.vscode/` sont exclus ; aucun push.
+
+Le GREEN commence par US-01 uniquement :
+
+- Le constructeur de Position refuse toute coordonnée inférieure à 0 ou supérieure à 9.
+- Board conserve la copie immuable de ses pièces et refuse une pièce sur une case claire.
+- `isPlayable(row, column)` construit d'abord une Position validée, puis calcule la parité ; les lectures `isEmpty` et `pieceAt` reposent sur les mêmes coordonnées validées.
+- Aucun test modifié ou désactivé. `Board.initial()`, les coups légaux, les commandes de jeu et le reset restent des stubs pour les US suivantes.
+
+Vérifications :
+
+- `mvn -f backend/pom.xml -Dtest=BoardTest,PositionTest test` : **42 tests, 0 échec, 0 erreur**, `BUILD SUCCESS`.
+- `mvn -f backend/pom.xml spotless:check verify` : format et Checkstyle verts, puis **238 tests, 166 échecs attendus, 0 erreur, 0 ignoré** ; les 18 tests collectifs restent verts.
+- Domaine Dames : **220 cas, 54 réussites et 166 échecs**. Les échecs passent de 191 à 166 : 17 cas de US-01 et 8 cas hors limites de US-05 deviennent verts. Ces huit derniers refusent une Position invalide avant l'appel du moteur, sans ajouter de règle de déplacement.
+
+Le commit RED reste inchangé. Les modifications GREEN de US-01 sont dans le répertoire de travail, pas encore committées. La suite continue à être volontairement rouge pour les US suivantes. Prochaine étape proposée : US-02, placer les 20 pions de chaque camp et garder les assertions existantes.
+
+## 3 novembre 2026 — moteur complet GREEN
+
+L'utilisateur demande maintenant de rendre toute la suite verte avant le prochain commit. Cette demande étend le périmètre GREEN au moteur des US-01 à US-12, en gardant les assertions existantes. Le commit RED `2c03072` reste inchangé ; aucun commit ni push pendant cette implémentation.
+
+Implémentation :
+
+- `Board.initial()` place 20 pions noirs sur les lignes 0–3 et 20 blancs sur 6–9, sur les cases jouables uniquement.
+- `GameRules.legalMoves` recherche les rafles complètes de chaque pièce, puis conserve le plus grand nombre global de prises. Les pions capturent dans les quatre directions ; les dames explorent chaque arrivée libre après le premier adversaire sur une diagonale.
+- La recherche déplace uniquement la pièce active dans une copie de la position ; les victimes restent bloquantes et un ensemble interdit leur seconde capture. Les cases quittées sont libres, donc les cycles et retours à l'origine restent possibles.
+- En l'absence de capture, les déplacements ordinaires sont proposés : une case en avant pour un pion, diagonales libres pour une dame.
+- `GameRules.apply` refuse d'abord un parcours absent des coups légaux, puis construit un nouveau plateau, retire les victimes à la fin et promeut uniquement sur l'arrivée finale. L'ancien plateau reste intact.
+- `Game.play` prépare plateau, camp suivant et statut avant de modifier l'état ; il refuse toute commande après terminaison. `reset` reconstitue la position initiale sans modifier d'ancienne référence.
+- Le statut détecte l'absence de pièce ou de coup légal du camp devant jouer, et attribue la victoire à l'autre camp. Les règles de nulle restent à définir séparément.
+
+Première vérification sans toucher aux assertions existantes : **220 tests métier verts**, puis `mvn -f backend/pom.xml verify` : **238 tests verts**, compilation, packaging, Checkstyle et Spotless réussis.
+
+La relecture a ensuite relevé une incohérence non couverte : `Game(Board, Player)` annonçait `IN_PROGRESS` pour une position reconstruite déjà terminale. Quatre cas paramétrés ont été ajoutés à `GameEndTest` (deux camps sans pièce, deux camps bloqués). RED ciblé observé : **17 cas, 4 échecs, 0 erreur**, avec le statut de victoire attendu au lieu de `IN_PROGRESS`. Le constructeur calcule maintenant son statut via les règles ; aucune assertion existante n'a été affaiblie ni supprimée.
+
+Vérification finale :
+
+- `mvn -f backend/pom.xml verify` : **242 tests, 0 échec, 0 erreur, 0 ignoré**, `BUILD SUCCESS`.
+- **224 cas Dames** répartis dans les mêmes 13 classes ; les 18 cas collectifs restent verts. US-11 comporte désormais 17 cas au lieu de 13.
+- Checkstyle : **0 violation** ; Spotless réussi ; jar Spring Boot reconstruit.
+- Aucun changement frontend, pom.xml, dépendance, authentification, configuration collective ou migration. `.vscode/` reste local.
+
+La documentation d'architecture, la stratégie et l'index sont actualisés. Les modifications GREEN attendent un prochain commit autorisé. Le navigateur affiche encore la page d'attente : l'adaptateur API/SDK et l'interface de plateau React restent à concevoir avec la plateforme. Aucun pourcentage de couverture ou validation E2E n'est déduit de cette suite verte.
+
+## 3 novembre 2026 — commit GREEN autorisé
+
+L'utilisateur demande d'enregistrer le GREEN vérifié dans un commit local : `feat(dame): implémente le moteur de dames internationales (#18)`. Le commit regroupe le moteur, les quatre cas supplémentaires de GameEndTest et la documentation actualisée. Le commit RED `2c03072` reste dans l'historique sans réécriture.
+
+Validation de référence : `mvn -f backend/pom.xml verify`, 242 tests réussis (224 Dames et 18 collectifs), compilation, packaging, Checkstyle et Spotless verts. Le code et les tests sont inchangés depuis cette vérification ; seuls les statuts documentaires sont actualisés pour l'enregistrement du commit. Les réglages `.vscode/` restent hors du commit. Aucun push ni PR.

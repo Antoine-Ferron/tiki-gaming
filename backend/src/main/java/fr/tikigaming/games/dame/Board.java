@@ -1,12 +1,13 @@
 package fr.tikigaming.games.dame;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 /**
  * Plateau de dames internationales de dix lignes et dix colonnes, initialement vide.
  * Une case est jouable lorsque la somme de ses coordonnées est impaire.
- * La validation des coordonnées sera introduite par les prochains tests.
+ * Les coordonnées sont validées par Position et les pièces occupent uniquement des cases jouables.
  */
 public class Board {
 
@@ -16,14 +17,32 @@ public class Board {
         this(Map.of());
     }
 
-    /** Reconstitue uniquement les données d'une position, sans calcul des règles. */
+    /** Copie une position et vérifie que chaque pièce se trouve sur une case jouable. */
     public Board(Map<Position, Piece> pieces) {
         this.pieces = Map.copyOf(pieces);
+        for (Position position : this.pieces.keySet()) {
+            if (!isPlayable(position)) {
+                throw new IllegalArgumentException("Une pièce doit se trouver sur une case jouable.");
+            }
+        }
     }
 
-    /** Squelette RED : le placement initial reste à implémenter. */
+    /** Place vingt pions noirs et vingt pions blancs sur les quatre rangées de chaque camp. */
     public static Board initial() {
-        return new Board();
+        Map<Position, Piece> pieces = new HashMap<>();
+        for (int row = 0; row < 10; row++) {
+            if (row == 4 || row == 5) {
+                continue;
+            }
+            Player owner = row < 4 ? Player.BLACK : Player.WHITE;
+            for (int column = 0; column < 10; column++) {
+                Position position = new Position(row, column);
+                if (isPlayable(position)) {
+                    pieces.put(position, new Piece(owner, false));
+                }
+            }
+        }
+        return new Board(pieces);
     }
 
     public Map<Position, Piece> pieces() {
@@ -47,6 +66,10 @@ public class Board {
     }
 
     public boolean isPlayable(int row, int column) {
-        return (row + column) % 2 == 1;
+        return isPlayable(new Position(row, column));
+    }
+
+    private static boolean isPlayable(Position position) {
+        return (position.row() + position.column()) % 2 == 1;
     }
 }

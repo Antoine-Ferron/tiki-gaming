@@ -2,7 +2,7 @@
 
 Ces US sont des sous-tâches documentaires : aucune issue GitHub créée. Les règles ci-dessous constituent la spécification proposée à confirmer pour les détails internationaux. Coordonnées et orientation sont des conventions internes proposées.
 
-Avancement : à la demande de l'utilisateur, la suite unitaire de spécification US-01 à US-12 est écrite avant l'implémentation du moteur. Elle comporte 220 cas, dont 191 RED et 29 déjà verts ; aucune US n'est terminée. Les trois comportements précédemment GREEN sont conservés. Voir l'[index des tests métier](tests-metier.md) et le [journal TDD](journal-tdd.md).
+Avancement : les comportements métier testés des US-01 à US-12 sont GREEN, avec **224 cas métier réussis** et **242 cas verts au total** en incluant les 18 tests collectifs. Les 220 cas initiaux ont passé sans affaiblissement des assertions ; quatre régressions US-11 couvrent en plus le statut d'une position déjà terminée à sa reconstruction. Le commit RED `2c03072` reste conservé ; le GREEN est enregistré séparément à la demande de l'utilisateur. Aucun push effectué. Ces résultats ne déclarent pas l'issue #18 terminée : revue collective, nulles internationales et intégrations SDK/API/E2E restent à valider. Voir l'[index des tests métier](tests-metier.md) et le [journal TDD](journal-tdd.md).
 
 ## Definition of Done commune
 
