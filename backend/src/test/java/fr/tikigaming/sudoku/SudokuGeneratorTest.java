@@ -44,4 +44,16 @@ class SudokuGeneratorTest {
         assertThat(Difficulty.EASY.clues()).isGreaterThan(Difficulty.MEDIUM.clues());
         assertThat(Difficulty.MEDIUM.clues()).isGreaterThan(Difficulty.HARD.clues());
     }
+
+    @Test
+    void puzzleComparesGridContentNotArrayIdentity() {
+        SudokuGenerator.Puzzle a = new SudokuGenerator.Puzzle(new int[] {1, 0}, new int[] {1, 2});
+        SudokuGenerator.Puzzle same = new SudokuGenerator.Puzzle(new int[] {1, 0}, new int[] {1, 2});
+
+        assertThat(a).isEqualTo(same).hasSameHashCodeAs(same);
+        assertThat(a)
+                .isNotEqualTo(new SudokuGenerator.Puzzle(new int[] {2, 0}, new int[] {1, 2}))
+                .isNotEqualTo(new SudokuGenerator.Puzzle(new int[] {1, 0}, new int[] {2, 1}));
+        assertThat(a.toString()).contains("[1, 0]").contains("[1, 2]");
+    }
 }

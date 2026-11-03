@@ -71,4 +71,32 @@ class SudokuControllerTest {
     private SudokuController.CheckRequest request(int[] values, int seconds, int mistakes) {
         return new SudokuController.CheckRequest("easy", game.puzzle(), values, seconds, mistakes);
     }
+
+    @Test
+    void puzzleResponseComparesGridContentNotArrayIdentity() {
+        SudokuController.PuzzleResponse a = new SudokuController.PuzzleResponse("easy", new int[] {1, 2, 3});
+        SudokuController.PuzzleResponse same = new SudokuController.PuzzleResponse("easy", new int[] {1, 2, 3});
+
+        assertThat(a).isEqualTo(same).hasSameHashCodeAs(same);
+        assertThat(a).isNotEqualTo(new SudokuController.PuzzleResponse("easy", new int[] {1, 2, 4}));
+        assertThat(a).isNotEqualTo(new SudokuController.PuzzleResponse("hard", new int[] {1, 2, 3}));
+        assertThat(a.toString()).contains("easy").contains("[1, 2, 3]");
+    }
+
+    @Test
+    void checkRequestComparesGridContentNotArrayIdentity() {
+        SudokuController.CheckRequest a =
+                new SudokuController.CheckRequest("easy", new int[] {1}, new int[] {2}, 10, 1);
+        SudokuController.CheckRequest same =
+                new SudokuController.CheckRequest("easy", new int[] {1}, new int[] {2}, 10, 1);
+
+        assertThat(a).isEqualTo(same).hasSameHashCodeAs(same);
+        assertThat(a)
+                .isNotEqualTo(new SudokuController.CheckRequest("easy", new int[] {9}, new int[] {2}, 10, 1))
+                .isNotEqualTo(new SudokuController.CheckRequest("easy", new int[] {1}, new int[] {9}, 10, 1))
+                .isNotEqualTo(new SudokuController.CheckRequest("easy", new int[] {1}, new int[] {2}, 11, 1))
+                .isNotEqualTo(new SudokuController.CheckRequest("easy", new int[] {1}, new int[] {2}, 10, 2))
+                .isNotEqualTo(new SudokuController.CheckRequest("hard", new int[] {1}, new int[] {2}, 10, 1));
+        assertThat(a.toString()).contains("easy").contains("[1]").contains("[2]");
+    }
 }

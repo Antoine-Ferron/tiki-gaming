@@ -4,7 +4,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -20,9 +22,50 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Sudoku", description = "Génération de grilles et vérification d'une partie de sudoku.")
 public class SudokuController {
 
-    record PuzzleResponse(String difficulty, int[] puzzle) {}
+    /** Un record ne compare pas le contenu d'un tableau : equals, hashCode et toString le font à la main. */
+    record PuzzleResponse(String difficulty, int[] puzzle) {
 
-    record CheckRequest(String difficulty, int[] puzzle, int[] values, int seconds, int mistakes) {}
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof PuzzleResponse that
+                    && Objects.equals(difficulty, that.difficulty)
+                    && Arrays.equals(puzzle, that.puzzle);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Objects.hashCode(difficulty) + Arrays.hashCode(puzzle);
+        }
+
+        @Override
+        public String toString() {
+            return "PuzzleResponse[difficulty=" + difficulty + ", puzzle=" + Arrays.toString(puzzle) + "]";
+        }
+    }
+
+    record CheckRequest(String difficulty, int[] puzzle, int[] values, int seconds, int mistakes) {
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof CheckRequest that
+                    && Objects.equals(difficulty, that.difficulty)
+                    && Arrays.equals(puzzle, that.puzzle)
+                    && Arrays.equals(values, that.values)
+                    && seconds == that.seconds
+                    && mistakes == that.mistakes;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(difficulty, Arrays.hashCode(puzzle), Arrays.hashCode(values), seconds, mistakes);
+        }
+
+        @Override
+        public String toString() {
+            return "CheckRequest[difficulty=" + difficulty + ", puzzle=" + Arrays.toString(puzzle) + ", values="
+                    + Arrays.toString(values) + ", seconds=" + seconds + ", mistakes=" + mistakes + "]";
+        }
+    }
 
     private final SudokuGenerator generator;
     private final SudokuService service;

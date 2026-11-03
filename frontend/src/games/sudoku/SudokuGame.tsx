@@ -130,7 +130,7 @@ export default function SudokuGame({ ctx }: GameProps) {
       m += 1
       setMistakes(m)
     }
-    if (next.every((v, i) => v === solution[i])) finish(seconds, m)
+    if (next.every((v, i) => v === solution[i])) void finish(seconds, m)
   }
 
   function onKeyDown(e: KeyboardEvent) {

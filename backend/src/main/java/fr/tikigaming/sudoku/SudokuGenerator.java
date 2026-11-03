@@ -1,6 +1,7 @@
 package fr.tikigaming.sudoku;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -10,7 +11,26 @@ import org.springframework.stereotype.Component;
 @Component
 public class SudokuGenerator {
 
-    public record Puzzle(int[] puzzle, int[] solution) {}
+    /** Un record ne compare pas le contenu d'un tableau : equals, hashCode et toString le font à la main. */
+    public record Puzzle(int[] puzzle, int[] solution) {
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof Puzzle that
+                    && Arrays.equals(puzzle, that.puzzle)
+                    && Arrays.equals(solution, that.solution);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Arrays.hashCode(puzzle) + Arrays.hashCode(solution);
+        }
+
+        @Override
+        public String toString() {
+            return "Puzzle[puzzle=" + Arrays.toString(puzzle) + ", solution=" + Arrays.toString(solution) + "]";
+        }
+    }
 
     private final Random random;
 
