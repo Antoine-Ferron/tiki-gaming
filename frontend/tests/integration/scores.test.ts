@@ -49,6 +49,11 @@ describeDb('scores (RLS et contraintes)', () => {
     await expect(as(db, alice, () => insertScore(1, 'inconnu'))).rejects.toMatchObject({ code: '42501' })
   })
 
+  test('un jeu dont le serveur classe les scores (Prismine) refuse ceux envoyés par un joueur', async () => {
+    await expect(as(db, alice, () => insertScore(150, 'prismine'))).rejects.toMatchObject({ code: '42501' })
+    expect(await scoresOf(alice)).toEqual([])
+  })
+
   // Valeurs limites basses : -1 refusé, 0 accepté
   test('refuse un score négatif', async () => {
     await expect(as(db, alice, () => insertScore(-1))).rejects.toMatchObject({ code: '23514' })
