@@ -36,8 +36,8 @@ function createContext(): GameContext {
 
 function mockApi() {
   vi.mocked(apiPost).mockImplementation(async (path, body) => {
-    if (path === '/games') return initialGame
-    if (path === '/games/game-1/restart') return initialGame
+    if (path === '/games/mastermind') return initialGame
+    if (path === '/games/mastermind/game-1/restart') return initialGame
     return {
       ...initialGame,
       status: 'WON',
@@ -93,7 +93,7 @@ describe('MastermindGame', () => {
     await user.click(screen.getByRole('button', { name: 'Valider la combinaison' }))
 
     expect(await screen.findByText('Bravo, combinaison trouvée !')).toBeInTheDocument()
-    expect(apiPost).toHaveBeenCalledWith('/games/game-1/guesses', { colors: ['red', 'red', 'red', 'red'] })
+    expect(apiPost).toHaveBeenCalledWith('/games/mastermind/game-1/guesses', { colors: ['red', 'red', 'red', 'red'] })
     expect(ctx.submitScore).toHaveBeenCalledWith(10, { attempts: 1 })
   })
 

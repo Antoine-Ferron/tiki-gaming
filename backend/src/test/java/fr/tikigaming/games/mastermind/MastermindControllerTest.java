@@ -49,6 +49,16 @@ class MastermindControllerTest {
     }
 
     @Test
+    void returns429WhenTooManyGamesAreActive() throws Exception {
+        when(service.create()).thenThrow(new MastermindCapacityException("Trop de parties sont actuellement actives."));
+
+        mvc.perform(post("/api/games/mastermind"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error").value("Trop de parties sont actuellement actives."))
+                .andExpect(jsonPath("$.fields").doesNotExist());
+    }
+
+    @Test
     void getsGameWith200AndDoesNotExposeSecretInProgress() throws Exception {
         when(service.get(ID)).thenReturn(SNAPSHOT);
 
