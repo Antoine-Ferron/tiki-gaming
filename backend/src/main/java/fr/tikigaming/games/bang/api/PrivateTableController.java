@@ -5,6 +5,7 @@ import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.config.ApiExceptionHandler.ApiError;
 import fr.tikigaming.games.bang.engine.PrivateTableService;
+import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.TableSeat;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -84,8 +85,9 @@ public class PrivateTableController {
     }
 
     @PostMapping("/{code}/start")
-    void start(@PathVariable String code, HttpServletRequest request) {
-        tables.start(code, connectedAccountId(request));
+    GameStarted start(@PathVariable String code, HttpServletRequest request) {
+        return new GameStarted(
+                code, tables.start(code, connectedAccountId(request)).currentSeat());
     }
 
     private static String connectedAccountId(HttpServletRequest request) {

@@ -1,5 +1,6 @@
 package fr.tikigaming.games.bang.engine;
 
+import fr.tikigaming.games.bang.model.GameState;
 import fr.tikigaming.games.bang.model.TableSeat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,6 +16,12 @@ import org.springframework.web.server.ResponseStatusException;
 public class PrivateTableService {
 
     private final Map<String, List<String>> tables = new HashMap<>();
+    private final Map<String, GameState> games = new HashMap<>();
+    private final InitialDeal initialDeal;
+
+    public PrivateTableService(InitialDeal initialDeal) {
+        this.initialDeal = initialDeal;
+    }
 
     public synchronized TableSeat create(String accountId) {
         String code;
@@ -39,7 +46,7 @@ public class PrivateTableService {
         return new TableSeat(code, players.size(), players.size());
     }
 
-    public synchronized void start(String code, String accountId) {
+    public synchronized GameState start(String code, String accountId) {
         List<String> players = tables.get(code);
         if (players == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
         if (!players.contains(accountId)) {
@@ -49,5 +56,12 @@ public class PrivateTableService {
         if (players.size() < 4) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Il faut quatre joueurs pour démarrer la partie.");
         }
+        GameState game = initialDeal.deal(List.copyOf(players));
+        games.put(code, game);
+        return game;
+    }
+
+    synchronized GameState game(String code) {
+        return games.get(code);
     }
 }

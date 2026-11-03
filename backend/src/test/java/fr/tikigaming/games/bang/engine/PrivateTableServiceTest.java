@@ -2,6 +2,7 @@ package fr.tikigaming.games.bang.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import fr.tikigaming.games.bang.model.TableSeat;
 import java.util.ArrayList;
@@ -17,7 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 class PrivateTableServiceTest {
 
-    private final PrivateTableService tables = new PrivateTableService();
+    private final PrivateTableService tables = new PrivateTableService(mock(InitialDeal.class));
 
     @Test
     void createsATableWithAShareableCodeAndTheCreatorsSeat() {
