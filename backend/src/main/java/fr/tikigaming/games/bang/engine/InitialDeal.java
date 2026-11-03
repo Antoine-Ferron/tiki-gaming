@@ -1,6 +1,7 @@
 package fr.tikigaming.games.bang.engine;
 
 import fr.tikigaming.games.bang.model.GameState;
+import fr.tikigaming.games.bang.model.StartingCharacter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -32,7 +33,7 @@ public class InitialDeal {
         GameCatalog.Roles roles = source.roles();
         List<String> assignedRoles =
                 new ArrayList<>(List.of(roles.sheriff(), roles.outlaw(), roles.outlaw(), roles.renegade()));
-        List<GameCatalog.CharacterCard> characters = new ArrayList<>(source.characters());
+        List<StartingCharacter> characters = new ArrayList<>(source.characters());
         List<String> deck = new ArrayList<>(source.cards());
         shuffle.accept(assignedRoles);
         shuffle.accept(characters);

@@ -1,5 +1,6 @@
 package fr.tikigaming.games.bang.engine;
 
+import fr.tikigaming.games.bang.model.StartingCharacter;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -11,12 +12,12 @@ class TestGameCatalog implements GameCatalog {
     }
 
     @Override
-    public List<CharacterCard> characters() {
+    public List<StartingCharacter> characters() {
         return List.of(
-                new CharacterCard("Paul Regret", 3),
-                new CharacterCard("Bart Cassidy", 4),
-                new CharacterCard("Calamity Janet", 4),
-                new CharacterCard("Willy le Kid", 4));
+                new StartingCharacter("Paul Regret", 3),
+                new StartingCharacter("Bart Cassidy", 4),
+                new StartingCharacter("Calamity Janet", 4),
+                new StartingCharacter("Willy le Kid", 4));
     }
 
     @Override
