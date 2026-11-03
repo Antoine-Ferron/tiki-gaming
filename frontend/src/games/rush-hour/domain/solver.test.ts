@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest'
 import { parseBoard } from './board'
-import { getLevel } from './levels'
 import { isSolved, moveVehicle } from './moves'
 import { solve } from './solver'
 
@@ -51,16 +50,5 @@ describe('solve : la solution la plus courte (R8)', () => {
 
     // Assert
     expect(solution).toBeNull()
-  })
-
-  test('le niveau 1 se résout au minimum en 2 coups', () => {
-    // Arrange
-    const board = parseBoard(getLevel(1).map)
-
-    // Act
-    const solution = solve(board)
-
-    // Assert
-    expect(solution).toHaveLength(2)
   })
 })

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { type Board as BoardModel, EXIT_ROW, RED_CAR, SIZE, type Vehicle } from '../domain/board'
 import { moveRange } from '../domain/moves'
+import { vehicleLabel } from './vehicleLabel'
 import { VehicleSprite } from './VehicleSprite'
 
 const CAR_COLORS = 8
@@ -14,12 +15,6 @@ function colorOf(v: Vehicle) {
   if (v.id === RED_CAR) return 'var(--rush-hour-red)'
   const code = v.id.charCodeAt(0)
   return v.length === 3 ? `var(--rush-hour-truck-${code % TRUCK_COLORS})` : `var(--rush-hour-car-${code % CAR_COLORS})`
-}
-
-function labelOf(v: Vehicle) {
-  if (v.id === RED_CAR) return 'Voiture rouge'
-  const kind = v.length === 3 ? 'Camion' : 'Voiture'
-  return `${kind} ${v.id}, ${v.orientation === 'H' ? 'horizontal' : 'vertical'}`
 }
 
 /** Flèche → déplacement d'une case, seulement dans le sens du véhicule. */
@@ -83,7 +78,7 @@ export function Board({ board, locked, onMove }: BoardProps) {
               key={v.id}
               type="button"
               className={`rush-hour-vehicle${drag?.id === v.id ? ' rush-hour-dragging' : ''}`}
-              aria-label={labelOf(v)}
+              aria-label={vehicleLabel(v)}
               disabled={locked}
               style={{
                 left: pct(v.col + (horizontal ? offset : 0)),
