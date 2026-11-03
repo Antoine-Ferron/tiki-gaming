@@ -40,7 +40,7 @@ export default function UpdatePasswordPage() {
       } else {
         await apiPost('/auth/password', result.data)
       }
-      navigate('/profile', { replace: true })
+      void navigate('/profile', { replace: true })
     } catch (err) {
       const { fields, message } = toFormErrors(err, ['password'])
       setFieldErrors(fields)
