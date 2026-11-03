@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class SquareTest {
@@ -56,6 +57,15 @@ class SquareTest {
     @ValueSource(strings = {"i1", "a9", "a0"})
     @DisplayName("une case hors de l'échiquier est refusée (juste après h, après 8, avant 1)")
     void uneCaseHorsDeLEchiquierEstRefusee(String notation) {
+        // Act + Assert
+        assertThatThrownBy(() -> Square.of(notation)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest(name = "\"{0}\" est refusée")
+    @NullAndEmptySource
+    @ValueSource(strings = {"e", "e44"})
+    @DisplayName("une notation de case mal formée est refusée (absente, vide, trop courte, trop longue)")
+    void uneNotationDeCaseMalFormeeEstRefusee(String notation) {
         // Act + Assert
         assertThatThrownBy(() -> Square.of(notation)).isInstanceOf(IllegalArgumentException.class);
     }
