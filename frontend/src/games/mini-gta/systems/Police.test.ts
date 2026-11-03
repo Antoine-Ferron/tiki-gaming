@@ -32,15 +32,9 @@ function reset() {
   notes.length = 0
 }
 
-/**
- * Simule et rend chaque pas : les équipages descendent de voiture à l'endroit du véhicule affiché,
- * mis à jour par le rendu.
- */
+/** Simule `seconds` secondes (le harnais tient à jour la pose affichée des véhicules). */
 function play(seconds: number) {
-  for (let i = 0; i < Math.round(seconds * 60); i++) {
-    t.simulate(1 / 60)
-    game.render(1, 1 / 60)
-  }
+  t.simulate(seconds)
 }
 
 /** Avance par tranches jusqu'à ce que la condition soit vraie (ou la limite atteinte). */
@@ -259,7 +253,7 @@ describe('intervention', () => {
     until(() => game.player.actor.health < before || game.player.state !== 'foot', 40)
 
     expect(game.player.actor.health).toBeLessThan(before)
-  }, 60_000)
+  })
 
   test('l’hélicoptère détruit n’éclaire plus et disparaît une fois loin', () => {
     const p = game.player.position
@@ -285,7 +279,7 @@ describe('fin de la poursuite', () => {
 
     expect(lost).toBe(true)
     expect(notes).toContain('Tu as semé la police')
-  }, 60_000)
+  })
 
   test('loin de tout, les unités et les policiers sont renvoyés', () => {
     const p = game.player.position
@@ -300,7 +294,7 @@ describe('fin de la poursuite', () => {
 
     expect(policeCars()).toHaveLength(0)
     expect(officers()).toHaveLength(0)
-  }, 60_000)
+  })
 
   test('clear() retire la recherche, les unités, les policiers et l’hélicoptère', () => {
     const p = game.player.position

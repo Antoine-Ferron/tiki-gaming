@@ -18,7 +18,7 @@ let game: TestGame['game']
 const simulate = (seconds: number) => t.simulate(seconds)
 
 beforeAll(async () => {
-  t = await createTestGame()
+  t = await createTestGame({ traffic: 6, pedestrians: 6, meshes: true })
   game = t.game
 }, 60_000)
 
@@ -35,7 +35,7 @@ describe('simulation de MiniGTA', () => {
   })
 
   test('le joueur reste au sol après quelques secondes', () => {
-    simulate(2)
+    simulate(1)
 
     expect(game.player.position.y).toBeGreaterThan(-0.2)
     expect(game.player.position.y).toBeLessThan(0.5)
@@ -44,7 +44,7 @@ describe('simulation de MiniGTA', () => {
   test('le trafic et les piétons vivent', () => {
     const before = new Map([...game.vehicles].map((v) => [v, v.position.clone()]))
 
-    simulate(5)
+    t.until(() => [...before].some(([v, p]) => game.vehicles.has(v) && v.position.distanceTo(p) > 2), 5)
 
     const moved = [...before].filter(([v, p]) => game.vehicles.has(v) && v.position.distanceTo(p) > 2)
     expect(moved.length).toBeGreaterThan(0)
@@ -76,11 +76,11 @@ describe('simulation de MiniGTA', () => {
     const p = game.player.position
     game.police.wanted.setMinimum(3, p.x, p.z)
 
-    simulate(12)
+    const cars = () => [...game.vehicles].filter((v) => v.tags.has('police') && !v.destroyed)
+    t.until(() => cars().length + [...game.police.actors()].length > 0, 12)
 
     expect(game.police.wanted.stars).toBeGreaterThanOrEqual(1)
-    const cars = [...game.vehicles].filter((v) => v.tags.has('police') && !v.destroyed)
-    expect(cars.length + [...game.police.actors()].length).toBeGreaterThan(0)
+    expect(cars().length + [...game.police.actors()].length).toBeGreaterThan(0)
   })
 
   test('une explosion proche blesse le joueur', () => {

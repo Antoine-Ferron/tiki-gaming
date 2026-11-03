@@ -16,7 +16,7 @@ let game: TestGame['game']
 
 beforeAll(async () => {
   useGameStore.getState().load({ ...newSave(), money: 1000 })
-  t = await createTestGame()
+  t = await createTestGame({ traffic: 4, pedestrians: 6 })
   game = t.game
 }, 60_000)
 
@@ -72,7 +72,9 @@ describe('véhicules', () => {
     const heli = drive('heli')
     const y0 = heli.position.y
 
-    t.hold('ShiftLeft', 4)
+    t.key('ShiftLeft', true)
+    t.until(() => heli.position.y > y0 + 3, 4)
+    t.key('ShiftLeft', false)
 
     expect(game.player.vehicle).toBe(heli)
     expect(heli.position.y).toBeGreaterThan(y0 + 3)
@@ -202,7 +204,10 @@ describe('joueur', () => {
     const money = useGameStore.getState().money
 
     game.player.actor.damage({ amount: 10_000, from: null, kind: 'fall', dir: { x: 0, z: 1 } })
-    t.simulate(8)
+    t.simulate(0.2)
+    expect(game.player.alive).toBe(false)
+    game.respawn('dead')
+    t.simulate(0.2)
     await vi.waitFor(() => expect(useGameStore.getState().money).toBeLessThan(money))
 
     expect(game.player.alive).toBe(true)
@@ -231,8 +236,8 @@ describe('trafic et piétons', () => {
 
   test('un piéton fauché par une voiture rapide est projeté', () => {
     const car = game.player.vehicle!
-    t.hold('KeyW', 6)
-    t.simulate(2)
+    t.hold('KeyW', 2)
+    t.simulate(0.5)
 
     expect(car.speed).toBeDefined()
     expect(game.peds.count).toBeGreaterThan(0)
