@@ -35,6 +35,8 @@ export type GameState = {
   peakY: number
   /** Hauteur du museau de la fossa (EF-5). */
   fossaY: number
+  /** Gousses de vanille ramassées (EF-6.4). */
+  vanilla: number
   /** Cause de la fin de partie, ou null tant que la partie continue (EF-6). */
   over: GameOver | null
 }
