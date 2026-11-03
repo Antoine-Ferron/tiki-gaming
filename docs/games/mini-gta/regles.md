@@ -29,7 +29,7 @@ pour gagner de l'argent et échappe à la police quand tu enfreins la loi.
 | Sujet | Comportement |
 |-------|--------------|
 | Écran d'accueil | `.card` avec la progression sauvegardée, le bouton « Jouer » ou « Continuer » et le classement de l'argent gagné. |
-| Partie | Plein écran au lancement. Échap ou P ouvre la pause (Reprendre, Réglages, Commandes, Quitter, Nouvelle partie). « Quitter » sauvegarde puis revient à l'accueil. |
+| Partie | Dans la page, comme les autres jeux : carte 16:9 avec le classement en dessous. Le bouton « Plein écran » agrandit la seule zone de jeu. Un clic dans le jeu capture la souris pour la caméra. Échap ou P ouvre la pause (Reprendre, Réglages, Commandes, Quitter, Nouvelle partie). « Quitter » sauvegarde puis revient à l'accueil. |
 | Sauvegarde | `ctx.save` après chaque transaction (mission, achat, réapparition, billets), à F5, à la planque et en quittant. `ctx.loadSave(saveSchema)` au chargement : une sauvegarde corrompue ou d'une autre version donne une nouvelle partie. |
 | Score | `ctx.submitScore(argentGagné)` aux mêmes moments, seulement s'il bat le dernier score envoyé. |
 | Invité | La sauvegarde reste dans le navigateur et aucun score n'est envoyé. L'accueil invite à se connecter. |
@@ -108,7 +108,7 @@ reprend le sous-ensemble de l'API Rapier utilisé par le jeu, au-dessus de **can
 | Back | `backend/src/test/java/.../mini_gta` | génération et invariants de la ville, A*, catalogue, règles d'argent, API MockMvc, parcours `@SpringBootTest` avec CSRF |
 | Domaine | `domain/*.test.ts` | schéma de sauvegarde, score à envoyer, poste compatible, format des montants |
 | Physique | `physics/engine.test.ts` | raycasts, groupes, corps dynamiques et cinématiques, événements de contact, personnage (trottoir, mur, chute), véhicule (repos, avance vers +Z, braquage à gauche) |
-| Simulation | `game/Game.test.ts` | partie complète sans WebGL sur une portion de la vraie ville (`game/fixtures`) : trafic, voiture, police, explosion |
+| Simulation | `game/*.test.ts`, `systems/*.test.ts`, `entities/*.test.ts` | parties sans WebGL sur une portion de la vraie ville (`game/testing/harness.ts`, `game/fixtures`) : véhicules, joueur, trafic, missions, combat, police. Le harnais démarre une ville vide et fixe la graine de `Math.random` : chaque fichier tourne en moins de 3 s |
 | Accueil | `MiniGtaGame.test.tsx` | invité, sauvegarde, sauvegarde corrompue, classement, erreur du SDK, écran tactile |
 | Logique client | `core/`, `systems/`, `world/` | boucle à pas fixe, RNG, bus d'événements, armes, niveau de recherche, missions, reconstruction du monde |
 
