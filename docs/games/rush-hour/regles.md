@@ -40,13 +40,13 @@ Un casse-tête de parking : **fais glisser les voitures et les camions pour lib�
 
 Le joueur choisit une difficulté et reçoit un plateau **nouveau**, créé par le jeu.
 
-> **MVP : génération par algorithme, sans IA.** Le plateau est créé par un programme dans le jeu lui-même (au hasard, puis vérifié). Aucun LLM n'est utilisé.
+> **MVP : génération par algorithme, sans IA.** Le plateau est créé par un programme dans le jeu lui-même (tiré au hasard dans une réserve, puis vérifié par le solveur). Aucun LLM n'est utilisé.
 > La génération par **LLM** est une évolution possible **après le MVP** (voir § 10) : elle demanderait un service côté serveur pour cacher la clé de l'API, et chaque plateau proposé par l'IA serait de toute façon vérifié par le même solveur.
 
 | N° | Règle |
 |----|-------|
 | G1 | Le joueur choisit **Facile**, **Moyen** ou **Difficile**. |
-| G2 | Le jeu place la voiture rouge et des véhicules **au hasard**, puis **vérifie** que le plateau respecte les règles R1 à R3, qu'il est **résoluble**, et que sa difficulté (§ 5) est **celle demandée**. Sinon, il recommence avec un autre tirage. |
+| G2 | Le jeu tire au hasard une **disposition de véhicules** dans une réserve préparée pendant le développement (différente des 20 niveaux), puis une **position de départ** au hasard parmi celles dont le minimum de coups est dans la plage de la difficulté demandée. Chaque disposition offre des milliers de positions de départ. |
 | G3 | Le joueur ne voit **jamais** un plateau impossible ou hors difficulté. |
 | G4 | La génération prend **moins de 2 secondes**, même en Difficile, et l'écran ne se fige pas pendant ce temps. |
 | G5 | Un plateau généré se joue exactement comme un niveau (mêmes règles, même score). |
