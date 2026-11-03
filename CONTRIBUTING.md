@@ -207,6 +207,10 @@ fr.tikigaming
 - Un jeu **n'importe jamais** le package d'un autre jeu. Ce qui sert à plusieurs jeux est ajouté à la
   plateforme (nouveau package hors de `games/`), comme pour le SDK du front.
 - Un jeu sans logique serveur n'a pas de package backend : tout passe par le `GameContext` et Supabase.
+- Spring Boot 4 utilise **Jackson 3** : importer `tools.jackson.databind.*` (`JsonNode`, `ObjectMapper`),
+  jamais `com.fasterxml.jackson.databind.*`. Ce dernier compile, car springdoc l'embarque, mais l'application
+  ne démarre pas (pas de bean `ObjectMapper` Jackson 2). Les annotations `com.fasterxml.jackson.annotation.*`
+  (`@JsonInclude`…) restent valables.
 - Même [approche TDD](#approche-tdd) que côté front : le test de la règle (validation, calcul,
   sécurité) s'écrit avant son implémentation.
 
