@@ -77,7 +77,8 @@ jobs:
           restore-keys: lint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
       - run: npm run format:check
       - run: npm run lint
-      - run: npm test
+      # Tests + couverture : échoue sous les seuils de vite.config.ts (cœur du lobby ≥ 95 %, global sans régression).
+      - run: npm run test:coverage
       - run: npm run build
 
   backend:

@@ -38,7 +38,7 @@ En minuscules, mots séparés par des tirets, sans accents.
 1. Partir de `dev` à jour : `git switch dev && git pull && git switch -c game/mon-jeu/premiere-version`
 2. Faire des commits petits et explicites (voir ci-dessous).
 3. Avant de pousser, les vérifications de la partie modifiée doivent passer (la CI les relance sur la PR) :
-   - front, dans `frontend/` : `npm run format && npm run lint && npm test && npm run build` ;
+   - front, dans `frontend/` : `npm run format && npm run lint && npm run test:coverage && npm run build` ;
    - backend, dans `backend/` : `mvn spotless:apply` puis `mvn verify` (voir [Backend](#backend)).
 4. Ouvrir une pull request vers `dev` (jamais vers `main`), la garder courte et ciblée (un sujet par PR).
    **Tant que le travail n'est pas terminé, la PR est en draft** (`gh pr create --draft`, ou
@@ -105,7 +105,7 @@ serveur (Google OAuth, `SUPABASE_JWT_SECRET`, clé `service_role`) vont uniqueme
 | `npm test`             | Tests unitaires et de composants (Vitest), fichiers `*.test.ts(x)` à côté du code testé |
 | `npm run test:mutation`| **Mutation testing** (Stryker) du cœur de la plateforme ; échoue sous 75 % (rapport : `reports/mutation/`) |
 | `npm run test:e2e`     | **E2E** (Playwright, Chromium) : parcours du lobby et audit d'accessibilité axe ; `npx playwright install chromium` la première fois |
-| `npm run test:coverage`| Couverture des tests (rapport `coverage/lcov.info`, lu par SonarQube) |
+| `npm run test:coverage`| Tests + **couverture**, échoue sous les seuils (voir *Front → Tests → Couverture minimale*) ; rapport `coverage/lcov.info` lu par SonarQube |
 | `npm run test:integration` | **Tests d'intégration** (Testcontainers, Docker requis) : migrations, RLS et catalogue sur une vraie base |
 
 Lancer `npm run format` avant chaque commit : la CI refuse un code non formaté. Comme pour le backend,
@@ -141,6 +141,19 @@ c'est le formatter qui tranche les questions de style.
 - **E2E** (`e2e/`) : peu de tests, réservés aux parcours vitaux (accueil → jeu → partie, panne, redirection)
   et à l'audit axe. Backend et Supabase sont simulés (`e2e/fixtures.ts`) ; le temps est contrôlé avec
   `page.clock` (pas d'attente réelle de 10 s). Aucune violation WCAG sérieuse ou critique n'est tolérée.
+- **Couverture minimale** : la CI échoue sous ces seuils (front : `vite.config.ts`,
+  backend : règles JaCoCo de `pom.xml`, vérifiées par `mvn verify`).
+
+  | Périmètre | Lignes | Branches | Fonctions | Instructions |
+  |-----------|--------|----------|-----------|--------------|
+  | Front, cœur du lobby (`games/domain`, `errors.ts`, `scoreQueue.ts`, `sdk.ts`, `lib/validation.ts`) | 95 % | 95 % | 95 % | 95 % |
+  | Front, global | 40 % | 44 % | 47 % | 42 % |
+  | Backend, cœur (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`) | 95 % | 95 % | — | — |
+  | Backend, global | 52 % | 64 % | — | — |
+
+  Le global est fixé juste sous la couverture actuelle : il empêche les régressions, y compris quand un jeu arrive
+  sans tests. **On le relève quand la couverture monte, on ne le baisse jamais** (une baisse se discute en PR
+  plateforme). En local, JaCoCo cumule les exécutions : `mvn clean verify` pour une mesure fidèle.
 - Mutation testing : un mutant survivant se tue par un test. S'il est équivalent (journalisation…), on le
   désactive sur la ligne avec sa justification : `// Stryker disable next-line all: journalisation seule`.
 
@@ -160,7 +173,7 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 | `mvn spotless:apply`     | **Formatter** : reformate le code (palantir-java-format, 4 espaces, 120 colonnes) |
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
 | `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
-| `mvn verify`             | Tout à la fois : linter, compilation, tests, et échec si le code n'est pas formaté |
+| `mvn verify`             | Tout à la fois : linter, compilation, tests, couverture minimale (JaCoCo), et échec si le code n'est pas formaté |
 | `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
 
@@ -222,7 +235,7 @@ que si sa zone a changé ; sinon il apparaît « skipped », ce qui compte comme
 
 | Job                 | Tourne si                         | Étapes                                             |
 |---------------------|-----------------------------------|----------------------------------------------------|
-| `frontend`          | `frontend/**`                     | `npm ci` → `npm run format:check` → `npm run lint` → `npm test` → `npm run build` |
+| `frontend`          | `frontend/**`                     | `npm ci` → `npm run format:check` → `npm run lint` → `npm run test:coverage` (seuils) → `npm run build` |
 | `backend`           | `backend/**`                      | `mvn -B verify` (linter, compilation, tests, format) |
 | `integration`       | `frontend/**` ou `supabase/**`    | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
 | `mutation-frontend` | `frontend/**`                     | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
@@ -409,4 +422,4 @@ scores.failNext(new GameError('network', 'hors ligne')) // simule une coupure au
 - Le jeu est chargé à la demande (`lazy`) : les dépendances lourdes (Phaser, Three.js…) n'alourdissent pas la plateforme.
 - Besoin de tables propres au jeu ? Les préfixer par le slug (`mon_jeu_xxx`), activer la RLS, et
   passer en revue avec l'équipe plateforme.
-- Avant de pousser (dans `frontend/`) : `npm run format && npm run lint && npm test && npm run build`.
+- Avant de pousser (dans `frontend/`) : `npm run format && npm run lint && npm run test:coverage && npm run build`.
