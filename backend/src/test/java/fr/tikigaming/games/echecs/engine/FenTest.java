@@ -40,5 +40,13 @@ class FenTest {
         }
     }
 
+    @Test
+    @DisplayName("lit qui doit jouer : w pour les Blancs, b pour les Noirs")
+    void litQuiDoitJouer() {
+        // Act + Assert
+        assertThat(Fen.parse("4k3/8/8/8/8/8/8/4K3 w - - 0 1").turn()).isEqualTo(Color.WHITE);
+        assertThat(Fen.parse("4k3/8/8/8/8/8/8/4K3 b - - 0 1").turn()).isEqualTo(Color.BLACK);
+    }
+
     private static final String START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 }
