@@ -36,10 +36,11 @@ export function solve(start: Board): Move[] | null {
   return null
 }
 
-const axisPosition = (v: Vehicle) => (v.orientation === 'H' ? v.col : v.row)
+/** Position d'un véhicule sur son axe : sa colonne s'il est horizontal, sa ligne s'il est vertical. */
+export const axisPosition = (v: Vehicle) => (v.orientation === 'H' ? v.col : v.row)
 
 /** Positions atteignables en un glissement depuis l'état, pour chaque véhicule. */
-function* nextPositions(vehicles: Vehicle[], state: number[]) {
+export function* nextPositions(vehicles: Vehicle[], state: number[]) {
   const occupied = occupancy(vehicles, state)
   for (let index = 0; index < vehicles.length; index++) {
     const v = vehicles[index]
