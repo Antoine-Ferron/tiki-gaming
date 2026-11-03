@@ -116,6 +116,40 @@ export function shields(player: PlayerState): number {
   return fromCards + builtStages(player).reduce((sum, stage) => sum + (stage.shields ?? 0), 0)
 }
 
+/** Pour une ressource d'un coût : ce que le joueur produit lui-même, achète à chaque voisin, et ce qui manque. */
+export interface ResourceNeed {
+  resource: Resource
+  needed: number
+  own: number
+  fromLeft: number
+  fromRight: number
+  missing: number
+}
+
+/**
+ * Détail d'un coût, ressource par ressource : d'abord la production du joueur, puis l'achat au voisin de gauche,
+ * puis à celui de droite, dans la limite de ce qu'ils produisent.
+ */
+export function costBreakdown(state: GameState, index: number, cost: Cost): ResourceNeed[] {
+  const { left, right } = neighbours(state.players, index)
+  const own = count(production(state.players[index]))
+  const fromLeft = count(production(left))
+  const fromRight = count(production(right))
+  return [...count(cost.resources ?? [])].map(([resource, needed]) => {
+    const mine = Math.min(needed, own.get(resource) ?? 0)
+    const leftQty = Math.min(needed - mine, fromLeft.get(resource) ?? 0)
+    const rightQty = Math.min(needed - mine - leftQty, fromRight.get(resource) ?? 0)
+    return {
+      resource,
+      needed,
+      own: mine,
+      fromLeft: leftQty,
+      fromRight: rightQty,
+      missing: needed - mine - leftQty - rightQty,
+    }
+  })
+}
+
 /**
  * Ce que coûte un coût au joueur : les ressources qu'il ne produit pas sont achetées au voisin de gauche, puis
  * de droite, au prix du convertisseur, dans la limite de ce qu'ils produisent. Les pièces reçues pendant le tour
@@ -123,20 +157,13 @@ export function shields(player: PlayerState): number {
  */
 function pay(state: GameState, index: number, cost: Cost, converter: CurrencyConverter): Payment {
   const player = state.players[index]
-  const { left, right } = neighbours(state.players, index)
-  const own = count(production(player))
-  const fromLeft = count(production(left))
-  const fromRight = count(production(right))
   let toLeft = 0
   let toRight = 0
 
-  for (const [resource, needed] of count(cost.resources ?? [])) {
-    const missing = Math.max(0, needed - (own.get(resource) ?? 0))
-    const leftQty = Math.min(missing, fromLeft.get(resource) ?? 0)
-    const rightQty = Math.min(missing - leftQty, fromRight.get(resource) ?? 0)
-    if (leftQty + rightQty < missing) return { ok: false, code: 'resources', reason: 'Il te manque des ressources.' }
-    if (leftQty > 0) toLeft += converter.toCoins(resource, leftQty)
-    if (rightQty > 0) toRight += converter.toCoins(resource, rightQty)
+  for (const need of costBreakdown(state, index, cost)) {
+    if (need.missing > 0) return { ok: false, code: 'resources', reason: 'Il te manque des ressources.' }
+    if (need.fromLeft > 0) toLeft += converter.toCoins(need.resource, need.fromLeft)
+    if (need.fromRight > 0) toRight += converter.toCoins(need.resource, need.fromRight)
   }
 
   const coins = (cost.coins ?? 0) + toLeft + toRight
@@ -159,6 +186,11 @@ export function payment(state: GameState, index: number, card: Card, converter: 
 /** Prochaine étape de la merveille du joueur, ou undefined si elle est terminée. */
 export function nextStage(player: PlayerState): WonderStage | undefined {
   return player.wonder.stages[player.stagesBuilt]
+}
+
+/** Ressources de la prochaine étape de merveille du joueur, une par une (aucune si elle est terminée). */
+export function wonderNeeds(state: GameState, index: number): ResourceNeed[] {
+  return costBreakdown(state, index, nextStage(state.players[index])?.cost ?? {})
 }
 
 /** Construire l'étape suivante de sa merveille : on paie le coût de l'étape, la carte ne sert que de support. */

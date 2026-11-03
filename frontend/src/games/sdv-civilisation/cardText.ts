@@ -1,5 +1,5 @@
 import type { Card, CardColor, Cost, ScienceSymbol } from './cards'
-import { nextStage, type Payment, type PlayerState, type Refusal } from './game'
+import { nextStage, type Payment, type PlayerState, type Refusal, type ResourceNeed } from './game'
 import type { Resource } from './ports'
 import type { IconKey } from './GameIcon'
 import type { WonderStage } from './wonders'
@@ -145,4 +145,13 @@ export function wonderAction(player: PlayerState, cost: Payment, left: string, r
     title: `Bâtir l’étape ${player.stagesBuilt + 1} de ta merveille`,
     detail: `${costText(stage.cost)} → ${stageText(stage)}. ${actionDetail(cost, left, right)}`,
   }
+}
+
+/**
+ * Ressources à mettre en évidence pour une construction : aucune si la carte est gratuite par chaîne ou déjà
+ * construite (son coût ne compte pas), sinon le détail ressource par ressource.
+ */
+export function relevantNeeds(cost: Payment, needs: ResourceNeed[]): ResourceNeed[] {
+  if (cost.ok ? cost.chain : cost.code === 'built') return []
+  return needs
 }
