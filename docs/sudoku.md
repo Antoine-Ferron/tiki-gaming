@@ -74,6 +74,7 @@ Package `fr.tikigaming.sudoku`, sans état (rien n'est stocké côté serveur).
 | `ScoreBreakdown`   | Détail du score : base, bonus de temps, bonus sans faute, pénalité, total         |
 | `SudokuService`    | Vérifie une partie (forme des grilles, indices intacts, conflits) et calcule le score |
 | `SudokuController` | Les endpoints REST, documentés dans OpenAPI (tag « Sudoku »)                      |
+| `Clock`, `CurrencyConverter`, `AuditNotifier` | Contrats purs sans I/O (voir [Contrats d'abstraction](#contrats-dabstraction)) |
 
 ### API
 
@@ -124,6 +125,23 @@ refusées ; un nombre d'erreurs énorme ne provoque pas de débordement.
 
 Exemple, en facile, 540 s, 0 erreur : 1000 (base) + 60 (temps) + 106 (sans faute) = **1166**.
 
+### Contrats d'abstraction
+
+Trois interfaces sans I/O, propres au package Sudoku. Le code métier dépend d'elles plutôt que de
+l'horloge système, d'un service de taux ou d'un journal : on peut ainsi les remplacer par des versions
+en mémoire dans les tests. **Elles ne sont pas encore utilisées par le Sudoku** : aucune règle actuelle
+n'a besoin d'une devise, d'un audit ou de l'heure.
+
+| Interface           | Méthode                                      | Implémentation pure                                             |
+|---------------------|----------------------------------------------|-----------------------------------------------------------------|
+| `Clock`             | `Instant now()`                              | `SystemClock` (production) ; `FixedClock` (tests, avancée à la main) |
+| `CurrencyConverter` | `BigDecimal convert(amount, from, to)`       | `FixedRateCurrencyConverter` : taux fixes en mémoire, passage par une devise de référence, arrondi à 2 décimales (au pair), refus des montants négatifs et des devises inconnues |
+| `AuditNotifier`     | `void notify(AuditEvent event)`              | `RecordingAuditNotifier` (tests) : garde les événements en mémoire, dans l'ordre |
+
+`AuditEvent` est un record immuable (type, date, détails copiés à la création) ; il refuse un type vide
+ou une date manquante. `Clock` n'est pas `java.time.Clock` : attention à l'import si les deux servent
+dans la même classe.
+
 ## Tests
 
 Les tests unitaires du backend sont dans `backend/src/test/java/fr/tikigaming/sudoku/` :
@@ -136,6 +154,9 @@ Les tests unitaires du backend sont dans `backend/src/test/java/fr/tikigaming/su
 | `ScoreCalculatorTest`     | Paliers, seuil, bonus sans faute, bornes, déterminisme, débordement  |
 | `SudokuServiceTest`       | Grille résolue, incomplète, en conflit, indice modifié, entrées invalides |
 | `SudokuControllerTest`    | Réponses et erreurs 400, en appelant le controller comme un objet Java |
+| `ClockTest`               | Horloge figée, avancée à la main, calcul d'une durée                 |
+| `FixedRateCurrencyConverterTest` | Conversion via la référence, arrondi, devise inconnue, montant négatif |
+| `AuditNotifierTest`       | Ordre des événements, immutabilité des détails, entrées invalides    |
 
 Exigences : logique pure, aucun accès réseau ni disque, pas de contexte Spring. Le seul aléa est un
 `Random` à graine fixe. Les tests à backtracking (générateur, solveur) prennent quelques dizaines de ms
