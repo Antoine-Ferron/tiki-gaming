@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   FLEET,
   GRID_SIZE,
   canPlaceShip,
   computeScore,
   coordKey,
+  fireAndSubmitIfOver,
   fireShot,
   isFleetSunk,
   isInBounds,
@@ -12,6 +13,12 @@ import {
   shipCoords,
   type PlacedShip,
 } from './logic'
+
+/** Stub déterministe : rejoue la séquence de valeurs fournie au lieu de Math.random. */
+function stubRandom(values: number[]): () => number {
+  let i = 0
+  return () => values[i++]
+}
 
 describe('isInBounds', () => {
   it('accepts coordinates inside the grid', () => {
@@ -123,6 +130,72 @@ describe('placeFleetRandomly', () => {
         seen.add(key)
       }
     }
+  })
+})
+
+describe('placeFleetRandomly (stub déterministe)', () => {
+  it('place la flotte exactement comme le dicte la source aléatoire injectée', () => {
+    // Chaque navire tire : orientation (< 0.5 = horizontal), ligne, colonne.
+    // Une ligne distincte par navire, colonne 0 : aucun chevauchement, donc un seul tirage par navire.
+    const random = stubRandom([0, 0, 0, 0, 0.1, 0, 0, 0.2, 0, 0, 0.3, 0, 0, 0.4, 0])
+
+    const fleet = placeFleetRandomly(random)
+
+    expect(fleet).toEqual([
+      { ship: FLEET[0], coords: shipCoords({ row: 0, col: 0 }, FLEET[0].size, 'horizontal') },
+      { ship: FLEET[1], coords: shipCoords({ row: 1, col: 0 }, FLEET[1].size, 'horizontal') },
+      { ship: FLEET[2], coords: shipCoords({ row: 2, col: 0 }, FLEET[2].size, 'horizontal') },
+      { ship: FLEET[3], coords: shipCoords({ row: 3, col: 0 }, FLEET[3].size, 'horizontal') },
+      { ship: FLEET[4], coords: shipCoords({ row: 4, col: 0 }, FLEET[4].size, 'horizontal') },
+    ])
+  })
+
+  it('retire une nouvelle position quand le tirage propose un chevauchement', () => {
+    // Porte-avions (5) en ligne 0 colonne 0. Puis le Croiseur (4) tire d'abord ligne 0 colonne 0
+    // (chevauchement, rejeté) avant de retirer ligne 1 colonne 0 (valide). Les navires suivants
+    // reçoivent chacun un tirage valide du premier coup, sur une ligne distincte.
+    const random = stubRandom([0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.2, 0, 0, 0.3, 0, 0, 0.4, 0])
+
+    const fleet = placeFleetRandomly(random)
+
+    expect(fleet[0].coords).toEqual(shipCoords({ row: 0, col: 0 }, FLEET[0].size, 'horizontal'))
+    expect(fleet[1].coords).toEqual(shipCoords({ row: 1, col: 0 }, FLEET[1].size, 'horizontal'))
+  })
+})
+
+describe('fireAndSubmitIfOver', () => {
+  it('soumet le score une seule fois quand le tir coule le dernier navire', async () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 }) // Torpilleur, taille 2 : (0,0) et (0,1)
+    const shots = new Set([coordKey({ row: 0, col: 0 })])
+    const submitScore = vi.fn().mockResolvedValue(true)
+
+    const outcome = await fireAndSubmitIfOver(fleet, shots, { row: 0, col: 1 }, submitScore)
+
+    expect(outcome.gameOver).toBe(true)
+    expect(submitScore).toHaveBeenCalledTimes(1)
+    expect(submitScore).toHaveBeenCalledWith(computeScore(2, 2), { shots: 2, hits: 2 })
+  })
+
+  it("ne soumet aucun score tant que la flotte adverse n'est pas entièrement coulée", async () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 })
+    const shots = new Set<string>()
+    const submitScore = vi.fn().mockResolvedValue(true)
+
+    const outcome = await fireAndSubmitIfOver(fleet, shots, { row: 0, col: 0 }, submitScore)
+
+    expect(outcome.gameOver).toBe(false)
+    expect(submitScore).not.toHaveBeenCalled()
+  })
+
+  it('ne soumet pas de nouveau score sur un tir répété après la victoire', async () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 })
+    const shots = new Set(fleet.flatMap((p) => p.coords.map(coordKey)))
+    const submitScore = vi.fn().mockResolvedValue(true)
+
+    const outcome = await fireAndSubmitIfOver(fleet, shots, { row: 0, col: 0 }, submitScore)
+
+    expect(outcome.result).toBe('repeat')
+    expect(submitScore).not.toHaveBeenCalled()
   })
 })
 
