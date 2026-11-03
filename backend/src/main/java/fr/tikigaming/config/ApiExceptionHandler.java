@@ -78,6 +78,12 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_GATEWAY, AUTH_UNAVAILABLE);
     }
 
+    @ExceptionHandler(ApiException.class)
+    ResponseEntity<ApiError> handleApiException(ApiException e) {
+        log.debug("Requête refusée ({}) : {}", e.status().value(), e.getMessage());
+        return error(e.status(), e.getMessage());
+    }
+
     @ExceptionHandler(ResourceAccessException.class)
     ResponseEntity<ApiError> handleSupabaseUnreachable(ResourceAccessException e) {
         log.error("Supabase injoignable", e);
