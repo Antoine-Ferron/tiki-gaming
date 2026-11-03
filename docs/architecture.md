@@ -153,6 +153,10 @@ Chaque jeu est un module autonome dans `frontend/src/games/<slug>/` qui exporte 
 
 Le jeu reçoit un `GameContext` (`ctx`) déjà limité au jeu et au joueur courants : scores,
 classement, sauvegarde. Un jeu **n'importe jamais `@/lib/supabase`** directement.
+Pour les jeux dont les règles doivent rester confidentielles, le composant React ne contient
+que l'état d'affichage et appelle le backend Java. Le Mastermind utilise ainsi
+`POST /api/games`, `POST /api/games/{id}/guesses` et `POST /api/games/{id}/restart` ;
+le secret, les indices, les tentatives et le score sont calculés côté serveur.
 
 #### Catégories
 
@@ -195,5 +199,5 @@ La configuration est lue depuis `backend/.env` (non versionné, modèle : `backe
 - Toutes les tables ont la RLS activée ; voir [modele-donnees.md](modele-donnees.md).
 - Les redirections après connexion n'acceptent que des chemins relatifs (pas de redirection ouverte).
 - En mode invité, aucune écriture n'est faite en base : seule la lecture publique (catalogue, classement) est utilisée.
-- Les scores sont envoyés par le client, donc falsifiables. Pour un jeu compétitif, la partie devra
-  être validée côté serveur (backend Java) avant l'insertion du score.
+- Les scores de jeux génériques sont envoyés par le client, donc falsifiables. Le Mastermind
+  reçoit son score calculé par le backend Java après validation de la partie.
