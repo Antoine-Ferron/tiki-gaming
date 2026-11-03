@@ -8,6 +8,9 @@ import { createTestGame, type TestGame } from './testing/harness'
 
 vi.mock('../net/api', () => import('./testing/fakeApi'))
 
+// Simulations longues : la suite complète tourne en parallèle.
+vi.setConfig({ testTimeout: 60_000 })
+
 let t: TestGame
 let game: TestGame['game']
 
