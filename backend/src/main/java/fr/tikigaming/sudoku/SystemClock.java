@@ -1,11 +1,13 @@
 package fr.tikigaming.sudoku;
 
 import java.time.Instant;
+import org.springframework.stereotype.Component;
 
 /**
  * Horloge de production : lit une {@link java.time.Clock}. Par défaut l'heure système UTC ; les tests lui donnent
  * une horloge figée ou décalée, sans jamais lire l'heure réelle.
  */
+@Component("sudokuClock")
 public final class SystemClock implements Clock {
 
     private final java.time.Clock source;

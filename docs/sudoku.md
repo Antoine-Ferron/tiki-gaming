@@ -61,7 +61,8 @@ avec `category = 'solo'`, identique à `index.ts`.
 
 ## Backend (Spring Boot)
 
-Package `fr.tikigaming.sudoku`, sans état (rien n'est stocké côté serveur).
+Package `fr.tikigaming.sudoku`. Les parties en cours sont gardées en mémoire côté serveur (`GameStore`) : le
+client ne décide ni de la grille, ni de la difficulté, ni du temps.
 
 ### Classes
 
@@ -72,6 +73,7 @@ Package `fr.tikigaming.sudoku`, sans état (rien n'est stocké côté serveur).
 | `SudokuGenerator`  | Génère une grille à solution unique ; accepte un `Random` à graine fixe pour les tests |
 | `ScoreCalculator`  | Règles métier du score (fonction pure)                                            |
 | `ScoreBreakdown`   | Détail du score : base, bonus de temps, bonus sans faute, pénalité, total         |
+| `GameStore`        | Parties en cours : grille, difficulté et chrono (`GameTimer` + `Clock`) gardés côté serveur ; expiration 2 h, plafond de 10 000 parties, id clos dès la résolution |
 | `SudokuService`    | Vérifie une partie (forme des grilles, indices intacts, conflits) et calcule le score |
 | `SudokuController` | Les endpoints REST, documentés dans OpenAPI (tag « Sudoku »)                      |
 | `Clock`, `CurrencyConverter`, `AuditNotifier` | Contrats purs sans I/O (voir [Contrats d'abstraction](#contrats-dabstraction)) |
@@ -88,24 +90,27 @@ Package `fr.tikigaming.sudoku`, sans état (rien n'est stocké côté serveur).
 `GET /api/sudoku/puzzle` renvoie :
 
 ```json
-{ "difficulty": "medium", "puzzle": [0, 3, 0, 0, 7, "… 81 valeurs, 0 = case vide"] }
+{ "gameId": "3f2a…", "difficulty": "medium", "puzzle": [0, 3, 0, 0, 7, "… 81 valeurs, 0 = case vide"] }
 ```
 
 `POST /api/sudoku/check` reçoit :
 
 ```json
 {
-  "difficulty": "easy",
-  "puzzle": [ "… 81 valeurs de départ" ],
+  "gameId": "3f2a…",
   "values": [ "… 81 valeurs du joueur" ],
-  "seconds": 540,
   "mistakes": 0
 }
 ```
 
+La grille de départ, la difficulté et le temps (heure de `GET /puzzle` jusqu'à l'appel, lue sur l'horloge
+du serveur) viennent de la partie gardée par le serveur, jamais du client. Une partie résolue est close :
+son `gameId` ne rapporte qu'un score.
+
 et renvoie `complete`, `solved`, `conflicts` (indices des cases en doublon), `score` et `breakdown`.
-Une entrée invalide (grille de mauvaise taille, chiffre hors 0 à 9, indice de départ modifié, valeurs
-négatives, difficulté inconnue) donne un **400** avec `{ "error": "…" }`.
+Une entrée invalide (`gameId` inconnu, expiré ou déjà résolu, grille de mauvaise taille, chiffre hors 0 à 9,
+indice de départ modifié, erreurs négatives, difficulté inconnue) donne un **400** ; trop de parties ouvertes
+donne un **503** avec `{ "error": "…" }`.
 
 Avec le backend lancé, la documentation interactive est sur `/swagger-ui/index.html`.
 
@@ -249,6 +254,10 @@ npm run lint && npm run format:check && npm run build   # avant de pousser
 
 Pour voir le jeu dans le catalogue, la migration doit être appliquée à la base Supabase.
 
+Le score est borné : `scoreLimits: { max: 6864 }` dans `index.ts` (SDK, avant l'envoi) et `games.max_score = 6864`
+dans `supabase/migrations/20261103140000_sudoku_max_score.sql` (base, contre une insertion directe). 6864 est
+le plafond de `ScoreCalculator` en difficile (partie parfaite en 0 s). Les deux valeurs doivent rester alignées.
+
 ## Écarts connus
 
 - **Le frontend n'utilise pas l'API.** Il génère sa grille dans `logic.ts` et calcule son score avec
@@ -256,6 +265,9 @@ Pour voir le jeu dans le catalogue, la migration doit être appliquée à la bas
   règles du backend (paliers, bonus sans faute, plafond).
 - **Le score envoyé par `ctx.submitScore` reste décidé par le client** : un joueur peut envoyer un
   score sans passer par `/api/sudoku/check`.
+- **`mistakes` reste déclaré par le client** : le serveur ne voit pas les coups. Un joueur peut annoncer 0
+  erreur et toucher le bonus « sans faute » (+10 %) ; il ne peut plus tricher sur la grille ni sur le temps.
+- **Parties en mémoire** : perdues au redémarrage, non partagées entre plusieurs instances du backend.
 
 Pour fermer ces deux écarts, il faut que `SudokuGame.tsx` récupère la grille sur `/api/sudoku/puzzle`
 et envoie la partie sur `/api/sudoku/check`, puis utilise le `score` renvoyé.
