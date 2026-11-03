@@ -5,7 +5,7 @@ Tiki Gaming est un monorepo en trois briques :
 | Brique      | Dossier      | Technologies                                         | Responsabilité                                   |
 |-------------|--------------|------------------------------------------------------|--------------------------------------------------|
 | Front       | `frontend/`  | Vite · React 19 · TypeScript · React Router          | Interface, catalogue, exécution des jeux          |
-| Backend     | `backend/`   | Java 21 · Spring Boot 3.5 · Spring Security · Maven  | Authentification et session                       |
+| Backend     | `backend/`   | Java 21 · Spring Boot 4.1 · Spring Security · Maven  | Authentification et session                       |
 | Données     | `supabase/`  | Supabase (Postgres + RLS + API REST PostgREST)       | Comptes (`auth.users`), profils, scores, sauvegardes |
 
 Le front lit et écrit **directement** dans Supabase via supabase-js. Le backend Java ne fait **que**
