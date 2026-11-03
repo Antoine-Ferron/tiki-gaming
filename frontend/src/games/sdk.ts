@@ -1,114 +1,110 @@
-import { supabase } from '@/lib/supabase'
 import type { Json } from '@/lib/database.types'
-import type { GameContext, Player } from './types'
+import { logger } from '@/lib/logger'
+import { checkScore } from './domain/score'
+import { GameError, MESSAGES, toGameError } from './errors'
+import { browserStorage, localSaves } from './adapters/local'
+import { supabaseSaves, supabaseScores } from './adapters/supabase'
+import type { KeyValueStorage, SaveStore, ScoreRepository } from './ports'
+import { createScoreQueue, type ScoreQueue } from './scoreQueue'
+import type { GameContext, GameDefinition, Player, SaveSchema } from './types'
 
-export function createGameContext(gameSlug: string, player: Player | null): GameContext {
-  return player ? createPlayerContext(gameSlug, player) : createGuestContext(gameSlug)
+/** Dépendances du contexte de jeu : remplaçables par des fakes dans les tests (voir ./testing/fakes). */
+export type GameDeps = {
+  scores: ScoreRepository
+  /** Sauvegarde du joueur connecté. */
+  playerSaves: (playerId: string) => SaveStore
+  /** Stockage de l'appareil : sauvegarde invitée et scores en attente. null = indisponible. */
+  storage: KeyValueStorage | null
 }
 
-async function fetchLeaderboard(gameSlug: string, limit: number) {
-  const { data, error } = await supabase
-    .from('leaderboard')
-    .select('*')
-    .eq('game_slug', gameSlug)
-    .order('best_score', { ascending: false })
-    .limit(limit)
-  if (error) throw error
-  return data
+export function defaultDeps(): GameDeps {
+  return { scores: supabaseScores, playerSaves: supabaseSaves, storage: browserStorage() }
 }
 
-function createPlayerContext(gameSlug: string, player: Player): GameContext {
+type GameInfo = Pick<GameDefinition, 'slug' | 'scoreLimits'>
+
+export function createGameContext(game: GameInfo, player: Player | null, deps: GameDeps = defaultDeps()): GameContext {
+  return player ? createPlayerContext(game, player, deps) : createGuestContext(game, deps)
+}
+
+/** Valide une sauvegarde avec le schéma du jeu : une sauvegarde corrompue ou d'une ancienne version donne null. */
+function parseSave<T extends Json>(gameSlug: string, data: Json | null, schema?: SaveSchema<T>): T | null {
+  if (data === null || !schema) return data as T | null
+  const result = schema.safeParse(data)
+  if (result.success) return result.data
+  // Stryker disable next-line all: journalisation seule
+  logger.warn({ gameSlug }, 'Sauvegarde ignorée : elle ne correspond pas au schéma du jeu')
+  return null
+}
+
+function scoreError(score: number, game: GameInfo): GameError | null {
+  const problem = checkScore(score, game.scoreLimits)
+  return problem ? new GameError('invalid', problem) : null
+}
+
+function createPlayerContext(game: GameInfo, player: Player, deps: GameDeps): GameContext {
+  const { scores } = deps
+  const saves = deps.playerSaves(player.id)
+  const queue: ScoreQueue | null = deps.storage && createScoreQueue(deps.storage, `tiki:pending-scores:${player.id}`)
+  const sendPending = async () => {
+    await queue?.flush((p) => scores.insert(p.gameSlug, p.score, p.metadata))
+  }
+
+  // Un score resté en attente d'une session précédente part dès l'ouverture du jeu (flush ne rejette jamais).
+  void sendPending()
+
   return {
-    gameSlug,
+    gameSlug: game.slug,
     player,
     isGuest: false,
 
     async submitScore(score, metadata = {}) {
-      // user_id est rempli par défaut côté base (auth.uid()) et vérifié par la RLS.
-      const { error } = await supabase.from('scores').insert({ game_slug: gameSlug, score, metadata })
-      if (error) throw error
-      return true
+      const invalid = scoreError(score, game)
+      if (invalid) throw invalid
+      await sendPending()
+      try {
+        await scores.insert(game.slug, score, metadata)
+        return true
+      } catch (err) {
+        const error = toGameError(err)
+        if (!error.retryable || !queue) throw error
+        queue.add({ gameSlug: game.slug, score, metadata })
+        throw new GameError('queued', MESSAGES.queued, { cause: err })
+      }
     },
 
-    getLeaderboard: (limit = 10) => fetchLeaderboard(gameSlug, limit),
+    getLeaderboard: (limit = 10) => scores.leaderboard(game.slug, limit),
+    getMyBest: () => scores.best(game.slug, player.id),
 
-    async getMyBest() {
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .eq('game_slug', gameSlug)
-        .eq('user_id', player.id)
-        .maybeSingle()
-      if (error) throw error
-      return data
+    async loadSave<T extends Json = Json>(schema?: SaveSchema<T>) {
+      return parseSave(game.slug, await saves.load(game.slug), schema)
     },
-
-    async loadSave<T extends Json = Json>() {
-      const { data, error } = await supabase
-        .from('game_saves')
-        .select('data')
-        .eq('game_slug', gameSlug)
-        .eq('user_id', player.id)
-        .maybeSingle()
-      if (error) throw error
-      return (data?.data as T | undefined) ?? null
-    },
-
-    async save(data) {
-      const { error } = await supabase
-        .from('game_saves')
-        .upsert({ user_id: player.id, game_slug: gameSlug, data }, { onConflict: 'user_id,game_slug' })
-      if (error) throw error
-    },
-
-    async clearSave() {
-      const { error } = await supabase.from('game_saves').delete().eq('game_slug', gameSlug).eq('user_id', player.id)
-      if (error) throw error
-    },
+    save: (data) => saves.save(game.slug, data),
+    clearSave: () => saves.clear(game.slug),
   }
 }
 
-function createGuestContext(gameSlug: string): GameContext {
-  const storageKey = `tiki:guest-save:${gameSlug}`
+function createGuestContext(game: GameInfo, deps: GameDeps): GameContext {
+  const saves = localSaves(deps.storage)
 
   return {
-    gameSlug,
+    gameSlug: game.slug,
     player: null,
     isGuest: true,
 
-    async submitScore() {
+    async submitScore(score) {
+      const invalid = scoreError(score, game)
+      if (invalid) throw invalid
       return false
     },
 
-    getLeaderboard: (limit = 10) => fetchLeaderboard(gameSlug, limit),
+    getLeaderboard: (limit = 10) => deps.scores.leaderboard(game.slug, limit),
+    getMyBest: async () => null,
 
-    async getMyBest() {
-      return null
+    async loadSave<T extends Json = Json>(schema?: SaveSchema<T>) {
+      return parseSave(game.slug, await saves.load(game.slug), schema)
     },
-
-    async loadSave<T extends Json = Json>() {
-      try {
-        const raw = localStorage.getItem(storageKey)
-        return raw ? (JSON.parse(raw) as T) : null
-      } catch {
-        return null
-      }
-    },
-
-    async save(data) {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(data))
-      } catch {
-        // stockage indisponible (navigation privée…) : la partie continue sans sauvegarde
-      }
-    },
-
-    async clearSave() {
-      try {
-        localStorage.removeItem(storageKey)
-      } catch {
-        // idem
-      }
-    },
+    save: (data) => saves.save(game.slug, data),
+    clearSave: () => saves.clear(game.slug),
   }
 }
