@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -63,8 +65,22 @@ class GameStartHttpTest {
     @Autowired
     private PrivateTableService tables;
 
+    @Autowired
+    private MutableClock clock;
+
     @TestConfiguration
     static class Setup {
+        @Bean
+        MutableClock clock() {
+            return new MutableClock();
+        }
+
+        @Bean
+        @Primary
+        PrivateTableService timedTables(InitialDeal initialDeal, MutableClock clock) {
+            return new PrivateTableService(initialDeal, clock);
+        }
+
         @Bean
         GameCatalog catalog() {
             return new TestGameCatalog();
@@ -202,6 +218,54 @@ class GameStartHttpTest {
         GameState first = tables.game(code);
         postAs(TABLES + "/{code}/start", sessionFor("creator"), code).andExpect(status().isOk());
         assertThat(tables.game(code)).isSameAs(first);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/start", "/join"})
+    void anHourOfInactivityExpiresBothTheTableAndItsDeal(String operation) throws Exception {
+        String code = fullTable();
+        postAs(TABLES + "/{code}/start", sessionFor("creator"), code).andExpect(status().isOk());
+        assertThat(tables.game(code)).isNotNull();
+        clock.advance(Duration.ofHours(1));
+
+        postAs(TABLES + "/{code}" + operation, sessionFor("creator"), code)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Code de table inconnu."));
+
+        assertThat(tables.game(code)).isNull();
+        postAs(TABLES + "/{code}/start", sessionFor("creator"), code).andExpect(status().isNotFound());
+        String body = postAs(TABLES, sessionFor("creator"))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat(json.readTree(body).path("code").asString()).isNotEqualTo(code);
+    }
+
+    @Test
+    void successfulStartsKeepTheTableAndTheSameDealAlive() throws Exception {
+        String code = fullTable();
+        clock.advance(Duration.ofMinutes(59));
+        postAs(TABLES + "/{code}/start", sessionFor("third"), code).andExpect(status().isOk());
+        GameState first = tables.game(code);
+        clock.advance(Duration.ofMinutes(59));
+
+        postAs(TABLES + "/{code}/join", sessionFor("creator"), code).andExpect(status().isOk());
+
+        assertThat(tables.game(code)).isSameAs(first);
+    }
+
+    @Test
+    void aRefusedStartDoesNotKeepTheTableOrItsDealAlive() throws Exception {
+        String code = fullTable();
+        postAs(TABLES + "/{code}/start", sessionFor("creator"), code).andExpect(status().isOk());
+        clock.advance(Duration.ofMinutes(59));
+        postAs(TABLES + "/{code}/start", sessionFor("outsider"), code).andExpect(status().isForbidden());
+        clock.advance(Duration.ofMinutes(1));
+
+        postAs(TABLES + "/{code}/join", sessionFor("creator"), code).andExpect(status().isNotFound());
+
+        assertThat(tables.game(code)).isNull();
     }
 
     private MvcResult startTogether(MockHttpServletRequestBuilder request, CyclicBarrier start) throws Exception {

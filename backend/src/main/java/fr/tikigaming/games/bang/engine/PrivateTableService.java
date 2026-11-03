@@ -17,8 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
- * Tables privées en mémoire. Une table sans création ni jonction pendant {@link #INACTIVITY_TIMEOUT} est retirée : sa
- * place se libère, et son créateur peut ouvrir une nouvelle table.
+ * Tables privées en mémoire. Sans création, jonction ou démarrage accepté pendant {@link #INACTIVITY_TIMEOUT}, la
+ * table et sa donne sont retirées : sa place se libère, et son créateur peut ouvrir une nouvelle table.
  */
 @Service
 public class PrivateTableService {
@@ -27,7 +27,6 @@ public class PrivateTableService {
     static final Duration INACTIVITY_TIMEOUT = Duration.ofHours(1);
 
     private final Map<String, Table> tables = new HashMap<>();
-    private final Map<String, GameState> games = new HashMap<>();
     private final InitialDeal initialDeal;
     private final Clock clock;
 
@@ -81,6 +80,7 @@ public class PrivateTableService {
     }
 
     public synchronized GameStarted start(String code, String accountId) {
+        purgeInactive();
         code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
         Table table = tables.get(code);
         if (table == null) throw new PrivateTableException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
@@ -92,15 +92,15 @@ public class PrivateTableService {
         if (players.size() < 4) {
             throw new PrivateTableException(HttpStatus.CONFLICT, "Il faut quatre joueurs pour démarrer la partie.");
         }
-        GameState existing = games.get(code);
-        if (existing != null) return new GameStarted(code, existing.currentSeat());
-        GameState game = initialDeal.deal(List.copyOf(players));
-        games.put(code, game);
-        return new GameStarted(code, game.currentSeat());
+        if (table.game == null) table.game = initialDeal.deal(List.copyOf(players));
+        table.lastActivity = clock.instant();
+        return new GameStarted(code, table.game.currentSeat());
     }
 
     synchronized GameState game(String code) {
-        return games.get(code);
+        purgeInactive();
+        Table table = tables.get(code);
+        return table == null ? null : table.game;
     }
 
     private void purgeInactive() {
@@ -111,6 +111,7 @@ public class PrivateTableService {
     private static final class Table {
         private final List<String> players = new ArrayList<>();
         private Instant lastActivity;
+        private GameState game;
 
         private Table(String creator, Instant now) {
             players.add(creator);
