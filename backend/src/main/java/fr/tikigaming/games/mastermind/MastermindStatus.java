@@ -1,4 +1,4 @@
-package fr.tikigaming.mastermind;
+package fr.tikigaming.games.mastermind;
 
 public enum MastermindStatus {
     IN_PROGRESS,

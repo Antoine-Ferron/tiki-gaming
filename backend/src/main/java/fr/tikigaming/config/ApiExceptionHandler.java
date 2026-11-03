@@ -2,6 +2,10 @@ package fr.tikigaming.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import fr.tikigaming.auth.AuthException;
+import fr.tikigaming.games.mastermind.MastermindCapacityException;
+import fr.tikigaming.games.mastermind.MastermindFinishedException;
+import fr.tikigaming.games.mastermind.MastermindNotFoundException;
+import fr.tikigaming.games.mastermind.MastermindValidationException;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Comparator;
@@ -82,6 +86,26 @@ public class ApiExceptionHandler {
     ResponseEntity<ApiError> handleSupabaseUnreachable(ResourceAccessException e) {
         log.error("Supabase injoignable", e);
         return error(HttpStatus.BAD_GATEWAY, AUTH_UNREACHABLE);
+    }
+
+    @ExceptionHandler(MastermindNotFoundException.class)
+    ResponseEntity<ApiError> handleMastermindNotFound(MastermindNotFoundException e) {
+        return error(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(MastermindFinishedException.class)
+    ResponseEntity<ApiError> handleMastermindFinished(MastermindFinishedException e) {
+        return error(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(MastermindValidationException.class)
+    ResponseEntity<ApiError> handleMastermindValidation(MastermindValidationException e) {
+        return error(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(MastermindCapacityException.class)
+    ResponseEntity<ApiError> handleMastermindCapacity(MastermindCapacityException e) {
+        return error(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

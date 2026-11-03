@@ -1,11 +1,14 @@
-import { render, screen } from '@testing-library/react'
+// @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import MastermindGame from './MastermindGame'
 import type { GameContext } from '../types'
 import { apiPost } from '@/lib/api'
 
 vi.mock('@/lib/api', () => ({ apiPost: vi.fn() }))
+afterEach(cleanup)
 
 const initialGame = {
   id: 'game-1',
