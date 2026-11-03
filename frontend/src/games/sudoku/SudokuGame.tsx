@@ -2,33 +2,32 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import type { GameProps, LeaderboardEntry } from '../types'
-import {
-  DIFFICULTIES,
-  computeScore,
-  findConflicts,
-  formatTime,
-  generatePuzzle,
-  type Difficulty,
-  type Grid,
-} from './logic'
+import { ApiError, apiGet, apiPost } from '@/lib/api'
+import { DIFFICULTIES, formatTime, type Difficulty, type Grid } from './logic'
 import './sudoku.css'
 
-type Save = {
+// La partie (grille, solution, erreurs, chrono) vit sur le serveur : on ne garde que son identifiant.
+type Save = { gameId: string }
+
+type GameState = {
+  gameId: string
   difficulty: Difficulty
   puzzle: Grid
-  solution: Grid
   values: Grid
-  seconds: number
   mistakes: number
+  seconds: number
 }
+type PuzzleResponse = { gameId: string; difficulty: Difficulty; puzzle: Grid }
+type MoveResult = { correct: boolean; mistakes: number; complete: boolean }
+type CheckResult = { solved: boolean; score: number }
 
 type Phase = 'idle' | 'playing' | 'over'
 
 export default function SudokuGame({ ctx }: GameProps) {
   const [phase, setPhase] = useState<Phase>('idle')
+  const [gameId, setGameId] = useState('')
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
   const [puzzle, setPuzzle] = useState<Grid>([])
-  const [solution, setSolution] = useState<Grid>([])
   const [values, setValues] = useState<Grid>([])
   const [selected, setSelected] = useState<number | null>(null)
   const [seconds, setSeconds] = useState(0)
@@ -38,7 +37,9 @@ export default function SudokuGame({ ctx }: GameProps) {
   const [best, setBest] = useState<number | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const cellRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const busy = useRef(false)
 
   const refreshScores = useCallback(() => {
     ctx
@@ -55,88 +56,98 @@ export default function SudokuGame({ ctx }: GameProps) {
     refreshScores()
     ctx
       .loadSave<Save>()
-      .then((s) => setHasSave(!!s && s.values.length === 81))
+      .then((s) => setHasSave(!!s?.gameId))
       .catch((e) => setError(e.message))
   }, [ctx, refreshScores])
 
-  // Chrono
+  // Chrono d'affichage ; le temps du score est mesuré par le serveur.
   useEffect(() => {
     if (phase !== 'playing') return
     const id = setInterval(() => setSeconds((s) => s + 1), 1000)
     return () => clearInterval(id)
   }, [phase])
 
-  // Sauvegarde automatique de la partie en cours (toutes les 5 s et à chaque changement de grille)
-  useEffect(() => {
-    if (phase !== 'playing' || values.length !== 81) return
-    if (seconds % 5 !== 0 && seconds !== 0) return
-    ctx.save({ difficulty, puzzle, solution, values, seconds, mistakes }).catch((e) => setError(e.message))
-    // seconds suffit à déclencher ; les autres valeurs sont lues à jour dans la closure
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seconds, phase])
-
-  function start(level: Difficulty) {
-    const { puzzle: p, solution: s } = generatePuzzle(level)
-    setDifficulty(level)
-    setPuzzle(p)
-    setSolution(s)
-    setValues([...p])
+  function open(state: GameState) {
+    setGameId(state.gameId)
+    setDifficulty(state.difficulty)
+    setPuzzle(state.puzzle)
+    setValues(state.values)
+    setSeconds(state.seconds)
+    setMistakes(state.mistakes)
     setSelected(null)
-    setSeconds(0)
-    setMistakes(0)
     setError(null)
+    setNotice(null)
     setPhase('playing')
   }
 
-  async function resume() {
+  async function start(level: Difficulty) {
     try {
-      const s = await ctx.loadSave<Save>()
-      if (!s) return
-      setDifficulty(s.difficulty)
-      setPuzzle(s.puzzle)
-      setSolution(s.solution)
-      setValues(s.values)
-      setSeconds(s.seconds)
-      setMistakes(s.mistakes)
-      setSelected(null)
-      setError(null)
-      setPhase('playing')
+      const game = await apiGet<PuzzleResponse>(`/games/sudoku/puzzle?difficulty=${level}`)
+      await ctx.save({ gameId: game.gameId } satisfies Save)
+      setHasSave(true)
+      open({ ...game, values: game.puzzle, mistakes: 0, seconds: 0 })
     } catch (e) {
       setError((e as Error).message)
     }
   }
 
-  async function finish(finalSeconds: number, finalMistakes: number) {
-    const final = computeScore(difficulty, finalSeconds, finalMistakes)
-    setScore(final)
-    setPhase('over')
-    setHasSave(false)
+  async function resume() {
     try {
+      const s = await ctx.loadSave<Save>()
+      if (!s?.gameId) return
+      try {
+        open(await apiGet<GameState>(`/games/sudoku/${s.gameId}`))
+      } catch (e) {
+        if (!(e instanceof ApiError) || e.status !== 400) throw e
+        // Partie inconnue du serveur (expirée ou serveur redémarré) : la sauvegarde ne sert plus.
+        await ctx.clearSave()
+        setHasSave(false)
+        setError('Cette partie a expiré. Lance-en une nouvelle.')
+      }
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  async function finish(finalMistakes: number) {
+    try {
+      const result = await apiPost<CheckResult>('/games/sudoku/check', { gameId })
+      setScore(result.score)
+      setPhase('over')
+      setHasSave(false)
       await ctx.clearSave()
-      await ctx.submitScore(final, { difficulty, seconds: finalSeconds, mistakes: finalMistakes })
+      await ctx.submitScore(result.score, { difficulty, seconds, mistakes: finalMistakes })
       refreshScores()
     } catch (e) {
       setError((e as Error).message)
     }
   }
 
-  function place(n: number) {
-    if (selected === null || puzzle[selected] !== 0) return
-    const next = [...values]
-    next[selected] = n
-    setValues(next)
-    let m = mistakes
-    if (n !== 0 && n !== solution[selected]) {
-      m += 1
-      setMistakes(m)
+  async function place(n: number) {
+    if (busy.current || selected === null || puzzle[selected] !== 0 || values[selected] !== 0) return
+    busy.current = true
+    try {
+      const move = await apiPost<MoveResult>(`/games/sudoku/${gameId}/moves`, { cell: selected, value: n })
+      setMistakes(move.mistakes)
+      if (!move.correct) {
+        setNotice('Ce chiffre n’est pas le bon.')
+        return
+      }
+      setNotice(null)
+      const next = [...values]
+      next[selected] = n
+      setValues(next)
+      if (move.complete) await finish(move.mistakes)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      busy.current = false
     }
-    if (next.every((v, i) => v === solution[i])) void finish(seconds, m)
   }
 
   function onKeyDown(e: KeyboardEvent) {
     if (selected === null) return
-    if (e.key >= '1' && e.key <= '9') place(Number(e.key))
-    else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') place(0)
+    if (e.key >= '1' && e.key <= '9') void place(Number(e.key))
     else {
       const r = Math.floor(selected / 9)
       const c = selected % 9
@@ -156,7 +167,6 @@ export default function SudokuGame({ ctx }: GameProps) {
     }
   }
 
-  const conflicts = phase === 'playing' ? findConflicts(values) : new Set<number>()
   const selRow = selected === null ? -1 : Math.floor(selected / 9)
   const selCol = selected === null ? -1 : selected % 9
 
@@ -177,7 +187,6 @@ export default function SudokuGame({ ctx }: GameProps) {
                 if (i === selected) classes.push('sudoku-selected')
                 else if (selected !== null && (Math.floor(i / 9) === selRow || i % 9 === selCol))
                   classes.push('sudoku-related')
-                if (conflicts.has(i)) classes.push('sudoku-conflict')
                 return (
                   <button
                     key={i}
@@ -195,14 +204,16 @@ export default function SudokuGame({ ctx }: GameProps) {
             </div>
             <div className="sudoku-pad">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                <button key={n} className="small" onClick={() => place(n)}>
+                <button key={n} className="small" onClick={() => void place(n)}>
                   {n}
                 </button>
               ))}
-              <button className="small" onClick={() => place(0)} aria-label="Effacer la case">
-                Effacer
-              </button>
             </div>
+            {notice && (
+              <p className="muted" role="status">
+                {notice}
+              </p>
+            )}
             <p className="muted">Sélectionne une case, puis tape un chiffre au clavier ou utilise le pavé.</p>
           </>
         ) : (
@@ -221,13 +232,13 @@ export default function SudokuGame({ ctx }: GameProps) {
             <p>Choisis une difficulté :</p>
             <div className="sudoku-levels">
               {(Object.keys(DIFFICULTIES) as Difficulty[]).map((level) => (
-                <button key={level} onClick={() => start(level)}>
+                <button key={level} onClick={() => void start(level)}>
                   {DIFFICULTIES[level].label}
                 </button>
               ))}
             </div>
             {hasSave && (
-              <button className="link" onClick={resume}>
+              <button className="link" onClick={() => void resume()}>
                 Reprendre ma partie
               </button>
             )}

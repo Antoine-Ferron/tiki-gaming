@@ -73,10 +73,6 @@
 .sudoku-cell.sudoku-selected {
   background: color-mix(in srgb, var(--accent) 30%, var(--surface));
 }
-.sudoku-cell.sudoku-conflict {
-  color: var(--error);
-  text-decoration: underline;
-}
 .sudoku-cell:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
