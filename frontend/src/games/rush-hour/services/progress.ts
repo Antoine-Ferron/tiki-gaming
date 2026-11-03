@@ -25,11 +25,6 @@ export async function loadProgress(ctx: GameContext): Promise<Progress> {
   return { best: saved?.best ?? {}, ...(saved?.generated && { generated: saved.generated }) }
 }
 
-/** Records du joueur par niveau. */
-export async function loadBest(ctx: GameContext): Promise<BestScores> {
-  return (await loadProgress(ctx)).best
-}
-
 /** Écrase la sauvegarde avec la progression complète (aucune partie n'est perdue). */
 export function saveProgress(ctx: GameContext, progress: Progress): Promise<void> {
   return ctx.save({ version: 1, ...progress })
