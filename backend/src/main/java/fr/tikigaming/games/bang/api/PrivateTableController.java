@@ -123,7 +123,7 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "503",
-            description = "Les cartes de mise en place ne sont pas encore disponibles",
+            description = "La composition de la pioche BANG! n'est pas encore disponible",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     GameStarted start(@PathVariable String code, HttpServletRequest request) {
         return tables.start(code, connectedAccountId(request));

@@ -93,7 +93,7 @@ class PrivateTablesHttpTest {
     }
 
     @Test
-    void fullTablesWaitForTheProductionCatalogues() throws Exception {
+    void fullTablesReportTheMissingProductionDeckComposition() throws Exception {
         String code = createTable("creator");
         for (int seat = 2; seat <= 4; seat++) {
             postAs(TABLES + "/" + code + "/join", sessionFor("player-" + seat)).andExpect(status().isOk());
@@ -102,8 +102,8 @@ class PrivateTablesHttpTest {
         for (int attempt = 0; attempt < 2; attempt++) {
             postAs(TABLES + "/" + code + "/start", sessionFor("creator"))
                     .andExpect(status().isServiceUnavailable())
-                    .andExpect(
-                            jsonPath("$.error").value("Les cartes de mise en place ne sont pas encore disponibles."));
+                    .andExpect(jsonPath("$.error")
+                            .value("La composition de la pioche BANG! n'est pas encore disponible."));
         }
     }
 
