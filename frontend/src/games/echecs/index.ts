@@ -1,13 +1,13 @@
 import { lazy } from 'react'
 import type { GameDefinition } from '../types'
 
-const clicker: GameDefinition = {
-  slug: 'clicker',
-  title: 'Clicker 10s',
-  description: 'Clique le plus vite possible pendant 10 secondes.',
-  category: 'solo',
+const echecs: GameDefinition = {
+  slug: 'echecs',
+  title: 'Échecs',
+  description: "Le jeu d'échecs classique, à deux sur le même écran.",
+  category: 'duel',
   mode: 'solo',
-  component: lazy(() => import('./ClickerGame')),
+  component: lazy(() => import('./EchecsGame')),
 }
 
-export default clicker
+export default echecs
