@@ -19,7 +19,7 @@ Un casse-tête de parking : **fais glisser les voitures et les camions pour lib�
 | R3 | La **voiture rouge** est toujours horizontale, sur la **3ᵉ ligne**. La **sortie** est au bord droit de cette ligne. |
 | R4 | Un véhicule ne bouge **que dans son sens** : un véhicule horizontal va à gauche ou à droite, un vertical en haut ou en bas. Il ne tourne jamais. |
 | R5 | Un véhicule **ne traverse ni les bords ni les autres véhicules** : il s'arrête contre le premier obstacle. |
-| R6 | **Un coup** = faire glisser **un** véhicule, **quelle que soit la distance**. Glisser une voiture de 3 cases d'un seul geste = 1 coup. |
+| R6 | **Un coup** = faire glisser **un** véhicule, **quelle que soit la distance**. Glisser une voiture de 3 cases d'un seul geste = 1 coup. Déplacer à nouveau le même véhicule juste après (par exemple case par case au clavier) prolonge le même coup. |
 | R7 | **Victoire** : la voiture rouge touche la sortie. |
 | R8 | Chaque plateau a un **nombre minimal de coups** pour être résolu (l'« optimal »), calculé par le jeu. |
 
