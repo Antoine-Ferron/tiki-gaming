@@ -2,7 +2,14 @@ import { describe, expect, test, vi } from 'vitest'
 import * as z from 'zod/mini'
 import { GameError } from './errors'
 import { createGameContext } from './sdk'
-import { FakeSaves, FakeScores, fakeDeps, MemoryStorage } from './testing/fakes'
+import {
+  FakeRealtime,
+  type FakeRealtimeConnection,
+  FakeSaves,
+  FakeScores,
+  fakeDeps,
+  MemoryStorage,
+} from './testing/fakes'
 
 const game = { slug: 'clicker', scoreLimits: { max: 300 } }
 const player = { id: 'player-1', username: 'alice' }
@@ -197,5 +204,61 @@ describe('contexte invité', () => {
 
     await expect(ctx.save({ totalClicks: 1 })).resolves.toBeUndefined()
     await expect(ctx.clearSave()).resolves.toBeUndefined()
+  })
+})
+
+describe('temps réel', () => {
+  test('ctx.realtime est scopé sur le jeu courant', () => {
+    const realtime = new FakeRealtime()
+    const deps = fakeDeps({ realtime: vi.fn().mockReturnValue(realtime) })
+
+    const ctx = createGameContext(game, player, deps)
+
+    expect(ctx.realtime).toBe(realtime)
+    expect(deps.realtime).toHaveBeenCalledWith('clicker')
+  })
+
+  test('un jeu invité a aussi accès au temps réel', () => {
+    const realtime = new FakeRealtime()
+
+    const ctx = createGameContext(game, null, fakeDeps({ realtime: () => realtime }))
+
+    expect(ctx.realtime).toBe(realtime)
+  })
+
+  test('crée une salle et la rejoint depuis un autre compte', async () => {
+    const realtime = new FakeRealtime()
+    const ctx = createGameContext(game, player, fakeDeps({ realtime: () => realtime }))
+
+    const created = await ctx.realtime.createRoom(4)
+    expect(created.seat).toBe(1)
+    expect(created.playerCount).toBe(1)
+
+    const joined = await realtime.joinRoom(created.code)
+    expect(joined.code).toBe(created.code)
+  })
+
+  test('diffuse un évènement à tous les abonnés de la salle', async () => {
+    const realtime = new FakeRealtime()
+    const ctx = createGameContext(game, player, fakeDeps({ realtime: () => realtime }))
+    const connection = (await ctx.realtime.createRoom()) as FakeRealtimeConnection
+
+    const received = vi.fn()
+    connection.on('COUP_JOUE', received)
+    connection.send('COUP_JOUE', { case: 'A1' }, 'action-1')
+    connection.emit('COUP_JOUE', { case: 'A1' })
+
+    expect(connection.sent).toEqual([{ type: 'COUP_JOUE', data: { case: 'A1' }, actionId: 'action-1' }])
+    expect(received).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'COUP_JOUE', payload: { case: 'A1' }, code: connection.code }),
+    )
+  })
+
+  test('une création refusée par le serveur rejette avec une GameError', async () => {
+    const realtime = new FakeRealtime()
+    realtime.failNextCreate(new GameError('forbidden', 'Jeu fermé.'))
+    const ctx = createGameContext(game, player, fakeDeps({ realtime: () => realtime }))
+
+    await expect(ctx.realtime.createRoom()).rejects.toMatchObject({ code: 'forbidden' })
   })
 })

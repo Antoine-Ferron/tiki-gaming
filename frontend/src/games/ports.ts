@@ -22,3 +22,33 @@ export interface SaveStore {
 
 /** Sous-ensemble de l'API Web Storage utilisé par le SDK (localStorage en production). */
 export type KeyValueStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+
+/** État de la connexion temps réel d'une salle. */
+export type RealtimeStatus = 'connecting' | 'open' | 'reconnecting' | 'closed'
+
+/** Évènement reçu sur le canal d'une salle (voir fr.tikigaming.realtime.RoomEvent côté backend). */
+export type RoomEvent<T = unknown> = { type: string; payload: T; code: string; serverTime: string }
+
+/**
+ * Connexion à une salle de jeu (créée ou rejointe par `Realtime.createRoom`/`joinRoom`). La reconnexion après
+ * coupure est automatique : `join` est renvoyé avec le même code, et le siège est retrouvé côté serveur.
+ */
+export interface RealtimeConnection {
+  readonly code: string
+  readonly seat: number
+  readonly playerCount: number
+  /** Diffuse une action publique à tous les joueurs assis. `actionId` déduplique un double envoi. */
+  send(type: string, data?: unknown, actionId?: string): void
+  /** Écoute les évènements d'un type donné sur le canal de la salle. Renvoie une fonction pour se désabonner. */
+  on<T = unknown>(type: string, handler: (event: RoomEvent<T>) => void): () => void
+  onStatusChange(handler: (status: RealtimeStatus) => void): () => void
+  close(): void
+}
+
+/** Socle temps réel du jeu courant (scopé sur son `gameSlug`, voir ./sdk.ts). */
+export interface Realtime {
+  /** Crée une salle et y place le joueur courant au premier siège. */
+  createRoom(maxPlayers?: number): Promise<RealtimeConnection>
+  /** Rejoint une salle existante par son code ; idempotent (un compte déjà assis retrouve sa place). */
+  joinRoom(code: string): Promise<RealtimeConnection>
+}
