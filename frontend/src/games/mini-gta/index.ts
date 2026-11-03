@@ -7,6 +7,7 @@ const miniGta: GameDefinition = {
   title: 'MiniGTA',
   description: 'Une ville entière générée par le code : conduis, remplis des missions et échappe à la police.',
   category: 'solo',
+  theme: 'action',
   mode: 'solo',
   // Capture du rendu procédural du jeu (aucun asset externe).
   thumbnail: '/games/mini-gta/thumbnail.webp',
