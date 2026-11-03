@@ -23,6 +23,6 @@ public enum PieceType {
                 return type;
             }
         }
-        return null;
+        throw new IllegalArgumentException("Lettre de pièce inconnue : '" + letter + "'");
     }
 }
