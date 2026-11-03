@@ -134,3 +134,37 @@ describe('GameSession : victoire et chrono (P2, P6)', () => {
     expect(session.elapsedMs).toBe(7_500)
   })
 })
+
+describe('GameSession : Recommencer (P4)', () => {
+  test('remet le plateau de départ, les coups et le chrono à zéro', () => {
+    // Arrange
+    const clock = new ManualClock()
+    const session = new GameSession(MAP, clock)
+    const start = session.board
+    clock.advance(3_000)
+    session.move('X', 1)
+
+    // Act
+    session.reset()
+    clock.advance(1_000)
+
+    // Assert
+    expect(session.board).toEqual(start)
+    expect(session.moveCount).toBe(0)
+    expect(session.elapsedMs).toBe(1_000)
+  })
+
+  test('permet de rejouer après une victoire', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+    session.move('A', -1)
+    session.move('X', 4)
+
+    // Act
+    session.reset()
+
+    // Assert
+    expect(session.solved).toBe(false)
+    expect(() => session.move('X', 1)).not.toThrow()
+  })
+})
