@@ -38,3 +38,47 @@ describe('GameSession : compteur de coups (P1, R6)', () => {
     expect(session.moveCount).toBe(0)
   })
 })
+
+describe('GameSession : Annuler (P3)', () => {
+  test('revient au plateau d’avant le dernier coup et retire ce coup', () => {
+    // Arrange
+    const session = new GameSession(MAP)
+    const start = session.board
+    session.move('X', 2)
+
+    // Act
+    session.undo()
+
+    // Assert
+    expect(session.board).toEqual(start)
+    expect(session.moveCount).toBe(0)
+  })
+
+  test('n’annule que le dernier coup', () => {
+    // Arrange
+    const session = new GameSession(MAP)
+    session.move('X', 1)
+    const afterFirst = session.board
+    session.move('X', 1)
+
+    // Act
+    session.undo()
+
+    // Assert
+    expect(session.board).toEqual(afterFirst)
+    expect(session.moves).toEqual([{ id: 'X', delta: 1 }])
+  })
+
+  test('sans coup joué, ne fait rien', () => {
+    // Arrange
+    const session = new GameSession(MAP)
+    const start = session.board
+
+    // Act
+    session.undo()
+
+    // Assert
+    expect(session.board).toEqual(start)
+    expect(session.moveCount).toBe(0)
+  })
+})
