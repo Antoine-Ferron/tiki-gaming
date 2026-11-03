@@ -1,10 +1,12 @@
 package fr.tikigaming.games.echecs.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class FenTest {
@@ -104,6 +106,28 @@ class FenTest {
     void lirePuisReecrireUneFenRedonneLaMemeFen(String fen) {
         // Act + Assert
         assertThat(Fen.toFen(Fen.parse(fen))).isEqualTo(fen);
+    }
+
+    @ParameterizedTest(name = "\"{0}\" est refusée")
+    @NullAndEmptySource
+    @ValueSource(
+            strings = {
+                "4k3/8/8/8/8/8/8/4K3 w - - 0", // 5 champs au lieu de 6
+                "4k3/8/8/8/8/8/4K3 w - - 0 1", // 7 rangées au lieu de 8
+                "4k3/8/8/8/8/8/8/4K4 w - - 0 1", // rangée de 9 cases
+                "4k3/8/8/8/8/8/8/4K2 w - - 0 1", // rangée de 7 cases
+                "4k3/8/8/8/8/8/8/4KX2 w - - 0 1", // lettre de pièce inconnue
+                "4k3/8/8/8/8/8/8/4K3 x - - 0 1", // trait inconnu
+                "4k3/8/8/8/8/8/8/4K3 w KX - 0 1", // droit de roque inconnu
+                "4k3/8/8/8/8/8/8/4K3 w - e5 0 1", // prise en passant hors rangées 3 et 6
+                "4k3/8/8/8/8/8/8/4K3 w - - -1 1", // compteur de demi-coups négatif
+                "4k3/8/8/8/8/8/8/4K3 w - - a 1", // compteur non numérique
+                "4k3/8/8/8/8/8/8/4K3 w - - 0 0" // numéro de coup à 0
+            })
+    @DisplayName("une FEN mal écrite est refusée (format)")
+    void uneFenMalEcriteEstRefusee(String fen) {
+        // Act + Assert
+        assertThatThrownBy(() -> Fen.parse(fen)).isInstanceOf(IllegalArgumentException.class);
     }
 
     private static final String AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
