@@ -33,7 +33,7 @@ public enum Difficulty {
 
     /** Accepte la valeur en minuscules ("easy") telle qu'envoyée par le front. */
     public static Difficulty parse(String value) {
-        if (value == null) throw new IllegalArgumentException("Difficulté manquante");
+        if (value == null || value.isBlank()) throw new IllegalArgumentException("Difficulté manquante");
         try {
             return valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
