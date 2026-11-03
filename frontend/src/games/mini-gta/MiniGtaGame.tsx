@@ -46,8 +46,6 @@ export default function MiniGtaGame({ ctx }: GameProps) {
 
   async function play() {
     setError(null)
-    // Le plein écran doit être demandé pendant le clic ; un refus n'empêche pas de jouer.
-    document.documentElement.requestFullscreen?.().catch(() => {})
     let best: number | null = null
     try {
       best = (await ctx.getMyBest())?.best_score ?? null
@@ -65,11 +63,24 @@ export default function MiniGtaGame({ ctx }: GameProps) {
     refreshLeaderboard()
   }
 
+  const board = (
+    <div className="card">
+      <h2>Classement</h2>
+      <p className="muted">Argent gagné au total.</p>
+      <Leaderboard entries={leaderboard} currentUserId={ctx.player?.id} />
+    </div>
+  )
+
   if (playing && save) {
     return (
-      <Suspense fallback={<p className="muted">Chargement du moteur…</p>}>
-        <MiniGtaPlay ctx={ctx} save={save} best={playing.best} onExit={exit} />
-      </Suspense>
+      <div className="mini-gta">
+        <div className="card mini-gta-stage">
+          <Suspense fallback={<p className="muted">Chargement du moteur…</p>}>
+            <MiniGtaPlay ctx={ctx} save={save} best={playing.best} onExit={exit} />
+          </Suspense>
+        </div>
+        {board}
+      </div>
     )
   }
 
@@ -105,11 +116,7 @@ export default function MiniGtaGame({ ctx }: GameProps) {
         )}
         {error && <p className="error">{error}</p>}
       </div>
-      <div className="card">
-        <h2>Classement</h2>
-        <p className="muted">Argent gagné au total.</p>
-        <Leaderboard entries={leaderboard} currentUserId={ctx.player?.id} />
-      </div>
+      {board}
     </div>
   )
 }

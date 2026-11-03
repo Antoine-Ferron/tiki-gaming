@@ -37,7 +37,20 @@ export interface TestGameOptions {
   meshes?: boolean
 }
 
+/** Remplace Math.random par un générateur à graine fixe (mulberry32) : une simulation de test est reproductible. */
+export function seedRandom(seed = 1337) {
+  let a = seed >>> 0
+  Math.random = () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
 export async function createTestGame({ traffic = 0, pedestrians = 0, meshes = false }: TestGameOptions = {}) {
+  seedRandom()
   // Les textures dessinées au canvas sont créées dès l'import des modules du rendu.
   HTMLCanvasElement.prototype.getContext = (() => anything()) as unknown as HTMLCanvasElement['getContext']
   const { Game } = await import('../Game')

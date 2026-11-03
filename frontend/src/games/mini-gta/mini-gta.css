@@ -12,6 +12,20 @@
   text-align: center;
 }
 
+.mini-gta-stage {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mini-gta-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .mini-gta-save {
   display: grid;
   grid-template-columns: auto auto;
@@ -29,7 +43,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Partie en plein écran ---------- */
+/* ---------- Partie (dans la page, ou en plein écran avec le bouton) ---------- */
 
 .mini-gta-play {
   /* Couleurs propres au jeu (voir docs/charte-graphique.md, section Jeux) */
@@ -67,13 +81,21 @@
   --mini-gta-map-special-building: #9a8c6a;
   --mini-gta-map-waypoint: #c77dff;
 
-  position: fixed;
-  inset: 0;
-  z-index: 100;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--mini-gta-shadow);
   color: var(--text);
   user-select: none;
+}
+
+.mini-gta-play:fullscreen {
+  aspect-ratio: auto;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
 }
 
 .mini-gta-canvas {

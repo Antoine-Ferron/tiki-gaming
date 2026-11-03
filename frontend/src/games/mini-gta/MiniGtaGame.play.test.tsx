@@ -40,7 +40,7 @@ function renderGame(ctx: GameContext) {
 }
 
 describe('lancement d’une partie', () => {
-  test('Jouer lance la partie avec la sauvegarde et le record du joueur, en plein écran', async () => {
+  test('Jouer lance la partie dans la page, avec la sauvegarde, le record et le classement', async () => {
     const scores = new FakeScores(alice)
     await scores.insert('mini-gta', 1800, {})
     const ctx = createGameContext(miniGta, alice, fakeDeps({ scores }))
@@ -51,7 +51,9 @@ describe('lancement d’une partie', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Jouer' }))
 
     expect(await screen.findByText('Partie en cours : 500 $, record 1800')).toBeTruthy()
-    expect(requestFullscreen).toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Classement' })).toBeTruthy()
+    // Le plein écran se demande avec le bouton du jeu, jamais d'office.
+    expect(requestFullscreen).not.toHaveBeenCalled()
   })
 
   test('invité : pas de record', async () => {
@@ -60,17 +62,6 @@ describe('lancement d’une partie', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Jouer' }))
 
     expect(await screen.findByText('Partie en cours : 500 $, record aucun')).toBeTruthy()
-  })
-
-  test('plein écran refusé : la partie se lance quand même', async () => {
-    document.documentElement.requestFullscreen = vi.fn(async () => {
-      throw new Error('refusé')
-    })
-    renderGame(createGameContext(miniGta, null, fakeDeps()))
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Jouer' }))
-
-    expect(await screen.findByText(/Partie en cours/)).toBeTruthy()
   })
 
   test('record injoignable : la partie se lance et le message s’affiche au retour', async () => {

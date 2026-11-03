@@ -12,6 +12,7 @@ import { createProgressSession } from './state/session'
 import { useSettingsStore } from './state/settingsStore'
 import { useUiStore } from './state/uiStore'
 import { Hud } from './ui/Hud'
+import { FullscreenButton } from './ui/FullscreenButton'
 import { Menus } from './ui/Menus'
 import { loadMapColors } from './ui/palette'
 
@@ -24,7 +25,7 @@ type Props = {
 }
 
 /**
- * Partie en plein écran : branche la progression sur le GameContext (ctx.save, ctx.submitScore),
+ * Partie, dans la page ou en plein écran : branche la progression sur le GameContext (ctx.save, ctx.submitScore),
  * monte le rendu Three.js et rend la main à l'écran d'accueil quand le joueur quitte.
  */
 export default function MiniGtaPlay({ ctx, save, best, onExit }: Props) {
@@ -61,19 +62,25 @@ export default function MiniGtaPlay({ ctx, save, best, onExit }: Props) {
   }, [ctx])
 
   return (
-    <div className="mini-gta-play" ref={rootRef}>
-      <Canvas
-        className={grayscale ? 'mini-gta-canvas mini-gta-grayscale' : 'mini-gta-canvas'}
-        shadows={shadows !== 'off' ? { type: PCFShadowMap } : false}
-        dpr={[Math.min(1, resolution), Math.min(2, resolution * 1.5)]}
-        gl={{ antialias: !postfx, powerPreference: 'high-performance', toneMapping: NoToneMapping }}
-        camera={{ fov: 62, near: 0.1, far: 2000, position: [0, 5, 10] }}
-      >
-        <GameRoot />
-        {postfx && <PostFX />}
-      </Canvas>
-      <Hud />
-      <Menus />
-    </div>
+    <>
+      <div className="mini-gta-play" ref={rootRef}>
+        <Canvas
+          className={grayscale ? 'mini-gta-canvas mini-gta-grayscale' : 'mini-gta-canvas'}
+          shadows={shadows !== 'off' ? { type: PCFShadowMap } : false}
+          dpr={[Math.min(1, resolution), Math.min(2, resolution * 1.5)]}
+          gl={{ antialias: !postfx, powerPreference: 'high-performance', toneMapping: NoToneMapping }}
+          camera={{ fov: 62, near: 0.1, far: 2000, position: [0, 5, 10] }}
+        >
+          <GameRoot />
+          {postfx && <PostFX />}
+        </Canvas>
+        <Hud />
+        <Menus />
+      </div>
+      <div className="mini-gta-toolbar">
+        <FullscreenButton target={rootRef} />
+        <span className="muted">Clique dans le jeu pour diriger la caméra · Échap : pause</span>
+      </div>
+    </>
   )
 }

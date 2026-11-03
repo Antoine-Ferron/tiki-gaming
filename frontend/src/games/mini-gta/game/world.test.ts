@@ -120,11 +120,12 @@ describe('véhicules', () => {
   })
 
   test('une voiture retournée se remet sur ses roues', () => {
-    const car = game.player.vehicle!
+    const car = drive('sedan')
     game.player.exitVehicle(true)
     const p = car.body.translation()
     car.body.setRotation({ x: 1, y: 0, z: 0, w: 0 }, true)
-    car.body.setTranslation({ x: p.x, y: p.y + 1, z: p.z }, true)
+    // Retournée autour de son origine, la caisse passe sous l'origine : on la lâche sur le toit, de 3 m.
+    car.body.setTranslation({ x: p.x, y: p.y + 3, z: p.z }, true)
 
     t.simulate(5)
 
