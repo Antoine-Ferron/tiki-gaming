@@ -22,7 +22,7 @@ export async function applyMigrations(client, { dir = MIGRATIONS_DIR, log = () =
   const applied = new Set(rows.map((r) => r.version))
   const files = readdirSync(dir)
     .filter((f) => f.endsWith('.sql'))
-    .sort()
+    .sort((a, b) => a.localeCompare(b, 'en'))
   let count = 0
   for (const file of files) {
     const [version, ...rest] = file.replace(/\.sql$/, '').split('_')
