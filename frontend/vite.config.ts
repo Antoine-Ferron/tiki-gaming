@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { loadEnv } from 'vite'
 import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { securityHeaders } from './security-headers'
+import { securityHeaders } from './security-headers.ts'
 
 // Le backend Java est servi sur la même origine que le front (cookie de session first-party).
 const backend = { target: 'http://localhost:8080', xfwd: true }
