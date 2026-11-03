@@ -35,7 +35,12 @@ export type GameState = {
   peakY: number
   /** Hauteur du museau de la fossa (EF-5). */
   fossaY: number
+  /** Cause de la fin de partie, ou null tant que la partie continue (EF-6). */
+  over: GameOver | null
 }
+
+/** EF-6.1 : le maki est tombé sous l'écran ; EF-6.2 : la fossa l'a attrapé. */
+export type GameOver = 'fall' | 'fossa'
 
 /** Avance la partie d'une image. */
 export function step(state: GameState, input: Input): GameState {
