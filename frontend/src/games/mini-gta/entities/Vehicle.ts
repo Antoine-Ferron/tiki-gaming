@@ -42,6 +42,33 @@ export const DRIVING = {
   relaxation: 5.3,
 }
 
+/** Réglages de l'hélicoptère (valeurs propres au jeu). */
+export const HELI = {
+  /** Inclinaison maximale (rad) en tangage et en roulis. */
+  maxTilt: 0.7,
+  /** Poussée supplémentaire (en part du poids) au collectif à fond. */
+  collective: 0.95,
+  /** Traînée horizontale linéaire (1/s) et quadratique (1/m) : ~215 km/h nez baissé à fond. */
+  linearDrag: 0.06,
+  quadDrag: 0.001,
+  /** Frein de stationnaire (1/s) quand le manche est lâché. */
+  hoverBrake: 0.35,
+  verticalDrag: 0.5,
+}
+
+/** Réglages de l'avion. */
+export const PLANE = {
+  /** Poussée à plein gaz (m/s²). */
+  thrust: 11,
+  /** Coefficient de traînée quadratique (1/m) : vitesse de pointe ≈ √(thrust / drag) ≈ 380 km/h. */
+  drag: 0.001,
+  /** Vitesse (m/s) où la portance égale le poids. */
+  takeoff: 26,
+  maxLift: 1.15,
+  /** Lacet (rad/s) ailes à la verticale, en virage coordonné. */
+  bankTurn: 0.9,
+}
+
 /** Rapports de boîte, du premier (couple maximal) au dernier ; la force motrice leur est proportionnelle. */
 export const GEARS = [3.33, 2.72, 2.11, 1.51, 0.9]
 const GEAR_MEAN = 1.8
@@ -120,7 +147,7 @@ export class Vehicle {
     const desc = (mode === 'kinematic' ? RigidBodyDesc.kinematicPositionBased() : RigidBodyDesc.dynamic())
       .setTranslation(x, y, z)
       .setRotation(rot)
-      .setLinearDamping(spec.kind === 'heli' ? 0.4 : spec.kind === 'plane' ? 0.05 : 0) // voitures et motos : traînée explicite
+      .setLinearDamping(0) // traînées explicites (voitures, motos, hélico, avion)
       .setAngularDamping(spec.kind === 'car' || spec.kind === 'bike' ? 1.2 : 2.5)
       .setCanSleep(true)
     this.body = w.createRigidBody(desc)
@@ -387,20 +414,26 @@ export class Vehicle {
     this.engine = damp(this.engine, hasPilot ? 1 : 0, hasPilot ? 0.8 : 0.3, dt)
     const g = 9.81
     const collective = hasPilot ? c.lift : -1
-    const thrust = mass * g * this.engine * (1 + 0.65 * collective) * clamp(_up.y, 0, 1)
+    // La poussée compense l'inclinaison : nez baissé, l'hélico garde son altitude et convertit le surplus
+    // en vitesse (limité à 1/0,55 du poids pour une inclinaison extrême).
+    const tiltComp = 1 / Math.max(_up.y, 0.55)
+    const thrust = mass * g * this.engine * (1 + HELI.collective * collective) * (_up.y > 0 ? tiltComp : 0)
     body.applyImpulse({ x: _up.x * thrust * dt, y: _up.y * thrust * dt, z: _up.z * thrust * dt }, true)
     // Attitude: pitch/roll targets with auto-level. Axes: pitch-up about `right`, roll-right about `fwd`, yaw-right about `-up`.
     const pitchUp = Math.asin(clamp(_fwd.y, -1, 1))
     const rollRight = -Math.asin(clamp(_right.y, -1, 1))
     const eff = this.engine
-    const wP = (-c.pitch * 0.42 - pitchUp) * 3 * eff
-    const wR = (c.roll * 0.42 - rollRight) * 3 * eff
+    const wP = (-c.pitch * HELI.maxTilt - pitchUp) * 3 * eff
+    const wR = (c.roll * HELI.maxTilt - rollRight) * 3 * eff
     const wY = c.yaw * 1.4 * eff
     this.blendAngvel(wP, wR, wY, eff > 0.3 ? 0.15 : 0.02)
-    // Horizontal drag
+    // Traînée : quadratique (elle fixe la vitesse de croisière), plus un frein de stationnaire quand le
+    // pilote lâche le manche, pour qu'il reste facile de s'immobiliser.
     const lv = body.linvel()
-    const drag = 0.25 * mass * dt
-    body.applyImpulse({ x: -lv.x * drag, y: -lv.y * drag * 0.6, z: -lv.z * drag }, true)
+    const hv = Math.hypot(lv.x, lv.z)
+    const idle = Math.abs(c.pitch) < 0.1 && Math.abs(c.roll) < 0.1 && hasPilot
+    const kh = (HELI.linearDrag + (idle ? HELI.hoverBrake : 0) + HELI.quadDrag * hv) * mass * dt
+    body.applyImpulse({ x: -lv.x * kh, y: -lv.y * HELI.verticalDrag * mass * dt, z: -lv.z * kh }, true)
     this.rotorAngle += this.engine * 40 * dt
   }
 
@@ -411,15 +444,19 @@ export class Vehicle {
     else this.engine = damp(this.engine, 0, 1, dt)
     const lv = body.linvel()
     const v = this.speed
-    const thrust = this.engine * mass * 6.5
+    const thrust = this.engine * mass * PLANE.thrust
     body.applyImpulse({ x: _fwd.x * thrust * dt, y: _fwd.y * thrust * dt, z: _fwd.z * thrust * dt }, true)
-    // Lift ∝ v², capped; stall below ~20 m/s.
-    const takeoff = 28
-    const lift = mass * 9.81 * clamp((v / takeoff) ** 2, 0, 1.4)
+    // Portance ∝ v², plafonnée un peu au-dessus du poids : l'avion monte doucement à vitesse de croisière
+    // et le pilote règle l'altitude au tangage ; décrochage sous la vitesse de décollage.
+    const takeoff = PLANE.takeoff
+    // En virage, la portance augmente avec l'inclinaison pour garder l'altitude (facteur de charge).
+    const load = 1 / Math.max(Math.abs(_up.y), 0.55)
+    const lift = mass * 9.81 * clamp((v / takeoff) ** 2, 0, PLANE.maxLift * load)
     body.applyImpulse({ x: _up.x * lift * dt, y: _up.y * lift * dt, z: _up.z * lift * dt }, true)
     // Drag
     const sp = Math.hypot(lv.x, lv.y, lv.z)
-    const drag = 0.0016 * sp * mass * dt
+    // Traînée quadratique : elle égale la poussée à la vitesse de pointe.
+    const drag = PLANE.drag * sp * mass * dt
     body.applyImpulse({ x: -lv.x * drag, y: -lv.y * drag, z: -lv.z * drag }, true)
     // Align velocity with nose (weathervane), stronger at speed.
     if (sp > 12) {
@@ -431,12 +468,15 @@ export class Vehicle {
     }
     // Control surfaces (W = nose down, D = roll right, E = yaw right).
     const eff = clamp(v / takeoff, 0, 1.2)
-    if (eff > 0.15) this.blendAngvel(-c.pitch * 1.3 * eff, c.roll * 2.2 * eff, c.yaw * 0.5 * eff, 0.12)
+    // Virage coordonné : les ailes inclinées font tourner l'avion (lacet proportionnel à l'inclinaison).
+    const bank = -Math.asin(clamp(_right.y, -1, 1))
+    const turn = Math.sin(bank) * PLANE.bankTurn * Math.min(eff, 1)
+    if (eff > 0.15) this.blendAngvel(-c.pitch * 1.3 * eff, c.roll * 2.2 * eff, c.yaw * 0.5 * eff + turn, 0.12)
     // Ground: nose wheel steering + brakes
     for (let i = 0; i < vc.numWheels(); i++) {
       vc.setWheelEngineForce(i, 0)
       vc.setWheelSteering(i, i === 0 ? -c.yaw * 0.5 - c.roll * 0.3 : 0)
-      vc.setWheelBrake(i, c.handbrake ? 20 : 0.2)
+      vc.setWheelBrake(i, c.handbrake ? mass * 2.5 : 10)
     }
     vc.updateVehicle(dt, undefined, Groups.wheels, (col) => col.parent()?.handle !== body.handle)
     this.rotorAngle += (0.2 + this.engine) * 50 * dt
