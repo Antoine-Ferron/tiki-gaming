@@ -67,7 +67,7 @@ class PieceTest {
 
     @Test
     @DisplayName("une pièce a toujours une couleur et un type (invariant)")
-    void unePieceATojoursUneCouleurEtUnType() {
+    void unePieceAToujoursUneCouleurEtUnType() {
         // Act + Assert
         assertThatThrownBy(() -> new Piece(null, PieceType.KNIGHT)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new Piece(Color.WHITE, null)).isInstanceOf(IllegalArgumentException.class);
