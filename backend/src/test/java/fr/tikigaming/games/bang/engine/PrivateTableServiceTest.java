@@ -42,6 +42,21 @@ class PrivateTableServiceTest {
     }
 
     @Test
+    void theNumberOfStoredTablesIsBoundedAndExistingSeatsRemainAvailable() {
+        TableSeat first = tables.create("creator-0");
+        for (int account = 1; account < 1000; account++) {
+            tables.create("creator-" + account);
+        }
+
+        assertThatThrownBy(() -> tables.create("one-too-many"))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        assertThat(tables.join(first.code(), "creator-0")).isEqualTo(first);
+        assertThat(tables.join(first.code(), "joining-player")).isEqualTo(new TableSeat(first.code(), 2, 2));
+    }
+
+    @Test
     void threeDistinctAccountsTakeTheRemainingSeats() {
         String code = tables.create("creator").code();
 

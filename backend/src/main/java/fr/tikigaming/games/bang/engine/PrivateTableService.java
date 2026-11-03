@@ -14,11 +14,17 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class PrivateTableService {
 
+    private static final int MAX_TABLES = 1000;
+
     private final Map<String, List<String>> tables = new HashMap<>();
 
     public synchronized TableSeat create(String accountId) {
         if (tables.values().stream().anyMatch(players -> players.getFirst().equals(accountId))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Tu as déjà créé une table privée.");
+        }
+        if (tables.size() >= MAX_TABLES) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE, "Le serveur a atteint sa limite de tables privées.");
         }
         String code;
         do {

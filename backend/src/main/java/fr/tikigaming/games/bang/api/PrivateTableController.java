@@ -40,11 +40,16 @@ public class PrivateTableController {
     @Operation(
             summary = "Créer une table privée",
             description = "Le compte connecté occupe la première place. "
-                    + "Chaque compte peut créer une seule table pendant cette exécution du serveur.")
+                    + "Chaque compte peut créer une seule table pendant cette exécution du serveur, "
+                    + "dans une limite globale de 1 000 tables.")
     @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
     @ApiResponse(
             responseCode = "409",
             description = "Ce compte a déjà créé une table privée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "503",
+            description = "Le plafond global de tables privées est atteint",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "401",

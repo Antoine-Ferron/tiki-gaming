@@ -214,6 +214,11 @@ class PrivateTablesHttpTest {
                             + "'].content.*.schema['$ref']")
                     .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
         }
+        for (int error : List.of(409, 503)) {
+            docs.andExpect(
+                    jsonPath("$.paths['" + TABLES + "'].post.responses['" + error + "'].content.*.schema['$ref']")
+                            .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
+        }
     }
 
     private MvcResult joinAtTheSameTime(MockHttpServletRequestBuilder request, CyclicBarrier start) throws Exception {
