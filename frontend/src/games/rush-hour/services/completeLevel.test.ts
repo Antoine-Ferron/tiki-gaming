@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { GameError } from '../../errors'
 import { createGameContext } from '../../sdk'
 import { FakeScores, fakeDeps } from '../../testing/fakes'
 import type { Move } from '../domain/board'
@@ -94,6 +95,38 @@ describe('completeLevel', () => {
     await completeLevel(ctx, { level: 1, optimal: 2, moves: moves(2), hintsUsed: 0, durationMs: 1000 })
 
     // Assert
+    expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 1000 } })
+  })
+
+  test('envoi refusé (erreur définitive) : le record n’est pas sauvegardé, et rejouer le même score le renvoie', async () => {
+    // Arrange
+    const scores = new FakeScores(player)
+    const deps = fakeDeps({ scores })
+    const ctx = createGameContext(game, player, deps)
+    const run = { level: 1, optimal: 2, moves: moves(2), hintsUsed: 0, durationMs: 1000 }
+    scores.failNext(new GameError('forbidden', 'refusé'))
+    await expect(completeLevel(ctx, run)).rejects.toMatchObject({ code: 'forbidden' })
+
+    // Act : le joueur rejoue le niveau avec le même score
+    await completeLevel(ctx, run)
+
+    // Assert : le score total part bien, et le record est sauvegardé seulement maintenant
+    expect(scores.rows.map((r) => r.score)).toEqual([1000])
+    expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 1000 } })
+  })
+
+  test('coupure réseau : le score est gardé par le SDK pour plus tard, donc le record est sauvegardé', async () => {
+    // Arrange
+    const scores = new FakeScores(player)
+    const deps = fakeDeps({ scores })
+    const ctx = createGameContext(game, player, deps)
+    scores.failNext(new GameError('network', 'hors ligne'))
+
+    // Act
+    const finishing = completeLevel(ctx, { level: 1, optimal: 2, moves: moves(2), hintsUsed: 0, durationMs: 1000 })
+
+    // Assert : le joueur est prévenu, et sa progression n'est pas perdue
+    await expect(finishing).rejects.toMatchObject({ code: 'queued' })
     expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 1000 } })
   })
 })
