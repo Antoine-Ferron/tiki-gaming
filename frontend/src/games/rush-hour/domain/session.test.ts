@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { ManualClock } from '../testing/manualClock'
 import { GameSession } from './session'
 
 const E = '......'
@@ -8,7 +9,7 @@ const MAP = [E, '....A.', 'XX..A.', E, E, E]
 describe('GameSession : compteur de coups (P1, R6)', () => {
   test('une nouvelle partie commence à 0 coup', () => {
     // Act
-    const session = new GameSession(MAP)
+    const session = new GameSession(MAP, new ManualClock())
 
     // Assert
     expect(session.moveCount).toBe(0)
@@ -16,7 +17,7 @@ describe('GameSession : compteur de coups (P1, R6)', () => {
 
   test('un glissement compte 1 coup, quelle que soit la distance', () => {
     // Arrange
-    const session = new GameSession(MAP)
+    const session = new GameSession(MAP, new ManualClock())
 
     // Act : la voiture rouge avance de 2 cases d'un seul geste
     session.move('X', 2)
@@ -28,7 +29,7 @@ describe('GameSession : compteur de coups (P1, R6)', () => {
 
   test('un glissement impossible est refusé et ne compte pas', () => {
     // Arrange
-    const session = new GameSession(MAP)
+    const session = new GameSession(MAP, new ManualClock())
 
     // Act
     const move = () => session.move('X', 3)
@@ -42,7 +43,7 @@ describe('GameSession : compteur de coups (P1, R6)', () => {
 describe('GameSession : Annuler (P3)', () => {
   test('revient au plateau d’avant le dernier coup et retire ce coup', () => {
     // Arrange
-    const session = new GameSession(MAP)
+    const session = new GameSession(MAP, new ManualClock())
     const start = session.board
     session.move('X', 2)
 
@@ -56,7 +57,7 @@ describe('GameSession : Annuler (P3)', () => {
 
   test('n’annule que le dernier coup', () => {
     // Arrange
-    const session = new GameSession(MAP)
+    const session = new GameSession(MAP, new ManualClock())
     session.move('X', 1)
     const afterFirst = session.board
     session.move('X', 1)
@@ -71,7 +72,7 @@ describe('GameSession : Annuler (P3)', () => {
 
   test('sans coup joué, ne fait rien', () => {
     // Arrange
-    const session = new GameSession(MAP)
+    const session = new GameSession(MAP, new ManualClock())
     const start = session.board
 
     // Act
@@ -80,5 +81,56 @@ describe('GameSession : Annuler (P3)', () => {
     // Assert
     expect(session.board).toEqual(start)
     expect(session.moveCount).toBe(0)
+  })
+})
+
+describe('GameSession : victoire et chrono (P2, P6)', () => {
+  // Solution : le camion A monte d'une case, puis la voiture rouge sort (4 cases)
+  const win = (session: GameSession) => {
+    session.move('A', -1)
+    session.move('X', 4)
+  }
+
+  test('la partie est gagnée quand la voiture rouge touche la sortie', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+
+    // Act
+    win(session)
+
+    // Assert
+    expect(session.solved).toBe(true)
+  })
+
+  test('après la victoire, plus aucun déplacement ni annulation', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+    win(session)
+    const final = session.board
+
+    // Act
+    const move = () => session.move('A', 1)
+    session.undo()
+
+    // Assert
+    expect(move).toThrow('Partie terminée')
+    expect(session.board).toEqual(final)
+    expect(session.moveCount).toBe(2)
+  })
+
+  test('le chrono tourne pendant la partie et s’arrête à la victoire', () => {
+    // Arrange
+    const clock = new ManualClock(1_000)
+    const session = new GameSession(MAP, clock)
+
+    // Act
+    clock.advance(5_000)
+    session.move('A', -1)
+    clock.advance(2_500)
+    session.move('X', 4)
+    clock.advance(60_000)
+
+    // Assert
+    expect(session.elapsedMs).toBe(7_500)
   })
 })
