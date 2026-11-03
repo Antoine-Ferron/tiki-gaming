@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(assignableTypes = MastermindController.class)
 @Order(0)
 class MastermindExceptionHandler {
-    record ApiError(String error, @JsonInclude(JsonInclude.Include.NON_EMPTY) Map<String, String> fields) {}
+    record ApiError(
+            String error,
+            @JsonInclude(JsonInclude.Include.NON_EMPTY) Map<String, String> fields) {}
 
     @ExceptionHandler(MastermindNotFoundException.class)
     ResponseEntity<ApiError> handleNotFound(MastermindNotFoundException exception) {
