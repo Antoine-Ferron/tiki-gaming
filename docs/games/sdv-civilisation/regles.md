@@ -181,7 +181,8 @@ s'appliquent, avec ces simplifications :
 - **Pas de merveilles, de chaînes de construction, de guildes ni de prix réduits** pour l'instant.
 - **Commerce automatique** : une ressource manquante est achetée d'abord au voisin de gauche, puis à
   celui de droite, à 2 pièces l'unité, dans la limite de ce qu'ils produisent.
-- **Actions** : construire la carte choisie ou la défausser pour 3 pièces. Une carte jaune peut
+- **Actions** : construire la carte choisie ou la défausser pour 3 pièces ; la carte défaussée va sur la
+  pile de défausse, qui reçoit aussi la dernière carte de chaque main en fin d'âge. Une carte jaune peut
   rapporter des pièces dès sa construction.
 - **IA** (`ai.ts`) : elle construit la carte payable la plus intéressante (points, boucliers et
   science d'abord), sinon elle défausse la moins intéressante.
@@ -269,6 +270,8 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 - [ ] Salle d'attente et parties en ligne entre joueurs
 - [ ] Sauvegarde et reprise de partie
 - [x] Interface jouable : main face visible, construire ou défausser, dernier tour, fin de partie (`SdvCivilisationGame.tsx`)
+- [x] Repères visuels : à qui de jouer, cartes constructibles / achat aux voisins / impossibles, cartes jouées posées sur la table (animées), pile de défausse, journal du dernier tour et des conflits
+- [x] Règles du jeu à l'écran et plein écran (`RulesDialog.tsx`)
 - [ ] Plateau de merveille à l'écran
 
 ### Architecture testable

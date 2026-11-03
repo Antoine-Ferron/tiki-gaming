@@ -1,33 +1,32 @@
-import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import type { GameContext, GameProps, LeaderboardEntry } from '../types'
 import { randomShuffler, standardTrade } from './adapters'
 import { chooseAction } from './ai'
 import { fillWithBots } from './bots'
-import { CardFace } from './CardFace'
+import { CardFace, PlayedCard } from './CardFace'
+import { cardStatus } from './cardText'
 import { createGame, payment, playTurn, shields, TURNS_PER_AGE, type Action, type PlayerState } from './game'
+import { FullscreenIcon, RulesIcon } from './icons'
 import type { Shuffler } from './ports'
 import { Results } from './Results'
+import { RulesDialog } from './RulesDialog'
 import { ranking } from './score'
 import { neighbours } from './setup'
+import { TurnLog } from './TurnLog'
 import './sdv-civilisation.css'
 
 const AGES = ['I', 'II', 'III']
-// Rayons de l'ellipse sur laquelle sont posés les sièges, en % de la table.
-const SEAT_RADIUS_X = 41
-const SEAT_RADIUS_Y = 39
 const ME = 0
 
 /**
- * Place le siège `index` autour de la table : le joueur 0 en bas, les suivants dans le sens inverse des
- * aiguilles d'une montre, pour que le voisin de droite (index + 1) soit à droite à l'écran.
+ * Point de l'ellipse où poser l'élément du joueur `index` : le joueur 0 en bas, les suivants dans le sens inverse
+ * des aiguilles d'une montre, pour que le voisin de droite (index + 1) soit à droite à l'écran.
+ * Rayons en % de la table : sièges sur le bord, cartes jouées sur le tapis.
  */
-function seatPosition(index: number, count: number): CSSProperties {
+function around(index: number, count: number, radiusX: number, radiusY: number): CSSProperties {
   const angle = -Math.PI / 2 + (index * 2 * Math.PI) / count
-  return {
-    left: `${50 + SEAT_RADIUS_X * Math.cos(angle)}%`,
-    top: `${50 - SEAT_RADIUS_Y * Math.sin(angle)}%`,
-  }
+  return { left: `${50 + radiusX * Math.cos(angle)}%`, top: `${50 - radiusY * Math.sin(angle)}%` }
 }
 
 function seatLabel(seat: PlayerState, isMe: boolean, left: PlayerState, right: PlayerState): string {
@@ -64,10 +63,12 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
   const [game, setGame] = useState(newGame)
   // Position de la carte choisie dans la main (une main peut contenir deux exemplaires de la même carte).
   const [selected, setSelected] = useState<number | null>(null)
+  const [showRules, setShowRules] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
   const fullscreen = useFullscreen(boardRef)
+  const closeRules = useCallback(() => setShowRules(false), [])
 
   useEffect(() => {
     ctx
@@ -88,8 +89,10 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
   }, [ctx, game, me])
 
   const hand = game.hands[ME]
+  const costs = hand.map((card) => payment(game, ME, card, standardTrade))
   const selectedCard = selected === null ? undefined : hand[selected]
-  const cost = selectedCard && payment(game, ME, selectedCard, standardTrade)
+  const cost = selected === null ? undefined : costs[selected]
+  const { left, right } = neighbours(game.players, ME)
 
   function play(action: Action) {
     const actions = game.players.map((_, i) => (i === ME ? action : chooseAction(game, i, standardTrade)))
@@ -109,11 +112,28 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
           <p className="sdv-civilisation-status">
             Âge <strong>{AGES[game.age - 1]}</strong> · Tour <strong>{game.turn}</strong> / {TURNS_PER_AGE}
           </p>
-          {fullscreen.supported && (
-            <button type="button" className="small" onClick={fullscreen.toggle}>
-              {fullscreen.active ? 'Quitter le plein écran' : 'Plein écran'}
+          <div className="sdv-civilisation-tools">
+            <button
+              type="button"
+              className="sdv-civilisation-icon-button"
+              aria-label="Règles du jeu"
+              title="Règles du jeu"
+              onClick={() => setShowRules(true)}
+            >
+              <RulesIcon />
             </button>
-          )}
+            {fullscreen.supported && (
+              <button
+                type="button"
+                className="sdv-civilisation-icon-button"
+                aria-label={fullscreen.active ? 'Quitter le plein écran' : 'Plein écran'}
+                title={fullscreen.active ? 'Quitter le plein écran' : 'Plein écran'}
+                onClick={fullscreen.toggle}
+              >
+                <FullscreenIcon exit={fullscreen.active} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="sdv-civilisation-table">
@@ -135,22 +155,42 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
             </p>
           </div>
 
+          <div className="sdv-civilisation-discard" title="Pile de défausse">
+            <span className="sdv-civilisation-discard-stack" aria-hidden="true" />
+            <span>Défausse · {game.discards.length}</span>
+          </div>
+
+          {/* Cartes jouées au dernier tour, posées devant chaque joueur ; la clé relance l'animation à chaque tour. */}
+          {game.lastTurn.map((event) => (
+            <PlayedCard
+              key={`${game.age}-${game.turn}-${event.player}`}
+              card={event.card}
+              discarded={event.action === 'discard'}
+              style={around(event.player, game.players.length, 22, 22)}
+            />
+          ))}
+
           <ul className="sdv-civilisation-seats" aria-label="Table de jeu">
             {game.players.map((seat, index) => {
-              const { left, right } = neighbours(game.players, index)
+              const neighbour = neighbours(game.players, index)
               const isMe = index === ME
               return (
                 <li
                   key={seat.name}
                   className={`sdv-civilisation-seat${isMe ? ' sdv-civilisation-seat-me' : ''}`}
-                  style={seatPosition(index, game.players.length)}
-                  aria-label={seatLabel(seat, isMe, left, right)}
+                  style={around(index, game.players.length, 41, 39)}
+                  aria-label={seatLabel(seat, isMe, neighbour.left, neighbour.right)}
                 >
                   <div className="sdv-civilisation-seat-head" aria-hidden="true">
                     <span className="sdv-civilisation-avatar">
                       {seat.isBot ? 'IA' : seat.name.charAt(0).toUpperCase()}
                     </span>
                     <span className="sdv-civilisation-name">{isMe ? 'Toi' : seat.name}</span>
+                    {!game.over && (
+                      <span className={`sdv-civilisation-turn-badge${isMe ? ' sdv-civilisation-turn-badge-me' : ''}`}>
+                        {isMe ? 'À toi' : '✓ prête'}
+                      </span>
+                    )}
                   </div>
                   <div className="sdv-civilisation-stats" aria-hidden="true">
                     <span title="Pièces">
@@ -175,12 +215,23 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
           <Results ranked={ranking(game.players)} me={me} isGuest={ctx.isGuest} onReplay={replay} />
         ) : (
           <div className="sdv-civilisation-hand">
-            <p className="sdv-civilisation-hand-title">Ta main · choisis une carte</p>
+            <p className="sdv-civilisation-banner" role="status">
+              {selectedCard ? (
+                <>
+                  Construis ou défausse <strong>{selectedCard.name}</strong>.
+                </>
+              ) : (
+                <>
+                  <strong>À toi de jouer :</strong> choisis une carte de ta main. Les IA ont déjà choisi.
+                </>
+              )}
+            </p>
             <div className="sdv-civilisation-cards">
               {hand.map((card, i) => (
                 <CardFace
                   key={`${i}-${card.name}`}
                   card={card}
+                  status={cardStatus(costs[i])}
                   selected={i === selected}
                   offset={i - (hand.length - 1) / 2}
                   onSelect={() => setSelected(i)}
@@ -195,7 +246,6 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
                   onClick={() => play({ type: 'build', card: selectedCard.name })}
                 >
                   Construire {selectedCard.name}
-                  {cost.ok && cost.coins > 0 ? ` (${cost.coins} pièce${cost.coins > 1 ? 's' : ''})` : ''}
                 </button>
                 <button
                   type="button"
@@ -204,20 +254,25 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
                 >
                   Défausser (+3 pièces)
                 </button>
-                {!cost.ok && <p className="error">{cost.reason}</p>}
+                <p className={cost.ok ? 'muted' : 'error'}>
+                  {!cost.ok && cost.reason}
+                  {cost.ok && cost.coins === 0 && 'Gratuit : tu produis déjà tout ce qu’il faut.'}
+                  {cost.ok && cost.coins > 0 && (
+                    <>
+                      Tu paies {cost.coins} pièce{cost.coins > 1 ? 's' : ''}
+                      {cost.toLeft > 0 && `, dont ${cost.toLeft} à ${left.name}`}
+                      {cost.toRight > 0 && `, dont ${cost.toRight} à ${right.name}`}.
+                    </>
+                  )}
+                </p>
               </div>
             )}
           </div>
         )}
 
-        {game.log.length > 0 && (
-          <ul className="sdv-civilisation-log" aria-label="Dernier tour">
-            {game.log.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        )}
+        <TurnLog game={game} me={ME} />
         {error && <p className="error">{error}</p>}
+        {showRules && <RulesDialog onClose={closeRules} />}
       </div>
 
       <div className="card">

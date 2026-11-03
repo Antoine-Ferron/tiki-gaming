@@ -40,7 +40,9 @@ describe('SdvCivilisationGame', () => {
     click(/^Bains/)
 
     expect(screen.getByRole('button', { name: 'Construire Bains' }).hasAttribute('disabled')).toBe(true)
-    expect(screen.getByText('Il te manque des ressources.')).toBeTruthy()
+    // Le motif est annoncé sur la carte elle-même et sous les boutons d'action.
+    expect(screen.getByRole('button', { name: /^Bains .*Ressources manquantes$/ })).toBeTruthy()
+    expect(screen.getByText('Il te manque des ressources.', { selector: '.sdv-civilisation-actions p' })).toBeTruthy()
   })
 
   it('construit la carte choisie pendant que les IA jouent', () => {
@@ -49,8 +51,9 @@ describe('SdvCivilisationGame', () => {
     click(/^Chantier/)
     click('Construire Chantier')
 
-    expect(screen.getByText('alice construit Chantier')).toBeTruthy()
-    expect(within(screen.getByRole('list', { name: 'Dernier tour' })).getAllByRole('listitem')).toHaveLength(3)
+    const lastTurn = within(screen.getByRole('list', { name: 'Dernier tour' })).getAllByRole('listitem')
+    expect(lastTurn).toHaveLength(3)
+    expect(lastTurn[0].textContent).toBe('Tu as construit Chantier')
     expect(screen.getByText(/Tour/).textContent).toBe('Âge I · Tour 2 / 6')
   })
 
@@ -62,7 +65,8 @@ describe('SdvCivilisationGame', () => {
       .mockRejectedValueOnce(new GameError('network', 'Envoi impossible.'))
     const playToTheEnd = () => {
       while (!screen.queryByText('Fin de partie')) {
-        fireEvent.click(within(screen.getByText(/^Ta main/).parentElement!).getAllByRole('button')[0])
+        // Les cartes de la main sont les seuls boutons à bascule (aria-pressed).
+        fireEvent.click(screen.getAllByRole('button', { pressed: false })[0])
         click('Défausser (+3 pièces)')
       }
     }
@@ -75,6 +79,19 @@ describe('SdvCivilisationGame', () => {
 
     expect(await screen.findByText('alice', { selector: '.name' })).toBeTruthy()
     expect(submitScore).toHaveBeenCalledTimes(2)
+  })
+
+  it('affiche les règles et les referme avec Échap ou le bouton', () => {
+    setup()
+
+    click('Règles du jeu')
+    fireEvent.keyDown(document, { key: 'Enter' })
+    expect(screen.getByRole('dialog', { name: 'Règles du jeu' })).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    click('Règles du jeu')
+    click('Fermer')
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('chargé depuis le catalogue, assoit l’invité sous le nom « Toi » et affiche une erreur de classement', async () => {
