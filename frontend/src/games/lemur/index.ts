@@ -9,8 +9,7 @@ const lemur: GameDefinition = {
   mode: 'solo',
   // Score maximal plausible (EF-6.5) : plus d'une heure d'ascension sans faute. Aligné avec games.max_score.
   scoreLimits: { max: 100_000 },
-  // Interface provisoire : le template, remplacé une fois le domaine du jeu livré.
-  component: lazy(() => import('./ClickerGame')),
+  component: lazy(() => import('./LemurGame')),
 }
 
 export default lemur
