@@ -1,4 +1,4 @@
-package fr.tikigaming.mastermind;
+package fr.tikigaming.games.mastermind;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

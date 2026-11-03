@@ -16,11 +16,11 @@ export async function mockPlatform(page: Page, leaderboard: LeaderboardRow[] | {
   })
 
   await page.route('**/api/auth/session', (route) => route.fulfill({ json: { user: null } }))
-  await page.route('**/api/games', async (route) => {
+  await page.route('**/api/games/mastermind', async (route) => {
     if (route.request().method() === 'POST') return route.fulfill({ json: newGame() })
     return route.fallback()
   })
-  await page.route('**/api/games/**', async (route) => {
+  await page.route('**/api/games/mastermind/**', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
     if (route.request().url().endsWith('/restart')) return route.fulfill({ json: newGame() })
     return route.fallback()

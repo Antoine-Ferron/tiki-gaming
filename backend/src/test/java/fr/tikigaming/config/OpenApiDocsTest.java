@@ -58,10 +58,17 @@ class OpenApiDocsTest {
                     .andExpect(jsonPath("$.paths['/api/auth/password/reset'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/password'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/logout'].post.summary", not(emptyOrNullString())))
-                    .andExpect(jsonPath("$.paths", hasKey("/api/games")))
-                    .andExpect(jsonPath("$.paths", hasKey("/api/games/{id}")))
-                    .andExpect(jsonPath("$.paths", hasKey("/api/games/{id}/guesses")))
-                    .andExpect(jsonPath("$.paths", hasKey("/api/games/{id}/restart")));
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}/guesses")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}/restart")))
+                    .andExpect(jsonPath("$.paths['/api/auth/session'].get.tags", hasItem("Authentification")))
+                    .andExpect(jsonPath("$.paths['/api/games/mastermind'].post.tags", hasItem("mastermind")))
+                    .andExpect(jsonPath("$.paths['/api/games/mastermind/{id}'].get.tags", hasItem("mastermind")))
+                    .andExpect(
+                            jsonPath("$.paths['/api/games/mastermind/{id}/guesses'].post.tags", hasItem("mastermind")))
+                    .andExpect(
+                            jsonPath("$.paths['/api/games/mastermind/{id}/restart'].post.tags", hasItem("mastermind")));
         }
 
         @Test

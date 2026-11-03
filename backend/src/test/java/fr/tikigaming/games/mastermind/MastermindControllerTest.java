@@ -1,4 +1,4 @@
-package fr.tikigaming.mastermind;
+package fr.tikigaming.games.mastermind;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -40,7 +40,7 @@ class MastermindControllerTest {
     void createsGameWith201() throws Exception {
         when(service.create()).thenReturn(SNAPSHOT);
 
-        mvc.perform(post("/api/games"))
+        mvc.perform(post("/api/games/mastermind"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(ID.toString()))
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
@@ -52,7 +52,7 @@ class MastermindControllerTest {
     void getsGameWith200AndDoesNotExposeSecretInProgress() throws Exception {
         when(service.get(ID)).thenReturn(SNAPSHOT);
 
-        mvc.perform(get("/api/games/{id}", ID))
+        mvc.perform(get("/api/games/mastermind/{id}", ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.attemptsRemaining").value(10))
                 .andExpect(jsonPath("$.secret").doesNotExist());
@@ -76,7 +76,7 @@ class MastermindControllerTest {
                 0);
         when(service.guess(eq(ID), any())).thenReturn(afterGuess);
 
-        mvc.perform(post("/api/games/{id}/guesses", ID)
+        mvc.perform(post("/api/games/mastermind/{id}/guesses", ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                     {"colors":["red","blue","green","yellow"]}
@@ -88,7 +88,7 @@ class MastermindControllerTest {
 
     @Test
     void returns400ForInvalidGuess() throws Exception {
-        mvc.perform(post("/api/games/{id}/guesses", ID)
+        mvc.perform(post("/api/games/mastermind/{id}/guesses", ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                     {"colors":["red","blue","green"]}
@@ -101,7 +101,7 @@ class MastermindControllerTest {
     void returns404ForUnknownGame() throws Exception {
         when(service.get(ID)).thenThrow(new MastermindNotFoundException("Partie introuvable."));
 
-        mvc.perform(get("/api/games/{id}", ID))
+        mvc.perform(get("/api/games/mastermind/{id}", ID))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Partie introuvable."));
     }
@@ -110,7 +110,7 @@ class MastermindControllerTest {
     void returns409WhenGuessingFinishedGame() throws Exception {
         when(service.guess(eq(ID), any())).thenThrow(new MastermindFinishedException("La partie est déjà terminée."));
 
-        mvc.perform(post("/api/games/{id}/guesses", ID)
+        mvc.perform(post("/api/games/mastermind/{id}/guesses", ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                     {"colors":["red","blue","green","yellow"]}
@@ -123,7 +123,7 @@ class MastermindControllerTest {
     void restartsExistingGame() throws Exception {
         when(service.restart(ID)).thenReturn(SNAPSHOT);
 
-        mvc.perform(post("/api/games/{id}/restart", ID))
+        mvc.perform(post("/api/games/mastermind/{id}/restart", ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.attemptsUsed").value(0));
@@ -141,7 +141,7 @@ class MastermindControllerTest {
                 10);
         when(service.get(ID)).thenReturn(won);
 
-        mvc.perform(get("/api/games/{id}", ID))
+        mvc.perform(get("/api/games/mastermind/{id}", ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.score").value(10))
                 .andExpect(jsonPath("$.secret").isArray());

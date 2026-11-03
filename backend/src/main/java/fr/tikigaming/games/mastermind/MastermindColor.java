@@ -1,4 +1,4 @@
-package fr.tikigaming.mastermind;
+package fr.tikigaming.games.mastermind;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;

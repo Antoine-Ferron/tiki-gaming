@@ -1,4 +1,4 @@
-package fr.tikigaming.mastermind;
+package fr.tikigaming.games.mastermind;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -224,10 +224,10 @@ export default function MastermindGame({ ctx }: GameProps) {
         {error && <p className="error">{error}</p>}
       </div>
       <div className="card">
-        <h2 className="leaderboard-heading">
+        <h2 className="mastermind-leaderboard-heading">
           <span>Classement (meilleur score)</span>
           <span
-            className="info-tooltip"
+            className="mastermind-info-tooltip"
             tabIndex={0}
             role="img"
             aria-label="Règle de calcul des points"
