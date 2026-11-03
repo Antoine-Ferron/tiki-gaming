@@ -4,12 +4,17 @@ import { type Clock, Stopwatch } from './stopwatch'
 
 /** Une partie sur un plateau : plateau courant, coups joués et chrono. Aucune I/O, l'horloge est injectée. */
 export class GameSession {
-  private readonly history: { board: Board; move: Move }[] = []
+  private history: { board: Board; move: Move }[] = []
+  private readonly initial: Board
   private current: Board
-  private readonly stopwatch: Stopwatch
+  private stopwatch: Stopwatch
 
-  constructor(map: string[], clock: Clock) {
-    this.current = parseBoard(map)
+  constructor(
+    map: string[],
+    private readonly clock: Clock,
+  ) {
+    this.initial = parseBoard(map)
+    this.current = this.initial
     this.stopwatch = new Stopwatch(clock)
   }
 
@@ -48,5 +53,12 @@ export class GameSession {
     if (this.solved) return
     const last = this.history.pop()
     if (last) this.current = last.board
+  }
+
+  /** Recommence : plateau de départ, aucun coup, chrono relancé. Possible aussi après une victoire (Rejouer). */
+  reset(): void {
+    this.current = this.initial
+    this.history = []
+    this.stopwatch = new Stopwatch(this.clock)
   }
 }
