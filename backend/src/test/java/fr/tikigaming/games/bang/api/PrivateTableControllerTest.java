@@ -11,6 +11,7 @@ import fr.tikigaming.auth.AuthException;
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.games.bang.engine.PrivateTableService;
+import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.TableSeat;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -47,6 +48,26 @@ class PrivateTableControllerTest {
 
         verify(tables).join("A1B2C3D4E5F6", "second-account");
         assertThat(response).isEqualTo(seat);
+    }
+
+    @Test
+    void startingPassesTheCodeAndTheConnectedAccountIdToTheTables() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser("third-account", "joueur@example.com"));
+        when(tables.start("A1B2C3D4E5F6", "third-account")).thenReturn(new GameStarted("A1B2C3D4E5F6", 3));
+
+        GameStarted response = controller.start("A1B2C3D4E5F6", request);
+
+        verify(tables).start("A1B2C3D4E5F6", "third-account");
+        assertThat(response).isEqualTo(new GameStarted("A1B2C3D4E5F6", 3));
+    }
+
+    @Test
+    void anAnonymousStartNeverReachesTheTables() {
+        assertThatThrownBy(() -> controller.start("UNKNOWN", new MockHttpServletRequest()))
+                .isInstanceOfSatisfying(
+                        AuthException.class, error -> assertThat(error.status()).isEqualTo(401));
+        verifyNoInteractions(tables);
     }
 
     @Test
