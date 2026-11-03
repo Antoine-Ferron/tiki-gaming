@@ -4,11 +4,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-/** Lecture d'une position en notation FEN. */
+/**
+ * Lecture et écriture d'une position en notation FEN (6 champs séparés par un espace) : placement, trait, droits de
+ * roque, case de prise en passant, compteur de demi-coups, numéro du coup.
+ */
 public final class Fen {
+
+    private static final int BOARD_SIZE = 8;
 
     private Fen() {}
 
+    /** Lit une FEN ; toute FEN mal écrite ou position impossible lève {@link IllegalArgumentException}. */
     public static Position parse(String fen) {
         if (fen == null) {
             throw new IllegalArgumentException("FEN absente");
@@ -17,86 +23,122 @@ public final class Fen {
         if (fields.length != 6) {
             throw new IllegalArgumentException("Une FEN a 6 champs : " + fen);
         }
-        String[] ranks = fields[0].split("/");
-        if (ranks.length != 8) {
-            throw new IllegalArgumentException("Une FEN a 8 rangées : " + fields[0]);
-        }
-        Map<Square, Piece> pieces = new HashMap<>();
-        for (int i = 0; i < ranks.length; i++) {
-            int rank = 7 - i; // la FEN commence par la rangée 8
-            int file = 0;
-            for (char c : ranks[i].toCharArray()) {
-                if (Character.isDigit(c)) {
-                    file += c - '0';
-                } else {
-                    if (file > 7) {
-                        throw new IllegalArgumentException("Rangée de plus de 8 cases : " + ranks[i]);
-                    }
-                    pieces.put(new Square(file, rank), Piece.fromFen(c));
-                    file++;
-                }
-            }
-            if (file != 8) {
-                throw new IllegalArgumentException("Une rangée a 8 cases : " + ranks[i]);
-            }
-        }
-        if (!fields[1].equals("w") && !fields[1].equals("b")) {
-            throw new IllegalArgumentException("Trait inconnu : " + fields[1]);
-        }
-        Color turn = fields[1].equals("w") ? Color.WHITE : Color.BLACK;
-        String c = fields[2];
-        if (!c.equals("-") && !c.matches("K?Q?k?q?")) {
-            throw new IllegalArgumentException("Droits de roque inconnus : " + c);
-        }
-        CastlingRights castling =
-                new CastlingRights(c.contains("K"), c.contains("Q"), c.contains("k"), c.contains("q"));
-        Optional<Square> enPassant = fields[3].equals("-") ? Optional.empty() : Optional.of(Square.of(fields[3]));
-        if (enPassant.isPresent()
-                && enPassant.get().rank() != 2
-                && enPassant.get().rank() != 5) {
-            throw new IllegalArgumentException("Prise en passant hors des rangées 3 et 6 : " + fields[3]);
-        }
-        int halfmoveClock = Integer.parseInt(fields[4]);
-        int fullmoveNumber = Integer.parseInt(fields[5]);
-        if (halfmoveClock < 0 || fullmoveNumber < 1) {
-            throw new IllegalArgumentException("Compteurs invalides : " + fields[4] + " " + fields[5]);
-        }
-        return new Position(pieces, turn, castling, enPassant, halfmoveClock, fullmoveNumber);
+        return new Position(
+                parsePlacement(fields[0]),
+                parseTurn(fields[1]),
+                parseCastling(fields[2]),
+                parseEnPassant(fields[3]),
+                parseCounter(fields[4], 0),
+                parseCounter(fields[5], 1));
     }
 
+    /** Écrit une position en FEN. */
     public static String toFen(Position position) {
-        StringBuilder fen = new StringBuilder();
-        for (int rank = 7; rank >= 0; rank--) {
+        return placementToFen(position)
+                + (position.turn() == Color.WHITE ? " w " : " b ")
+                + castlingToFen(position.castling())
+                + ' '
+                + position.enPassant().map(Square::toString).orElse("-")
+                + ' '
+                + position.halfmoveClock()
+                + ' '
+                + position.fullmoveNumber();
+    }
+
+    private static Map<Square, Piece> parsePlacement(String placement) {
+        String[] ranks = placement.split("/");
+        if (ranks.length != BOARD_SIZE) {
+            throw new IllegalArgumentException("Une FEN a 8 rangées : " + placement);
+        }
+        Map<Square, Piece> pieces = new HashMap<>();
+        for (int i = 0; i < BOARD_SIZE; i++) {
+            parseRank(ranks[i], BOARD_SIZE - 1 - i, pieces); // la FEN commence par la rangée 8
+        }
+        return pieces;
+    }
+
+    private static void parseRank(String rankText, int rank, Map<Square, Piece> pieces) {
+        int file = 0;
+        for (char c : rankText.toCharArray()) {
+            if (Character.isDigit(c)) {
+                file += c - '0';
+            } else {
+                // Une pièce au-delà de la colonne h est refusée par l'invariant de Square.
+                pieces.put(new Square(file, rank), Piece.fromFen(c));
+                file++;
+            }
+        }
+        if (file != BOARD_SIZE) {
+            throw new IllegalArgumentException("Une rangée a 8 cases : " + rankText);
+        }
+    }
+
+    private static Color parseTurn(String turn) {
+        return switch (turn) {
+            case "w" -> Color.WHITE;
+            case "b" -> Color.BLACK;
+            default -> throw new IllegalArgumentException("Trait inconnu : " + turn);
+        };
+    }
+
+    private static CastlingRights parseCastling(String castling) {
+        if (!castling.equals("-") && !castling.matches("K?Q?k?q?")) {
+            throw new IllegalArgumentException("Droits de roque inconnus : " + castling);
+        }
+        return new CastlingRights(
+                castling.contains("K"), castling.contains("Q"), castling.contains("k"), castling.contains("q"));
+    }
+
+    private static Optional<Square> parseEnPassant(String enPassant) {
+        if (enPassant.equals("-")) {
+            return Optional.empty();
+        }
+        Square square = Square.of(enPassant);
+        if (square.rank() != 2 && square.rank() != 5) {
+            throw new IllegalArgumentException("Prise en passant hors des rangées 3 et 6 : " + enPassant);
+        }
+        return Optional.of(square);
+    }
+
+    private static int parseCounter(String counter, int minimum) {
+        int value = Integer.parseInt(counter);
+        if (value < minimum) {
+            throw new IllegalArgumentException("Compteur invalide : " + counter);
+        }
+        return value;
+    }
+
+    private static String placementToFen(Position position) {
+        StringBuilder placement = new StringBuilder();
+        for (int rank = BOARD_SIZE - 1; rank >= 0; rank--) {
             int empty = 0;
-            for (int file = 0; file < 8; file++) {
+            for (int file = 0; file < BOARD_SIZE; file++) {
                 Optional<Piece> piece = position.pieceAt(new Square(file, rank));
                 if (piece.isEmpty()) {
                     empty++;
-                } else {
-                    if (empty > 0) {
-                        fen.append(empty);
-                        empty = 0;
-                    }
-                    fen.append(piece.get().toFen());
+                    continue;
                 }
+                if (empty > 0) {
+                    placement.append(empty);
+                    empty = 0;
+                }
+                placement.append(piece.get().toFen());
             }
             if (empty > 0) {
-                fen.append(empty);
+                placement.append(empty);
             }
             if (rank > 0) {
-                fen.append('/');
+                placement.append('/');
             }
         }
-        fen.append(position.turn() == Color.WHITE ? " w " : " b ");
-        CastlingRights c = position.castling();
-        String castling = (c.whiteKingside() ? "K" : "")
-                + (c.whiteQueenside() ? "Q" : "")
-                + (c.blackKingside() ? "k" : "")
-                + (c.blackQueenside() ? "q" : "");
-        fen.append(castling.isEmpty() ? "-" : castling);
-        fen.append(' ').append(position.enPassant().map(Square::toString).orElse("-"));
-        fen.append(' ').append(position.halfmoveClock());
-        fen.append(' ').append(position.fullmoveNumber());
-        return fen.toString();
+        return placement.toString();
+    }
+
+    private static String castlingToFen(CastlingRights castling) {
+        String text = (castling.whiteKingside() ? "K" : "")
+                + (castling.whiteQueenside() ? "Q" : "")
+                + (castling.blackKingside() ? "k" : "")
+                + (castling.blackQueenside() ? "q" : "");
+        return text.isEmpty() ? "-" : text;
     }
 }
