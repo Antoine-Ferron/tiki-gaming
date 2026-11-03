@@ -14,6 +14,10 @@ export interface Board {
 
 /** Le plateau fait SIZE × SIZE cases. */
 export const SIZE = 6
+/** La voiture à faire sortir. */
+export const RED_CAR = 'X'
+/** Ligne de la sortie (0 = la 1ʳᵉ ligne) : la voiture rouge sort par le bord droit de cette ligne. */
+export const EXIT_ROW = 2
 
 type Cell = { row: number; col: number }
 
@@ -33,6 +37,10 @@ export function parseBoard(map: string[]): Board {
   })
 
   const vehicles = [...cellsById].map(([id, cells]) => toVehicle(id, cells))
+  const red = vehicles.find((v) => v.id === RED_CAR)
+  if (red?.orientation !== 'H' || red.row !== EXIT_ROW) {
+    throw new Error(`La voiture rouge ${RED_CAR} doit être horizontale, sur la ${EXIT_ROW + 1}ᵉ ligne`)
+  }
   return { vehicles }
 }
 
