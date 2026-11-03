@@ -126,7 +126,7 @@ Tous les tests Vitest doivent passer, **et** la couverture doit rester au-dessus
 | Périmètre | Lignes | Branches | Fonctions | Instructions |
 |-----------|--------|----------|-----------|--------------|
 | Cœur du lobby : `src/games/domain/**`, `errors.ts`, `scoreQueue.ts`, `sdk.ts`, `src/lib/validation.ts` | 95 % | 95 % | 95 % | 95 % |
-| Tout `src/` | 40 % | 44 % | 47 % | 42 % |
+| Tout `src/` | 78 % | 80 % | 75 % | 79 % |
 
 Le seuil global est placé juste sous la couverture actuelle : il empêche toute régression. On le relève quand la
 couverture monte, on ne le baisse jamais.
@@ -158,8 +158,23 @@ Une seule commande Maven enchaîne, dans l'ordre :
 ## 8. Tests d'intégration base de données (`Integration`)
 
 ```bash
+npm run db:check           # dans frontend/, sans Docker : noms et versions des migrations
 npm run test:integration   # dans frontend/, Docker requis
 ```
+
+Deux vérifications passent d'abord, sans base de données :
+
+- **noms et versions** (`npm run db:check`) : chaque fichier suit `AAAAMMJJHHMMSS_nom.sql` (créé par
+  `supabase migration new <nom>`) et deux fichiers n'ont jamais la même version. Le runner (`npm run db:migrate`)
+  identifie une migration par sa seule version : avec un doublon, le second fichier serait considéré comme déjà
+  appliqué et ignoré sans bruit en production. Le runner refuse aussi un fichier dont la version est déjà appliquée
+  en base sous un autre nom, avant d'appliquer quoi que ce soit ;
+- **migrations déjà mergées inchangées** (sur une PR) : une migration présente sur la branche cible est déjà, ou
+  sera, appliquée en production, et le runner ne rejoue jamais une version connue. La modifier, la renommer ou la
+  supprimer n'aurait aucun effet en base : on crée une nouvelle migration.
+
+L'ordre des dates, lui, n'a pas d'importance : une migration plus ancienne que la dernière appliquée est appliquée
+normalement.
 
 **Testcontainers** démarre un vrai PostgreSQL (`supabase/postgres` 17.11, la même image que la production) dans un
 conteneur éphémère, rejoue **toutes les migrations** de `supabase/migrations/` sur une base vide, puis vérifie
@@ -308,6 +323,7 @@ aux PR suivantes.
 | Mutation | tests qui exécutent le code sans vérifier le résultat | renforcer les assertions sur les mutants survivants du rapport |
 | E2E | parcours ou libellé modifié, contraste insuffisant | ouvrir `rapport-e2e`, corriger l'interface ou le test |
 | Integration | migration qui échoue sur base vide, RLS modifiée | lancer `npm run test:integration` en local (Docker) |
+| Integration, migrations | deux migrations de même version, migration mergée modifiée | renommer avec `supabase migration new <nom>` ; pour une migration mergée, en créer une nouvelle |
 | Security | dépendance vulnérable | mettre à jour la dépendance (souvent une PR Dependabot existe déjà) |
 | Fusion impossible, checks au vert | branche en retard sur `dev` | `git pull --rebase origin dev` puis repousser |
 

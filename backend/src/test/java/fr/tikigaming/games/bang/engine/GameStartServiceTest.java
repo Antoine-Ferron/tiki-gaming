@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 class GameStartServiceTest {
     private final InitialDeal deal = mock(InitialDeal.class);
@@ -46,8 +45,8 @@ class GameStartServiceTest {
 
         assertThatThrownBy(() -> tables.start(code, "player-1"))
                 .isInstanceOfSatisfying(
-                        ResponseStatusException.class,
-                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT));
 
         verifyNoInteractions(deal);
         assertThat(tables.game(code)).isNull();
@@ -59,8 +58,8 @@ class GameStartServiceTest {
 
         assertThatThrownBy(() -> tables.start(code, "outsider"))
                 .isInstanceOfSatisfying(
-                        ResponseStatusException.class,
-                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN));
 
         verifyNoInteractions(deal);
         assertThat(tables.game(code)).isNull();
