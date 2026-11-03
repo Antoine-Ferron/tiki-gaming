@@ -4,8 +4,14 @@ public record Square(int file, int rank) {
 
     private static final char FIRST_FILE = 'a';
     private static final char FIRST_RANK = '1';
+    private static final int BOARD_SIZE = 8;
 
     public static Square of(String notation) {
-        return new Square(notation.charAt(0) - FIRST_FILE, notation.charAt(1) - FIRST_RANK);
+        int file = notation.charAt(0) - FIRST_FILE;
+        int rank = notation.charAt(1) - FIRST_RANK;
+        if (file < 0 || file >= BOARD_SIZE || rank < 0 || rank >= BOARD_SIZE) {
+            throw new IllegalArgumentException("Case hors de l'échiquier : " + notation);
+        }
+        return new Square(file, rank);
     }
 }
