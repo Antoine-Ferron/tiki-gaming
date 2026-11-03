@@ -1,6 +1,6 @@
 package fr.tikigaming.games.prismine;
 
-import fr.tikigaming.games.GameException;
+import fr.tikigaming.config.ApiException;
 import fr.tikigaming.games.prismine.Engine.Outcome;
 import java.time.Duration;
 import java.time.Instant;
@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 
 /**
  * Règles d'une expédition : huile de lampe, tirs, validation de la carte et score. Fonctions pures : l'heure et le
@@ -79,9 +80,13 @@ public final class Expedition {
     }
 
     public static Run fire(Run run, Floors.Floor floor, int entry) {
-        if (entry < 0 || entry >= Engine.entryCount(floor.spec().size())) throw new GameException(400, UNKNOWN_ENTRY);
-        if (knownEntries(run.probes(), floor).contains(entry)) throw new GameException(409, ALREADY_KNOWN);
-        if (run.oil() < PROBE_COST) throw new GameException(409, LAMP_EMPTY);
+        if (entry < 0 || entry >= Engine.entryCount(floor.spec().size())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, UNKNOWN_ENTRY);
+        }
+        if (knownEntries(run.probes(), floor).contains(entry)) {
+            throw new ApiException(HttpStatus.CONFLICT, ALREADY_KNOWN);
+        }
+        if (run.oil() < PROBE_COST) throw new ApiException(HttpStatus.CONFLICT, LAMP_EMPTY);
         List<Run.Probe> probes = new ArrayList<>(run.probes());
         probes.add(new Run.Probe(entry, false));
         return new Run(
@@ -112,7 +117,7 @@ public final class Expedition {
     public static Verdict validate(
             Run run, Floors.Floor floor, String guess, long nextSeed, long randomness, Instant now) {
         int size = floor.spec().size();
-        if (!Engine.isValidGrid(guess, size)) throw new GameException(400, WRONG_SIZE);
+        if (!Engine.isValidGrid(guess, size)) throw new ApiException(HttpStatus.BAD_REQUEST, WRONG_SIZE);
 
         List<Integer> contradicted = new ArrayList<>();
         List<ProbeResult> results = results(run.probes(), floor);

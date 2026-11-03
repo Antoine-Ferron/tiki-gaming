@@ -1,6 +1,6 @@
 package fr.tikigaming.games.prismine;
 
-import fr.tikigaming.games.GameException;
+import fr.tikigaming.config.ApiException;
 import fr.tikigaming.games.prismine.Expedition.Verdict;
 import java.time.Clock;
 import java.time.Duration;
@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 
 /**
  * Serveur arbitre de Prismine : la carte cachée reste ici, le joueur n'envoie que ses tirs et sa carte. Ne dépend que
@@ -142,6 +143,6 @@ public class PrismineService {
     private Run load(UUID id, String userId) {
         return runs.find(id)
                 .filter(run -> run.userId() == null || Objects.equals(run.userId(), userId))
-                .orElseThrow(() -> new GameException(404, RUN_NOT_FOUND));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, RUN_NOT_FOUND));
     }
 }

@@ -1,10 +1,11 @@
 package fr.tikigaming.games.prismine;
 
+import fr.tikigaming.config.ApiException;
 import fr.tikigaming.config.TikiProperties;
-import fr.tikigaming.games.GameException;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
@@ -36,7 +37,7 @@ public class PrismineSupabase {
                             res.getStatusCode().value(),
                             req.getMethod(),
                             req.getURI().getPath());
-                    throw new GameException(502, UNAVAILABLE);
+                    throw new ApiException(HttpStatus.BAD_GATEWAY, UNAVAILABLE);
                 })
                 .build();
     }
@@ -47,7 +48,7 @@ public class PrismineSupabase {
             return request.get();
         } catch (ResourceAccessException e) {
             log.error("Supabase injoignable", e);
-            throw new GameException(502, UNAVAILABLE);
+            throw new ApiException(HttpStatus.BAD_GATEWAY, UNAVAILABLE);
         }
     }
 

@@ -9,7 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
-import fr.tikigaming.games.GameException;
+import fr.tikigaming.config.ApiException;
 import fr.tikigaming.games.prismine.Expedition.Verdict;
 import fr.tikigaming.games.prismine.TestDoubles.InMemoryRunRepository;
 import fr.tikigaming.games.prismine.TestDoubles.InMemoryScoreRegistry;
@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 /**
  * TU — service de Prismine, isolé de tout I/O par ses contrats (un test par étape de l'atelier) :
@@ -60,9 +61,9 @@ class PrismineServiceTest {
 
         // Une écriture faite sur une version déjà remplacée (requête concurrente) est refusée.
         assertThatThrownBy(() -> runs.update(run.nextVersion()))
-                .isInstanceOf(GameException.class)
+                .isInstanceOf(ApiException.class)
                 .extracting("status")
-                .isEqualTo(409);
+                .isEqualTo(HttpStatus.CONFLICT);
 
         // Une seule expédition en cours : par compte, ou par session d'invité.
         Run next = service.start(PLAYER);

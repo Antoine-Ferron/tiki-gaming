@@ -1,6 +1,6 @@
 package fr.tikigaming.games.prismine;
 
-import fr.tikigaming.games.GameException;
+import fr.tikigaming.config.ApiException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.http.HttpStatus;
 
 /**
  * Doublures des contrats de Prismine, partagées par les tests du service et du contrôleur. Vocabulaire (voir
@@ -70,7 +71,7 @@ final class TestDoubles {
         public void update(Run run) {
             Row stored = rows.get(run.id());
             if (stored == null || stored.run().version() != run.version() - 1) {
-                throw new GameException(409, CONFLICT);
+                throw new ApiException(HttpStatus.CONFLICT, CONFLICT);
             }
             rows.put(run.id(), new Row(run, clock.instant()));
         }

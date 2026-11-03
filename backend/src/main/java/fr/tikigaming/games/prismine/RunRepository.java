@@ -14,7 +14,7 @@ public interface RunRepository {
 
     /**
      * Remplace l'expédition si elle est encore à la version {@code run.version() - 1}, sinon lève une
-     * {@code GameException} 409 ({@link #CONFLICT}) : deux requêtes simultanées ne s'écrasent jamais.
+     * {@code ApiException} 409 ({@link #CONFLICT}) : deux requêtes simultanées ne s'écrasent jamais.
      */
     void update(Run run);
 

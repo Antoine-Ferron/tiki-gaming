@@ -1,11 +1,12 @@
 package fr.tikigaming.games.prismine;
 
-import fr.tikigaming.games.GameException;
+import fr.tikigaming.config.ApiException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
@@ -59,7 +60,7 @@ public class SupabaseRunRepository implements RunRepository {
                 .body(Map.of("version", run.version(), "state", mapper.valueToTree(run)))
                 .retrieve()
                 .body(JsonNode.class));
-        if (updated == null || updated.isEmpty()) throw new GameException(409, CONFLICT);
+        if (updated == null || updated.isEmpty()) throw new ApiException(HttpStatus.CONFLICT, CONFLICT);
     }
 
     @Override

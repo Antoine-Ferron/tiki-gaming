@@ -2,7 +2,6 @@ package fr.tikigaming.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import fr.tikigaming.auth.AuthException;
-import fr.tikigaming.games.GameException;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Comparator;

@@ -6,7 +6,7 @@ import static fr.tikigaming.games.prismine.Engine.SE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import fr.tikigaming.games.GameException;
+import fr.tikigaming.config.ApiException;
 import fr.tikigaming.games.prismine.Expedition.Verdict;
 import java.time.Instant;
 import java.util.List;
@@ -48,10 +48,10 @@ class ExpeditionTest {
 
         // Gauche 3 est connue : c'est la sortie du premier tir.
         assertThatThrownBy(() -> Expedition.fire(run, ONE_PRISM, GAUCHE_3))
-                .isInstanceOf(GameException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Ce bord a déjà été exploré : regarde le journal.");
         assertThatThrownBy(() -> Expedition.fire(newRun().withOil(0), ONE_PRISM, HAUT_D))
-                .isInstanceOf(GameException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Ta lampe est vide : valide ta carte ou termine l'expédition.");
     }
 

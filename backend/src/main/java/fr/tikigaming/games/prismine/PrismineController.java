@@ -3,7 +3,7 @@ package fr.tikigaming.games.prismine;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
-import fr.tikigaming.games.GameException;
+import fr.tikigaming.config.ApiException;
 import fr.tikigaming.games.prismine.Expedition.ProbeResult;
 import fr.tikigaming.games.prismine.Expedition.Verdict;
 import io.swagger.v3.oas.annotations.Operation;
@@ -212,7 +212,7 @@ public class PrismineController {
         try {
             return UUID.fromString(id);
         } catch (IllegalArgumentException e) {
-            throw new GameException(404, PrismineService.RUN_NOT_FOUND);
+            throw new ApiException(HttpStatus.NOT_FOUND, PrismineService.RUN_NOT_FOUND);
         }
     }
 

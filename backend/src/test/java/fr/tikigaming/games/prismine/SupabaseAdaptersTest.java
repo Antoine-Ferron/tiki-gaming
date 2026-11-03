@@ -9,8 +9,8 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import fr.tikigaming.config.ApiException;
 import fr.tikigaming.config.TikiProperties;
-import fr.tikigaming.games.GameException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -94,10 +95,10 @@ class SupabaseAdaptersTest {
         assertThat(runs.find(ID)).contains(run);
         runs.update(run.nextVersion());
         assertThatThrownBy(() -> runs.update(run.nextVersion()))
-                .isInstanceOf(GameException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage(RunRepository.CONFLICT)
                 .extracting("status")
-                .isEqualTo(409);
+                .isEqualTo(HttpStatus.CONFLICT);
         runs.delete(ID);
         runs.deleteByUser("joueur-1");
         runs.deleteInactiveSince(Instant.parse("2026-11-02T10:00:00Z"));
@@ -105,10 +106,10 @@ class SupabaseAdaptersTest {
         // Score : inséré au nom du joueur ; une panne de Supabase devient une 502 lisible par le joueur.
         scores.record("joueur-1", 150, Map.of("depth", 2));
         assertThatThrownBy(() -> scores.record("joueur-1", 150, Map.of()))
-                .isInstanceOf(GameException.class)
+                .isInstanceOf(ApiException.class)
                 .hasMessage("Le serveur de Prismine rencontre un problème. Réessaie plus tard.")
                 .extracting("status")
-                .isEqualTo(502);
+                .isEqualTo(HttpStatus.BAD_GATEWAY);
         server.verify();
     }
 }
