@@ -23,7 +23,6 @@ import {
   fire,
   knownEntries,
   newRun,
-  parseSave,
   probeResults,
   validate,
   type Probe,
@@ -32,6 +31,7 @@ import {
   type Save,
 } from './expedition'
 import { outcomeText, plural, solutionText } from './labels'
+import { createSaver, loadExpedition, submitRunScore } from './session'
 import './prismine.css'
 
 /**
@@ -50,27 +50,6 @@ type Screen =
   | { kind: 'over'; floor: Floor; probes: Probe[]; run: Run; reason: 'lamp-out' | 'quit' }
 
 const SAVE_ERROR = "Ta progression n'a pas pu être sauvegardée. Vérifie ta connexion."
-
-/** Écrit les sauvegardes l'une après l'autre ; pendant une écriture, seule la plus récente attend. */
-function createSaver(ctx: GameContext, onError: () => void) {
-  let pending: Save | null = null
-  let writing = false
-  return async (data: Save) => {
-    pending = data
-    if (writing) return
-    writing = true
-    while (pending) {
-      const next: Save = pending
-      pending = null
-      try {
-        await ctx.save(next)
-      } catch {
-        onError()
-      }
-    }
-    writing = false
-  }
-}
 
 function piecesText(crystals: number, obsidians: number, withObsidian: boolean) {
   const text = plural(crystals, 'cristal', 'cristaux')
@@ -120,10 +99,10 @@ export default function PrismineGame({ ctx }: GameProps) {
 
   useEffect(() => {
     let cancelled = false
-    ctx.loadSave().then(
-      (raw) => {
+    loadExpedition(ctx).then(
+      (loaded) => {
         if (cancelled) return
-        setStore({ ctx, save: parseSave(raw) })
+        setStore({ ctx, save: loaded })
         setScreen({ kind: 'menu' })
         setLoadFailed(false)
       },
@@ -224,12 +203,11 @@ export default function PrismineGame({ ctx }: GameProps) {
     if (!save || !floor) return
     commit(endRun(save, ended))
     show({ kind: 'over', floor, probes: ended.probes, run: ended, reason })
-    if (ended.score > 0) {
-      ctx
-        .submitScore(ended.score, { depth: ended.depth, probes: ended.totalProbes, errors: ended.totalErrors })
-        .then(refreshScores)
-        .catch(() => setError("Ton score n'a pas pu être enregistré. Vérifie ta connexion."))
-    }
+    submitRunScore(ctx, ended)
+      .then((ranked) => {
+        if (ranked) refreshScores()
+      })
+      .catch(() => setError("Ton score n'a pas pu être enregistré. Vérifie ta connexion."))
   }
 
   const panel = {
