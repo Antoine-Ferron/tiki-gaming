@@ -59,9 +59,16 @@ function topOf(branch: Branch): number {
 /** EF-1.2, EF-1.3 : la branche dont le maki a franchi le dessus en descendant pendant l'image, s'il y en a une. */
 function findLanding(branches: Branch[], before: Maki, after: Maki): Branch | undefined {
   if (after.vy >= 0) return undefined
-  return branches.find(
-    (b) => after.x >= b.x && after.x <= b.x + BRANCH_WIDTH && before.y >= topOf(b) && after.y <= topOf(b),
-  )
+  return branches.find((b) => isAbove(after.x, b) && before.y >= topOf(b) && after.y <= topOf(b))
+}
+
+/** EF-1.6 : une partie du corps du maki est au-dessus de la branche, y compris de l'autre côté d'un bord relié. */
+function isAbove(makiX: number, branch: Branch): boolean {
+  const half = MAKI_SIZE / 2
+  return [-WORLD_WIDTH, 0, WORLD_WIDTH].some((shift) => {
+    const x = makiX + shift
+    return x + half > branch.x && x - half < branch.x + BRANCH_WIDTH
+  })
 }
 
 /** Le maki se pose sur la branche et repart à la vitesse d'un saut normal. */
