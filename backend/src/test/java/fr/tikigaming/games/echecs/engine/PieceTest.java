@@ -2,8 +2,12 @@ package fr.tikigaming.games.echecs.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class PieceTest {
 
@@ -17,5 +21,29 @@ class PieceTest {
         // Assert
         assertThat(blanc).isEqualTo(new Piece(Color.WHITE, PieceType.KNIGHT));
         assertThat(noir).isEqualTo(new Piece(Color.BLACK, PieceType.KNIGHT));
+    }
+
+    static Stream<Arguments> lettresFen() {
+        return Stream.of(
+                Arguments.of('P', Color.WHITE, PieceType.PAWN),
+                Arguments.of('N', Color.WHITE, PieceType.KNIGHT),
+                Arguments.of('B', Color.WHITE, PieceType.BISHOP),
+                Arguments.of('R', Color.WHITE, PieceType.ROOK),
+                Arguments.of('Q', Color.WHITE, PieceType.QUEEN),
+                Arguments.of('K', Color.WHITE, PieceType.KING),
+                Arguments.of('p', Color.BLACK, PieceType.PAWN),
+                Arguments.of('n', Color.BLACK, PieceType.KNIGHT),
+                Arguments.of('b', Color.BLACK, PieceType.BISHOP),
+                Arguments.of('r', Color.BLACK, PieceType.ROOK),
+                Arguments.of('q', Color.BLACK, PieceType.QUEEN),
+                Arguments.of('k', Color.BLACK, PieceType.KING));
+    }
+
+    @ParameterizedTest(name = "{0} → {2} {1}")
+    @MethodSource("lettresFen")
+    @DisplayName("chacune des 12 lettres FEN donne la bonne pièce")
+    void chaqueLettreFenDonneLaBonnePiece(char lettre, Color couleur, PieceType type) {
+        // Act + Assert
+        assertThat(Piece.fromFen(lettre)).isEqualTo(new Piece(couleur, type));
     }
 }
