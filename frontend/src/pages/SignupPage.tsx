@@ -27,7 +27,7 @@ export default function SignupPage() {
       const { confirmationRequired } = await apiPost<{ confirmationRequired: boolean }>('/auth/signup', result.data)
       if (confirmationRequired) return setPendingConfirmation(true) // confirmation email activée sur le projet
       await refreshSession()
-      navigate('/', { replace: true })
+      void navigate('/', { replace: true })
     } catch (err) {
       const { fields, message } = toFormErrors(err, ['username', 'email', 'password'])
       setFieldErrors(fields)

@@ -32,7 +32,7 @@ export default function LoginPage() {
     try {
       await apiPost('/auth/login', result.data)
       await refreshSession()
-      navigate(from, { replace: true })
+      void navigate(from, { replace: true })
     } catch (err) {
       const { fields, message } = toFormErrors(err, ['email', 'password'])
       setFieldErrors(fields)

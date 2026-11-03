@@ -7,7 +7,7 @@ export function Layout() {
 
   async function handleSignOut() {
     await signOut()
-    navigate('/')
+    void navigate('/')
   }
 
   return (
