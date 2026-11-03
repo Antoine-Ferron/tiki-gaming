@@ -371,6 +371,10 @@ jobs:
       - uses: SonarSource/sonarqube-scan-action@v8
         if: env.SONAR_TOKEN != ''
         with:
-          args: -Dsonar.organization=eanathos -Dsonar.qualitygate.wait=true
+          # Le plan SonarCloud ne donne le statut du quality gate que pour les PRs et la branche principale (main) :
+          # sur un push sur dev, on analyse sans attendre le gate (sinon le scanner sort en erreur).
+          args: >-
+            -Dsonar.organization=eanathos
+            -Dsonar.qualitygate.wait=${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
       - if: env.SONAR_TOKEN == ''
         run: 'echo "SONAR_TOKEN absent : analyse SonarQube Cloud ignorée (voir quality/README.md)."'

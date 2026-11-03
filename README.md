@@ -83,6 +83,7 @@ CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, r
 | [docs/architecture.md](docs/architecture.md)         | Briques, flux d'authentification, structure du code, modèle et catégories des jeux, sécurité |
 | [docs/modele-donnees.md](docs/modele-donnees.md)     | Schéma, tables, RLS et droits, fonctions, migrations        |
 | [docs/charte-graphique.md](docs/charte-graphique.md) | Couleurs, typographie, composants, règles pour les jeux, rédaction |
+| [docs/ci.md](docs/ci.md)                             | La CI étape par étape : ce qui est vérifié, les seuils, que faire quand un check échoue |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                   | Branches, PR, commits, création d'un jeu                    |
 | [quality/README.md](quality/README.md)               | Qualimétrie : SonarQube, charge k6 (P95), scan DAST ZAP     |
 
