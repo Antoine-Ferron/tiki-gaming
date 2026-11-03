@@ -72,7 +72,7 @@ class PrivateTablesHttpTest {
         for (MockHttpSession session : List.of(originalSession, sessionFor("creator"))) {
             postAs(TABLES, session)
                     .andExpect(status().isConflict())
-                    .andExpect(jsonPath("$.error").value("Tu as déjà créé une table privée."));
+                    .andExpect(jsonPath("$.error").value("Tu as déjà une table privée ouverte."));
         }
         postAs(TABLES + "/" + code + "/join", sessionFor("creator"))
                 .andExpect(status().isOk())

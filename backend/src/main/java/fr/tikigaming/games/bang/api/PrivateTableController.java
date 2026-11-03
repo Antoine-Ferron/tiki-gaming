@@ -22,9 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/games/bang/tables")
-@Tag(
-        name = "bang",
-        description = "Tables privées BANG! à quatre places, conservées en mémoire pendant cette exécution.")
+@Tag(name = "bang", description = "Tables privées BANG! à quatre places, en mémoire, retirées après 1 h sans activité.")
 public class PrivateTableController {
 
     /** Corps JSON du serveur embarqué après un refus CSRF avec Accept: application/json. */
@@ -40,12 +38,12 @@ public class PrivateTableController {
     @Operation(
             summary = "Créer une table privée",
             description = "Le compte connecté occupe la première place. "
-                    + "Chaque compte peut créer une seule table pendant cette exécution du serveur, "
-                    + "dans une limite globale de 1 000 tables.")
+                    + "Chaque compte a au plus une table ouverte, dans une limite globale de 1 000 tables. "
+                    + "Une table sans création ni jonction pendant 1 h est retirée.")
     @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
     @ApiResponse(
             responseCode = "409",
-            description = "Ce compte a déjà créé une table privée",
+            description = "Ce compte a déjà une table privée ouverte",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "503",
