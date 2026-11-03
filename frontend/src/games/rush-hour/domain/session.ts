@@ -28,4 +28,10 @@ export class GameSession {
     this.history.push({ board: this.current, move: { id, delta } })
     this.current = next
   }
+
+  /** Annule le dernier coup : revient au plateau d'avant. Sans coup joué, ne fait rien. */
+  undo(): void {
+    const last = this.history.pop()
+    if (last) this.current = last.board
+  }
 }
