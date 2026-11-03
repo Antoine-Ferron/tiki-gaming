@@ -2,6 +2,8 @@ import { Suspense, useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
 import { GameTags } from '@/components/GameTags'
+import { gameAccess } from '@/games/domain/access'
+import { GameErrorBoundary } from '@/games/GameErrorBoundary'
 import { getGame } from '@/games/registry'
 import { createGameContext } from '@/games/sdk'
 import NotFoundPage from './NotFoundPage'
@@ -12,20 +14,27 @@ export default function GamePage() {
   const { user, profile, loading } = useAuth()
   const game = getGame(slug)
 
-  // Connecté : on attend le profil. Invité : contexte local.
-  const ready = !loading && (!user || !!profile)
+  const access = gameAccess({
+    gameExists: !!game,
+    mode: game?.mode ?? 'solo',
+    authLoading: loading,
+    loggedIn: !!user,
+    profileLoaded: !!profile,
+  })
+  const playable = access === 'guest' || access === 'player'
   const ctx = useMemo(
     () =>
-      game && ready
-        ? createGameContext(game.slug, profile ? { id: profile.id, username: profile.username } : null)
+      game && playable
+        ? createGameContext(
+            game,
+            access === 'player' && profile ? { id: profile.id, username: profile.username } : null,
+          )
         : null,
-    [game, ready, profile],
+    [game, playable, access, profile],
   )
 
-  if (!game) return <NotFoundPage />
-  if (!loading && !user && game.mode !== 'solo') {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  }
+  if (access === 'not-found' || !game) return <NotFoundPage />
+  if (access === 'login') return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (!ctx) return <p className="muted">Chargement…</p>
 
   const GameComponent = game.component
@@ -44,9 +53,11 @@ export default function GamePage() {
           </Link>
         </p>
       )}
-      <Suspense fallback={<p className="muted">Chargement du jeu…</p>}>
-        <GameComponent ctx={ctx} />
-      </Suspense>
+      <GameErrorBoundary key={game.slug} gameSlug={game.slug}>
+        <Suspense fallback={<p className="muted">Chargement du jeu…</p>}>
+          <GameComponent ctx={ctx} />
+        </Suspense>
+      </GameErrorBoundary>
     </div>
   )
 }
