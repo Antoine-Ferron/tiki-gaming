@@ -20,6 +20,9 @@ export type DriverReaction = 'flee' | 'fight' | 'speedOff'
 export type EntryPhase = 'approach' | 'force' | 'pull' | 'enter'
 
 /** Durées (s) des étapes de l'entrée dans un véhicule. */
+/** Vitesses de déplacement à pied (m/s) et accélération au sol (m/s²). */
+export const MOVE = { crouch: 2, aim: 3, run: 5.5, sprint: 10, accel: 24 }
+
 export const ENTRY_TIMES = { force: 1.5, pull: 1.2, enter: 0.9, approachMax: 3.5, speedOffDelay: 0.6 }
 
 export interface VehicleEntry {
@@ -119,7 +122,7 @@ export class Player {
     this.aiming = !busy && (input.buttons & 2) !== 0
     this.sprinting = input.isDown('ShiftLeft') && !this.aiming
     a.anim.crouch = !busy && input.isDown('KeyC') && this.body.grounded
-    const speed = a.anim.crouch ? 1.6 : this.aiming ? 2.4 : this.sprinting ? 6.8 : 3.2
+    const speed = a.anim.crouch ? MOVE.crouch : this.aiming ? MOVE.aim : this.sprinting ? MOVE.sprint : MOVE.run
     // Camera-relative movement.
     const yaw = cam.yaw
     const sx = Math.sin(yaw)
@@ -131,7 +134,7 @@ export class Player {
       dx /= len
       dz /= len
     }
-    const accel = this.body.grounded ? 14 : 3
+    const accel = this.body.grounded ? MOVE.accel : 3
     this.moveVx = damp(this.moveVx, dx * speed, accel, dt)
     this.moveVz = damp(this.moveVz, dz * speed, accel, dt)
     const jump = !busy && input.wasPressed('Space') && !a.anim.crouch

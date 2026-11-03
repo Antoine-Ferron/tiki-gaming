@@ -62,7 +62,8 @@ export class CharacterAnimator {
 
   update(dt: number, s: AnimState) {
     this.time += dt
-    const stride = 1.3 + clamp((s.speed - 2) / 4, 0, 1) * 1.1
+    // Foulée qui s'allonge jusqu'au sprint (~3 m à 10 m/s), pour que les pieds ne glissent pas.
+    const stride = 1.3 + clamp((s.speed - 2) / 8, 0, 1) * 1.7
     this.phase += (s.speed / stride) * Math.PI * dt
     const ph = this.phase
     const walk = clamp(s.speed / 1.4, 0, 1)

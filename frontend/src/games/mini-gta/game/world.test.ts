@@ -315,6 +315,24 @@ describe('joueur', () => {
     expect(game.player.state).toBe('foot')
   })
 
+  test.each([
+    ['court', false, 5],
+    ['sprinte', true, 9],
+  ])('à pied, le joueur %s vite', (_, sprint, min) => {
+    if (game.player.state === 'vehicle') game.player.exitVehicle(true)
+    game.player.respawnAt(-600, 0.3, -1000)
+    t.simulate(0.2)
+    game.cameraCtl.yaw = 0
+    const p0 = game.player.position.clone()
+
+    if (sprint) t.key('ShiftLeft', true)
+    t.hold('KeyW', 2)
+    t.key('ShiftLeft', false)
+
+    // Vitesse moyenne sur 2 s, accélération comprise.
+    expect(game.player.position.distanceTo(p0) / 2).toBeGreaterThan(min)
+  })
+
   test('le joueur marche, court et s’accroupit', () => {
     const p0 = game.player.position.clone()
 
