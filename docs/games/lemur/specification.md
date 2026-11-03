@@ -60,13 +60,14 @@ Valeurs de départ, **à équilibrer** en jouant : les tests vérifient les règ
 
 ### Fonctionnalité 1 — Le maki
 
-| ID     | Exigence                                                                                     |
-| ------ | -------------------------------------------------------------------------------------------- |
-| EF-1.1 | La partie commence avec le maki sur une branche centrée au pied du baobab (hauteur 0 m).     |
-| EF-1.2 | Le maki rebondit automatiquement quand il touche le dessus d'une branche **en descendant**.  |
-| EF-1.3 | Il traverse les branches **en montant**.                                                     |
-| EF-1.4 | Le joueur dirige le maki à gauche ou à droite ; sans commande, il ne bouge pas latéralement. |
-| EF-1.5 | Les bords sont reliés : sortir d'un côté fait réapparaître le maki de l'autre.               |
+| ID     | Exigence                                                                                                                                                                         |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| EF-1.1 | La partie commence avec le maki sur une branche centrée au pied du baobab (hauteur 0 m).                                                                                         |
+| EF-1.2 | Le maki rebondit automatiquement quand il touche le dessus d'une branche **en descendant**.                                                                                      |
+| EF-1.3 | Il traverse les branches **en montant**.                                                                                                                                         |
+| EF-1.4 | Le joueur dirige le maki à gauche ou à droite ; sans commande, il ne bouge pas latéralement.                                                                                     |
+| EF-1.5 | Les bords sont reliés : sortir d'un côté fait réapparaître le maki de l'autre.                                                                                                   |
+| EF-1.6 | Le maki (30 px de large) touche une branche dès qu'une partie de son corps est au-dessus d'elle, y compris à cheval sur un bord relié ; un simple contact d'arête ne suffit pas. |
 
 ```gherkin
 # language: fr
