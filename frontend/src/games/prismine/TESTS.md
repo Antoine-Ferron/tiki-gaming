@@ -1,60 +1,61 @@
 # Tests de Prismine
 
-Les tests suivent l'[approche TDD](../../../../CONTRIBUTING.md#approche-tdd) : chaque règle du jeu est décrite
-par un test. Ils tournent avec Vitest, comme le reste du front :
+Prismine est arbitré par le serveur Java : la carte cachée, les règles et le score vivent dans
+`backend/src/main/java/fr/tikigaming/games/prismine/`. Le front React envoie les tirs et la carte du joueur, et
+ne reçoit la vraie carte d'un étage qu'une fois celui-ci terminé.
+
+**20 tests : 14 unitaires (70 %), 6 d'intégration (30 %).** Ils suivent l'[approche TDD](../../../../CONTRIBUTING.md#approche-tdd).
 
 ```bash
-cd frontend
-npm test                                   # tous les tests du front (relancés par la CI)
-npx vitest run src/games/prismine          # seulement ceux de Prismine
-npx vitest src/games/prismine              # mode surveillance pendant le développement
+# Backend, dans backend/ (JUnit 5 + AssertJ + Mockito)
+mvn test -Dtest='fr.tikigaming.games.prismine.*Test'
+
+# Front, dans frontend/ (Vitest)
+npx vitest run src/games/prismine
 ```
 
-## Organisation
+- **TU (test unitaire)** : une seule unité, isolée du reste par des doublures ou parce qu'elle est pure.
+- **TI (test d'intégration)** : plusieurs vrais modules ensemble (HTTP, JSON, session, sauvegarde), avec un faux
+  pour ce qui est externe (Supabase, serveur).
 
-| Fichier                        | Type        | Ce qui est testé                                                   | Doublures            |
-| ------------------------------ | ----------- | ------------------------------------------------------------------ | -------------------- |
-| `engine.test.ts`               | unitaire    | Trajet des faisceaux, génération des étages, pose des pièces       | aucune (code pur)    |
-| `expedition.test.ts`           | unitaire    | Huile, validation de la carte, score, lecture de la sauvegarde     | bouchon du hasard    |
-| `labels.test.ts`               | unitaire    | Textes affichés au joueur (accords, formulations)                  | aucune               |
-| `session.test.ts`              | unitaire    | Échanges avec la plateforme : sauvegarde, reprise, envoi du score  | bouchons, simulacres |
-| `prismine.integration.test.ts` | intégration | Expéditions complètes, de l'ouverture du jeu au score classé       | faux `GameContext`   |
-| `test-doubles.ts`              | outil       | Faux `GameContext` en mémoire et promesse contrôlable (`deferred`) | —                    |
+## Backend : `backend/src/test/java/fr/tikigaming/games/prismine/`
 
-- **Tests unitaires (TU)** : une seule unité à la fois, isolée de tout le reste. Les règles du jeu (`engine.ts`,
-  `expedition.ts`) sont des fonctions pures : on les appelle directement, sans doublure.
-- **Tests d'intégration (TI)** : les vrais modules travaillent ensemble (`engine` → `expedition` → `session`) et
-  parlent à un faux `GameContext`. On vérifie ce que la plateforme reçoit réellement : sauvegardes successives,
-  reprise après rechargement, score et métadonnées envoyés, différence joueur connecté / invité.
+| #   | Type | Fichier                  | Test                                                                   | Ce qu'il vérifie                                                                                                   |
+| --- | ---- | ------------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1   | TU   | `EngineTest`             | `prismTurnsTheBeamOnItsHypotenuseAndSendsItBackOnItsFlatSides`         | Un prisme dévie le faisceau d'un quart de tour sur sa face en biais, le renvoie d'où il vient sur ses faces plates |
+| 2   | TU   | `EngineTest`             | `beamStartsWhiteMixesPrismColorsAndIsAbsorbedByObsidian`               | Faisceau blanc au départ, mélange additif des couleurs, l'obsidienne absorbe, la couleur compte dans le résultat   |
+| 3   | TU   | `FloorsTest`             | `generatesDeterministicSolvableFloorsWithReversibleBeams`              | Sur 400 étages : même graine = même étage, bonnes pièces et couleurs, toutes atteignables, trajets réversibles     |
+| 4   | TU   | `ExpeditionTest`         | `probeCostsOilAndIsRefusedOnAKnownEntryOrWithAnEmptyLamp`              | Un tir coûte de l'huile ; refusé sur un bord déjà exploré ou lampe vide                                            |
+| 5   | TU   | `ExpeditionTest`         | `validationClearsChargesContradictsOrPutsTheLampOut`                   | Les 4 verdicts : étage réussi (points, huile), carte contredite (mauvaise couleur), carte fausse, lampe éteinte    |
+| 6   | TU   | `PrismineServiceTest`    | `stubbedSeedsAndInMemoryRegistryDriveTheRun`                           | **Atelier 1-2** : bouchon `StubSeedSource` (graines figées) et faux `InMemoryRunRepository`                        |
+| 7   | TU   | `PrismineServiceTest`    | `recordsTheScoreWithItsDurationForAPlayerButNotForAGuest`              | **Atelier 2** : faux `InMemoryScoreRegistry` ; score + durée classés pour un joueur, rien pour un invité           |
+| 8   | TU   | `PrismineServiceTest`    | `auditsAnExpeditionOnlyOnceWhenFloorsAreClearedTooFast`                | **Atelier 3** : simulacre Mockito `AuditNotifier` appelé une seule fois, jamais à un rythme humain                 |
+| 9   | TU   | `PrismineServiceTest`    | `auditThresholdIsCrossedOneMillisecondBelowFiveSecondsWithoutSleeping` | **Atelier 4** : horloge `MutableClock` ; 5 s ne déclenche rien, 4,999 s déclenche l'audit, sans `sleep`            |
+| 10  | TI   | `PrismineControllerTest` | `playsAFullExpeditionAndRecordsTheScore`                               | Partie complète en HTTP (MockMvc) : création sans fuite de la carte, tir, refus 409, étage réussi, fin, puis 404   |
+| 11  | TI   | `PrismineControllerTest` | `refusesAnUnreadableMapAndHidesTheRunFromAnotherPlayer`                | Carte illisible → 400 avec le message du champ ; expédition invisible pour un autre joueur (404)                   |
+| 12  | TI   | `SupabaseAdaptersTest`   | `savesReadsBackAndDeletesARunWithTheServiceRoleKey`                    | Requêtes PostgREST de `prismine_runs` (clé service_role, upsert, lecture JSON, suppression) sur un serveur simulé  |
+| 13  | TI   | `SupabaseAdaptersTest`   | `insertsTheScoreAndTurnsASupabaseFailureIntoABadGateway`               | Insertion du score dans `scores` ; une panne Supabase devient une erreur 502 lisible par le joueur                 |
 
-## Doublures de test
+Doublures dans `TestDoubles.java` : `StubSeedSource`, `InMemoryRunRepository`, `InMemoryScoreRegistry`,
+`MutableClock` ; l'audit est un `mock(AuditNotifier.class)` créé dans le test.
 
-Le jeu ne parle à la plateforme que par le `GameContext` (`ctx`). Les fonctions de `session.ts` ne demandent que
-la partie du `ctx` dont elles ont besoin (`Pick<GameContext, 'save'>`…) : un test peut donc leur passer une doublure
-minimale à la place du vrai SDK, sans Supabase ni réseau.
+## Front : `frontend/src/games/prismine/`
 
-| Doublure             | Rôle                                          | Exemple                                                                               |
-| -------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------- |
-| **Bouchon** (stub)   | Renvoie une réponse préparée, sans logique    | `loadSave: async () => null` (nouveau joueur) ; `() => 0` à la place de `Math.random` |
-| **Simulacre** (mock) | Fonction espionne dont on vérifie les appels  | `submitScore = vi.fn()` puis `toHaveBeenCalledExactlyOnceWith(450, {...})`            |
-| **Faux** (fake)      | Implémentation simplifiée mais qui fonctionne | `createFakeContext()` : sauvegarde en mémoire, passée en JSON comme en base           |
+| #   | Type | Fichier                        | Test                            | Ce qu'il vérifie                                                                                           |
+| --- | ---- | ------------------------------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 14  | TU   | `engine.test.ts`               | trace                           | Le tracé de la carte du joueur suit les mêmes règles que le serveur, couleur après chaque point du trajet  |
+| 15  | TU   | `engine.test.ts`               | nextPiece                       | Clic sur une case : prisme suivant dans la couleur choisie, obsidienne si l'étage en cache, repeint        |
+| 16  | TU   | `expedition.test.ts`           | sauvegarde                      | Lecture de la sauvegarde (valide, illisible, ancienne version), carte reprise, statistiques de fin         |
+| 17  | TU   | `api.test.ts`                  | createPrismineApi               | Chaque action part vers le bon endpoint Java avec le bon corps (transport simulé)                          |
+| 18  | TU   | `labels.test.ts`               | textes                          | Noms des couleurs, description d'un tir, solution lue aux lecteurs d'écran                                 |
+| 19  | TI   | `prismine.integration.test.ts` | expédition d'un joueur connecté | Sauvegarde → rechargement → reprise auprès du serveur → fin ; aucun score envoyé par le navigateur         |
+| 20  | TI   | `prismine.integration.test.ts` | reprise impossible              | Expédition oubliée (404) ou sauvegarde ancienne : on repart de zéro sans perdre les stats ; panne remontée |
 
-`createFakeContext({ player })` reproduit le comportement du SDK : avec `player: null` (invité), `submitScore`
-renvoie `false` et rien n'est classé. Chacune de ses méthodes est aussi un simulacre `vi.fn()`.
-
-`deferred()` crée une promesse qu'on résout à la main : elle fige une sauvegarde « en cours d'écriture » pour vérifier
-qu'une ancienne sauvegarde n'écrase jamais une plus récente (`session.test.ts`).
-
-## Reproductibilité
-
-- Un étage est entièrement défini par sa profondeur et sa graine : les tests utilisent des graines fixes.
-- Les tests de propriétés (`engine.test.ts`) rejouent 400 étages générés : réversibilité des trajets, nombre de
-  pièces, pièces toutes atteignables par un faisceau.
-- Le seul hasard des règles (le tir révélé après une erreur) est injecté en paramètre de `validate` : les tests le
-  remplacent par un bouchon.
+Doublures dans `test-doubles.ts` : faux `GameContext` en mémoire (`createFakeContext`), bouchon du serveur
+(`stubApi`, qui échoue sur tout appel non préparé) et `runView` pour construire une réponse du serveur.
 
 ## Non couvert
 
-- Le rendu React (`PrismineGame.tsx`, `Board.tsx`, `ProbeLog.tsx`) : le front n'a pas d'environnement DOM de test
-  (jsdom / Testing Library). L'interface a été vérifiée dans un navigateur (partie complète, clavier, 360 px).
-- Le vrai SDK (`sdk.ts`) et Supabase : ils appartiennent à la plateforme.
+- Le rendu React (`PrismineGame.tsx`, `Board.tsx`, `ProbeLog.tsx`) : le front n'a pas d'environnement DOM de test.
+- `createSaver` (ordre des sauvegardes concurrentes) n'a plus de test dédié : seul son cas simple passe par les TI.
+- Le vrai Supabase : les adaptateurs sont testés contre un serveur PostgREST simulé.

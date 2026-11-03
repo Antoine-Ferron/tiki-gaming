@@ -1,6 +1,6 @@
 import { entryName, sameOutcome, trace, type Grid } from './engine'
-import type { ProbeResult } from './expedition'
-import { plural } from './labels'
+import type { ProbeResult } from './api'
+import { lightName, plural } from './labels'
 
 type ProbeLogProps = {
   results: ProbeResult[]
@@ -53,6 +53,9 @@ export function ProbeLog({ results, size, guess, selectedIndex, onSelect, onHove
               <span className="prismine-log-text">
                 {entryName(result.entry, size)} → {result.exit === null ? 'absorbé' : entryName(result.exit, size)}
                 <span className="muted">
+                  {' · '}
+                  <span className={`prismine-swatch prismine-light-${result.color}`} aria-hidden="true" />
+                  {lightName(result.color)}
                   {' · '}
                   {plural(result.bounces, 'rebond')}
                   {result.revealed && ' · révélé'}

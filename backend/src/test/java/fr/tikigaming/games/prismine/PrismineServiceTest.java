@@ -1,0 +1,108 @@
+package fr.tikigaming.games.prismine;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+import fr.tikigaming.games.prismine.Expedition.Verdict;
+import fr.tikigaming.games.prismine.TestDoubles.InMemoryRunRepository;
+import fr.tikigaming.games.prismine.TestDoubles.InMemoryScoreRegistry;
+import fr.tikigaming.games.prismine.TestDoubles.MutableClock;
+import fr.tikigaming.games.prismine.TestDoubles.StubSeedSource;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+/**
+ * TU — service de Prismine, isolé de tout I/O par ses contrats (un test par étape de l'atelier) :
+ *
+ * <ol>
+ *   <li>bouchon {@link StubSeedSource} et faux {@link InMemoryRunRepository} ;
+ *   <li>faux {@link InMemoryScoreRegistry} : le registre des scores, sans Supabase ;
+ *   <li>simulacre {@link AuditNotifier} (Mockito) : appel unique au franchissement du seuil ;
+ *   <li>faux {@link MutableClock} : le temps avance à la demande, sans attente réelle.
+ * </ol>
+ */
+class PrismineServiceTest {
+
+    private static final Instant T0 = Instant.parse("2026-11-03T10:00:00Z");
+    private static final String PLAYER = "joueur-1";
+
+    private final MutableClock clock = new MutableClock(T0);
+    private final InMemoryRunRepository runs = new InMemoryRunRepository();
+    private final InMemoryScoreRegistry scores = new InMemoryScoreRegistry();
+    private final AuditNotifier audit = mock(AuditNotifier.class);
+    private final PrismineService service =
+            new PrismineService(runs, scores, audit, new StubSeedSource(42, 7, 9), clock);
+
+    /** Valide la carte juste de l'étage en cours, régénérée depuis sa graine figée. */
+    private Verdict.Cleared clear(Run run, String userId) {
+        String solution = Floors.generate(run.depth(), run.seed()).grid();
+        return (Verdict.Cleared) service.validate(run.id(), userId, solution);
+    }
+
+    @Test
+    void stubbedSeedsAndInMemoryRegistryDriveTheRun() {
+        Run run = service.start(PLAYER);
+        assertThat(run.seed()).isEqualTo(42);
+        assertThat(runs.find(run.id())).contains(run);
+
+        clock.advance(Duration.ofMinutes(1));
+        assertThat(clear(run, PLAYER).next().seed()).isEqualTo(7);
+        assertThat(runs.find(run.id()).orElseThrow().depth()).isEqualTo(2);
+    }
+
+    @Test
+    void recordsTheScoreWithItsDurationForAPlayerButNotForAGuest() {
+        Run run = service.start(PLAYER);
+        clock.advance(Duration.ofSeconds(30));
+        clear(run, PLAYER);
+        clock.advance(Duration.ofSeconds(90));
+        assertThat(service.finish(run.id(), PLAYER).recorded()).isTrue();
+        assertThat(scores.recorded())
+                .containsExactly(new InMemoryScoreRegistry.Recorded(
+                        PLAYER, 150, Map.of("depth", 2, "probes", 0, "errors", 0, "durationSeconds", 120L)));
+        assertThat(runs.find(run.id())).isEmpty();
+
+        Run guest = service.start(null);
+        clock.advance(Duration.ofSeconds(30));
+        clear(guest, null);
+        assertThat(service.finish(guest.id(), null).recorded()).isFalse();
+        assertThat(scores.recorded()).hasSize(1);
+    }
+
+    @Test
+    void auditsAnExpeditionOnlyOnceWhenFloorsAreClearedTooFast() {
+        Run human = service.start(PLAYER);
+        clock.advance(Duration.ofSeconds(30));
+        clear(human, PLAYER);
+        verifyNoInteractions(audit);
+
+        Run bot = service.start(PLAYER);
+        clock.advance(Duration.ofSeconds(2));
+        Run second = clear(bot, PLAYER).next();
+        clock.advance(Duration.ofSeconds(1));
+        clear(second, PLAYER);
+        // Deux étages trop rapides, un seul signalement.
+        verify(audit).floorTooFast(bot.id(), PLAYER, 1, Duration.ofSeconds(2));
+        verify(audit).floorTooFast(any(), any(), anyInt(), any());
+    }
+
+    @Test
+    void auditThresholdIsCrossedOneMillisecondBelowFiveSecondsWithoutSleeping() {
+        Run atThreshold = service.start(PLAYER);
+        clock.advance(Expedition.MIN_FLOOR_DURATION);
+        clear(atThreshold, PLAYER);
+        verify(audit, never()).floorTooFast(any(), any(), anyInt(), any());
+
+        Run below = service.start(PLAYER);
+        clock.advance(Expedition.MIN_FLOOR_DURATION.minusMillis(1));
+        clear(below, PLAYER);
+        verify(audit).floorTooFast(below.id(), PLAYER, 1, Duration.ofMillis(4999));
+    }
+}

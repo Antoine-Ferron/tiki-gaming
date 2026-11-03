@@ -1,10 +1,12 @@
 /**
- * Échanges de Prismine avec la plateforme via le GameContext : sauvegarde, reprise, envoi du score.
+ * Échanges de Prismine avec la plateforme (GameContext : sauvegarde, reprise) et avec le serveur arbitre.
  * Chaque fonction ne demande que la partie du ctx dont elle a besoin (`Pick<GameContext, …>`) :
  * les tests lui passent un bouchon minimal au lieu du vrai SDK (voir session.test.ts).
  */
+import { ApiError } from '@/lib/api'
 import type { GameContext } from '../types'
-import { parseSave, type Run, type Save } from './expedition'
+import type { PrismineApi, RunView } from './api'
+import { parseSave, type Save } from './expedition'
 
 /**
  * Écrit les sauvegardes l'une après l'autre ; pendant une écriture, seule la plus récente attend.
@@ -36,10 +38,15 @@ export async function loadExpedition(ctx: Pick<GameContext, 'loadSave'>): Promis
 }
 
 /**
- * Envoie le score d'une expédition terminée. Rien n'est envoyé sans étage réussi (score nul).
- * Renvoie true si le score est classé (false en invité ou sans score).
+ * Reprend l'expédition sauvegardée auprès du serveur. null : pas d'expédition, ou le serveur ne la connaît plus
+ * (terminée, ou d'un autre compte). Une autre erreur remonte pour que l'écran propose de réessayer.
  */
-export async function submitRunScore(ctx: Pick<GameContext, 'submitScore'>, run: Run): Promise<boolean> {
-  if (run.score <= 0) return false
-  return ctx.submitScore(run.score, { depth: run.depth, probes: run.totalProbes, errors: run.totalErrors })
+export async function resumeRun(api: Pick<PrismineApi, 'getRun'>, save: Save): Promise<RunView | null> {
+  if (!save.runId) return null
+  try {
+    return await api.getRun(save.runId)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null
+    throw err
+  }
 }

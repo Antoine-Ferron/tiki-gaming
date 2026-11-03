@@ -1,139 +1,67 @@
 /**
- * Tests d'intégration : des expéditions complètes, de bout en bout, sans interface.
- * Les vrais modules du jeu travaillent ensemble (engine → expedition → session) et parlent à un faux
- * GameContext (test-doubles.ts) qui garde la sauvegarde en mémoire, en JSON, comme Supabase ou le
- * localStorage. On vérifie ce que la plateforme reçoit : sauvegardes, reprise après rechargement, score.
- * Les graines sont fixes : chaque test rejoue exactement la même partie.
+ * TI — front : les vrais modules (expedition → session) parlent à un faux GameContext (sauvegarde en
+ * mémoire, en JSON, comme Supabase ou le localStorage) et à un bouchon du serveur arbitre. On vérifie ce
+ * que la plateforme reçoit : sauvegardes, reprise après rechargement, et qu'aucun score ne part du
+ * navigateur (c'est le serveur Java qui le classe).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { entryCount, generateFloor, type Floor } from './engine'
-import {
-  ERROR_COST,
-  FLOOR_REFILL,
-  START_OIL,
-  endRun,
-  fire,
-  floorPoints,
-  knownEntries,
-  newRun,
-  probeResults,
-  validate,
-  type Run,
-} from './expedition'
-import { createSaver, loadExpedition, submitRunScore } from './session'
-import { createFakeContext } from './test-doubles'
+import { ApiError } from '@/lib/api'
+import { endStats, guessFor } from './expedition'
+import { createSaver, loadExpedition, resumeRun } from './session'
+import { createFakeContext, runView, stubApi } from './test-doubles'
 
 const PLAYER = { id: 'joueur-1', username: 'clement' }
-
-/** Joueur « méthodique » : tire depuis chaque entrée encore inconnue de l'étage. */
-function sweep(run: Run, floor: Floor): Run {
-  for (let entry = 0; entry < entryCount(floor.size); entry++) {
-    if (!knownEntries(probeResults(floor, run.probes)).has(entry)) run = fire(run, entry)
-  }
-  return run
-}
-
-/** Valide une carte et exige le verdict attendu (le test échoue avec un message clair sinon). */
-function expectVerdict<K extends ReturnType<typeof validate>['kind']>(
-  verdict: ReturnType<typeof validate>,
-  kind: K,
-): Extract<ReturnType<typeof validate>, { kind: K }> {
-  expect(verdict.kind).toBe(kind)
-  return verdict as Extract<ReturnType<typeof validate>, { kind: K }>
-}
+const ID = '00000000-0000-0000-0000-000000000001'
 
 describe('expédition d’un joueur connecté', () => {
-  it('sauvegarde chaque étape, reprend après rechargement et classe le score final', async () => {
-    const { ctx, ranked, stored } = createFakeContext({ player: PLAYER })
+  it('sauvegarde l’expédition, la reprend après rechargement, puis ne garde que les statistiques', async () => {
+    const { ctx, stored } = createFakeContext({ player: PLAYER })
     const onSaveError = vi.fn()
     const persist = createSaver(ctx, onSaveError)
 
-    // Ouverture du jeu : aucune sauvegarde, on démarre une expédition.
+    // Ouverture du jeu : aucune sauvegarde, le serveur crée l'expédition.
+    const api = stubApi({ startRun: vi.fn().mockResolvedValue(runView({ id: ID })) })
     let save = await loadExpedition(ctx)
-    expect(save.run).toBeNull()
-    save = { ...save, run: newRun(42) }
+    expect(await resumeRun(api, save)).toBeNull()
+    const run = await api.startRun()
+    save = { ...save, runId: run.id, guess: guessFor(save, run) }
     await persist(save)
+    expect(stored()).toMatchObject({ version: 2, runId: ID })
 
-    // Étage 1 : balayage complet puis carte juste, sans erreur.
-    const floor1 = generateFloor(1, 42)
-    const run = sweep(save.run!, floor1)
-    const probes1 = run.probes.length
-    expect(run.oil).toBe(START_OIL - probes1)
-    const cleared1 = expectVerdict(validate({ ...run, guess: floor1.grid }, floor1, 7), 'cleared')
-    save = { ...save, run: cleared1.next }
-    await persist(save)
-
-    // Rechargement de la page : la plateforme rend exactement l'expédition sauvegardée, sur l'étage 2.
+    // Rechargement de la page : la sauvegarde donne l'identifiant, le serveur rend l'expédition.
+    const atDepth3 = runView({ id: ID, depth: 3, size: 7, score: 450 })
+    api.getRun.mockResolvedValue(atDepth3)
     const reloaded = await loadExpedition(ctx)
-    expect(reloaded).toEqual(save)
-    expect(reloaded.run).toMatchObject({ depth: 2, score: 150, oil: START_OIL - probes1 + FLOOR_REFILL })
+    expect(await resumeRun(api, reloaded)).toEqual(atDepth3)
+    expect(api.getRun).toHaveBeenCalledExactlyOnceWith(ID)
 
-    // Étage 2 : une validation ratée (carte vide), puis la bonne carte.
-    const floor2 = generateFloor(2, reloaded.run!.seed)
-    const wrong = expectVerdict(
-      validate(reloaded.run!, floor2, 8, () => 0),
-      'wrong',
-    )
-    expect(wrong.next.oil).toBe(reloaded.run!.oil - ERROR_COST)
-    const cleared2 = expectVerdict(validate({ ...wrong.next, guess: floor2.grid }, floor2, 9), 'cleared')
-    expect(cleared2.perfect).toBe(false)
-
-    // Le joueur termine l'expédition à l'étage 3 : statistiques sauvegardées, score classé.
-    const ended = cleared2.next
-    save = endRun(save, ended)
-    await persist(save)
-    expect(await submitRunScore(ctx, ended)).toBe(true)
-
-    const expectedScore = floorPoints(1, true) + floorPoints(2, false)
-    // Le tir révélé après l'erreur est offert : seuls les tirs payés en huile sont comptés.
-    const metadata = { depth: 3, probes: probes1, errors: 1 }
-    expect(ctx.submitScore).toHaveBeenCalledExactlyOnceWith(expectedScore, metadata)
-    expect(ranked).toEqual([{ score: expectedScore, metadata }])
-    expect(stored()).toEqual({ version: 1, run: null, stats: { runs: 1, bestDepth: 3, bestScore: expectedScore } })
+    // Fin d'expédition : le score est classé par le serveur, le navigateur ne garde que les statistiques.
+    await persist(endStats(reloaded, atDepth3))
+    expect(stored()).toEqual({ version: 2, runId: null, guess: '', stats: { runs: 1, bestDepth: 3, bestScore: 450 } })
+    expect(ctx.submitScore).not.toHaveBeenCalled()
     expect(onSaveError).not.toHaveBeenCalled()
   })
 })
 
-describe('expédition d’un invité', () => {
-  it('garde la progression localement mais ne classe pas le score', async () => {
-    const { ctx, ranked, stored } = createFakeContext({ player: null })
-    const persist = createSaver(ctx, vi.fn())
+describe('reprise impossible', () => {
+  it('repart de zéro sans perdre les statistiques, et laisse remonter une panne du serveur', async () => {
+    const stats = { runs: 4, bestDepth: 6, bestScore: 2100 }
 
-    let save = await loadExpedition(ctx)
-    const floor = generateFloor(1, 3)
-    const cleared = expectVerdict(validate({ ...newRun(3), guess: floor.grid }, floor, 4), 'cleared')
-    save = endRun(save, cleared.next)
-    await persist(save)
+    // Expédition oubliée par le serveur (404) : pas de reprise.
+    const forgotten = createFakeContext({ player: PLAYER, initialSave: { version: 2, runId: ID, guess: '', stats } })
+    const gone = stubApi({ getRun: vi.fn().mockRejectedValue(new ApiError(404, 'Expédition inconnue')) })
+    const save = await loadExpedition(forgotten.ctx)
+    expect(await resumeRun(gone, save)).toBeNull()
+    expect(save.stats).toEqual(stats)
 
-    expect(await submitRunScore(ctx, cleared.next)).toBe(false)
-    expect(ctx.submitScore).toHaveBeenCalledOnce()
-    expect(ranked).toEqual([])
-    expect(stored()).toMatchObject({ stats: { runs: 1, bestScore: 150 } })
-  })
-})
+    // Sauvegarde d'avant le serveur arbitre : rien n'est demandé au serveur.
+    const legacy = createFakeContext({ initialSave: { version: 1, run: { depth: 2, seed: 7 }, stats } })
+    const untouched = stubApi()
+    expect(await resumeRun(untouched, await loadExpedition(legacy.ctx))).toBeNull()
+    expect(untouched.getRun).not.toHaveBeenCalled()
 
-describe('reprise d’une expédition presque perdue', () => {
-  it("éteint la lampe sur une erreur impayable et n'envoie aucun score sans étage réussi", async () => {
-    // Bouchon de départ : une expédition déjà sauvegardée, avec seulement 2 doses d'huile.
-    const seed = 11
-    const { ctx, stored } = createFakeContext({
-      player: PLAYER,
-      initialSave: {
-        version: 1,
-        run: { ...newRun(seed), oil: ERROR_COST - 1 },
-        stats: { runs: 4, bestDepth: 6, bestScore: 2100 },
-      },
-    })
-
-    const save = await loadExpedition(ctx)
-    expect(save.run?.oil).toBe(ERROR_COST - 1)
-    const floor = generateFloor(1, seed)
-    const lampOut = expectVerdict(validate(save.run!, floor, 1), 'lamp-out')
-
-    await createSaver(ctx, vi.fn())(endRun(save, lampOut.run))
-    expect(await submitRunScore(ctx, lampOut.run)).toBe(false)
-    expect(ctx.submitScore).not.toHaveBeenCalled()
-    // Le record précédent est conservé, l'expédition est comptée.
-    expect(stored()).toEqual({ version: 1, run: null, stats: { runs: 5, bestDepth: 6, bestScore: 2100 } })
+    // Serveur en panne : l'erreur remonte pour que l'écran propose de réessayer.
+    const down = stubApi({ getRun: vi.fn().mockRejectedValue(new ApiError(502, 'Serveur indisponible')) })
+    await expect(resumeRun(down, save)).rejects.toThrow('Serveur indisponible')
   })
 })

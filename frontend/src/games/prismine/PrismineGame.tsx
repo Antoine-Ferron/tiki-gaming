@@ -1,58 +1,64 @@
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
+import { ApiError } from '@/lib/api'
 import type { GameContext, GameProps, LeaderboardEntry } from '../types'
-import { Board } from './Board'
+import { createPrismineApi, type FloorInfo, type ProbeResult, type RevealedFloor, type RunView } from './api'
+import { Board, PieceIcon } from './Board'
 import { ProbeLog } from './ProbeLog'
 import {
+  RED,
+  SE,
   countPieces,
+  emptyGrid,
   entryName,
-  generateFloor,
-  randomSeed,
+  prism,
   sameOutcome,
   trace,
   withPiece,
-  type Floor,
   type Grid,
   type Piece,
+  type PrismColor,
 } from './engine'
 import {
   ERROR_COST,
   FLOOR_REFILL,
   PROBE_COST,
-  endRun,
-  fire,
+  endStats,
+  guessFor,
   knownEntries,
-  newRun,
-  probeResults,
-  validate,
-  type Probe,
-  type ProbeResult,
-  type Run,
   type Save,
+  type Stats as SaveStats,
 } from './expedition'
-import { outcomeText, plural, solutionText } from './labels'
-import { createSaver, loadExpedition, submitRunScore } from './session'
+import { lightName, outcomeText, plural, solutionText } from './labels'
+import { createSaver, loadExpedition, resumeRun } from './session'
 import './prismine.css'
 
 /**
  * Prismine — jeu de déduction solo.
  * Une expédition enchaîne des étages de plus en plus grands ; chaque tir coûte de l'huile de lampe.
- * Utilise tout le GameContext : expédition en cours sauvegardée à chaque action (ctx.save, en base ou
- * dans le navigateur en invité) et reprise à l'ouverture (ctx.loadSave), score envoyé en fin
- * d'expédition (ctx.submitScore), classement (ctx.getLeaderboard) et record (ctx.getMyBest).
+ * Le serveur Java arbitre la partie (api.ts) : il garde la carte cachée, applique les règles et classe le
+ * score. Le GameContext garde l'identifiant de l'expédition, la carte du joueur et ses statistiques
+ * (ctx.save / ctx.loadSave, en base ou dans le navigateur en invité), et fournit le classement
+ * (ctx.getLeaderboard) et le record (ctx.getMyBest).
  */
+
+const api = createPrismineApi()
+
+/** Étage affiché. `grid` : la vraie carte, connue seulement une fois l'étage terminé. */
+type ShownFloor = FloorInfo & { grid?: Grid; probes: ProbeResult[] }
 
 type Screen =
   | { kind: 'menu' }
   | { kind: 'playing' }
   /** Étage réussi : la vraie carte est dévoilée avant de descendre. */
-  | { kind: 'cleared'; floor: Floor; probes: Probe[]; points: number; perfect: boolean }
-  | { kind: 'over'; floor: Floor; probes: Probe[]; run: Run; reason: 'lamp-out' | 'quit' }
+  | { kind: 'cleared'; floor: RevealedFloor; points: number; perfect: boolean }
+  | { kind: 'over'; floor: RevealedFloor; run: RunView; guess: Grid; reason: 'lamp-out' | 'quit'; recorded: boolean }
 
 const SAVE_ERROR = "Ta progression n'a pas pu être sauvegardée. Vérifie ta connexion."
+const SERVER_ERROR = 'Le serveur de Prismine ne répond pas. Vérifie ta connexion et réessaie.'
 
-function piecesText(crystals: number, obsidians: number, withObsidian: boolean) {
-  const text = plural(crystals, 'cristal', 'cristaux')
+function piecesText(prisms: number, obsidians: number, withObsidian: boolean) {
+  const text = plural(prisms, 'prisme')
   return withObsidian ? `${text} et ${plural(obsidians, 'obsidienne')}` : text
 }
 
@@ -65,21 +71,24 @@ function differences(a: Grid, b: Grid) {
 }
 
 export default function PrismineGame({ ctx }: GameProps) {
-  // La sauvegarde reste rattachée au ctx qui l'a chargée : si le joueur se connecte, on charge la sienne.
-  const [store, setStore] = useState<{ ctx: GameContext; save: Save } | null>(null)
+  // La partie reste rattachée au ctx qui l'a chargée : si le joueur se connecte, on charge la sienne.
+  const [store, setStore] = useState<{ ctx: GameContext; save: Save; run: RunView | null } | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [screen, setScreen] = useState<Screen>({ kind: 'menu' })
+  const [busy, setBusy] = useState(false)
   const [hovered, setHovered] = useState<number | null>(null)
   const [selected, setSelected] = useState<number | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [confirmQuit, setConfirmQuit] = useState(false)
+  const [paint, setPaint] = useState<PrismColor>(RED)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [myBest, setMyBest] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const save = store?.ctx === ctx ? store.save : null
-  const run = save?.run ?? null
+  const current = store?.ctx === ctx ? store : null
+  const save = current?.save ?? null
+  const run = current?.run ?? null
   const persist = useMemo(() => createSaver(ctx, () => setError(SAVE_ERROR)), [ctx])
 
   const refreshScores = useCallback(() => {
@@ -99,10 +108,14 @@ export default function PrismineGame({ ctx }: GameProps) {
 
   useEffect(() => {
     let cancelled = false
-    loadExpedition(ctx).then(
-      (loaded) => {
+    ;(async () => {
+      const loaded = await loadExpedition(ctx)
+      const resumed = await resumeRun(api, loaded)
+      return { save: resumed ? { ...loaded, guess: guessFor(loaded, resumed) } : { ...loaded, runId: null }, resumed }
+    })().then(
+      ({ save: loaded, resumed }) => {
         if (cancelled) return
-        setStore({ ctx, save: loaded })
+        setStore({ ctx, save: loaded, run: resumed })
         setScreen({ kind: 'menu' })
         setLoadFailed(false)
       },
@@ -115,26 +128,15 @@ export default function PrismineGame({ ctx }: GameProps) {
     }
   }, [ctx, loadAttempt])
 
-  const depth = run?.depth
-  const seed = run?.seed
-  const floor = useMemo(
-    () => (depth === undefined || seed === undefined ? null : generateFloor(depth, seed)),
-    [depth, seed],
-  )
-
   // Étage affiché : celui en cours, ou celui qui vient de se terminer (vraie carte dévoilée).
   const finished = screen.kind === 'cleared' || screen.kind === 'over' ? screen : null
-  const shownFloor = finished ? finished.floor : floor
-  const shownProbes = finished ? finished.probes : run?.probes
-  const results = useMemo(
-    () => (shownFloor && shownProbes ? probeResults(shownFloor, shownProbes) : []),
-    [shownFloor, shownProbes],
-  )
+  const shownFloor: ShownFloor | null = finished ? finished.floor : run
+  const results = useMemo(() => shownFloor?.probes ?? [], [shownFloor])
   const known = useMemo(() => knownEntries(results), [results])
   const selectedIndex = selected === null ? null : (known.get(selected) ?? null)
 
-  function commit(next: Save) {
-    setStore({ ctx, save: next })
+  function commit(next: Save, nextRun: RunView | null = run) {
+    setStore({ ctx, save: next, run: nextRun })
     void persist(next)
   }
 
@@ -147,74 +149,104 @@ export default function PrismineGame({ ctx }: GameProps) {
     setConfirmQuit(false)
   }
 
-  function start() {
+  /** Appelle le serveur ; un seul appel à la fois. Une expédition inconnue du serveur ramène au menu. */
+  async function call<T>(request: () => Promise<T>): Promise<T | null> {
+    if (busy) return null
+    setBusy(true)
+    try {
+      return await request()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404 && save) {
+        commit({ ...save, runId: null }, null)
+        show({ kind: 'menu' })
+        setError(err.message)
+      } else {
+        setFeedback(err instanceof ApiError && err.status > 0 && err.status < 500 ? err.message : SERVER_ERROR)
+      }
+      return null
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function start() {
     if (!save) return
-    commit({ ...save, run: newRun(randomSeed()) })
+    setError(null)
+    const started = await call(() => api.startRun())
+    if (!started) return
+    commit({ ...save, runId: started.id, guess: emptyGrid(started.size) }, started)
     show({ kind: 'playing' })
   }
 
-  function handleEntry(entry: number) {
+  async function handleEntry(entry: number) {
     setSelected(entry)
     if (screen.kind !== 'playing' || !save || !run || known.has(entry)) return
     if (run.oil < PROBE_COST) {
       setFeedback("Ta lampe est vide : valide ta carte ou termine l'expédition.")
       return
     }
-    commit({ ...save, run: fire(run, entry) })
+    const next = await call(() => api.probe(run.id, entry))
+    if (!next) return
+    setStore({ ctx, save, run: next })
     setFeedback(null)
   }
 
   function handlePlace(cell: number, piece: Piece) {
     if (!save || !run) return
-    commit({ ...save, run: { ...run, guess: withPiece(run.guess, cell, piece) } })
+    commit({ ...save, guess: withPiece(guessFor(save, run), cell, piece) })
     setFeedback(null)
   }
 
-  function handleValidate() {
-    if (!save || !run || !floor) return
+  async function handleValidate() {
+    if (!save || !run) return
     setConfirmQuit(false)
-    const verdict = validate(run, floor, randomSeed())
+    const guess = guessFor(save, run)
+    const verdict = await call(() => api.validate(run.id, guess))
+    if (!verdict) return
     switch (verdict.kind) {
       case 'contradiction': {
-        const numbers = verdict.probes.map((index) => index + 1).join(', ')
-        const which = verdict.probes.length > 1 ? `les tirs ${numbers}` : `le tir ${numbers}`
+        const numbers = verdict.contradictions.map((index) => index + 1).join(', ')
+        const which = verdict.contradictions.length > 1 ? `les tirs ${numbers}` : `le tir ${numbers}`
         setFeedback(`Ta carte n'explique pas ${which} : corrige-la avant de valider.`)
         break
       }
       case 'wrong':
-        commit({ ...save, run: verdict.next })
+        setStore({ ctx, save, run: verdict.run })
         setSelected(verdict.entry)
         setFeedback(
-          `Raté : le tir depuis ${entryName(verdict.entry, floor.size)} ne donne pas ce que prévoit ta carte. ` +
+          `Raté : le tir depuis ${entryName(verdict.entry, run.size)} ne donne pas ce que prévoit ta carte. ` +
             `Il est ajouté au journal (−${plural(ERROR_COST, 'dose')} d'huile).`,
         )
         break
       case 'cleared':
-        commit({ ...save, run: verdict.next })
-        show({ kind: 'cleared', floor, probes: run.probes, points: verdict.points, perfect: verdict.perfect })
+        commit({ ...save, guess: emptyGrid(verdict.run.size) }, verdict.run)
+        show({ kind: 'cleared', floor: verdict.floor, points: verdict.points, perfect: verdict.perfect })
         break
       case 'lamp-out':
-        finish(verdict.run, 'lamp-out')
+        finish(verdict.run, verdict.floor, guess, 'lamp-out', verdict.recorded)
         break
     }
   }
 
-  function finish(ended: Run, reason: 'lamp-out' | 'quit') {
-    if (!save || !floor) return
-    commit(endRun(save, ended))
-    show({ kind: 'over', floor, probes: ended.probes, run: ended, reason })
-    submitRunScore(ctx, ended)
-      .then((ranked) => {
-        if (ranked) refreshScores()
-      })
-      .catch(() => setError("Ton score n'a pas pu être enregistré. Vérifie ta connexion."))
+  async function quit() {
+    if (!save || !run) return
+    const guess = guessFor(save, run)
+    const ending = await call(() => api.endRun(run.id))
+    if (ending) finish(ending.run, ending.floor, guess, 'quit', ending.recorded)
+  }
+
+  function finish(ended: RunView, floor: RevealedFloor, guess: Grid, reason: 'lamp-out' | 'quit', recorded: boolean) {
+    if (!save) return
+    commit(endStats(save, ended), null)
+    show({ kind: 'over', floor, run: ended, guess, reason, recorded })
+    if (recorded) refreshScores()
   }
 
   const panel = {
     results,
     known,
     focusEntry: hovered ?? selected,
-    onEntry: handleEntry,
+    onEntry: (entry: number) => void handleEntry(entry),
     onHover: setHovered,
   }
 
@@ -236,28 +268,37 @@ export default function PrismineGame({ ctx }: GameProps) {
     ) : (
       <p className="muted">Chargement…</p>
     )
-  } else if (screen.kind === 'playing' && run && floor) {
-    const placed = countPieces(run.guess)
-    const withObsidian = floor.obsidians > 0
+  } else if (screen.kind === 'playing' && run) {
+    const guess = guessFor(save, run)
+    const placed = countPieces(guess)
+    const withObsidian = run.obsidians > 0
     main = (
       <>
         <Stats depth={run.depth} oil={run.oil} score={run.score} />
         <p className="muted prismine-pieces">
-          À trouver : {piecesText(floor.crystals, floor.obsidians, withObsidian)} · sur ta carte :{' '}
-          {piecesText(placed.crystals, placed.obsidians, withObsidian)}
+          À trouver : {piecesText(run.prisms, run.obsidians, withObsidian)} · sur ta carte :{' '}
+          {piecesText(placed.prisms, placed.obsidians, withObsidian)}
         </p>
-        <FloorPanel floor={floor} guess={run.guess} onPlace={handlePlace} {...panel} />
+        <FloorPanel
+          floor={run}
+          guess={guess}
+          // La couleur choisie à un étage précédent peut ne pas exister ici.
+          paint={run.colors.includes(paint) ? paint : run.colors[0]}
+          onPaint={setPaint}
+          onPlace={handlePlace}
+          {...panel}
+        />
         <p role="status" className="error prismine-feedback">
           {feedback}
         </p>
         <div className="prismine-actions">
-          <button type="button" onClick={handleValidate}>
+          <button type="button" onClick={() => void handleValidate()} disabled={busy}>
             Valider ma carte
           </button>
           {confirmQuit ? (
             <span className="prismine-confirm">
               Terminer avec {plural(run.score, 'point')} ?
-              <button type="button" className="small" onClick={() => finish(run, 'quit')}>
+              <button type="button" className="small" onClick={() => void quit()} disabled={busy}>
                 Terminer
               </button>
               <button type="button" className="link" onClick={() => setConfirmQuit(false)}>
@@ -290,7 +331,7 @@ export default function PrismineGame({ ctx }: GameProps) {
     )
   } else if (screen.kind === 'over') {
     const { run: ended } = screen
-    const mistakes = differences(ended.guess, screen.floor.grid)
+    const mistakes = differences(screen.guess, screen.floor.grid)
     main = (
       <>
         <p className="result">
@@ -304,10 +345,13 @@ export default function PrismineGame({ ctx }: GameProps) {
         {ended.score === 0 ? (
           <p className="muted">Réussis au moins un étage pour marquer des points.</p>
         ) : (
-          ctx.isGuest && <p className="muted">Connecte-toi pour apparaître au classement.</p>
+          !screen.recorded && <p className="muted">Connecte-toi pour apparaître au classement.</p>
         )}
+        <p role="status" className="error prismine-feedback">
+          {feedback}
+        </p>
         <div className="prismine-actions">
-          <button type="button" className="big" onClick={start}>
+          <button type="button" className="big" onClick={() => void start()} disabled={busy}>
             Rejouer
           </button>
         </div>
@@ -316,7 +360,17 @@ export default function PrismineGame({ ctx }: GameProps) {
       </>
     )
   } else {
-    main = <Menu save={save} isGuest={ctx.isGuest} onStart={start} onResume={() => show({ kind: 'playing' })} />
+    main = (
+      <Menu
+        run={run}
+        stats={save.stats}
+        isGuest={ctx.isGuest}
+        busy={busy}
+        feedback={feedback}
+        onStart={() => void start()}
+        onResume={() => show({ kind: 'playing' })}
+      />
+    )
   }
 
   return (
@@ -326,13 +380,13 @@ export default function PrismineGame({ ctx }: GameProps) {
         {error && <p className="error">{error}</p>}
       </div>
       <div className="card prismine-side">
-        {screen.kind !== 'menu' && save && shownFloor && (
+        {screen.kind !== 'menu' && shownFloor && (
           <section>
             <h2>Journal</h2>
             <ProbeLog
               results={results}
               size={shownFloor.size}
-              guess={screen.kind === 'playing' && run ? run.guess : null}
+              guess={screen.kind === 'playing' && run ? guessFor(save!, run) : null}
               selectedIndex={selectedIndex}
               onSelect={setSelected}
               onHover={setHovered}
@@ -372,24 +426,37 @@ function Stats({ depth, oil, score }: { depth: number; oil: number; score: numbe
   )
 }
 
-type MenuProps = { save: Save; isGuest: boolean; onStart(): void; onResume(): void }
+type MenuProps = {
+  run: RunView | null
+  stats: SaveStats
+  isGuest: boolean
+  busy: boolean
+  feedback: string | null
+  onStart(): void
+  onResume(): void
+}
 
-function Menu({ save: { run, stats }, isGuest, onStart, onResume }: MenuProps) {
+function Menu({ run, stats, isGuest, busy, feedback, onStart, onResume }: MenuProps) {
   return (
     <div className="prismine-menu">
       <p>
         Ta lampe est ta seule alliée. Envoie des faisceaux dans la galerie, regarde où ils ressortent et retrouve où se
-        cachent les cristaux.
+        cachent les prismes.
       </p>
       <details className="prismine-rules" open={stats.runs === 0 && !run}>
         <summary>Règles</summary>
         <ul>
           <li>
             Clique une entrée sur le bord : ta lampe envoie un faisceau ({plural(PROBE_COST, 'dose')} d'huile). Tu vois
-            où il ressort et combien de fois il a rebondi.
+            où il ressort, de quelle couleur, et combien de fois il a rebondi.
           </li>
           <li>
-            Un cristal «&nbsp;/&nbsp;» ou «&nbsp;\&nbsp;» dévie la lumière d'un quart de tour. L'obsidienne l'absorbe.
+            Un prisme triangulaire dévie la lumière d'un quart de tour sur sa face en biais, et la renvoie d'où elle
+            vient sur ses faces plates. L'obsidienne l'absorbe.
+          </li>
+          <li>
+            Le faisceau part blanc et prend la couleur de chaque prisme touché : rouge + vert = jaune, rouge + bleu =
+            magenta, vert + bleu = cyan, les trois = irisé.
           </li>
           <li>Pose tes pièces sur la grille : le journal indique les tirs que ta carte explique.</li>
           <li>
@@ -412,9 +479,14 @@ function Menu({ save: { run, stats }, isGuest, onStart, onResume }: MenuProps) {
           </p>
         </>
       ) : (
-        <button type="button" className="big" onClick={onStart}>
+        <button type="button" className="big" onClick={onStart} disabled={busy}>
           Jouer
         </button>
+      )}
+      {feedback && (
+        <p role="status" className="error">
+          {feedback}
+        </p>
       )}
       {stats.runs > 0 && (
         <p className="muted">
@@ -427,7 +499,7 @@ function Menu({ save: { run, stats }, isGuest, onStart, onResume }: MenuProps) {
 }
 
 type FloorPanelProps = {
-  floor: Floor
+  floor: ShownFloor
   /** Carte du joueur (étage en cours) ; null : étage terminé, on montre la vraie carte. */
   guess: Grid | null
   results: ProbeResult[]
@@ -435,6 +507,9 @@ type FloorPanelProps = {
   /** Entrée survolée ou sélectionnée. */
   focusEntry: number | null
   mistakes?: ReadonlySet<number>
+  /** Couleur des prismes posés (étage en cours). */
+  paint?: PrismColor
+  onPaint?(color: PrismColor): void
   onEntry(entry: number): void
   onHover(entry: number | null): void
   onPlace?(cell: number, piece: Piece): void
@@ -447,6 +522,8 @@ function FloorPanel({
   known,
   focusEntry,
   mistakes,
+  paint = floor.colors[0],
+  onPaint = () => {},
   onEntry,
   onHover,
   onPlace,
@@ -457,16 +534,20 @@ function FloorPanel({
   // Le trajet d'un tir connu part toujours de son entrée d'origine.
   const beamEntry = probe ? probe.entry : focusEntry
   const withObsidian = floor.obsidians > 0
+  const truth = floor.grid ?? emptyGrid(floor.size)
 
   return (
     <>
       <Board
         size={floor.size}
-        grid={guess ?? floor.grid}
+        grid={guess ?? truth}
         results={results}
         known={known}
         beamEntry={beamEntry}
         withObsidian={withObsidian}
+        paint={paint}
+        colors={floor.colors}
+        onPaint={onPaint}
         mistakes={mistakes}
         describedBy={guess === null ? undefined : helpId}
         onEntry={onEntry}
@@ -474,24 +555,46 @@ function FloorPanel({
         onPlace={onPlace}
       />
       <p className="prismine-info">
-        <BeamInfo floor={floor} guess={guess} entry={beamEntry} probe={probe} index={index} />
+        <BeamInfo floor={floor} truth={truth} guess={guess} entry={beamEntry} probe={probe} index={index} />
       </p>
       {guess === null ? (
         <p className="prismine-sr">
-          Solution de l'étage {floor.depth}. {solutionText(floor.grid, floor.size)}
+          Solution de l'étage {floor.depth}. {solutionText(truth, floor.size)}
         </p>
       ) : (
-        <p id={helpId} className="muted prismine-help">
-          Clic sur une case : poser ou changer une pièce (clic droit : sens inverse). Clavier : flèches, Entrée,
-          1&nbsp;«&nbsp;/&nbsp;», 2&nbsp;«&nbsp;\&nbsp;»{withObsidian ? ', 3 obsidienne' : ''}, 0 vider.
-        </p>
+        <>
+          {floor.colors.length > 1 && (
+            <div className="prismine-palette" role="group" aria-label="Couleur des prismes posés">
+              <span className="muted">Couleur posée :</span>
+              {floor.colors.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`prismine-light-${color}`}
+                  aria-pressed={color === paint}
+                  onClick={() => onPaint(color)}
+                >
+                  <PieceIcon piece={prism(color, SE)} />
+                  {lightName(color)}
+                </button>
+              ))}
+            </div>
+          )}
+          <p id={helpId} className="muted prismine-help">
+            Clic sur une case : poser, tourner ou repeindre un prisme (clic droit : sens inverse). Clavier : flèches,
+            Entrée, 1 à 4 les prismes ◢ ◣ ◤ ◥{withObsidian ? ', 5 obsidienne' : ''}, 0 vider
+            {floor.colors.length > 1 ? ', R V B la couleur' : ''}.
+          </p>
+        </>
       )}
     </>
   )
 }
 
 type BeamInfoProps = {
-  floor: Floor
+  floor: FloorInfo
+  /** Vraie carte (étage terminé). */
+  truth: Grid
   guess: Grid | null
   entry: number | null
   probe: ProbeResult | null
@@ -499,7 +602,7 @@ type BeamInfoProps = {
 }
 
 /** Décrit le trajet tracé : le vrai en fin d'étage, sinon celui que prévoit la carte du joueur. */
-function BeamInfo({ floor, guess, entry, probe, index }: BeamInfoProps) {
+function BeamInfo({ floor, truth, guess, entry, probe, index }: BeamInfoProps) {
   if (entry === null) {
     return (
       <span className="muted">
@@ -511,7 +614,7 @@ function BeamInfo({ floor, guess, entry, probe, index }: BeamInfoProps) {
   }
   const name = entryName(entry, floor.size)
   const shot = probe && index !== undefined ? `Tir ${index + 1} : ` : ''
-  if (guess === null) return <>{`${shot}${name}, ${outcomeText(trace(floor.grid, floor.size, entry), floor.size)}.`}</>
+  if (guess === null) return <>{`${shot}${name}, ${outcomeText(trace(truth, floor.size, entry), floor.size)}.`}</>
 
   const predicted = trace(guess, floor.size, entry)
   if (!probe) return <>{`${name} : pas encore exploré. Ta carte prévoit : ${outcomeText(predicted, floor.size)}.`}</>

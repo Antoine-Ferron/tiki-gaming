@@ -1,7 +1,25 @@
-import { useState, type CSSProperties, type KeyboardEvent } from 'react'
-import { cellName, entryAt, entryCoord, entryName, nextPiece, trace, type Grid, type Piece } from './engine'
-import type { ProbeResult } from './expedition'
-import { PIECE_NAMES, outcomeText } from './labels'
+import { useId, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import {
+  BLUE,
+  CORNERS,
+  GREEN,
+  RED,
+  cellName,
+  entryAt,
+  entryCoord,
+  entryName,
+  nextPiece,
+  prism,
+  prismOf,
+  trace,
+  type Corner,
+  type Grid,
+  type Light,
+  type Piece,
+  type PrismColor,
+} from './engine'
+import type { ProbeResult } from './api'
+import { outcomeText, pieceName } from './labels'
 
 type BoardProps = {
   size: number
@@ -13,6 +31,11 @@ type BoardProps = {
   /** Entrée dont le trajet est tracé sur `grid`. */
   beamEntry: number | null
   withObsidian: boolean
+  /** Couleur des prismes posés au clic ou au clavier. */
+  paint: PrismColor
+  /** Couleurs des prismes de l'étage : les touches R, V, B choisissent parmi elles. */
+  colors: PrismColor[]
+  onPaint(color: PrismColor): void
   /** Cases où la carte du joueur différait de la vraie (fin d'expédition). */
   mistakes?: ReadonlySet<number>
   describedBy?: string
@@ -45,26 +68,48 @@ const MOVES: Record<string, [number, number]> = {
   ArrowRight: [0, 1],
 }
 
-/** Touches de pose : chiffres (repérés par leur position, quelle que soit la disposition du clavier) ou symboles. */
-function pieceForKey({ key, code }: KeyboardEvent, withObsidian: boolean): Piece | null {
-  if (key === '/' || code === 'Digit1' || code === 'Numpad1') return '/'
-  if (key === '\\' || code === 'Digit2' || code === 'Numpad2') return '\\'
-  if (withObsidian && (key === 'o' || key === 'O' || code === 'Digit3' || code === 'Numpad3')) return '#'
-  if (key === 'Backspace' || key === 'Delete' || code === 'Digit0' || code === 'Numpad0') return '.'
+/** Touches de pose : chiffres, repérés par leur position quelle que soit la disposition du clavier. */
+function pieceForKey({ key, code }: KeyboardEvent, paint: PrismColor, withObsidian: boolean): Piece | null {
+  const digit = /^(?:Digit|Numpad)([0-5])$/.exec(code)?.[1]
+  if (digit && digit >= '1' && digit <= '4') return prism(paint, CORNERS[Number(digit) - 1])
+  if (withObsidian && (key === 'o' || key === 'O' || digit === '5')) return '#'
+  if (key === 'Backspace' || key === 'Delete' || digit === '0') return '.'
   return null
 }
 
-function PieceIcon({ piece }: { piece: Piece }) {
+const COLOR_KEYS: Record<string, PrismColor> = { r: RED, v: GREEN, g: GREEN, b: BLUE }
+
+/** Triangle de chaque coin (◢ ◣ ◤ ◥) dans une case de 10 × 10 : l'hypoténuse passe par le centre. */
+const TRIANGLES: Record<Corner, string> = [
+  '8.5,1.5 8.5,8.5 1.5,8.5',
+  '1.5,1.5 1.5,8.5 8.5,8.5',
+  '1.5,8.5 1.5,1.5 8.5,1.5',
+  '1.5,1.5 8.5,1.5 8.5,8.5',
+]
+
+export function PieceIcon({ piece }: { piece: Piece }) {
   if (piece === '.') return null
+  const found = prismOf(piece)
   return (
     <svg className="prismine-piece" viewBox="0 0 10 10" aria-hidden="true">
-      {piece === '#' ? (
-        <polygon className="prismine-obsidian" points="5,1.5 8.5,5 5,8.5 1.5,5" />
+      {found ? (
+        <polygon className={`prismine-prism prismine-light-${found.color}`} points={TRIANGLES[found.corner]} />
       ) : (
-        <line className="prismine-crystal" x1={2} y1={piece === '/' ? 8 : 2} x2={8} y2={piece === '/' ? 2 : 8} />
+        <polygon className="prismine-obsidian" points="5,1.5 8.5,5 5,8.5 1.5,5" />
       )}
     </svg>
   )
+}
+
+/** Découpe un trajet en tronçons de même couleur, dessinés chacun de sa couleur. */
+function beamRuns(points: number[][], colors: Light[]) {
+  const runs: { color: Light; points: string }[] = []
+  for (let i = 0; i + 1 < points.length; i++) {
+    const last = runs.at(-1)
+    if (last && last.color === colors[i]) last.points += ` ${points[i + 1].join(',')}`
+    else runs.push({ color: colors[i], points: `${points[i].join(',')} ${points[i + 1].join(',')}` })
+  }
+  return runs
 }
 
 export function Board({
@@ -74,6 +119,9 @@ export function Board({
   known,
   beamEntry,
   withObsidian,
+  paint,
+  colors,
+  onPaint,
   mistakes,
   describedBy,
   onEntry,
@@ -81,6 +129,7 @@ export function Board({
   onPlace,
 }: BoardProps) {
   const n = size + 2
+  const gradientId = useId()
   // Une seule position est atteignable à la tabulation ; les flèches déplacent le focus (roving tabindex).
   const [focused, setFocused] = useState(1)
   const focusable = (spot: Spot) => spot.kind === 'entry' || (spot.kind === 'cell' && onPlace !== undefined)
@@ -90,7 +139,7 @@ export function Board({
   const beamProbe = beamEntry === null ? undefined : known.get(beamEntry)
   // Centre d'une case (row, col de la galerie, -1 et `size` pour le bord) dans le repère du plateau.
   const beamPoints = beam?.path.map(([row, col]) => [col + 1.5, row + 1.5]) ?? []
-  const beamPolyline = beamPoints.map(([x, y]) => `${x},${y}`).join(' ')
+  const runs = beam ? beamRuns(beamPoints, beam.colors) : []
   const beamEnd = beamPoints[beamPoints.length - 1]
   const lines = Array.from({ length: size + 1 }, (_, i) => i + 1)
 
@@ -115,8 +164,14 @@ export function Board({
       if (target !== null) event.currentTarget.querySelector<HTMLElement>(`[data-pos="${target}"]`)?.focus()
       return
     }
+    const color = COLOR_KEYS[event.key.toLowerCase()]
+    if (color && colors.includes(color)) {
+      event.preventDefault()
+      onPaint(color)
+      return
+    }
     const spot = spotAt(pos, size)
-    const piece = pieceForKey(event, withObsidian)
+    const piece = pieceForKey(event, paint, withObsidian)
     if (spot.kind === 'cell' && onPlace && piece) {
       event.preventDefault()
       onPlace(spot.cell, piece)
@@ -180,11 +235,11 @@ export function Board({
         data-pos={pos}
         tabIndex={pos === tabStop ? 0 : -1}
         className={className}
-        aria-label={`${cellName(cell, size)} : ${PIECE_NAMES[piece]}`}
-        onClick={() => onPlace(cell, nextPiece(piece, withObsidian))}
+        aria-label={`${cellName(cell, size)} : ${pieceName(piece)}`}
+        onClick={() => onPlace(cell, nextPiece(piece, paint, withObsidian))}
         onContextMenu={(event) => {
           event.preventDefault()
-          onPlace(cell, nextPiece(piece, withObsidian, true))
+          onPlace(cell, nextPiece(piece, paint, withObsidian, true))
         }}
         onFocus={() => {
           setFocused(pos)
@@ -209,6 +264,14 @@ export function Board({
     >
       {Array.from({ length: n * n }, (_, pos) => renderSpot(pos))}
       <svg className="prismine-overlay" viewBox={`0 0 ${n} ${n}`} aria-hidden="true">
+        {/* Lumière irisée (rouge + vert + bleu) : dégradé dans le repère du plateau, valable pour des traits droits. */}
+        <defs>
+          <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={0} y1={0} x2={n} y2={n}>
+            {['red', 'yellow', 'green', 'cyan', 'blue', 'magenta', 'red'].map((name, i) => (
+              <stop key={i} offset={i / 6} stopColor={`var(--prismine-${name})`} />
+            ))}
+          </linearGradient>
+        </defs>
         <g className="prismine-gridlines">
           {lines.map((k) => (
             <line key={`v${k}`} x1={k} y1={1} x2={k} y2={size + 1} />
@@ -219,9 +282,19 @@ export function Board({
         </g>
         {beam && (
           <g key={beamEntry} className="prismine-beam">
-            <polyline className="prismine-beam-glow" points={beamPolyline} />
-            <polyline className="prismine-beam-core" points={beamPolyline} />
-            {beam.exit === null && <circle cx={beamEnd[0]} cy={beamEnd[1]} r={0.18} />}
+            {runs.map((run, i) => (
+              <g
+                key={i}
+                className={`prismine-light-${run.color}`}
+                style={run.color === 7 ? ({ '--prismine-light': `url(#${gradientId})` } as CSSProperties) : undefined}
+              >
+                <polyline className="prismine-beam-glow" points={run.points} />
+                <polyline className="prismine-beam-core" points={run.points} />
+              </g>
+            ))}
+            {beam.exit === null && (
+              <circle className={`prismine-light-${beam.color}`} cx={beamEnd[0]} cy={beamEnd[1]} r={0.18} />
+            )}
           </g>
         )}
       </svg>

@@ -1,5 +1,6 @@
 /**
- * Doublures de test du GameContext, partagées par session.test.ts et prismine.integration.test.ts.
+ * Doublures de test du GameContext et de l'API du serveur, partagées par les tests unitaires et
+ * prismine.integration.test.ts.
  * Fichier importé uniquement par les tests : il n'entre jamais dans le bundle du jeu.
  *
  * Vocabulaire (voir TESTS.md) :
@@ -8,9 +9,10 @@
  * - faux (fake) : implémentation simplifiée mais fonctionnelle, ici un stockage en mémoire qui remplace
  *   Supabase (joueur connecté) ou le localStorage (invité).
  */
-import { vi } from 'vitest'
+import { vi, type Mock } from 'vitest'
 import type { Json } from '@/lib/database.types'
 import type { GameContext, LeaderboardEntry, Player } from '../types'
+import type { PrismineApi, RunView } from './api'
 
 type FakeOptions = {
   /** Joueur connecté, ou null pour un invité (comme le vrai SDK). */
@@ -57,13 +59,37 @@ export function createFakeContext({ player = null, initialSave = null }: FakeOpt
   }
 }
 
-/** Promesse résolue à la main : permet de figer une écriture « en cours » pour tester l'ordre des appels. */
-export function deferred<T = void>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason: unknown) => void
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-  return { promise, resolve, reject }
+/** Expédition telle que le serveur la renvoie, avec des valeurs par défaut (étage 1, lampe pleine). */
+export function runView(overrides: Partial<RunView> = {}): RunView {
+  return {
+    id: '00000000-0000-0000-0000-000000000001',
+    depth: 1,
+    size: 6,
+    prisms: 3,
+    obsidians: 0,
+    colors: [1],
+    oil: 20,
+    score: 0,
+    floorErrors: 0,
+    totalProbes: 0,
+    totalErrors: 0,
+    probes: [],
+    ...overrides,
+  }
+}
+
+/**
+ * Bouchon de l'API du serveur arbitre : chaque méthode est un simulacre `vi.fn()` qui échoue tant que le
+ * test ne lui a pas préparé de réponse. Le front ne parle jamais au vrai serveur Java dans les tests.
+ */
+export function stubApi(overrides: Partial<Record<keyof PrismineApi, Mock>> = {}) {
+  const unexpected = (name: string) => vi.fn().mockRejectedValue(new Error(`appel inattendu : ${name}`))
+  return {
+    startRun: unexpected('startRun'),
+    getRun: unexpected('getRun'),
+    probe: unexpected('probe'),
+    validate: unexpected('validate'),
+    endRun: unexpected('endRun'),
+    ...overrides,
+  } satisfies PrismineApi
 }

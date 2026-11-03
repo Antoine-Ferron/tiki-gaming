@@ -2,6 +2,7 @@ package fr.tikigaming.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import fr.tikigaming.auth.AuthException;
+import fr.tikigaming.games.GameException;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Comparator;
@@ -76,6 +77,16 @@ public class ApiExceptionHandler {
         // Les erreurs 5xx de Supabase sont remontées comme une passerelle en échec, sans leur détail.
         log.warn("Supabase a répondu {} : {}", e.status(), e.getMessage());
         return error(HttpStatus.BAD_GATEWAY, AUTH_UNAVAILABLE);
+    }
+
+    @ExceptionHandler(GameException.class)
+    ResponseEntity<ApiError> handleGameError(GameException e) {
+        if (e.status() >= 500) {
+            log.warn("Action de jeu impossible ({}) : {}", e.status(), e.getMessage());
+        } else {
+            log.debug("Action de jeu refusée ({}) : {}", e.status(), e.getMessage());
+        }
+        return error(HttpStatusCode.valueOf(e.status()), e.getMessage());
     }
 
     @ExceptionHandler(ResourceAccessException.class)

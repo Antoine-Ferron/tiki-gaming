@@ -2,10 +2,17 @@
 .prismine {
   /* Couleurs propres au jeu, contrastes mesurés sur --bg */
   --prismine-grid: #6b6f9e; /* traits de la galerie : 3,9:1 (3,5:1 sur --surface) */
-  --prismine-crystal: #8be9fd; /* cristaux-miroirs : 13,6:1 */
   --prismine-obsidian: #3d2c63; /* remplissage de l'obsidienne, décoratif */
   --prismine-obsidian-edge: #c4a8ff; /* contour de l'obsidienne : 9,3:1 */
-  --prismine-beam: #ffd866; /* faisceau et pastilles des tirs : 13,7:1 */
+  --prismine-beam: #ffd866; /* pastilles des tirs : 13,7:1 */
+  /* Lumières : prismes (rouge, vert, bleu) et mélanges du faisceau, toutes lisibles sur --bg */
+  --prismine-white: #f4f4f4;
+  --prismine-red: #ff6b6b;
+  --prismine-green: #6fe08a;
+  --prismine-blue: #6cb6ff;
+  --prismine-yellow: #ffe066;
+  --prismine-magenta: #ff7ae0;
+  --prismine-cyan: #66e8f5;
 
   display: grid;
   gap: 1rem;
@@ -161,10 +168,37 @@
   height: 72%;
   overflow: visible;
 }
-.prismine-crystal {
-  stroke: var(--prismine-crystal);
-  stroke-width: 1.4;
-  stroke-linecap: round;
+/* Couleur d'une lumière, indexée par son mélange (rouge = 1, vert = 2, bleu = 4) */
+.prismine-light-0 {
+  --prismine-light: var(--prismine-white);
+}
+.prismine-light-1 {
+  --prismine-light: var(--prismine-red);
+}
+.prismine-light-2 {
+  --prismine-light: var(--prismine-green);
+}
+.prismine-light-3 {
+  --prismine-light: var(--prismine-yellow);
+}
+.prismine-light-4 {
+  --prismine-light: var(--prismine-blue);
+}
+.prismine-light-5 {
+  --prismine-light: var(--prismine-magenta);
+}
+.prismine-light-6 {
+  --prismine-light: var(--prismine-cyan);
+}
+.prismine-light-7 {
+  --prismine-light: var(--prismine-white);
+}
+
+.prismine-prism {
+  fill: color-mix(in srgb, var(--prismine-light) 35%, transparent);
+  stroke: var(--prismine-light);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
 }
 .prismine-obsidian {
   fill: var(--prismine-obsidian);
@@ -192,7 +226,7 @@
 }
 .prismine-beam polyline {
   fill: none;
-  stroke: var(--prismine-beam);
+  stroke: var(--prismine-light);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -204,7 +238,59 @@
   stroke-width: 0.1;
 }
 .prismine-beam circle {
-  fill: var(--prismine-beam);
+  fill: var(--prismine-light);
+}
+
+/* Pastille de couleur d'un résultat (journal) */
+.prismine-swatch {
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  margin-right: 0.3em;
+  border-radius: 50%;
+  background: var(--prismine-light);
+  vertical-align: baseline;
+}
+.prismine-swatch.prismine-light-7 {
+  background: conic-gradient(
+    var(--prismine-red),
+    var(--prismine-yellow),
+    var(--prismine-green),
+    var(--prismine-cyan),
+    var(--prismine-blue),
+    var(--prismine-magenta),
+    var(--prismine-red)
+  );
+}
+
+/* Choix de la couleur des prismes posés */
+.prismine-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+.prismine-palette button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border: 2px solid transparent;
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+}
+.prismine-palette button[aria-pressed='true'] {
+  border-color: var(--prismine-light);
+}
+.prismine-palette button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.prismine-palette .prismine-piece {
+  width: 1.1em;
+  height: 1.1em;
 }
 
 /* Pastille d'un tir : sur le bord du plateau et dans le journal */
