@@ -7,8 +7,10 @@ import { createGameContext } from '../sdk'
 import { FakeScores, fakeDeps } from '../testing/fakes'
 import { vehicleLabel } from './components/vehicleLabel'
 import { type Board, type Move, parseBoard } from './domain/board'
+import { generateBoard } from './domain/generator'
 import { getLevel } from './domain/levels'
 import { solve } from './domain/solver'
+import { seededRandom } from './testing/seededRandom'
 import RushHourGame from './RushHourGame'
 
 afterEach(cleanup)
@@ -33,13 +35,13 @@ async function renderGame() {
   return { scores, user }
 }
 
-function labelOf(id: string) {
-  return vehicleLabel(LEVEL_1.vehicles.find((v) => v.id === id)!)
+function labelOf(id: string, board: Board = LEVEL_1) {
+  return vehicleLabel(board.vehicles.find((v) => v.id === id)!)
 }
 
 /** Flèches à presser pour jouer un coup au clavier (une flèche = une case). */
-function keysFor(move: Move) {
-  const horizontal = LEVEL_1.vehicles.find((v) => v.id === move.id)!.orientation === 'H'
+function keysFor(move: Move, board: Board = LEVEL_1) {
+  const horizontal = board.vehicles.find((v) => v.id === move.id)!.orientation === 'H'
   const key = horizontal ? (move.delta > 0 ? 'ArrowRight' : 'ArrowLeft') : move.delta > 0 ? 'ArrowDown' : 'ArrowUp'
   return `{${key}}`.repeat(Math.abs(move.delta))
 }
@@ -124,13 +126,13 @@ describe('RushHourGame : le niveau 1 se joue au clavier', () => {
 })
 
 /** Ouvre le jeu sur l'écran de choix, avec une progression déjà sauvegardée (records par niveau). */
-async function renderPicker(best: Record<number, number> = {}) {
+async function renderPicker(best: Record<number, number> = {}, random = seededRandom(1)) {
   const scores = new FakeScores(player)
   const deps = fakeDeps({ scores })
   deps.saves.data.set('rush-hour', { version: 1, best })
-  render(<RushHourGame ctx={createGameContext(game, player, deps)} />)
+  render(<RushHourGame ctx={createGameContext(game, player, deps)} random={random} />)
   await screen.findByRole('heading', { name: 'Niveaux' })
-  return { user: userEvent.setup() }
+  return { user: userEvent.setup(), scores }
 }
 
 const levelButton = (id: number) => screen.getByRole('button', { name: new RegExp(`^Niveau ${id}\\b`) })
@@ -214,5 +216,71 @@ describe('RushHourGame : indices (P5)', () => {
     // Assert
     expect(await screen.findByText(`Bravo ! 800 points en ${OPTIMAL} coups`)).toBeInTheDocument()
     expect(scores.rows.map((r) => r.score)).toEqual([800])
+  })
+})
+
+describe('RushHourGame : mode Génération (G1, G5, G6, S4)', () => {
+  // Même graine que le jeu : le test connaît le plateau généré et sa solution.
+  const GENERATED = parseBoard(generateBoard('facile', seededRandom(1)))
+  const GENERATED_SOLUTION = solve(GENERATED)!
+
+  async function playGenerated(user: ReturnType<typeof userEvent.setup>) {
+    for (const move of GENERATED_SOLUTION) {
+      screen.getByRole('button', { name: labelOf(move.id, GENERATED) }).focus()
+      await user.keyboard(keysFor(move, GENERATED))
+    }
+  }
+
+  test('choisir Facile lance un plateau généré, avec son minimum de coups', async () => {
+    // Arrange
+    const { user } = await renderPicker()
+
+    // Act
+    await user.click(screen.getByRole('button', { name: 'Facile' }))
+
+    // Assert
+    expect(screen.getByRole('heading', { name: 'Plateau Facile' })).toBeInTheDocument()
+    expect(screen.getByText(`Coups : 0 (min. ${GENERATED_SOLUTION.length})`)).toBeInTheDocument()
+  })
+
+  test('un plateau généré se gagne comme un niveau, mais ne compte pas au classement', async () => {
+    // Arrange
+    const { user, scores } = await renderPicker()
+    await user.click(screen.getByRole('button', { name: 'Facile' }))
+
+    // Act
+    await playGenerated(user)
+
+    // Assert
+    expect(await screen.findByText(`Bravo ! 1000 points en ${GENERATED_SOLUTION.length} coups`)).toBeInTheDocument()
+    expect(scores.rows).toEqual([])
+  })
+
+  test('les plateaux réussis sont comptés par difficulté sur l’écran de choix', async () => {
+    // Arrange
+    const { user } = await renderPicker()
+    await user.click(screen.getByRole('button', { name: 'Facile' }))
+    await playGenerated(user)
+    await screen.findByText(/^Bravo/)
+
+    // Act
+    await user.click(screen.getByRole('button', { name: '← Niveaux' }))
+
+    // Assert
+    expect(screen.getByText('Facile : 1 plateau réussi, record 1000 points')).toBeInTheDocument()
+  })
+
+  test('« Nouveau plateau » relance un plateau de la même difficulté', async () => {
+    // Arrange
+    const { user } = await renderPicker()
+    await user.click(screen.getByRole('button', { name: 'Facile' }))
+    await playGenerated(user)
+
+    // Act
+    await user.click(await screen.findByRole('button', { name: 'Nouveau plateau' }))
+
+    // Assert
+    expect(screen.getByRole('heading', { name: 'Plateau Facile' })).toBeInTheDocument()
+    expect(screen.getByText(/^Coups : 0 /)).toBeInTheDocument()
   })
 })
