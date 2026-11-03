@@ -1,14 +1,14 @@
 package fr.tikigaming.games.prismine;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** Expéditions en cours dans la table prismine_runs (état JSON), accessible au seul backend. */
 @Component
@@ -53,7 +53,7 @@ public class SupabaseRunRepository implements RunRepository {
         if (rows == null || rows.isEmpty()) return Optional.empty();
         try {
             return Optional.of(mapper.treeToValue(rows.get(0).get("state"), Run.class));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("État d'expédition illisible : " + id, e);
         }
     }

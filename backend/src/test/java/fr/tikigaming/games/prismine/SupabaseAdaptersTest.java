@@ -9,8 +9,6 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.tikigaming.config.TikiProperties;
 import fr.tikigaming.games.GameException;
 import java.time.Duration;
@@ -23,6 +21,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * TI — adaptateurs Supabase (PostgREST) avec le vrai client HTTP de Spring et la sérialisation JSON : on vérifie les
@@ -34,7 +34,7 @@ class SupabaseAdaptersTest {
     private static final UUID ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final String ROW = URL + "/rest/v1/prismine_runs?id=eq." + ID;
 
-    private final ObjectMapper mapper = JsonMapper.builder().findAndAddModules().build();
+    private final ObjectMapper mapper = JsonMapper.builder().build();
     private MockRestServiceServer server;
     private SupabaseRunRepository runs;
     private SupabaseScoreRegistry scores;
@@ -52,7 +52,7 @@ class SupabaseAdaptersTest {
     }
 
     @Test
-    void savesReadsBackAndDeletesARunWithTheServiceRoleKey() throws Exception {
+    void storesRunsAndScoresInSupabaseAndReportsItsFailures() throws Exception {
         Run run = Expedition.start(ID, "joueur-1", 42, Instant.parse("2026-11-03T10:00:00Z"));
         server.expect(requestTo(URL + "/rest/v1/prismine_runs"))
                 .andExpect(method(HttpMethod.POST))
@@ -67,16 +67,6 @@ class SupabaseAdaptersTest {
                         "[{\"state\": " + mapper.writeValueAsString(run) + "}]", MediaType.APPLICATION_JSON));
         server.expect(requestTo(ROW)).andExpect(method(HttpMethod.DELETE)).andRespond(withSuccess());
         server.expect(requestTo(ROW + "&select=state")).andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
-
-        runs.save(run);
-        assertThat(runs.find(ID)).contains(run);
-        runs.delete(ID);
-        assertThat(runs.find(ID)).isEmpty();
-        server.verify();
-    }
-
-    @Test
-    void insertsTheScoreAndTurnsASupabaseFailureIntoABadGateway() {
         server.expect(requestTo(URL + "/rest/v1/scores"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(content()
@@ -85,6 +75,12 @@ class SupabaseAdaptersTest {
                 .andRespond(withSuccess());
         server.expect(requestTo(URL + "/rest/v1/scores")).andRespond(withServerError());
 
+        // Expédition : écrite (upsert), relue depuis son état JSON, puis supprimée.
+        runs.save(run);
+        assertThat(runs.find(ID)).contains(run);
+        runs.delete(ID);
+        assertThat(runs.find(ID)).isEmpty();
+        // Score : inséré au nom du joueur ; une panne de Supabase devient une 502 lisible par le joueur.
         scores.record("joueur-1", 150, Map.of("depth", 2));
         assertThatThrownBy(() -> scores.record("joueur-1", 150, Map.of()))
                 .isInstanceOf(GameException.class)

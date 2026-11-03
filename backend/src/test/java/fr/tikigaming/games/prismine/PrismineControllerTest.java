@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.config.ApiExceptionHandler;
 import fr.tikigaming.games.prismine.TestDoubles.InMemoryRunRepository;
@@ -25,6 +24,7 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * TI — API HTTP de Prismine : contrôleur, vrai service, gestion des erreurs de la plateforme et session, branchés sur
