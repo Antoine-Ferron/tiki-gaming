@@ -19,6 +19,7 @@
     "vite.config.ts",
     "vitest.integration.config.ts",
     "playwright.config.ts",
+    "security-headers.ts",
     "tests",
     "e2e",
     "scripts/*.d.mts"

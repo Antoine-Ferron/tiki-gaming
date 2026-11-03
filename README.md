@@ -73,6 +73,8 @@ CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, r
 - `/api/*`, `/oauth2/*` et `/login/oauth2/*` doivent être servis sur **la même origine que le front**
   (reverse proxy / rewrites) pour que le cookie de session reste first-party.
 - Ajouter `<URL de prod>/login/oauth2/code/google` aux redirect URIs du client OAuth Google.
+- Le front buildé doit être servi avec les en-têtes de sécurité de `frontend/security-headers.ts` (CSP, `X-Frame-Options`,
+  `nosniff`, `Permissions-Policy`…), que `vite preview` applique déjà. Le scan ZAP de [quality/](quality/README.md) les vérifie.
 
 ## Documentation
 
@@ -82,6 +84,7 @@ CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, r
 | [docs/modele-donnees.md](docs/modele-donnees.md)     | Schéma, tables, RLS et droits, fonctions, migrations        |
 | [docs/charte-graphique.md](docs/charte-graphique.md) | Couleurs, typographie, composants, règles pour les jeux, rédaction |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                   | Branches, PR, commits, création d'un jeu                    |
+| [quality/README.md](quality/README.md)               | Qualimétrie : SonarQube, charge k6 (P95), scan DAST ZAP     |
 
 ## Contribuer
 

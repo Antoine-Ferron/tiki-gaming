@@ -28,6 +28,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
       database: ${{ steps.filter.outputs.database }}
+      quality: ${{ steps.filter.outputs.quality }}
     steps:
       - uses: actions/checkout@v7
       - id: filter
@@ -47,6 +48,9 @@ jobs:
               - *ci
               - 'frontend/**'
               - 'supabase/**'
+            quality:
+              - *ci
+              - 'quality/**'
 
   frontend:
     name: Frontend (format + lint + build)
@@ -241,3 +245,131 @@ jobs:
         with:
           name: rapport-e2e
           path: frontend/playwright-report/
+
+  performance:
+    name: Performance (k6)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.database != 'false' || needs.changes.outputs.quality != 'false') }}
+    runs-on: ubuntu-latest
+    env:
+      # Valeurs factices : aucun appel externe tant qu'aucun joueur n'est connecté (voir OpenApiDocsTest).
+      GOOGLE_CLIENT_ID: ci-client-id
+      GOOGLE_CLIENT_SECRET: ci-client-secret
+      SUPABASE_URL: https://ci.supabase.invalid
+      SUPABASE_ANON_KEY: ci-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+      SUPABASE_JWT_SECRET: ci-jwt-secret-with-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: npm ci
+        working-directory: frontend
+      # Base éphémère (image de prod) + migrations du dépôt + 1 000 joueurs factices, puis PostgREST.
+      - run: docker compose -f quality/docker-compose.yml up -d --wait db
+      - run: npm run quality:seed
+        working-directory: frontend
+      - run: docker compose -f quality/docker-compose.yml up -d rest
+      - name: Backend en arrière-plan
+        run: |
+          (cd backend && mvn -B -q spring-boot:run > ../backend.log 2>&1 &)
+          for i in $(seq 1 90); do curl -sf http://localhost:8080/api/auth/session && curl -sf -o /dev/null http://localhost:54330/ && break; sleep 2; done
+      # Seuils bloquants (quality/k6/lobby.js) : P95 < 300 ms par scénario, moins de 1 % d'erreurs.
+      - run: mkdir -p quality/reports && HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f quality/docker-compose.yml run --rm k6
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-k6
+          path: quality/reports/k6-summary.json
+
+  dast:
+    name: DAST (ZAP baseline)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.quality != 'false') }}
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_CLIENT_ID: ci-client-id
+      GOOGLE_CLIENT_SECRET: ci-client-secret
+      SUPABASE_URL: https://ci.supabase.invalid
+      SUPABASE_ANON_KEY: ci-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+      SUPABASE_JWT_SECRET: ci-jwt-secret-with-at-least-32-characters
+      VITE_SUPABASE_URL: https://ci.supabase.invalid
+      VITE_SUPABASE_ANON_KEY: ci-anon-key
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: npm ci && npm run build
+        working-directory: frontend
+      - name: Front buildé (vite preview, avec les en-têtes de sécurité) et backend en arrière-plan
+        run: |
+          (cd frontend && npx vite preview --host 0.0.0.0 --port 4173 --strictPort > ../preview.log 2>&1 &)
+          (cd backend && mvn -B -q spring-boot:run > ../backend.log 2>&1 &)
+          for i in $(seq 1 90); do curl -sf -o /dev/null http://localhost:4173/ && curl -sf http://localhost:8080/api/auth/session && break; sleep 2; done
+      # Scan passif. Échoue sur une alerte non acceptée ; les risques acceptés sont justifiés dans quality/zap/rules.tsv.
+      - name: ZAP baseline
+        run: |
+          mkdir -p quality/reports && chmod 777 quality/reports
+          for target in front:4173 api:8080; do
+            docker compose -f quality/docker-compose.yml run --rm zap zap-baseline.py \
+              -t "http://host.docker.internal:${target#*:}/" -c /zap/rules/rules.tsv -r "zap-${target%%:*}.html"
+          done
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-zap
+          path: quality/reports/
+
+  sonar:
+    name: SonarQube Cloud
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false') }}
+    runs-on: ubuntu-latest
+    # Actif dès que le secret SONAR_TOKEN est configuré (Settings → Secrets → Actions), voir quality/README.md.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        if: env.SONAR_TOKEN != ''
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v6
+        if: env.SONAR_TOKEN != ''
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Couverture (Vitest lcov + JaCoCo)
+        if: env.SONAR_TOKEN != ''
+        run: |
+          (cd frontend && npm ci && VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run test:coverage)
+          (cd backend && mvn -B verify)
+      - uses: SonarSource/sonarqube-scan-action@v8
+        if: env.SONAR_TOKEN != ''
+        with:
+          args: -Dsonar.organization=eanathos -Dsonar.qualitygate.wait=true
+      - if: env.SONAR_TOKEN == ''
+        run: 'echo "SONAR_TOKEN absent : analyse SonarQube Cloud ignorée (voir quality/README.md)."'
