@@ -12,8 +12,21 @@ public record Position(
         int halfmoveClock,
         int fullmoveNumber) {
 
+    /** Invariants : un roi par camp, aucun pion sur la rangée 1 ni sur la rangée 8. */
     public Position {
         pieces = Map.copyOf(pieces);
+        for (Color color : Color.values()) {
+            Piece king = new Piece(color, PieceType.KING);
+            long kings = pieces.values().stream().filter(king::equals).count();
+            if (kings != 1) {
+                throw new IllegalArgumentException("Il faut exactement un roi " + color + " (trouvé : " + kings + ")");
+            }
+        }
+        pieces.forEach((square, piece) -> {
+            if (piece.type() == PieceType.PAWN && (square.rank() == 0 || square.rank() == 7)) {
+                throw new IllegalArgumentException("Un pion ne peut pas être en rangée 1 ou 8 : " + square);
+            }
+        });
     }
 
     /** La pièce posée sur la case, ou vide si la case est libre. */
