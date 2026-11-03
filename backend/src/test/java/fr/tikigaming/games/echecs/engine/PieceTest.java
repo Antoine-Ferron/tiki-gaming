@@ -56,4 +56,12 @@ class PieceTest {
         // Act + Assert
         assertThatThrownBy(() -> Piece.fromFen(lettre)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @ParameterizedTest(name = "{2} {1} → ''{0}''")
+    @MethodSource("lettresFen")
+    @DisplayName("chaque pièce s'écrit avec sa lettre FEN")
+    void chaquePieceSEcritAvecSaLettreFen(char lettre, Color couleur, PieceType type) {
+        // Act + Assert
+        assertThat(new Piece(couleur, type).toFen()).isEqualTo(lettre);
+    }
 }
