@@ -48,5 +48,20 @@ class FenTest {
         assertThat(Fen.parse("4k3/8/8/8/8/8/8/4K3 b - - 0 1").turn()).isEqualTo(Color.BLACK);
     }
 
+    @Test
+    @DisplayName("lit les droits de roque : KQkq, Kq et aucun (-)")
+    void litLesDroitsDeRoque() {
+        // Act
+        CastlingRights tous = Fen.parse(START).castling();
+        CastlingRights certains =
+                Fen.parse("r3k2r/8/8/8/8/8/8/R3K2R w Kq - 0 1").castling();
+        CastlingRights aucun = Fen.parse("4k3/8/8/8/8/8/8/4K3 w - - 0 1").castling();
+
+        // Assert
+        assertThat(tous).isEqualTo(new CastlingRights(true, true, true, true));
+        assertThat(certains).isEqualTo(new CastlingRights(true, false, false, true));
+        assertThat(aucun).isEqualTo(new CastlingRights(false, false, false, false));
+    }
+
     private static final String START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 }
