@@ -39,11 +39,21 @@ export class GameSession {
     return this.stopwatch.elapsedMs
   }
 
-  /** Un coup : glisse un véhicule. Un glissement impossible est refusé et ne compte pas. */
+  /**
+   * Un coup : glisse un véhicule. Un glissement impossible est refusé et ne compte pas.
+   * Re-glisser le véhicule du coup précédent prolonge ce coup (au clavier, case par case = un seul coup).
+   */
   move(id: string, delta: number): void {
     if (this.solved) throw new Error('Partie terminée')
     const next = moveVehicle(this.current, id, delta)
-    this.history.push({ board: this.current, move: { id, delta } })
+    const last = this.history.at(-1)
+    if (last?.move.id === id) {
+      const total = last.move.delta + delta
+      if (total === 0) this.history.pop()
+      else last.move = { id, delta: total }
+    } else {
+      this.history.push({ board: this.current, move: { id, delta } })
+    }
     this.current = next
     if (this.solved) this.stopwatch.stop()
   }
