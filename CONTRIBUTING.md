@@ -216,17 +216,35 @@ fr.tikigaming
 
 ## Intégration continue
 
-`.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main` :
+`.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main`. Un job ne tourne
+que si sa zone a changé ; sinon il apparaît « skipped », ce qui compte comme réussi pour la fusion :
 
-| Job                 | Étapes                                             |
-|---------------------|----------------------------------------------------|
-| `frontend`          | `npm ci` → `npm run format:check` → `npm run lint` → `npm test` → `npm run build` |
-| `backend`           | `mvn -B verify` (linter, compilation, tests, format) |
-| `integration`       | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
-| `mutation-frontend` | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
-| `mutation-backend`  | Pitest (seuil 75 %), rapport en artefact |
-| `e2e`               | `npm run test:e2e` : Playwright + audit WCAG 2.1 AA (axe), rapport en artefact en cas d'échec |
-| `security`          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
+| Job                 | Tourne si                         | Étapes                                             |
+|---------------------|-----------------------------------|----------------------------------------------------|
+| `frontend`          | `frontend/**`                     | `npm ci` → `npm run format:check` → `npm run lint` → `npm test` → `npm run build` |
+| `backend`           | `backend/**`                      | `mvn -B verify` (linter, compilation, tests, format) |
+| `integration`       | `frontend/**` ou `supabase/**`    | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
+| `mutation-frontend` | `frontend/**`                     | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
+| `mutation-backend`  | `backend/**`                      | Pitest (seuil 75 %), rapport en artefact |
+| `e2e`               | `frontend/**`                     | `npm run test:e2e` : Playwright + audit WCAG 2.1 AA (axe), rapport en artefact en cas d'échec |
+| `security`          | toujours                          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
+
+Modifier `.github/workflows/ci.yml` relance tous les jobs. Si le job `changes` (détection des zones)
+échoue, tous les jobs tournent aussi.
+
+### Caches
+
+| Cache | Effet |
+|-------|-------|
+| npm, Maven | dépendances téléchargées une fois (`setup-node`, `setup-java`) |
+| Prettier, ESLint | seuls les fichiers dont le **contenu** a changé sont revérifiés (aussi en local : `node_modules/.cache`) |
+| Playwright | navigateurs réinstallés seulement quand la version change |
+| Stryker, Pitest | **sur une PR**, seuls les mutants concernés par le changement sont rejoués ; un push vers `dev` ou `main` refait un run **complet**, qui sert de référence aux PR suivantes |
+
+Les seuils et le résultat des checks ne changent pas : un test affaibli fait toujours apparaître ses
+mutants survivants, en incrémental comme en complet. En cas de doute sur un résultat de mutation d'une
+PR, supprimer ses caches `stryker-…` / `pitest-…` (onglet *Actions → Caches*) puis relancer le job :
+*Re-run* seul relit le cache.
 
 `.github/workflows/codeql.yml` lance en plus l'analyse de sécurité **CodeQL** (TypeScript et Java) sur
 chaque PR, chaque push et chaque lundi ; les alertes sont dans l'onglet *Security* du dépôt.
