@@ -48,7 +48,8 @@ public class MastermindController {
         List<MastermindColor> parsedColors() {
             try {
                 if (colors == null || colors.size() != MastermindGame.CODE_LENGTH) {
-                    throw new MastermindValidationException("Une proposition doit contenir exactement 4 couleurs valides.");
+                    throw new MastermindValidationException(
+                            "Une proposition doit contenir exactement 4 couleurs valides.");
                 }
                 return colors.stream().map(MastermindColor::fromValue).toList();
             } catch (MastermindValidationException e) {

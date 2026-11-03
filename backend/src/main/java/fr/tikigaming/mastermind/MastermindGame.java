@@ -19,9 +19,14 @@ final class MastermindGame {
     }
 
     synchronized MastermindGameSnapshot snapshot() {
-        return new MastermindGameSnapshot(id, status, history.size(), MAX_ATTEMPTS - history.size(),
-            List.copyOf(history), status == MastermindStatus.IN_PROGRESS ? null : secret,
-            status == MastermindStatus.WON ? MAX_ATTEMPTS - history.size() + 1 : 0);
+        return new MastermindGameSnapshot(
+                id,
+                status,
+                history.size(),
+                MAX_ATTEMPTS - history.size(),
+                List.copyOf(history),
+                status == MastermindStatus.IN_PROGRESS ? null : secret,
+                status == MastermindStatus.WON ? MAX_ATTEMPTS - history.size() + 1 : 0);
     }
 
     synchronized MastermindGameSnapshot guess(List<MastermindColor> colors) {

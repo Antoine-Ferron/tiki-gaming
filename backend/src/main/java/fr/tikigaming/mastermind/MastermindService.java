@@ -41,7 +41,7 @@ public class MastermindService {
 
     private List<MastermindColor> generateSecret() {
         return random.ints(MastermindGame.CODE_LENGTH, 0, MastermindColor.values().length)
-            .mapToObj(index -> MastermindColor.values()[index])
-            .toList();
+                .mapToObj(index -> MastermindColor.values()[index])
+                .toList();
     }
 }

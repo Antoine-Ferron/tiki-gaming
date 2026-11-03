@@ -102,7 +102,10 @@ serveur (Google OAuth, `SUPABASE_JWT_SECRET`, clé `service_role`) vont uniqueme
 | `npm run format:check` | Vérifie le formatage sans rien modifier (utilisé par la CI)           |
 | `npm run lint`         | **Linter** : ESLint (TypeScript, règles des hooks React)              |
 | `npm run build`        | Vérification des types + build de production                          |
-| `npm test`             | Tests unitaires (Vitest), fichiers `*.test.ts` à côté du code testé   |
+| `npm test`             | Tests unitaires et de composants (Vitest), fichiers `*.test.ts(x)` à côté du code testé |
+| `npm run test:mutation`| **Mutation testing** (Stryker) du cœur de la plateforme ; échoue sous 75 % (rapport : `reports/mutation/`) |
+| `npm run test:e2e`     | **E2E** (Playwright, Chromium) : parcours du lobby et audit d'accessibilité axe ; `npx playwright install chromium` la première fois |
+| `npm run test:integration` | **Tests d'intégration** (Testcontainers, Docker requis) : migrations, RLS et catalogue sur une vraie base |
 
 Lancer `npm run format` avant chaque commit : la CI refuse un code non formaté. Comme pour le backend,
 c'est le formatter qui tranche les questions de style.
@@ -116,6 +119,29 @@ c'est le formatter qui tranche les questions de style.
 - Toute règle existe aussi côté backend (Bean Validation) avec le même message : le front n'est pas une
   sécurité. Le backend renvoie `{ error, fields: { champ: message } }` ; `toFormErrors()` (`src/lib/api.ts`)
   place chaque message sous son champ.
+
+### Tests
+
+- **Unitaires** (`*.test.ts`) : logique pure, sans réseau ni stockage réel, quelques millisecondes par test.
+  Une ligne par partition et par frontière (`test.each`), au format Arrange / Act / Assert.
+- **Composants** (`*.test.tsx`, `// @vitest-environment jsdom` en tête de fichier) : Testing Library,
+  on vérifie ce que le joueur voit (texte, rôles ARIA), pas l'implémentation.
+- Le SDK des jeux se teste avec les **fakes** de `src/games/testing/fakes.ts` (`fakeDeps()`) : scores,
+  sauvegardes et stockage en mémoire, pannes simulées avec `FakeScores.failNext()`. Pas de mock de Supabase.
+- **Intégration** (`tests/integration/`) : un conteneur `supabase/postgres` (même version que la prod) est
+  démarré une fois pour la suite, les migrations du dépôt y sont rejouées, puis chaque test tourne dans une
+  transaction annulée à la fin. `as(db, userId, …)` exécute une requête avec les droits d'un joueur
+  (`authenticated` + JWT) ou d'un visiteur (`anon`, `userId` à `null`) : c'est la RLS réelle qui est testée.
+  **Toute nouvelle table ou politique RLS arrive avec ses tests d'intégration.** Sans Docker, ces tests sont
+  ignorés en local (la CI, elle, échoue).
+- **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
+  écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
+  le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+- **E2E** (`e2e/`) : peu de tests, réservés aux parcours vitaux (accueil → jeu → partie, panne, redirection)
+  et à l'audit axe. Backend et Supabase sont simulés (`e2e/fixtures.ts`) ; le temps est contrôlé avec
+  `page.clock` (pas d'attente réelle de 10 s). Aucune violation WCAG sérieuse ou critique n'est tolérée.
+- Mutation testing : un mutant survivant se tue par un test. S'il est équivalent (journalisation…), on le
+  désactive sur la ligne avec sa justification : `// Stryker disable next-line all: journalisation seule`.
 
 ### Logs
 
@@ -134,6 +160,7 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
 | `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, et échec si le code n'est pas formaté |
+| `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
 
 Une fois le serveur lancé, l'API est documentée et testable sur **http://localhost:8080/swagger-ui.html**
@@ -187,10 +214,18 @@ fr.tikigaming
 
 `.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main` :
 
-| Job        | Étapes                                             |
-|------------|----------------------------------------------------|
-| `frontend` | `npm ci` → `npm run format:check` → `npm run lint` → `npm test` → `npm run build` |
-| `backend`  | `mvn -B verify` (linter, compilation, tests, format) |
+| Job                 | Étapes                                             |
+|---------------------|----------------------------------------------------|
+| `frontend`          | `npm ci` → `npm run format:check` → `npm run lint` → `npm test` → `npm run build` |
+| `backend`           | `mvn -B verify` (linter, compilation, tests, format) |
+| `integration`       | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
+| `mutation-frontend` | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
+| `mutation-backend`  | Pitest (seuil 75 %), rapport en artefact |
+| `e2e`               | `npm run test:e2e` : Playwright + audit WCAG 2.1 AA (axe), rapport en artefact en cas d'échec |
+| `security`          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
+
+`.github/workflows/codeql.yml` lance en plus l'analyse de sécurité **CodeQL** (TypeScript et Java) sur
+chaque PR, chaque push et chaque lundi ; les alertes sont dans l'onglet *Security* du dépôt.
 
 Une PR ne se fusionne qu'avec une CI verte.
 Les noms des jobs (`Frontend (format + lint + build)`, `Backend (format + lint + tests)`) sont des checks
@@ -235,6 +270,7 @@ const monJeu: GameDefinition = {
   category: 'duel',        // obligatoire : 'solo' (1 joueur) · 'duel' (2) · 'multi' (3 et +)
   mode: 'solo',            // accès : 'solo' = jouable sans compte · 'multiplayer' = connexion obligatoire
   thumbnail: '/games/mon-jeu/thumbnail.webp', // optionnel, fichier dans frontend/public/games/mon-jeu/
+  scoreLimits: { max: 5000 }, // optionnel : score maximal plausible, refusé au-delà (aligné avec games.max_score)
   component: lazy(() => import('./MonJeu')),
 }
 export default monJeu
@@ -278,10 +314,27 @@ export default function MonJeu({ ctx }: GameProps) {
   await ctx.getLeaderboard(10)   // top 10 (meilleur score par joueur)
   await ctx.getMyBest()          // meilleur score du joueur, ou null
   await ctx.save({ level: 3 })   // sauvegarde JSON (écrase la précédente)
-  await ctx.loadSave<MaSave>()   // ou null
+  await ctx.loadSave(saveSchema) // validée par un schéma Zod : null si absente, corrompue ou d'un ancien format
   await ctx.clearSave()
 }
 ```
+
+#### Erreurs
+
+Les méthodes du `ctx` rejettent avec une `GameError` (`src/games/errors.ts`) dont le **`message` est écrit
+pour le joueur** : l'afficher tel quel (`setError(e.message)`), sans code technique. `e.code` permet
+d'adapter la réaction :
+
+| `code`      | Cas                                                        |
+|-------------|------------------------------------------------------------|
+| `invalid`   | score refusé avant l'envoi (pas un entier, négatif, au-dessus de `scoreLimits.max`) |
+| `queued`    | coupure réseau : le score est gardé sur l'appareil et renvoyé à la prochaine partie (5 essais) |
+| `network`   | serveur injoignable (lecture du classement, sauvegarde…) : réessayer plus tard |
+| `session`   | session expirée : se reconnecter                           |
+| `forbidden` / `not_found` | refusé par la RLS, ou jeu absent de `public.games` |
+
+Si le jeu plante pendant son rendu, la plateforme l'isole (`GameErrorBoundary`) : le joueur voit un
+message et un bouton « Relancer le jeu », le reste du site continue de fonctionner.
 
 ### Mode invité (jeux `solo`)
 
@@ -308,7 +361,16 @@ joueur à se connecter pour être classé (voir le clicker).
 4. Recommencer pour la règle suivante.
 
 Priorité aux règles du jeu et à la logique métier (calcul du score, conditions de victoire, coups
-valides…) plutôt qu'au rendu visuel.
+valides…) plutôt qu'au rendu visuel. Pour tester un composant qui reçoit `ctx` sans réseau :
+
+```ts
+import { createGameContext } from '@/games/sdk'
+import { fakeDeps, FakeScores } from '@/games/testing/fakes'
+
+const scores = new FakeScores({ id: 'p1', username: 'alice' })
+const ctx = createGameContext(monJeu, { id: 'p1', username: 'alice' }, fakeDeps({ scores }))
+scores.failNext(new GameError('network', 'hors ligne')) // simule une coupure au prochain envoi
+```
 
 ### Règles
 
@@ -321,4 +383,4 @@ valides…) plutôt qu'au rendu visuel.
 - Le jeu est chargé à la demande (`lazy`) : les dépendances lourdes (Phaser, Three.js…) n'alourdissent pas la plateforme.
 - Besoin de tables propres au jeu ? Les préfixer par le slug (`mon_jeu_xxx`), activer la RLS, et
   passer en revue avec l'équipe plateforme.
-- Avant de pousser (dans `frontend/`) : `npm run format && npm run lint && npm run build`.
+- Avant de pousser (dans `frontend/`) : `npm run format && npm run lint && npm test && npm run build`.

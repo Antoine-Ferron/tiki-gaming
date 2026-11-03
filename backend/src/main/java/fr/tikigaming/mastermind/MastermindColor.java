@@ -26,8 +26,8 @@ public enum MastermindColor {
     @JsonCreator
     public static MastermindColor fromValue(String value) {
         return Arrays.stream(values())
-            .filter(color -> color.value.equalsIgnoreCase(value))
-            .findFirst()
-            .orElseThrow(() -> new MastermindValidationException("Couleur inconnue : " + value));
+                .filter(color -> color.value.equalsIgnoreCase(value))
+                .findFirst()
+                .orElseThrow(() -> new MastermindValidationException("Couleur inconnue : " + value));
     }
 }

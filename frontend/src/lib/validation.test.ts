@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { emailSchema, passwordSchema, signupSchema, usernameSchema, validate } from './validation'
+import {
+  emailSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  newPasswordSchema,
+  passwordSchema,
+  profileSchema,
+  signupSchema,
+  usernameSchema,
+  validate,
+} from './validation'
 
 function firstError(schema: Parameters<typeof validate>[0], value: unknown) {
   const result = schema.safeParse(value)
@@ -70,5 +80,23 @@ describe('validate', () => {
         password: 'Le mot de passe doit contenir au moins 8 caractères.',
       },
     })
+  })
+})
+
+// Chaque formulaire refuse un envoi vide avec le message du bon champ.
+describe('schémas des formulaires', () => {
+  it.each([
+    ['profil', profileSchema, { username: 'Choisis un pseudo.' }],
+    ['connexion', loginSchema, { email: 'Indique ton adresse email.', password: 'Indique ton mot de passe.' }],
+    ['mot de passe oublié', forgotPasswordSchema, { email: 'Indique ton adresse email.' }],
+    ['nouveau mot de passe', newPasswordSchema, { password: 'Le mot de passe doit contenir au moins 8 caractères.' }],
+  ] as [string, Parameters<typeof validate>[0], Record<string, string>][])('%s', (_, schema, errors) => {
+    const empty = Object.fromEntries(Object.keys(errors).map((field) => [field, '']))
+
+    expect(validate(schema, empty)).toEqual({ errors })
+  })
+
+  it('rattache une erreur hors champ au formulaire', () => {
+    expect(validate(loginSchema, null)).toMatchObject({ errors: { form: expect.any(String) } })
   })
 })

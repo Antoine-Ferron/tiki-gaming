@@ -56,7 +56,10 @@ export default function MastermindGame({ ctx }: GameProps) {
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false))
-    void ctx.getLeaderboard(10).then(setLeaderboard).catch((e) => setError((e as Error).message))
+    void ctx
+      .getLeaderboard(10)
+      .then(setLeaderboard)
+      .catch((e) => setError((e as Error).message))
   }, [ctx])
 
   function chooseColor(color: ColorId) {
@@ -113,14 +116,21 @@ export default function MastermindGame({ ctx }: GameProps) {
   return (
     <div className="mastermind">
       <div className="card mastermind-board">
-        {loading || !game ? <p className="muted">Création de la partie…</p> : (
+        {loading || !game ? (
+          <p className="muted">Création de la partie…</p>
+        ) : (
           <>
             <div className="mastermind-heading">
               <div>
                 <h2>Décode la combinaison</h2>
-                <p className="muted">{game.attemptsRemaining} tentative{game.attemptsRemaining > 1 ? 's' : ''} restante{game.attemptsRemaining > 1 ? 's' : ''}</p>
+                <p className="muted">
+                  {game.attemptsRemaining} tentative{game.attemptsRemaining > 1 ? 's' : ''} restante
+                  {game.attemptsRemaining > 1 ? 's' : ''}
+                </p>
               </div>
-              <button className="small" onClick={restart} disabled={submitting}>Nouvelle partie</button>
+              <button className="small" onClick={restart} disabled={submitting}>
+                Nouvelle partie
+              </button>
             </div>
 
             <div className="mastermind-attempts" aria-label="Tentatives précédentes">
@@ -128,11 +138,20 @@ export default function MastermindGame({ ctx }: GameProps) {
                 <div className="mastermind-row" key={`${index}-${attempt.guess.join('-')}`}>
                   <span className="attempt-number">{index + 1}</span>
                   <div className="color-slots">
-                    {attempt.guess.map((color, colorIndex) => <span className={`color-dot ${color}`} title={colorLabel(color)} key={`${color}-${colorIndex}`} />)}
+                    {attempt.guess.map((color, colorIndex) => (
+                      <span className={`color-dot ${color}`} title={colorLabel(color)} key={`${color}-${colorIndex}`} />
+                    ))}
                   </div>
-                  <div className="feedback" aria-label={`${attempt.feedback.exact} noir, ${attempt.feedback.misplaced} blanc`}>
-                    {Array.from({ length: attempt.feedback.exact }, (_, feedbackIndex) => <span className="feedback-dot exact" key={`exact-${feedbackIndex}`} />)}
-                    {Array.from({ length: attempt.feedback.misplaced }, (_, feedbackIndex) => <span className="feedback-dot misplaced" key={`misplaced-${feedbackIndex}`} />)}
+                  <div
+                    className="feedback"
+                    aria-label={`${attempt.feedback.exact} noir, ${attempt.feedback.misplaced} blanc`}
+                  >
+                    {Array.from({ length: attempt.feedback.exact }, (_, feedbackIndex) => (
+                      <span className="feedback-dot exact" key={`exact-${feedbackIndex}`} />
+                    ))}
+                    {Array.from({ length: attempt.feedback.misplaced }, (_, feedbackIndex) => (
+                      <span className="feedback-dot misplaced" key={`misplaced-${feedbackIndex}`} />
+                    ))}
                   </div>
                 </div>
               ))}
@@ -157,8 +176,17 @@ export default function MastermindGame({ ctx }: GameProps) {
             {isFinished && (
               <div className={`mastermind-result ${game.status === 'WON' ? 'success' : 'error'}`}>
                 <strong>{game.status === 'WON' ? 'Bravo, combinaison trouvée !' : 'Partie terminée.'}</strong>
-                {game.status === 'WON' && <p>Score de la partie : <strong>{game.score}</strong> point{game.score === 1 ? '' : 's'}</p>}
-                <p>Le code était : {game.secret?.map((color, index) => <span className={`color-dot ${color}`} title={colorLabel(color)} key={`${color}-${index}`} />)}</p>
+                {game.status === 'WON' && (
+                  <p>
+                    Score de la partie : <strong>{game.score}</strong> point{game.score === 1 ? '' : 's'}
+                  </p>
+                )}
+                <p>
+                  Le code était :{' '}
+                  {game.secret?.map((color, index) => (
+                    <span className={`color-dot ${color}`} title={colorLabel(color)} key={`${color}-${index}`} />
+                  ))}
+                </p>
               </div>
             )}
 
@@ -166,16 +194,30 @@ export default function MastermindGame({ ctx }: GameProps) {
               <>
                 <div className="color-picker" aria-label="Choisir une couleur">
                   {COLORS.map((color) => (
-                    <button className={`color-choice ${color.id}`} onClick={() => chooseColor(color.id)} disabled={submitting} key={color.id}>
-                      <span className="color-dot" />{color.label}
+                    <button
+                      className={`color-choice ${color.id}`}
+                      onClick={() => chooseColor(color.id)}
+                      disabled={submitting}
+                      key={color.id}
+                    >
+                      <span className="color-dot" />
+                      {color.label}
                     </button>
                   ))}
                 </div>
-                <button onClick={submitGuess} disabled={submitting || guess.some((color) => color === null)}>Valider la combinaison</button>
-                <p className="muted mastermind-help">Noir : bonne couleur au bon endroit · Blanc : bonne couleur au mauvais endroit</p>
+                <button onClick={submitGuess} disabled={submitting || guess.some((color) => color === null)}>
+                  Valider la combinaison
+                </button>
+                <p className="muted mastermind-help">
+                  Noir : bonne couleur au bon endroit · Blanc : bonne couleur au mauvais endroit
+                </p>
               </>
             )}
-            {isFinished && <button onClick={restart} disabled={submitting}>Rejouer</button>}
+            {isFinished && (
+              <button onClick={restart} disabled={submitting}>
+                Rejouer
+              </button>
+            )}
           </>
         )}
         {error && <p className="error">{error}</p>}
