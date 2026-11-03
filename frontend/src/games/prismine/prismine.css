@@ -1,0 +1,314 @@
+/* Prismine : classes préfixées par le slug, voir docs/charte-graphique.md */
+.prismine {
+  /* Couleurs propres au jeu, contrastes mesurés sur --bg */
+  --prismine-grid: #6b6f9e; /* traits de la galerie : 3,9:1 (3,5:1 sur --surface) */
+  --prismine-crystal: #8be9fd; /* cristaux-miroirs : 13,6:1 */
+  --prismine-obsidian: #3d2c63; /* remplissage de l'obsidienne, décoratif */
+  --prismine-obsidian-edge: #c4a8ff; /* contour de l'obsidienne : 9,3:1 */
+  --prismine-beam: #ffd866; /* faisceau et pastilles des tirs : 13,7:1 */
+
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+}
+
+.prismine-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.prismine-main p {
+  margin: 0;
+}
+.prismine-side {
+  min-width: 0;
+}
+.prismine-side section + section {
+  margin-top: 1.5rem;
+}
+
+/* Menu */
+.prismine-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+.prismine-rules {
+  align-self: stretch;
+  text-align: left;
+}
+.prismine-rules summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.prismine-rules summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+.prismine-rules ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+.prismine-rules li + li {
+  margin-top: 0.35rem;
+}
+
+/* Bandeau de l'expédition */
+.prismine-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 0;
+}
+.prismine-stats div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.prismine-stats dt {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.prismine-stats dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.prismine-pieces,
+.prismine-help {
+  font-size: 0.9rem;
+}
+.prismine-info {
+  min-height: 3em;
+}
+.prismine-feedback {
+  min-height: 1.5em;
+}
+.prismine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+.prismine-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+/* Plateau : la galerie et son anneau d'entrées, (taille + 2)² positions carrées */
+.prismine-board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--prismine-cols), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--prismine-cols), minmax(0, 1fr));
+  width: 100%;
+  max-width: 30rem;
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+.prismine-board button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+/* Entrées au-dessus du tracé : le faisceau passe sous les pastilles sans masquer leur numéro. */
+.prismine-board .prismine-entry {
+  position: relative;
+  z-index: 1;
+}
+.prismine-board button:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.prismine-board .prismine-entry:hover,
+.prismine-board .prismine-entry-active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+}
+.prismine-board .prismine-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.prismine-board button.prismine-cell:hover {
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+}
+.prismine-board .prismine-cell-wrong {
+  outline: 2px dashed var(--error);
+  outline-offset: -4px;
+}
+
+.prismine-piece {
+  width: 72%;
+  height: 72%;
+  overflow: visible;
+}
+.prismine-crystal {
+  stroke: var(--prismine-crystal);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.prismine-obsidian {
+  fill: var(--prismine-obsidian);
+  stroke: var(--prismine-obsidian-edge);
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+
+/* Traits de la grille et faisceau, dessinés par-dessus les cases sans capter les clics */
+.prismine-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.prismine-gridlines line {
+  stroke: var(--prismine-grid);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+.prismine-beam {
+  animation: prismine-fade 150ms ease-out;
+}
+.prismine-beam polyline {
+  fill: none;
+  stroke: var(--prismine-beam);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.prismine-beam-glow {
+  stroke-width: 0.4;
+  opacity: 0.3;
+}
+.prismine-beam-core {
+  stroke-width: 0.1;
+}
+.prismine-beam circle {
+  fill: var(--prismine-beam);
+}
+
+/* Pastille d'un tir : sur le bord du plateau et dans le journal */
+.prismine-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 1.6em;
+  height: 1.6em;
+  padding: 0 0.3em;
+  border-radius: 999px;
+  background: var(--prismine-beam);
+  color: var(--bg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  animation: prismine-pop 200ms ease-out;
+}
+.prismine-badge-revealed {
+  background: none;
+  color: var(--prismine-beam);
+  border: 1px dashed var(--prismine-beam);
+}
+.prismine-entry-active .prismine-badge {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* Journal des tirs */
+.prismine-log-summary {
+  margin: 0 0 0.5rem;
+}
+.prismine-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 20rem;
+  overflow-y: auto;
+}
+.prismine-log li + li {
+  border-top: 1px solid var(--border);
+}
+.prismine-log-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0.35rem;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
+}
+.prismine-log-item:hover,
+.prismine-log-item[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.prismine-log-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.prismine-log-text {
+  flex: 1;
+  min-width: 0;
+}
+.prismine-ok {
+  color: var(--success);
+  font-weight: 600;
+}
+.prismine-ko {
+  color: var(--error);
+  font-weight: 600;
+}
+
+/* Texte réservé aux lecteurs d'écran */
+.prismine-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes prismine-pop {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+}
+@keyframes prismine-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prismine-badge,
+  .prismine-beam {
+    animation: none;
+  }
+}
