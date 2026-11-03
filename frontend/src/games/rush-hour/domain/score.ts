@@ -13,6 +13,7 @@ export interface LevelResult {
 /** Score d'un niveau, entre 0 et MAX_LEVEL_SCORE. Moins de coups que le minimum est impossible : refusé. */
 export function levelScore({ moves, optimal, hintsUsed }: LevelResult): number {
   if (moves < optimal) throw new Error(`Nombre de coups impossible : ${moves} pour un minimum de ${optimal}`)
+  if (hintsUsed < 0) throw new Error(`Nombre d’indices impossible : ${hintsUsed}`)
   const penalty = EXTRA_MOVE_PENALTY * (moves - optimal) + HINT_PENALTY * hintsUsed
   return Math.max(0, MAX_LEVEL_SCORE - penalty)
 }
