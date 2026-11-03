@@ -9,7 +9,7 @@ import SdvCivilisationGame from '../SdvCivilisationGame'
 afterEach(cleanup)
 
 describe('SdvCivilisationGame', () => {
-  it('installe le joueur connecté à la table avec deux places libres', async () => {
+  it('installe le joueur connecté à la table avec deux IA', async () => {
     const ctx = createGameContext(sdvCivilisation, { id: 'p1', username: 'alice' }, fakeDeps())
 
     render(<SdvCivilisationGame ctx={ctx} />)
@@ -17,11 +17,7 @@ describe('SdvCivilisationGame', () => {
     const rows = within(screen.getByRole('table', { name: 'Table de jeu' }))
       .getAllByRole('row')
       .slice(1)
-    expect(rows.map((row) => row.textContent)).toEqual([
-      'alice (toi)1Place libre 3Place libre 2',
-      'Place libre 21alicePlace libre 3',
-      'Place libre 31Place libre 2alice',
-    ])
+    expect(rows.map((row) => row.textContent)).toEqual(['alice (toi)1IA 2IA 1', 'IA 11aliceIA 2', 'IA 21IA 1alice'])
     expect(screen.getByText('Âge 1 · Tour 1')).toBeTruthy()
     expect(await screen.findByText('Classement')).toBeTruthy()
   })

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import type { GameProps, LeaderboardEntry } from '../types'
-import { createPlayers, MIN_PLAYERS, neighbours } from './setup'
+import { fillWithBots } from './bots'
+import { neighbours } from './setup'
 import './sdv-civilisation.css'
 
 /**
  * Premier écran : la table de jeu, sans partie jouable pour l'instant.
- * Le joueur connecté est assis avec des places libres, en attendant le multijoueur.
+ * Le joueur connecté est assis avec des IA, en attendant le multijoueur.
  */
 export default function SdvCivilisationGame({ ctx }: GameProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
@@ -19,9 +20,7 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
       .catch((e) => setError(e.message))
   }, [ctx])
 
-  const me = ctx.player?.username ?? 'Toi'
-  const seats = Array.from({ length: MIN_PLAYERS - 1 }, (_, i) => `Place libre ${i + 2}`)
-  const players = createPlayers([me, ...seats])
+  const players = fillWithBots([ctx.player?.username ?? 'Toi'])
 
   return (
     <div className="sdv-civilisation">
@@ -52,7 +51,9 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
             })}
           </tbody>
         </table>
-        <p className="notice">En attente des autres joueurs : la partie n’est pas encore jouable.</p>
+        <p className="notice">
+          En attendant le multijoueur, les places libres sont prises par des IA. La partie n’est pas encore jouable.
+        </p>
         {error && <p className="error">{error}</p>}
       </div>
       <div className="card">

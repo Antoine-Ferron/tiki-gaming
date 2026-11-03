@@ -8,14 +8,14 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 
 ## Format
 
-| Élément      | Valeur                                                                 |
-| ------------ | ---------------------------------------------------------------------- |
-| Catégorie    | `multi` (3 joueurs et +)                                               |
-| Mode         | `multiplayer` : compte requis, les joueurs s'affrontent en ligne       |
-| Joueurs      | 3 à 7 joueurs connectés, assis en cercle                               |
-| Durée        | 3 âges de 6 tours                                                      |
-| Score envoyé | total de points de victoire de chaque joueur (`ctx.submitScore`)       |
-| Sauvegarde   | état complet de la partie en cours (`ctx.save`), reprise au chargement |
+| Élément      | Valeur                                                                     |
+| ------------ | -------------------------------------------------------------------------- |
+| Catégorie    | `multi` (3 joueurs et +)                                                   |
+| Mode         | `multiplayer` : compte requis, les joueurs s'affrontent en ligne           |
+| Joueurs      | 3 à 7 joueurs connectés, assis en cercle ; places libres prises par des IA |
+| Durée        | 3 âges de 6 tours                                                          |
+| Score envoyé | total de points de victoire de chaque joueur (`ctx.submitScore`)           |
+| Sauvegarde   | état complet de la partie en cours (`ctx.save`), reprise au chargement     |
 
 ## Mise en place
 
@@ -243,6 +243,8 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 
 - [x] Déclaration du jeu (`index.ts`, `registry.ts`) et migration du catalogue
 - [x] Premier écran : table de jeu (joueur connecté + places libres, voisins) et classement (`SdvCivilisationGame.tsx`)
+- [x] Places libres complétées par des IA en attendant le multijoueur (`bots.ts`)
+- [ ] Décisions des IA (choisir et jouer une carte)
 - [ ] Salle d'attente et parties en ligne entre joueurs
 - [ ] Sauvegarde et reprise de partie
 - [ ] Interface de jeu complète (main, plateau, merveille)
