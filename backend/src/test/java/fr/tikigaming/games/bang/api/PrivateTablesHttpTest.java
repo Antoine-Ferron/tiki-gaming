@@ -63,6 +63,32 @@ class PrivateTablesHttpTest {
     }
 
     @Test
+    void anUnseatedAccountCannotStartAFullTable() throws Exception {
+        String code = createTable("creator");
+        for (int seat = 2; seat <= 4; seat++) {
+            postAs(TABLES + "/" + code + "/join", sessionFor("player-" + seat)).andExpect(status().isOk());
+        }
+
+        postAs(TABLES + "/" + code + "/start", sessionFor("outsider"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Tu dois être assis à cette table pour démarrer la partie."));
+    }
+
+    @Test
+    void startingAnUnknownTableIsRefused() throws Exception {
+        postAs(TABLES + "/UNKNOWN/start", sessionFor("player"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Code de table inconnu."));
+    }
+
+    @Test
+    void visitorsCannotStartATableEvenWithAValidCsrfToken() throws Exception {
+        postAs(TABLES + "/UNKNOWN/start", new MockHttpSession())
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Non connecté"));
+    }
+
+    @Test
     void connectedPlayerCreatesAPrivateTableAndTakesTheFirstSeat() throws Exception {
         postAs(TABLES, sessionFor("creator"))
                 .andExpect(status().isCreated())
@@ -167,13 +193,13 @@ class PrivateTablesHttpTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join"})
+    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join", TABLES + "/UNKNOWN/start"})
     void connectedPlayersMustSendACsrfToken(String path) throws Exception {
         mvc.perform(post(path).session(sessionFor("player"))).andExpect(status().isForbidden());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join"})
+    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join", TABLES + "/UNKNOWN/start"})
     void connectedPlayersCannotUseAMismatchingCsrfToken(String path) throws Exception {
         mvc.perform(post(path)
                         .session(sessionFor("player"))

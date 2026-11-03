@@ -41,6 +41,11 @@ public class PrivateTableService {
 
     public synchronized void start(String code, String accountId) {
         List<String> players = tables.get(code);
+        if (players == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
+        if (!players.contains(accountId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Tu dois être assis à cette table pour démarrer la partie.");
+        }
         if (players.size() < 4) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Il faut quatre joueurs pour démarrer la partie.");
         }

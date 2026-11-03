@@ -50,6 +50,24 @@ class PrivateTableControllerTest {
     }
 
     @Test
+    void startingPassesTheCodeAndTheConnectedAccountIdToTheTables() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser("third-account", "joueur@example.com"));
+
+        controller.start("A1B2C3D4E5F6", request);
+
+        verify(tables).start("A1B2C3D4E5F6", "third-account");
+    }
+
+    @Test
+    void anAnonymousStartNeverReachesTheTables() {
+        assertThatThrownBy(() -> controller.start("UNKNOWN", new MockHttpServletRequest()))
+                .isInstanceOfSatisfying(
+                        AuthException.class, error -> assertThat(error.status()).isEqualTo(401));
+        verifyNoInteractions(tables);
+    }
+
+    @Test
     void anAnonymousCreationNeverReachesTheTables() {
         assertThatThrownBy(() -> controller.create(new MockHttpServletRequest()))
                 .isInstanceOfSatisfying(
