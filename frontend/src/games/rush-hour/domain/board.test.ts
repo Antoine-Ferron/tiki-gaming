@@ -109,3 +109,18 @@ describe('parseBoard : véhicules de 2 ou 3 cases, d’un seul tenant (R2)', () 
     expect(parse).toThrow('Caractère interdit')
   })
 })
+
+describe('parseBoard : la voiture rouge est horizontale sur la 3ᵉ ligne (R3)', () => {
+  test.each([
+    { name: 'absente', map: [EMPTY_ROW, EMPTY_ROW, 'AA....', EMPTY_ROW, EMPTY_ROW, EMPTY_ROW] },
+    { name: 'verticale', map: [EMPTY_ROW, 'X.....', 'X.....', EMPTY_ROW, EMPTY_ROW, EMPTY_ROW] },
+    { name: 'sur la 2ᵉ ligne', map: [EMPTY_ROW, 'XX....', EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW] },
+    { name: 'sur la 4ᵉ ligne', map: [EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, 'XX....', EMPTY_ROW, EMPTY_ROW] },
+  ])('refuse une voiture rouge $name', ({ map }) => {
+    // Act
+    const parse = () => parseBoard(map)
+
+    // Assert
+    expect(parse).toThrow('La voiture rouge X doit être horizontale, sur la 3ᵉ ligne')
+  })
+})
