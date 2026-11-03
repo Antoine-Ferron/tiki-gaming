@@ -81,6 +81,7 @@ public class PrivateTableService {
     }
 
     public synchronized GameStarted start(String code, String accountId) {
+        code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
         Table table = tables.get(code);
         if (table == null) throw new PrivateTableException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
         List<String> players = table.players;

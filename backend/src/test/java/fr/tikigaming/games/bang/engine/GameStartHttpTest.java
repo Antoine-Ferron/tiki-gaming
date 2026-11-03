@@ -13,12 +13,15 @@ import jakarta.servlet.http.Cookie;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -183,6 +186,24 @@ class GameStartHttpTest {
                 .allSatisfy(player -> assertThat(player.hand()).hasSize(player.health()));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"%s", "  %s  "})
+    void startingFindsTheSameTableAsJoiningAndReturnsItsCanonicalCode(String format) throws Exception {
+        String code = fullTable();
+        String entered = format.formatted(code.toLowerCase(Locale.ROOT));
+        postAs(TABLES + "/{code}/join", sessionFor("second"), entered)
+                .andExpect(status().isOk())
+                .andExpect(content()
+                        .json("{\"code\":\"" + code + "\",\"seat\":2,\"playerCount\":4}", JsonCompareMode.STRICT));
+
+        postAs(TABLES + "/{code}/start", sessionFor("third"), entered)
+                .andExpect(status().isOk())
+                .andExpect(content().json("{\"code\":\"" + code + "\",\"currentSeat\":3}", JsonCompareMode.STRICT));
+        GameState first = tables.game(code);
+        postAs(TABLES + "/{code}/start", sessionFor("creator"), code).andExpect(status().isOk());
+        assertThat(tables.game(code)).isSameAs(first);
+    }
+
     private MvcResult startTogether(MockHttpServletRequestBuilder request, CyclicBarrier start) throws Exception {
         start.await(5, TimeUnit.SECONDS);
         return mvc.perform(request).andReturn();
@@ -201,17 +222,18 @@ class GameStartHttpTest {
         return code;
     }
 
-    private ResultActions postAs(String path, MockHttpSession session) throws Exception {
-        return mvc.perform(preparePost(path, session));
+    private ResultActions postAs(String path, MockHttpSession session, Object... variables) throws Exception {
+        return mvc.perform(preparePost(path, session, variables));
     }
 
-    private MockHttpServletRequestBuilder preparePost(String path, MockHttpSession session) throws Exception {
+    private MockHttpServletRequestBuilder preparePost(String path, MockHttpSession session, Object... variables)
+            throws Exception {
         Cookie csrf = mvc.perform(get("/api/auth/session").session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getCookie("XSRF-TOKEN");
-        return post(path).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
+        return post(path, variables).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
     }
 
     private MockHttpSession sessionFor(String accountId) {
