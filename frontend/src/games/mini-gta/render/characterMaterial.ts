@@ -1,3 +1,4 @@
+/* v8 ignore file -- rendu visuel (WebGL, shaders, géométries, canvas) : vérifié à l'écran, sans règle de jeu. Voir docs/games/mini-gta/regles.md § 6. */
 import { MeshPhysicalMaterial } from 'three'
 
 /**
