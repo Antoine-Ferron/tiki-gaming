@@ -178,7 +178,7 @@ classement, sauvegarde. Un jeu **n'importe jamais `@/lib/supabase`** directement
 |-----------|---------|----------------|---------------------------------------|
 | `solo`    | Solo    | 1 joueur       | Clicker, Rush Hour, Mastermind        |
 | `duel`    | Duel    | 2 joueurs      | Échecs, Bataille navale, Orapa Mine   |
-| `multi`   | Multi   | 3 joueurs et + | 7 Wonders, Yam                        |
+| `multi`   | Multi   | 3 joueurs et + | SDV Civilisation, Yam                 |
 
 La catégorie et le mode sont indépendants : un jeu `duel` contre une IA peut être en `mode: 'solo'`
 (jouable sans compte). Les exemples ci-dessus sont indicatifs : chaque équipe choisit la catégorie de son jeu.
