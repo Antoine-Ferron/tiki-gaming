@@ -148,6 +148,24 @@ class FenTest {
         assertThatThrownBy(() -> Fen.parse(fen)).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    @DisplayName("lit une prise en passant en rangée 6 (après un double pas des Noirs)")
+    void litUnePriseEnPassantEnRangee6() {
+        // Act
+        Position position = Fen.parse("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2");
+
+        // Assert
+        assertThat(position.enPassant()).contains(Square.of("e6"));
+    }
+
+    @Test
+    @DisplayName("une pièce placée au-delà de la colonne h est refusée")
+    void unePieceAuDelaDeLaColonneHEstRefusee() {
+        // Act + Assert : 8 cases vides puis un roi = 9ᵉ case
+        assertThatThrownBy(() -> Fen.parse("4k3/8/8/8/8/8/8/8K w - - 0 1"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
     private static final String AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
 
     private static final String START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
