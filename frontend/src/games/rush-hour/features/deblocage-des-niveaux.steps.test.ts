@@ -27,11 +27,11 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
   })
 
   Scenario('Terminer un niveau avec 0 point ouvre quand même le suivant', ({ Given, When, Then }) => {
-    Given('le niveau 1 est terminé avec 0 point', () => {
-      best = { 1: 0 }
+    Given('le niveau {int} est terminé avec {int} point', (_, level: number, score: number) => {
+      best = { [level]: score }
     })
-    When('le joueur regarde le niveau 2', () => {
-      open = isUnlocked(best, 2)
+    When('le joueur regarde le niveau {int}', (_, level: number) => {
+      open = isUnlocked(best, level)
     })
     Then('le niveau est ouvert', () => {
       expect(open).toBe(true)
