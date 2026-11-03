@@ -33,8 +33,7 @@ npx vitest run src/games/prismine
 | 9   | TU   | `PrismineServiceTest`    | `auditThresholdIsCrossedOneMillisecondBelowFiveSecondsWithoutSleeping` | **Atelier 4** : horloge `MutableClock` ; 5 s ne déclenche rien, 4,999 s déclenche l'audit, sans `sleep`            |
 | 10  | TI   | `PrismineControllerTest` | `playsAFullExpeditionAndRecordsTheScore`                               | Partie complète en HTTP (MockMvc) : création sans fuite de la carte, tir, refus 409, étage réussi, fin, puis 404   |
 | 11  | TI   | `PrismineControllerTest` | `refusesAnUnreadableMapAndHidesTheRunFromAnotherPlayer`                | Carte illisible → 400 avec le message du champ ; expédition invisible pour un autre joueur (404)                   |
-| 12  | TI   | `SupabaseAdaptersTest`   | `savesReadsBackAndDeletesARunWithTheServiceRoleKey`                    | Requêtes PostgREST de `prismine_runs` (clé service_role, upsert, lecture JSON, suppression) sur un serveur simulé  |
-| 13  | TI   | `SupabaseAdaptersTest`   | `insertsTheScoreAndTurnsASupabaseFailureIntoABadGateway`               | Insertion du score dans `scores` ; une panne Supabase devient une erreur 502 lisible par le joueur                 |
+| 12  | TI   | `SupabaseAdaptersTest`   | `storesRunsAndScoresInSupabaseAndReportsItsFailures`                   | Requêtes PostgREST (clé service_role) : expédition écrite, relue, supprimée ; score inséré ; panne → 502 lisible   |
 
 Doublures dans `TestDoubles.java` : `StubSeedSource`, `InMemoryRunRepository`, `InMemoryScoreRegistry`,
 `MutableClock` ; l'audit est un `mock(AuditNotifier.class)` créé dans le test.
@@ -43,19 +42,21 @@ Doublures dans `TestDoubles.java` : `StubSeedSource`, `InMemoryRunRepository`, `
 
 | #   | Type | Fichier                        | Test                            | Ce qu'il vérifie                                                                                           |
 | --- | ---- | ------------------------------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| 14  | TU   | `engine.test.ts`               | trace                           | Le tracé de la carte du joueur suit les mêmes règles que le serveur, couleur après chaque point du trajet  |
-| 15  | TU   | `engine.test.ts`               | nextPiece                       | Clic sur une case : prisme suivant dans la couleur choisie, obsidienne si l'étage en cache, repeint        |
-| 16  | TU   | `expedition.test.ts`           | sauvegarde                      | Lecture de la sauvegarde (valide, illisible, ancienne version), carte reprise, statistiques de fin         |
-| 17  | TU   | `api.test.ts`                  | createPrismineApi               | Chaque action part vers le bon endpoint Java avec le bon corps (transport simulé)                          |
-| 18  | TU   | `labels.test.ts`               | textes                          | Noms des couleurs, description d'un tir, solution lue aux lecteurs d'écran                                 |
-| 19  | TI   | `prismine.integration.test.ts` | expédition d'un joueur connecté | Sauvegarde → rechargement → reprise auprès du serveur → fin ; aucun score envoyé par le navigateur         |
-| 20  | TI   | `prismine.integration.test.ts` | reprise impossible              | Expédition oubliée (404) ou sauvegarde ancienne : on repart de zéro sans perdre les stats ; panne remontée |
+| 13  | TU   | `engine.test.ts`               | trace                           | Le tracé de la carte du joueur suit les mêmes règles que le serveur, couleur après chaque point du trajet  |
+| 14  | TU   | `engine.test.ts`               | nextPiece                       | Clic sur une case : prisme suivant dans la couleur choisie, obsidienne si l'étage en cache, repeint        |
+| 15  | TU   | `expedition.test.ts`           | sauvegarde                      | Lecture de la sauvegarde (valide, illisible, ancienne version), carte reprise, statistiques de fin         |
+| 16  | TU   | `api.test.ts`                  | createPrismineApi               | Chaque action part vers le bon endpoint Java avec le bon corps (transport simulé)                          |
+| 17  | TU   | `labels.test.ts`               | textes                          | Noms des couleurs, description d'un tir, solution lue aux lecteurs d'écran                                 |
+| 18  | TI   | `prismine.integration.test.ts` | expédition d'un joueur connecté | Sauvegarde → rechargement → reprise auprès du serveur → fin ; aucun score envoyé par le navigateur         |
+| 19  | TI   | `prismine.integration.test.ts` | reprise impossible              | Expédition oubliée (404) ou sauvegarde ancienne : on repart de zéro sans perdre les stats ; panne remontée |
+| 20  | TI   | `PrismineGame.test.tsx`        | écran de Prismine               | Le vrai composant (jsdom) joue une expédition : tir, pose souris et clavier, 3 verdicts, fin classée       |
 
 Doublures dans `test-doubles.ts` : faux `GameContext` en mémoire (`createFakeContext`), bouchon du serveur
 (`stubApi`, qui échoue sur tout appel non préparé) et `runView` pour construire une réponse du serveur.
 
 ## Non couvert
 
-- Le rendu React (`PrismineGame.tsx`, `Board.tsx`, `ProbeLog.tsx`) : le front n'a pas d'environnement DOM de test.
+- `Board.tsx` et `ProbeLog.tsx` n'ont pas de test dédié : ils sont couverts par le test de l'écran (#20).
+- La reprise d'une expédition et l'écran d'erreur de chargement ne passent pas par le test de l'écran.
 - `createSaver` (ordre des sauvegardes concurrentes) n'a plus de test dédié : seul son cas simple passe par les TI.
 - Le vrai Supabase : les adaptateurs sont testés contre un serveur PostgREST simulé.

@@ -2,7 +2,14 @@ import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from
 import { Leaderboard } from '@/components/Leaderboard'
 import { ApiError } from '@/lib/api'
 import type { GameContext, GameProps, LeaderboardEntry } from '../types'
-import { createPrismineApi, type FloorInfo, type ProbeResult, type RevealedFloor, type RunView } from './api'
+import {
+  createPrismineApi,
+  type FloorInfo,
+  type PrismineApi,
+  type ProbeResult,
+  type RevealedFloor,
+  type RunView,
+} from './api'
 import { Board, PieceIcon } from './Board'
 import { ProbeLog } from './ProbeLog'
 import {
@@ -42,7 +49,7 @@ import './prismine.css'
  * (ctx.getLeaderboard) et le record (ctx.getMyBest).
  */
 
-const api = createPrismineApi()
+const serverApi = createPrismineApi()
 
 /** Étage affiché. `grid` : la vraie carte, connue seulement une fois l'étage terminé. */
 type ShownFloor = FloorInfo & { grid?: Grid; probes: ProbeResult[] }
@@ -70,7 +77,8 @@ function differences(a: Grid, b: Grid) {
   return cells
 }
 
-export default function PrismineGame({ ctx }: GameProps) {
+/** `api` : le serveur arbitre ; les tests passent un bouchon à la place (voir PrismineGame.test.tsx). */
+export default function PrismineGame({ ctx, api = serverApi }: GameProps & { api?: PrismineApi }) {
   // La partie reste rattachée au ctx qui l'a chargée : si le joueur se connecte, on charge la sienne.
   const [store, setStore] = useState<{ ctx: GameContext; save: Save; run: RunView | null } | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -126,7 +134,7 @@ export default function PrismineGame({ ctx }: GameProps) {
     return () => {
       cancelled = true
     }
-  }, [ctx, loadAttempt])
+  }, [ctx, api, loadAttempt])
 
   // Étage affiché : celui en cours, ou celui qui vient de se terminer (vraie carte dévoilée).
   const finished = screen.kind === 'cleared' || screen.kind === 'over' ? screen : null
