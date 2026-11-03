@@ -1,7 +1,8 @@
-import { CARDS_BY_AGE, type Age, type Card } from './cards'
+import { CARDS_BY_AGE, type Age, type Card, type Cost } from './cards'
 import type { Seat } from './bots'
 import type { CurrencyConverter, Resource, Shuffler } from './ports'
 import { neighbours } from './setup'
+import { WONDERS, type Wonder, type WonderStage } from './wonders'
 
 export const HAND_SIZE = 7
 export const TURNS_PER_AGE = 6
@@ -10,6 +11,9 @@ const VICTORY_TOKENS: Record<Age, number> = { 1: 1, 2: 3, 3: 5 }
 const DEFEAT_TOKEN = -1
 
 export interface PlayerState extends Seat {
+  wonder: Wonder
+  /** Nombre d'étapes de merveille construites, dans l'ordre du plateau. */
+  stagesBuilt: number
   built: Card[]
   /** Somme des jetons de conflit gagnés et perdus. */
   military: number
@@ -37,12 +41,14 @@ export interface TurnEvent {
   coins: number
 }
 
-export type Action = { type: 'build'; card: string } | { type: 'discard'; card: string }
+/** Une carte, une action : construire le bâtiment, construire une étape de merveille avec la carte, ou la défausser. */
+export type Action = { type: 'build' | 'wonder' | 'discard'; card: string }
 
-export type Refusal = 'built' | 'resources' | 'coins'
+export type Refusal = 'built' | 'resources' | 'coins' | 'wonder'
 
 export type Payment =
-  { ok: true; coins: number; toLeft: number; toRight: number } | { ok: false; code: Refusal; reason: string }
+  | { ok: true; coins: number; toLeft: number; toRight: number; chain: boolean }
+  | { ok: false; code: Refusal; reason: string }
 
 /** Distribue une main de 7 cartes de l'âge à chaque joueur : chaque carte existe en un exemplaire par joueur. */
 function deal(age: Age, playerCount: number, shuffler: Shuffler): Card[][] {
@@ -53,11 +59,19 @@ function deal(age: Age, playerCount: number, shuffler: Shuffler): Card[][] {
   return Array.from({ length: playerCount }, (_, i) => deck.slice(i * HAND_SIZE, (i + 1) * HAND_SIZE))
 }
 
+/** Mise en place : 3 pièces, un plateau merveille différent par joueur et 7 cartes de l'âge I. */
 export function createGame(seats: Seat[], shuffler: Shuffler): GameState {
+  const wonders = shuffler.shuffle(WONDERS)
   return {
     age: 1,
     turn: 1,
-    players: seats.map((seat) => ({ ...seat, built: [], military: 0 })),
+    players: seats.map((seat, i) => ({
+      ...seat,
+      wonder: wonders[i],
+      stagesBuilt: 0,
+      built: [],
+      military: 0,
+    })),
     hands: deal(1, seats.length, shuffler),
     over: false,
     discards: [],
@@ -66,8 +80,9 @@ export function createGame(seats: Seat[], shuffler: Shuffler): GameState {
   }
 }
 
-function production(player: PlayerState): Resource[] {
-  return player.built.flatMap((card) => card.produces ?? [])
+/** Ressources produites : plateau merveille et cartes marron et grises. */
+export function production(player: PlayerState): Resource[] {
+  return [player.wonder.resource, ...player.built.flatMap((card) => card.produces ?? [])]
 }
 
 function count(resources: Resource[]): Map<Resource, number> {
@@ -76,19 +91,23 @@ function count(resources: Resource[]): Map<Resource, number> {
   return counts
 }
 
+export function builtStages(player: PlayerState): WonderStage[] {
+  return player.wonder.stages.slice(0, player.stagesBuilt)
+}
+
+/** Puissance militaire : boucliers des cartes rouges et des étapes de merveille. */
 export function shields(player: PlayerState): number {
-  return player.built.reduce((sum, card) => sum + (card.shields ?? 0), 0)
+  const fromCards = player.built.reduce((sum, card) => sum + (card.shields ?? 0), 0)
+  return fromCards + builtStages(player).reduce((sum, stage) => sum + (stage.shields ?? 0), 0)
 }
 
 /**
- * Ce que coûte la carte au joueur : les ressources qu'il ne produit pas sont achetées au voisin de gauche,
- * puis de droite, au prix du convertisseur. Voir docs/games/sdv-civilisation/regles.md#construire-un-bâtiment
+ * Ce que coûte un coût au joueur : les ressources qu'il ne produit pas sont achetées au voisin de gauche, puis
+ * de droite, au prix du convertisseur, dans la limite de ce qu'ils produisent. Les pièces reçues pendant le tour
+ * ne servent pas à payer : tout est calculé sur l'état de début de tour.
  */
-export function payment(state: GameState, index: number, card: Card, converter: CurrencyConverter): Payment {
+function pay(state: GameState, index: number, cost: Cost, converter: CurrencyConverter): Payment {
   const player = state.players[index]
-  if (player.built.some((c) => c.name === card.name))
-    return { ok: false, code: 'built', reason: 'Tu as déjà construit cette carte.' }
-
   const { left, right } = neighbours(state.players, index)
   const own = count(production(player))
   const fromLeft = count(production(left))
@@ -96,7 +115,7 @@ export function payment(state: GameState, index: number, card: Card, converter: 
   let toLeft = 0
   let toRight = 0
 
-  for (const [resource, needed] of count(card.cost.resources ?? [])) {
+  for (const [resource, needed] of count(cost.resources ?? [])) {
     const missing = Math.max(0, needed - (own.get(resource) ?? 0))
     const leftQty = Math.min(missing, fromLeft.get(resource) ?? 0)
     const rightQty = Math.min(missing - leftQty, fromRight.get(resource) ?? 0)
@@ -105,9 +124,33 @@ export function payment(state: GameState, index: number, card: Card, converter: 
     if (rightQty > 0) toRight += converter.toCoins(resource, rightQty)
   }
 
-  const coins = (card.cost.coins ?? 0) + toLeft + toRight
+  const coins = (cost.coins ?? 0) + toLeft + toRight
   if (coins > player.coins) return { ok: false, code: 'coins', reason: 'Pas assez de pièces.' }
-  return { ok: true, coins, toLeft, toRight }
+  return { ok: true, coins, toLeft, toRight, chain: false }
+}
+
+/** Construire un bâtiment : jamais deux fois le même, gratuit par chaîne, sinon payé. */
+export function payment(state: GameState, index: number, card: Card, converter: CurrencyConverter): Payment {
+  const player = state.players[index]
+  if (player.built.some((c) => c.name === card.name)) {
+    return { ok: false, code: 'built', reason: 'Tu as déjà construit cette carte.' }
+  }
+  if (player.built.some((c) => c.name === card.chainFrom)) {
+    return { ok: true, coins: 0, toLeft: 0, toRight: 0, chain: true }
+  }
+  return pay(state, index, card.cost, converter)
+}
+
+/** Prochaine étape de la merveille du joueur, ou undefined si elle est terminée. */
+export function nextStage(player: PlayerState): WonderStage | undefined {
+  return player.wonder.stages[player.stagesBuilt]
+}
+
+/** Construire l'étape suivante de sa merveille : on paie le coût de l'étape, la carte ne sert que de support. */
+export function wonderPayment(state: GameState, index: number, converter: CurrencyConverter): Payment {
+  const stage = nextStage(state.players[index])
+  if (!stage) return { ok: false, code: 'wonder', reason: 'Ta merveille est déjà terminée.' }
+  return pay(state, index, stage.cost, converter)
 }
 
 /** Chaque joueur affronte ses deux voisins : victoire selon l'âge, défaite −1, égalité 0. */
@@ -134,6 +177,7 @@ export function playTurn(
 ): GameState {
   const delta = state.players.map(() => 0)
   const built = state.players.map((p) => [...p.built])
+  const stagesBuilt = state.players.map((p) => p.stagesBuilt)
   const discards = [...state.discards]
   const played: { action: Action['type']; card: Card }[] = []
   const count = state.players.length
@@ -149,18 +193,28 @@ export function playTurn(
       delta[index] += DISCARD_COINS
       discards.push(card)
     } else {
-      const cost = payment(state, index, card, converter)
+      const building = action.type === 'build'
+      const cost = building ? payment(state, index, card, converter) : wonderPayment(state, index, converter)
       if (!cost.ok) throw new Error(cost.reason)
-      delta[index] += (card.coins ?? 0) - cost.coins
+      // Effet immédiat : pièces de la carte jaune, ou de l'étape de merveille.
+      const gain = building ? (card.coins ?? 0) : (nextStage(state.players[index])!.coins ?? 0)
+      delta[index] += gain - cost.coins
       delta[(index - 1 + count) % count] += cost.toLeft
       delta[(index + 1) % count] += cost.toRight
-      built[index].push(card)
+      if (building) built[index].push(card)
+      // Étape de merveille : la carte est posée face cachée sous le plateau, sans effet.
+      else stagesBuilt[index] += 1
     }
     // Un seul exemplaire quitte la main, même si elle en contient deux.
     return hand.filter((_, i) => i !== at)
   })
 
-  const players = state.players.map((p, i) => ({ ...p, coins: p.coins + delta[i], built: built[i] }))
+  const players = state.players.map((p, i) => ({
+    ...p,
+    coins: p.coins + delta[i],
+    built: built[i],
+    stagesBuilt: stagesBuilt[i],
+  }))
   const lastTurn = played.map((event, player) => ({ ...event, player, coins: delta[player] }))
   // Âges I et III : chaque main part au voisin de gauche, donc on reçoit celle du voisin de droite. Âge II : l'inverse.
   const passed = hands.map((_, i) => hands[state.age === 2 ? (i - 1 + count) % count : (i + 1) % count])

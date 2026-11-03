@@ -4,7 +4,7 @@ import { chooseAction } from '../ai'
 import { fillWithBots } from '../bots'
 import { createGame, playTurn, type Action, type GameState } from '../game'
 import type { CurrencyConverter } from '../ports'
-import { ranking } from '../score'
+import { finalScore, ranking } from '../score'
 import { findCard, fixedRate, identityShuffler } from './fakes'
 
 const feature = await loadFeature('src/games/sdv-civilisation/test/partie.feature', { language: 'fr' })
@@ -18,6 +18,7 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
   let priceRequests: unknown[][]
 
   const seat = (name: string) => state.players.findIndex((p) => p.name === name)
+  const player = (name: string) => state.players[seat(name)]
   const handNames = (game: GameState, index: number) => game.hands[index].map((c) => c.name)
 
   function play(actions: Action[]) {
@@ -30,27 +31,43 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
     play(state.players.map((_, i) => (i === seat(name) ? action : { type: 'build', card: 'Verrerie' })))
   }
 
+  function attempt(name: string, action: Action) {
+    try {
+      act(name, action)
+    } catch (err) {
+      refusal = (err as Error).message
+    }
+  }
+
   Background(({ Given }) => {
     Given('une partie entre "alice", "IA 1" et "IA 2"', () => {
       converter = fixedRate(2) // Stub : taux de change figé à 2 pièces par ressource
       refusal = null
-      // Stub : le mélangeur garde l'ordre, chaque main contient les 7 cartes de l'âge dans l'ordre du catalogue.
+      // Stub : le mélangeur garde l'ordre. Chaque main contient les 7 cartes de l'âge dans l'ordre du catalogue,
+      // et les merveilles sont attribuées dans l'ordre : alice minerai, IA 1 verre, IA 2 bois.
       state = createGame(fillWithBots(['alice']), identityShuffler)
+    })
+  })
+
+  Scenario('Chaque joueur commence avec 3 pièces et sa propre merveille', ({ Then, And }) => {
+    Then('chaque joueur a 3 pièces', () => expect(state.players.map((p) => p.coins)).toEqual([3, 3, 3]))
+    And('chaque joueur a une merveille différente, sans étape construite', () => {
+      expect(new Set(state.players.map((p) => p.wonder.name)).size).toBe(3)
+      expect(state.players.map((p) => p.stagesBuilt)).toEqual([0, 0, 0])
     })
   })
 
   Scenario('Construire une carte gratuite', ({ When, Then, And }) => {
     When('"alice" construit "Chantier"', () => act('alice', { type: 'build', card: 'Chantier' }))
     Then('"alice" produit du bois', () => {
-      expect(state.players[seat('alice')].built.flatMap((c) => c.produces ?? [])).toContain('wood')
+      expect(player('alice').built.flatMap((c) => c.produces ?? [])).toContain('wood')
     })
-    And('"alice" a 1 pièce', () => expect(state.players[seat('alice')].coins).toBe(1))
+    And('"alice" a 3 pièces', () => expect(player('alice').coins).toBe(3))
   })
 
   Scenario('Acheter la ressource manquante à un voisin', ({ Given, When, Then }) => {
-    Given('"IA 1" qui produit de la pierre et "alice" qui a 3 pièces', () => {
-      state.players[seat('IA 1')].built.push(findCard('Cavité'))
-      state.players[seat('alice')].coins = 3
+    Given('"IA 1" qui produit de la pierre', () => {
+      player('IA 1').built.push(findCard('Cavité'))
       // Mock : on vérifie ce que le moteur demande au convertisseur, tout en gardant le taux figé.
       converter = { toCoins: vi.fn(fixedRate(2).toCoins) }
     })
@@ -61,31 +78,58 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
     })
     Then('"alice" a payé 2 pièces à "IA 1" pour 1 pierre', () => {
       expect(priceRequests).toEqual([['stone', 1]])
-      expect(state.players[seat('alice')].coins).toBe(1)
-      expect(state.players[seat('IA 1')].coins).toBe(3)
+      expect(player('alice').coins).toBe(1)
+      expect(player('IA 1').coins).toBe(5)
     })
   })
 
   ScenarioOutline('Une carte impossible à construire est refusée', ({ Given, When, Then }, variables) => {
-    Given('"alice" qui a <pièces> pièce et a construit "<déjà construite>"', () => {
-      state.players[seat('alice')].coins = Number(variables['pièces'])
-      if (variables['déjà construite'] !== 'aucune') {
-        state.players[seat('alice')].built.push(findCard(variables['déjà construite']))
-      }
+    Given('"alice" qui a <pièces> pièces et a construit "<déjà construite>"', () => {
+      player('alice').coins = Number(variables['pièces'])
+      if (variables['déjà construite'] !== 'aucune') player('alice').built.push(findCard(variables['déjà construite']))
     })
-    When('"alice" essaie de construire "<carte>"', () => {
-      try {
-        act('alice', { type: 'build', card: variables.carte })
-      } catch (err) {
-        refusal = (err as Error).message
-      }
-    })
+    When('"alice" essaie de construire "<carte>"', () => attempt('alice', { type: 'build', card: variables.carte }))
     Then('l\'action est refusée : "<raison>"', () => expect(refusal).toBe(variables.raison))
+  })
+
+  Scenario('Une chaîne rend la construction gratuite', ({ Given, When, Then }) => {
+    Given('"alice" qui a construit "Bains" et qui a "Aqueduc" en main', () => {
+      player('alice').built.push(findCard('Bains'))
+      state.hands[seat('alice')][0] = { ...findCard('Aqueduc') }
+    })
+    When('"alice" construit "Aqueduc"', () => act('alice', { type: 'build', card: 'Aqueduc' }))
+    Then('"alice" a construit "Aqueduc" sans rien payer', () => {
+      expect(player('alice').built.map((c) => c.name)).toContain('Aqueduc')
+      expect(player('alice').coins).toBe(3)
+    })
+  })
+
+  Scenario('Construire une étape de merveille avec une carte', ({ When, Then, And }) => {
+    When('"alice" construit une étape de sa merveille avec "Bains"', () =>
+      act('alice', { type: 'wonder', card: 'Bains' }),
+    )
+    Then('la merveille de "alice" a 1 étape construite', () => expect(player('alice').stagesBuilt).toBe(1))
+    And('"Bains" n\'est ni construite ni défaussée', () => {
+      expect(player('alice').built.map((c) => c.name)).not.toContain('Bains')
+      expect(state.discards).toEqual([])
+    })
+  })
+
+  Scenario("Une merveille terminée n'accepte plus d'étape", ({ Given, When, Then }) => {
+    Given('"alice" dont la merveille est terminée', () => {
+      player('alice').stagesBuilt = player('alice').wonder.stages.length
+    })
+    When('"alice" essaie de construire une étape de sa merveille avec "Bains"', () =>
+      attempt('alice', { type: 'wonder', card: 'Bains' }),
+    )
+    Then('l\'action est refusée : "Ta merveille est déjà terminée."', () => {
+      expect(refusal).toBe('Ta merveille est déjà terminée.')
+    })
   })
 
   Scenario('Défausser une carte rapporte 3 pièces', ({ When, Then, And }) => {
     When('"alice" défausse "Bains"', () => act('alice', { type: 'discard', card: 'Bains' }))
-    Then('"alice" a 4 pièces', () => expect(state.players[seat('alice')].coins).toBe(4))
+    Then('"alice" a 6 pièces', () => expect(player('alice').coins).toBe(6))
     And('la défausse contient "Bains"', () => expect(state.discards.map((c) => c.name)).toEqual(['Bains']))
   })
 
@@ -115,7 +159,7 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
 
   Scenario("Les conflits militaires sont résolus à la fin de l'âge", ({ Given, When, Then, And }) => {
     Given('"alice" qui a construit "Palissade"', () => {
-      state.players[seat('alice')].built.push(findCard('Palissade'))
+      player('alice').built.push(findCard('Palissade'))
     })
     When("l'âge I se termine", () => {
       while (state.age === 1) play(state.players.map((_, i) => ({ type: 'discard', card: state.hands[i][0].name })))
@@ -130,6 +174,19 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
     })
     And("l'âge II commence avec 7 cartes en main", () => {
       expect([state.age, state.turn, state.hands[0].length]).toEqual([2, 1, 7])
+    })
+  })
+
+  Scenario('Une guilde compte les bâtiments des voisins', ({ Given, And, Then }) => {
+    Given('"IA 1" qui a construit "Chantier" et "Verrerie" et "IA 2" qui a construit "Cavité"', () => {
+      player('IA 1').built.push(findCard('Chantier'), findCard('Verrerie'))
+      player('IA 2').built.push(findCard('Cavité'))
+    })
+    And('"alice" qui a construit "Guilde des bâtisseurs"', () => {
+      player('alice').built.push(findCard('Guilde des bâtisseurs'))
+    })
+    Then('"alice" marque 3 points de guilde', () => {
+      expect(finalScore(state.players, seat('alice')).guilds).toBe(3)
     })
   })
 

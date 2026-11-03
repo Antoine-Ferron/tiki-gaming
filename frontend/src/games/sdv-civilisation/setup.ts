@@ -1,6 +1,6 @@
 export const MIN_PLAYERS = 3
 export const MAX_PLAYERS = 7
-export const STARTING_COINS = 1
+export const STARTING_COINS = 3
 
 export interface Player {
   name: string

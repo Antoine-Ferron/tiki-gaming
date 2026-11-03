@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { createPlayers, neighbours } from '../setup'
 
 describe('createPlayers', () => {
-  it('crée un joueur par nom, avec 1 pièce', () => {
+  it('crée un joueur par nom, avec 3 pièces', () => {
     expect(createPlayers(['Matéo', 'IA 1', 'IA 2'])).toEqual([
-      { name: 'Matéo', coins: 1 },
-      { name: 'IA 1', coins: 1 },
-      { name: 'IA 2', coins: 1 },
+      { name: 'Matéo', coins: 3 },
+      { name: 'IA 1', coins: 3 },
+      { name: 'IA 2', coins: 3 },
     ])
   })
 

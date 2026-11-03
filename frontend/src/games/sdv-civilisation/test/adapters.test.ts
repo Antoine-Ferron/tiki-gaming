@@ -14,7 +14,7 @@ describe('adaptateurs de production', () => {
     registry.setBalance('bob', 7)
 
     expect(players[1].coins).toBe(7)
-    expect(registry.balanceOf('alice')).toBe(1)
+    expect(registry.balanceOf('alice')).toBe(3)
     expect(() => registry.balanceOf('dave')).toThrow('Joueur inconnu : dave')
   })
 
