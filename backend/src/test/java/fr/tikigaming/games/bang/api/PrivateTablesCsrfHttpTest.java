@@ -47,10 +47,10 @@ class PrivateTablesCsrfHttpTest {
             assertThat(response.statusCode()).isEqualTo(403);
             assertThat(response.headers().firstValue("Content-Type").orElse("")).startsWith("application/json");
             JsonNode observed = json.readTree(response.body());
-            assertThat(observed.path("timestamp").isTextual()).isTrue();
+            assertThat(observed.path("timestamp").isString()).isTrue();
             assertThat(observed.path("status").asInt()).isEqualTo(403);
-            assertThat(observed.path("error").asText()).isEqualTo("Forbidden");
-            assertThat(observed.path("path").asText()).isEqualTo(path);
+            assertThat(observed.path("error").asString()).isEqualTo("Forbidden");
+            assertThat(observed.path("path").asString()).isEqualTo(path);
 
             HttpResponse<String> documentation =
                     client.send(request("/v3/api-docs").GET().build(), HttpResponse.BodyHandlers.ofString());
@@ -65,7 +65,7 @@ class PrivateTablesCsrfHttpTest {
                     .path("application/json")
                     .path("schema");
             if (schema.has("$ref")) {
-                schema = openApi.at(schema.get("$ref").asText().substring(1));
+                schema = openApi.at(schema.get("$ref").asString().substring(1));
             }
 
             assertThat(schema.isObject())
@@ -73,7 +73,7 @@ class PrivateTablesCsrfHttpTest {
                     .isTrue();
             for (String field : List.of("timestamp", "status", "error", "path")) {
                 String observedType = observed.path(field).isIntegralNumber() ? "integer" : "string";
-                assertThat(schema.path("properties").path(field).path("type").asText())
+                assertThat(schema.path("properties").path(field).path("type").asString())
                         .as("Type OpenAPI du champ %s du 403", field)
                         .isEqualTo(observedType);
             }

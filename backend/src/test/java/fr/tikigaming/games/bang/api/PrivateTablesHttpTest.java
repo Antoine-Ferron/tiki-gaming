@@ -212,7 +212,7 @@ class PrivateTablesHttpTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return json.readTree(body).get("code").asText();
+        return json.readTree(body).get("code").asString();
     }
 
     private ResultActions postAs(String path, MockHttpSession session) throws Exception {
