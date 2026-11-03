@@ -56,6 +56,8 @@ public class PrivateTableService {
         if (players.size() < 4) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Il faut quatre joueurs pour démarrer la partie.");
         }
+        GameState existing = games.get(code);
+        if (existing != null) return existing;
         GameState game = initialDeal.deal(List.copyOf(players));
         games.put(code, game);
         return game;

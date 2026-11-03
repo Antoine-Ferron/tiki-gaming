@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +29,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.ObjectMapper;
@@ -136,6 +140,50 @@ class GameStartHttpTest {
         assertThat(paul.hand()).hasSize(4);
         assertThat(game.currentSeat()).isEqualTo(3);
         assertThat(game.drawPile()).hasSize(24);
+    }
+
+    @Test
+    void anotherSeatedAccountWithANewSessionKeepsExactlyTheSameDeal() throws Exception {
+        String code = fullTable();
+        postAs(TABLES + "/" + code + "/start", sessionFor("creator")).andExpect(status().isOk());
+        GameState first = tables.game(code);
+
+        postAs(TABLES + "/" + code + "/start", sessionFor("third"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("{\"code\":\"" + code + "\",\"currentSeat\":3}", JsonCompareMode.STRICT));
+
+        assertThat(tables.game(code)).isSameAs(first);
+        assertThat(tables.game(code).drawPile()).hasSize(24);
+    }
+
+    @Test
+    void simultaneousHttpRequestsStartASingleDealWithoutRevealingHiddenCards() throws Exception {
+        String code = fullTable();
+        var firstRequest = preparePost(TABLES + "/" + code + "/start", sessionFor("second"));
+        var secondRequest = preparePost(TABLES + "/" + code + "/start", sessionFor("fourth"));
+        CyclicBarrier start = new CyclicBarrier(2);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> startTogether(firstRequest, start));
+            var second = executor.submit(() -> startTogether(secondRequest, start));
+            for (MvcResult response : List.of(first.get(5, TimeUnit.SECONDS), second.get(5, TimeUnit.SECONDS))) {
+                assertThat(response.getResponse().getStatus()).isEqualTo(200);
+                content()
+                        .json("{\"code\":\"" + code + "\",\"currentSeat\":3}", JsonCompareMode.STRICT)
+                        .match(response);
+            }
+        }
+        GameState first = tables.game(code);
+        postAs(TABLES + "/" + code + "/start", sessionFor("creator")).andExpect(status().isOk());
+        assertThat(tables.game(code)).isSameAs(first);
+        assertThat(first.drawPile()).hasSize(24);
+        assertThat(first.players())
+                .allSatisfy(player -> assertThat(player.hand()).hasSize(player.health()));
+    }
+
+    private MvcResult startTogether(MockHttpServletRequestBuilder request, CyclicBarrier start) throws Exception {
+        start.await(5, TimeUnit.SECONDS);
+        return mvc.perform(request).andReturn();
     }
 
     private String fullTable() throws Exception {
