@@ -49,7 +49,7 @@ export default function MastermindGame({ ctx }: GameProps) {
   }, [ctx])
 
   useEffect(() => {
-    void apiPost<MastermindGameState>('/games')
+    void apiPost<MastermindGameState>('/games/mastermind')
       .then((createdGame) => {
         setGame(createdGame)
         setGuess(emptyGuess())
@@ -78,7 +78,7 @@ export default function MastermindGame({ ctx }: GameProps) {
     setSubmitting(true)
     setError(null)
     try {
-      const updatedGame = await apiPost<MastermindGameState>(`/games/${game.id}/guesses`, { colors: guess })
+      const updatedGame = await apiPost<MastermindGameState>(`/games/mastermind/${game.id}/guesses`, { colors: guess })
       setGame(updatedGame)
       setGuess(emptyGuess())
       setActiveSlot(0)
@@ -101,7 +101,7 @@ export default function MastermindGame({ ctx }: GameProps) {
     setSubmitting(true)
     setError(null)
     try {
-      setGame(await apiPost<MastermindGameState>(`/games/${game.id}/restart`))
+      setGame(await apiPost<MastermindGameState>(`/games/mastermind/${game.id}/restart`))
       setGuess(emptyGuess())
       setActiveSlot(0)
     } catch (e) {
