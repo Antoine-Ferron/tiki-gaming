@@ -69,8 +69,8 @@ class PrivateTablesCsrfHttpTest {
                     .path("content")
                     .path("application/json")
                     .path("schema");
-            if (schema.has("oneOf")) {
-                JsonNode alternatives = schema.get("oneOf");
+            if (schema.has("anyOf")) {
+                JsonNode alternatives = schema.get("anyOf");
                 for (int index = 0; index < alternatives.size(); index++) {
                     JsonNode alternative = alternatives.get(index);
                     if (alternative.path("$ref").asString().equals("#/components/schemas/CsrfErrorResponse")) {

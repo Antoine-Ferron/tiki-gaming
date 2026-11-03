@@ -117,7 +117,7 @@ class PrivateTablesHttpTest {
                         .exists())
                 .andExpect(jsonPath("$.components.schemas.GameStarted.properties.currentSeat")
                         .exists())
-                .andExpect(jsonPath(path + ".responses['403'].content['application/json'].schema.oneOf[*]['$ref']")
+                .andExpect(jsonPath(path + ".responses['403'].content['application/json'].schema.anyOf[*]['$ref']")
                         .value(org.hamcrest.Matchers.containsInAnyOrder(
                                 "#/components/schemas/ApiError", "#/components/schemas/CsrfErrorResponse")));
 

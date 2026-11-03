@@ -101,7 +101,7 @@ public class PrivateTableController {
             content =
                     @Content(
                             mediaType = "application/json",
-                            schema = @Schema(oneOf = {ApiError.class, CsrfErrorResponse.class})))
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
     @ApiResponse(
             responseCode = "404",
             description = "Code de table inconnu",
