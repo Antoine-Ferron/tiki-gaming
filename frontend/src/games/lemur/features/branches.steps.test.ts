@@ -12,6 +12,7 @@ import {
   VIEW_HEIGHT,
   WORLD_WIDTH,
 } from '../domain/game'
+import { aGame } from '../testing/builders'
 
 // Étapes liées directement au domaine du jeu, avec un tirage au sort fixé (Stub) : résultats reproductibles.
 const feature = await loadFeature('src/games/lemur/features/branches.feature', { language: 'fr' })
@@ -23,7 +24,7 @@ const m = (meters: number) => meters * PX_PER_METER
 const topOf = (b: Branch) => b.y + BRANCH_HEIGHT
 
 function screenAt(bottom: number): GameState {
-  return { maki: { x: 180, y: bottom + 100, vy: 0 }, branches: [], cameraY: bottom, peakY: 0, fossaY: 0 }
+  return aGame({ maki: { x: 180, y: bottom + 100, vy: 0 }, cameraY: bottom })
 }
 
 describeFeature(feature, ({ ScenarioOutline }) => {

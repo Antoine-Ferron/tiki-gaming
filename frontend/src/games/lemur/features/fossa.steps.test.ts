@@ -2,6 +2,7 @@ import { describeFeature, loadFeature } from '@amiceli/vitest-cucumber'
 import { expect } from 'vitest'
 import { chase } from '../domain/fossa'
 import { type GameState, PX_PER_METER } from '../domain/game'
+import { aGame } from '../testing/builders'
 
 // Étapes liées directement au domaine du jeu : aucune dépendance au canvas ni à React.
 const feature = await loadFeature('src/games/lemur/features/fossa.feature', { language: 'fr' })
@@ -11,7 +12,7 @@ const m = (meters: number) => meters * PX_PER_METER
 
 /** Écran au pied du baobab, fossa 10 m sous l'écran : assez près pour ne jamais être rattrapée par la limite des 40 m. */
 function gameAt(peak: number): GameState {
-  return { maki: { x: 180, y: peak, vy: 0 }, branches: [], cameraY: 0, peakY: peak, fossaY: m(-10) }
+  return aGame({ maki: { x: 180, y: peak, vy: 0 }, peakY: peak, fossaY: m(-10) })
 }
 
 describeFeature(feature, ({ ScenarioOutline }) => {

@@ -1,6 +1,7 @@
 import { describeFeature, loadFeature } from '@amiceli/vitest-cucumber'
 import { expect } from 'vitest'
 import { BRANCH_HEIGHT, BRANCH_WIDTH, type GameState, type Input, JUMP_SPEED, step } from '../domain/game'
+import { aGame } from '../testing/builders'
 
 // Étapes liées directement au domaine du jeu : aucune dépendance au canvas ni à React.
 const feature = await loadFeature('src/games/lemur/features/deplacement.feature', { language: 'fr' })
@@ -27,7 +28,7 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
     let state: GameState
 
     Given('une branche normale sous le maki', () => {
-      state = { maki: { x: 180, y: BRANCH_TOP + 2, vy: 0 }, branches: [BRANCH], cameraY: 0, peakY: 0, fossaY: 0 }
+      state = aGame({ maki: { x: 180, y: BRANCH_TOP + 2, vy: 0 }, branches: [BRANCH] })
     })
     And('le maki qui descend vers elle', () => {
       state = { ...state, maki: { ...state.maki, vy: -200 } }
@@ -46,7 +47,7 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
     let bounced = false
 
     Given('une branche normale juste au-dessus du maki', () => {
-      state = { maki: { x: 180, y: BRANCH_TOP - 20, vy: 0 }, branches: [BRANCH], cameraY: 0, peakY: 0, fossaY: 0 }
+      state = aGame({ maki: { x: 180, y: BRANCH_TOP - 20, vy: 0 }, branches: [BRANCH] })
     })
     And('le maki qui monte', () => {
       state = { ...state, maki: { ...state.maki, vy: 600 } }
@@ -71,7 +72,7 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
 
     Given('le maki à <départ> px du bord gauche', () => {
       // Assez haut pour ne toucher aucune branche, à l'apogée d'un saut.
-      state = { maki: { x: Number(variables['départ']), y: 500, vy: 0 }, branches: [], cameraY: 0, peakY: 0, fossaY: 0 }
+      state = aGame({ maki: { x: Number(variables['départ']), y: 500, vy: 0 } })
     })
     When('le joueur le dirige <direction> pendant une image', () => {
       state = run(state, 1, DIRECTIONS[variables.direction])

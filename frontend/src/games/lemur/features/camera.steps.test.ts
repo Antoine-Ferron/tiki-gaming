@@ -1,6 +1,7 @@
 import { describeFeature, loadFeature } from '@amiceli/vitest-cucumber'
 import { expect } from 'vitest'
 import { type GameState, GRAVITY, PX_PER_METER, step, STEP_S } from '../domain/game'
+import { aGame } from '../testing/builders'
 
 // Étapes liées directement au domaine du jeu : aucune dépendance au canvas ni à React.
 const feature = await loadFeature('src/games/lemur/features/camera.feature', { language: 'fr' })
@@ -13,7 +14,7 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
   let state: GameState
 
   function cameraAt(meters: number) {
-    state = { maki: { x: 180, y: 0, vy: 0 }, branches: [], cameraY: meters * PX_PER_METER, peakY: 0, fossaY: 0 }
+    state = aGame({ maki: { x: 180, y: 0, vy: 0 }, cameraY: meters * PX_PER_METER })
   }
   function makiAtApex(meters: number) {
     state = { ...state, maki: { ...state.maki, y: meters * PX_PER_METER, vy: APEX_SPEED } }

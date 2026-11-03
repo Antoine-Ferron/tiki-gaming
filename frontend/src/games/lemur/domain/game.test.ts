@@ -1,18 +1,16 @@
 import { describe, expect, test } from 'vitest'
-import { BRANCH_HEIGHT, BRANCH_WIDTH, type GameState, JUMP_SPEED, MAKI_SIZE, step, WORLD_WIDTH } from './game'
+import { BRANCH_HEIGHT, BRANCH_WIDTH, JUMP_SPEED, MAKI_SIZE, step, WORLD_WIDTH } from './game'
+import { aGame } from '../testing/builders'
 
 const NO_INPUT = { left: false, right: false }
 
 /** Le maki descend juste au-dessus d'une branche (dessus à y = 100) et le jeu avance d'une image. */
 function bouncesOn(branchX: number, makiX: number): boolean {
   // Arrange
-  const state: GameState = {
+  const state = aGame({
     maki: { x: makiX, y: 102, vy: -200 },
     branches: [{ x: branchX, y: 100 - BRANCH_HEIGHT }],
-    cameraY: 0,
-    peakY: 0,
-    fossaY: 0,
-  }
+  })
   // Act
   const next = step(state, NO_INPUT)
   // Assert (lu par l'appelant)
