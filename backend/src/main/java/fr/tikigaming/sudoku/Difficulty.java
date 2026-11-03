@@ -1,7 +1,5 @@
 package fr.tikigaming.sudoku;
 
-import java.util.Locale;
-
 /** Niveaux de difficulté : nombre d'indices laissés dans la grille et score de base. */
 public enum Difficulty {
     EASY(40, 1000, 600),
@@ -33,11 +31,15 @@ public enum Difficulty {
 
     /** Accepte la valeur en minuscules ("easy") telle qu'envoyée par le front. */
     public static Difficulty parse(String value) {
-        if (value == null || value.isBlank()) throw new IllegalArgumentException("Difficulté manquante");
-        try {
-            return valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Difficulté inconnue : " + value);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Difficulté manquante");
         }
+        String name = value.trim();
+        for (Difficulty difficulty : values()) {
+            if (difficulty.name().equalsIgnoreCase(name)) {
+                return difficulty;
+            }
+        }
+        throw new IllegalArgumentException("Difficulté inconnue : " + value);
     }
 }
