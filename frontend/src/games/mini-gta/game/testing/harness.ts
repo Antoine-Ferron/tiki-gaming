@@ -17,6 +17,8 @@ export function anything(): unknown {
       if (key === Symbol.toPrimitive) return () => 0
       if (key === 'data') return new Uint8ClampedArray(4 * 1024 * 1024)
       if (key === 'width' || key === 'height') return 1
+      // WebGLCoordinateSystem de three : exigé par CubeCamera (reflets).
+      if (key === 'coordinateSystem') return 2000
       return proxy
     },
     set: () => true,
