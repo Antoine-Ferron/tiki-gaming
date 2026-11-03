@@ -60,7 +60,10 @@ describeDb('scores (RLS et contraintes)', () => {
         [alice],
       )
     await insertRun()
+    // Savepoint : le doublon refusé ne doit pas avorter la transaction du test.
+    await db.query('savepoint duplicate_run')
     await expect(insertRun()).rejects.toMatchObject({ code: '23505' })
+    await db.query('rollback to savepoint duplicate_run')
     expect(await scoresOf(alice)).toEqual([150])
   })
 
