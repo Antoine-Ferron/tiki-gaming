@@ -28,6 +28,23 @@ export type GameState = {
 
 /** Avance la partie d'une image. */
 export function step(state: GameState, input: Input): GameState {
-  void input
-  return state
+  const { maki } = state
+  const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0)
+  const x = (((maki.x + direction * RUN_SPEED * STEP_S) % WORLD_WIDTH) + WORLD_WIDTH) % WORLD_WIDTH
+
+  let vy = maki.vy - GRAVITY * STEP_S
+  let y = maki.y + vy * STEP_S
+  if (vy < 0) {
+    for (const branch of state.branches) {
+      const top = branch.y + BRANCH_HEIGHT
+      const above = x >= branch.x && x <= branch.x + BRANCH_WIDTH
+      if (above && maki.y >= top && y <= top) {
+        y = top
+        vy = JUMP_SPEED
+        break
+      }
+    }
+  }
+
+  return { ...state, maki: { x, y, vy } }
 }
