@@ -10,6 +10,8 @@ function bouncesOn(branchX: number, makiX: number): boolean {
     maki: { x: makiX, y: 102, vy: -200 },
     branches: [{ x: branchX, y: 100 - BRANCH_HEIGHT }],
     cameraY: 0,
+    peakY: 0,
+    fossaY: 0,
   }
   // Act
   const next = step(state, NO_INPUT)

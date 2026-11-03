@@ -23,7 +23,7 @@ const m = (meters: number) => meters * PX_PER_METER
 const topOf = (b: Branch) => b.y + BRANCH_HEIGHT
 
 function screenAt(bottom: number): GameState {
-  return { maki: { x: 180, y: bottom + 100, vy: 0 }, branches: [], cameraY: bottom }
+  return { maki: { x: 180, y: bottom + 100, vy: 0 }, branches: [], cameraY: bottom, peakY: 0, fossaY: 0 }
 }
 
 describeFeature(feature, ({ ScenarioOutline }) => {

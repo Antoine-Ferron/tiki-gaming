@@ -13,7 +13,7 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
   let state: GameState
 
   function cameraAt(meters: number) {
-    state = { maki: { x: 180, y: 0, vy: 0 }, branches: [], cameraY: meters * PX_PER_METER }
+    state = { maki: { x: 180, y: 0, vy: 0 }, branches: [], cameraY: meters * PX_PER_METER, peakY: 0, fossaY: 0 }
   }
   function makiAtApex(meters: number) {
     state = { ...state, maki: { ...state.maki, y: meters * PX_PER_METER, vy: APEX_SPEED } }

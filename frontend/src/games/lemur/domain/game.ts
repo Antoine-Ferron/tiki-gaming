@@ -31,6 +31,10 @@ export type GameState = {
   branches: Branch[]
   /** Hauteur du bas de l'écran dans le monde (EF-2). */
   cameraY: number
+  /** Hauteur maximale atteinte par le maki (EF-5.2, EF-6.4). */
+  peakY: number
+  /** Hauteur du museau de la fossa (EF-5). */
+  fossaY: number
 }
 
 /** Avance la partie d'une image. */
