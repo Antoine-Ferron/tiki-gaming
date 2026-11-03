@@ -1,12 +1,8 @@
 import { useEffect, useReducer, useState } from 'react'
-import type { GameContext } from '../../types'
 import { browserClock } from '../browserClock'
 import { type Board as BoardModel, type Move, parseBoard } from '../domain/board'
-import type { Level } from '../domain/levels'
-import type { BestScores } from '../domain/progress'
 import { GameSession } from '../domain/session'
 import { solve } from '../domain/solver'
-import { completeLevel } from '../services/completeLevel'
 import { Board } from './Board'
 import { vehicleLabel } from './vehicleLabel'
 
@@ -24,19 +20,23 @@ function describeHint(board: BoardModel, move: Move) {
   return `${vehicleLabel(v)} de ${n} case${n > 1 ? 's' : ''} vers ${direction}`
 }
 
+/** Ce qu'une partie gagnée transmet pour calculer et enregistrer le score. */
+export type FinishedRun = { optimal: number; moves: Move[]; hintsUsed: number; durationMs: number }
+
 type LevelPlayerProps = {
-  ctx: GameContext
-  level: Level
+  title: string
+  map: string[]
+  /** Enregistre la partie gagnée et renvoie son score. */
+  complete: (run: FinishedRun) => Promise<number>
   onBack: () => void
-  /** Absent pour le dernier niveau. */
-  onNext?: () => void
-  onCompleted: (best: BestScores) => void
+  /** Bouton affiché après la victoire (« Niveau suivant », « Nouveau plateau »), absent s'il n'y a pas de suite. */
+  next?: { label: string; onClick: () => void }
 }
 
-/** Une partie sur un niveau : affiche la partie et transmet les actions du joueur au domaine (aucune règle ici). */
-export function LevelPlayer({ ctx, level, onBack, onNext, onCompleted }: LevelPlayerProps) {
-  const [session] = useState(() => new GameSession(level.map, browserClock))
-  const [optimal] = useState(() => solve(parseBoard(level.map))?.length ?? 0)
+/** Une partie sur un plateau : affiche la partie et transmet les actions du joueur au domaine (aucune règle ici). */
+export function LevelPlayer({ title, map, complete, onBack, next }: LevelPlayerProps) {
+  const [session] = useState(() => new GameSession(map, browserClock))
+  const [optimal] = useState(() => solve(parseBoard(map))?.length ?? 0)
   const [, refresh] = useReducer((n: number) => n + 1, 0)
   const [result, setResult] = useState<number | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -54,17 +54,9 @@ export function LevelPlayer({ ctx, level, onBack, onNext, onCompleted }: LevelPl
     setHint(null)
     refresh()
     if (!session.solved) return
-    const run = {
-      level: level.id,
-      optimal,
-      moves: session.moves,
-      hintsUsed: session.hintsUsed,
-      durationMs: session.elapsedMs,
-    }
+    const run = { optimal, moves: session.moves, hintsUsed: session.hintsUsed, durationMs: session.elapsedMs }
     try {
-      const { score, best } = await completeLevel(ctx, run)
-      setResult(score)
-      onCompleted(best)
+      setResult(await complete(run))
     } catch (e) {
       setMessage((e as Error).message)
     }
@@ -89,7 +81,7 @@ export function LevelPlayer({ ctx, level, onBack, onNext, onCompleted }: LevelPl
       <button type="button" className="link" onClick={onBack}>
         ← Niveaux
       </button>
-      <h2>Niveau {level.id}</h2>
+      <h2>{title}</h2>
       <div className="rush-hour-stats">
         <span>
           Coups : {session.moveCount} (min. {optimal})
@@ -117,9 +109,9 @@ export function LevelPlayer({ ctx, level, onBack, onNext, onCompleted }: LevelPl
         <button type="button" className="small" onClick={restart}>
           {session.solved ? 'Rejouer' : 'Recommencer'}
         </button>
-        {session.solved && onNext && (
-          <button type="button" className="small" onClick={onNext}>
-            Niveau suivant
+        {session.solved && next && (
+          <button type="button" className="small" onClick={next.onClick}>
+            {next.label}
           </button>
         )}
       </div>

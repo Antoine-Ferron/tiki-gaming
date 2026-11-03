@@ -1,14 +1,26 @@
+import { type Difficulty } from '../domain/difficulty'
 import { levels } from '../domain/levels'
-import { type BestScores, isUnlocked } from '../domain/progress'
+import { isUnlocked } from '../domain/progress'
 import { totalScore } from '../domain/score'
+import type { Progress } from '../services/progress'
+
+const DIFFICULTIES: { id: Difficulty; label: string }[] = [
+  { id: 'facile', label: 'Facile' },
+  { id: 'moyen', label: 'Moyen' },
+  { id: 'difficile', label: 'Difficile' },
+]
 
 type LevelPickerProps = {
-  best: BestScores
+  progress: Progress
   onPick: (levelId: number) => void
+  onGenerate: (difficulty: Difficulty) => void
 }
 
-/** Écran de choix : un niveau s'ouvre quand le précédent est terminé (N3) ; on rejoue un niveau terminé (N4). */
-export function LevelPicker({ best, onPick }: LevelPickerProps) {
+/**
+ * Écran de choix. Niveaux : un niveau s'ouvre quand le précédent est terminé (N3), on rejoue un niveau terminé (N4).
+ * Génération : un plateau nouveau par difficulté (G1), hors classement, avec ses statistiques (S4).
+ */
+export function LevelPicker({ progress: { best, generated }, onPick, onGenerate }: LevelPickerProps) {
   return (
     <>
       <h2>Niveaux</h2>
@@ -32,6 +44,26 @@ export function LevelPicker({ best, onPick }: LevelPickerProps) {
           )
         })}
       </div>
+
+      <h2 className="rush-hour-section">Génération</h2>
+      <p className="muted">Un plateau nouveau à chaque partie. Il ne compte pas au classement.</p>
+      <div className="rush-hour-actions">
+        {DIFFICULTIES.map(({ id, label }) => (
+          <button key={id} type="button" className="small" onClick={() => onGenerate(id)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {DIFFICULTIES.map(({ id, label }) => {
+        const stats = generated?.[id]
+        if (!stats) return null
+        return (
+          <p key={id} className="muted">
+            {label} : {stats.won} plateau{stats.won > 1 ? 'x' : ''} réussi{stats.won > 1 ? 's' : ''}, record{' '}
+            {stats.best} points
+          </p>
+        )
+      })}
     </>
   )
 }
