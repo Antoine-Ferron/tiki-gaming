@@ -8,7 +8,7 @@ Espace de jeux en ligne : comptes joueurs, catalogue de jeux, scores, classement
 
 **Stack**
 - `frontend/` : Vite · React 19 · TypeScript · React Router · supabase-js (données uniquement)
-- `backend/` : Java 21 · Spring Boot 3.5 · Spring Security OAuth2 Client · Maven (authentification)
+- `backend/` : Java 21 · Spring Boot 4.1 · Spring Security OAuth2 Client · Maven (authentification)
 - Supabase : Postgres + RLS (et `auth.users` comme registre des comptes)
 
 ## Démarrage
