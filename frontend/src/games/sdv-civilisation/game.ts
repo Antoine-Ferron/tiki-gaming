@@ -21,13 +21,28 @@ export interface GameState {
   players: PlayerState[]
   hands: Card[][]
   over: boolean
-  /** Ce qui s'est passé au dernier tour, à afficher au joueur. */
-  log: string[]
+  /** Cartes défaussées depuis le début de la partie, visibles de tous. */
+  discards: Card[]
+  /** Ce que chaque joueur a fait au dernier tour, à afficher au joueur. */
+  lastTurn: TurnEvent[]
+  /** Jetons gagnés ou perdus par chaque joueur aux conflits de l'âge qui vient de se terminer, sinon null. */
+  conflicts: number[] | null
+}
+
+export interface TurnEvent {
+  player: number
+  action: Action['type']
+  card: Card
+  /** Pièces gagnées ou perdues ce tour (commerce compris). */
+  coins: number
 }
 
 export type Action = { type: 'build'; card: string } | { type: 'discard'; card: string }
 
-export type Payment = { ok: true; coins: number; toLeft: number; toRight: number } | { ok: false; reason: string }
+export type Refusal = 'built' | 'resources' | 'coins'
+
+export type Payment =
+  { ok: true; coins: number; toLeft: number; toRight: number } | { ok: false; code: Refusal; reason: string }
 
 /** Distribue une main de 7 cartes de l'âge à chaque joueur : chaque carte existe en un exemplaire par joueur. */
 function deal(age: Age, playerCount: number, shuffler: Shuffler): Card[][] {
@@ -45,7 +60,9 @@ export function createGame(seats: Seat[], shuffler: Shuffler): GameState {
     players: seats.map((seat) => ({ ...seat, built: [], military: 0 })),
     hands: deal(1, seats.length, shuffler),
     over: false,
-    log: [],
+    discards: [],
+    lastTurn: [],
+    conflicts: null,
   }
 }
 
@@ -69,7 +86,8 @@ export function shields(player: PlayerState): number {
  */
 export function payment(state: GameState, index: number, card: Card, converter: CurrencyConverter): Payment {
   const player = state.players[index]
-  if (player.built.some((c) => c.name === card.name)) return { ok: false, reason: 'Tu as déjà construit cette carte.' }
+  if (player.built.some((c) => c.name === card.name))
+    return { ok: false, code: 'built', reason: 'Tu as déjà construit cette carte.' }
 
   const { left, right } = neighbours(state.players, index)
   const own = count(production(player))
@@ -82,26 +100,25 @@ export function payment(state: GameState, index: number, card: Card, converter: 
     const missing = Math.max(0, needed - (own.get(resource) ?? 0))
     const leftQty = Math.min(missing, fromLeft.get(resource) ?? 0)
     const rightQty = Math.min(missing - leftQty, fromRight.get(resource) ?? 0)
-    if (leftQty + rightQty < missing) return { ok: false, reason: 'Il te manque des ressources.' }
+    if (leftQty + rightQty < missing) return { ok: false, code: 'resources', reason: 'Il te manque des ressources.' }
     if (leftQty > 0) toLeft += converter.toCoins(resource, leftQty)
     if (rightQty > 0) toRight += converter.toCoins(resource, rightQty)
   }
 
   const coins = (card.cost.coins ?? 0) + toLeft + toRight
-  if (coins > player.coins) return { ok: false, reason: 'Pas assez de pièces.' }
+  if (coins > player.coins) return { ok: false, code: 'coins', reason: 'Pas assez de pièces.' }
   return { ok: true, coins, toLeft, toRight }
 }
 
 /** Chaque joueur affronte ses deux voisins : victoire selon l'âge, défaite −1, égalité 0. */
-function resolveConflicts(players: PlayerState[], age: Age): PlayerState[] {
+function conflictTokens(players: PlayerState[], age: Age): number[] {
   return players.map((player, index) => {
     const { left, right } = neighbours(players, index)
-    const tokens = [left, right].reduce((sum, other) => {
+    return [left, right].reduce((sum, other) => {
       if (shields(player) > shields(other)) return sum + VICTORY_TOKENS[age]
       if (shields(player) < shields(other)) return sum + DEFEAT_TOKEN
       return sum
     }, 0)
-    return { ...player, military: player.military + tokens }
   })
 }
 
@@ -117,7 +134,8 @@ export function playTurn(
 ): GameState {
   const delta = state.players.map(() => 0)
   const built = state.players.map((p) => [...p.built])
-  const log: string[] = []
+  const discards = [...state.discards]
+  const played: { action: Action['type']; card: Card }[] = []
   const count = state.players.length
 
   const hands = actions.map((action, index) => {
@@ -125,11 +143,11 @@ export function playTurn(
     const at = hand.findIndex((c) => c.name === action.card)
     const card = hand[at]
     if (!card) throw new Error(`Cette carte n'est pas dans ta main : ${action.card}`)
-    const name = state.players[index].name
+    played.push({ action: action.type, card })
 
     if (action.type === 'discard') {
       delta[index] += DISCARD_COINS
-      log.push(`${name} défausse ${card.name} (+${DISCARD_COINS} pièces)`)
+      discards.push(card)
     } else {
       const cost = payment(state, index, card, converter)
       if (!cost.ok) throw new Error(cost.reason)
@@ -137,23 +155,27 @@ export function playTurn(
       delta[(index - 1 + count) % count] += cost.toLeft
       delta[(index + 1) % count] += cost.toRight
       built[index].push(card)
-      log.push(`${name} construit ${card.name}`)
     }
     // Un seul exemplaire quitte la main, même si elle en contient deux.
     return hand.filter((_, i) => i !== at)
   })
 
-  let players = state.players.map((p, i) => ({ ...p, coins: p.coins + delta[i], built: built[i] }))
+  const players = state.players.map((p, i) => ({ ...p, coins: p.coins + delta[i], built: built[i] }))
+  const lastTurn = played.map((event, player) => ({ ...event, player, coins: delta[player] }))
   // Âges I et III : chaque main part au voisin de gauche, donc on reçoit celle du voisin de droite. Âge II : l'inverse.
   const passed = hands.map((_, i) => hands[state.age === 2 ? (i - 1 + count) % count : (i + 1) % count])
 
-  if (state.turn < TURNS_PER_AGE) return { ...state, turn: state.turn + 1, players, hands: passed, log }
+  if (state.turn < TURNS_PER_AGE) {
+    return { ...state, turn: state.turn + 1, players, hands: passed, discards, lastTurn, conflicts: null }
+  }
 
   // Fin d'âge : la dernière carte de chaque main est défaussée, puis les conflits sont résolus.
-  players = resolveConflicts(players, state.age)
-  log.push(`Fin de l'âge ${state.age} : conflits militaires résolus`)
-  if (state.age === 3) return { ...state, players, hands: players.map(() => []), over: true, log }
+  discards.push(...passed.flat())
+  const conflicts = conflictTokens(players, state.age)
+  const afterConflicts = players.map((p, i) => ({ ...p, military: p.military + conflicts[i] }))
+  const end = { players: afterConflicts, discards, lastTurn, conflicts }
+  if (state.age === 3) return { ...state, ...end, hands: players.map(() => []), over: true }
 
   const age = (state.age + 1) as Age
-  return { age, turn: 1, players, hands: deal(age, count, shuffler), over: false, log }
+  return { ...end, age, turn: 1, hands: deal(age, count, shuffler), over: false }
 }

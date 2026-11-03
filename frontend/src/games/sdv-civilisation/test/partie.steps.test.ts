@@ -83,9 +83,10 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
     Then('l\'action est refusée : "<raison>"', () => expect(refusal).toBe(variables.raison))
   })
 
-  Scenario('Défausser une carte rapporte 3 pièces', ({ When, Then }) => {
+  Scenario('Défausser une carte rapporte 3 pièces', ({ When, Then, And }) => {
     When('"alice" défausse "Bains"', () => act('alice', { type: 'discard', card: 'Bains' }))
     Then('"alice" a 4 pièces', () => expect(state.players[seat('alice')].coins).toBe(4))
+    And('la défausse contient "Bains"', () => expect(state.discards.map((c) => c.name)).toEqual(['Bains']))
   })
 
   Scenario("Jouer un exemplaire d'une carte laisse l'autre dans la main", ({ Given, When, Then }) => {
@@ -121,6 +122,11 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
     })
     Then('les jetons militaires sont alice 2, IA 1 -1 et IA 2 -1', () => {
       expect(state.players.map((p) => p.military)).toEqual([2, -1, -1])
+      expect(state.conflicts).toEqual([2, -1, -1])
+    })
+    And('les dernières cartes des mains rejoignent la défausse', () => {
+      // 6 tours × 3 défausses + la dernière carte de chaque main : les 21 cartes de l'âge.
+      expect(state.discards).toHaveLength(21)
     })
     And("l'âge II commence avec 7 cartes en main", () => {
       expect([state.age, state.turn, state.hands[0].length]).toEqual([2, 1, 7])

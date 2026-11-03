@@ -6,7 +6,7 @@
 #   Question : et si aucun voisin ne produit la ressource ? → la carte est refusée.
 #   Question : et une carte qui n'est pas dans sa main ? → refusée aussi.
 #   Question : et deux exemplaires de la même carte dans une main ? → en jouer un laisse l'autre.
-#   Règle    : défausser une carte rapporte 3 pièces.
+#   Règle    : défausser une carte rapporte 3 pièces ; la carte va sur la pile de défausse, visible de tous.
 #   Règle    : les mains passent au voisin de gauche aux âges I et III, de droite à l'âge II.
 #   Règle    : en fin d'âge, chaque joueur affronte ses deux voisins (victoire +1 / +3 / +5, défaite −1).
 #   Question : et en cas d'égalité de boucliers ? → aucun jeton.
@@ -47,6 +47,7 @@ Fonctionnalité: Partie contre les IA
   Scénario: Défausser une carte rapporte 3 pièces
     Quand "alice" défausse "Bains"
     Alors "alice" a 4 pièces
+    Et la défausse contient "Bains"
 
   Scénario: Jouer un exemplaire d'une carte laisse l'autre dans la main
     Soit "alice" qui a deux "Chantier" en main
@@ -67,6 +68,7 @@ Fonctionnalité: Partie contre les IA
     Soit "alice" qui a construit "Palissade"
     Quand l'âge I se termine
     Alors les jetons militaires sont alice 2, IA 1 -1 et IA 2 -1
+    Et les dernières cartes des mains rejoignent la défausse
     Et l'âge II commence avec 7 cartes en main
 
   Scénario: La partie se termine après l'âge III avec un classement
