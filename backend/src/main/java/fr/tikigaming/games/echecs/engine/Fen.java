@@ -9,7 +9,8 @@ public final class Fen {
     private Fen() {}
 
     public static Position parse(String fen) {
-        String placement = fen.split(" ")[0];
+        String[] fields = fen.split(" ");
+        String placement = fields[0];
         String[] ranks = placement.split("/");
         Map<Square, Piece> pieces = new HashMap<>();
         for (int i = 0; i < ranks.length; i++) {
@@ -24,6 +25,7 @@ public final class Fen {
                 }
             }
         }
-        return new Position(pieces);
+        Color turn = fields[1].equals("w") ? Color.WHITE : Color.BLACK;
+        return new Position(pieces, turn);
     }
 }
