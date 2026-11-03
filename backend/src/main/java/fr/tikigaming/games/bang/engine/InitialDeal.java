@@ -47,6 +47,9 @@ public class InitialDeal {
             players.add(new GameState.Player(
                     accounts.get(seat), seat + 1, assignedRoles.get(seat), characters.get(seat), health, health, hand));
         }
-        return new GameState(List.copyOf(players), List.copyOf(deck.subList(drawn, deck.size())), 1);
+        return new GameState(
+                List.copyOf(players),
+                List.copyOf(deck.subList(drawn, deck.size())),
+                assignedRoles.indexOf(roles.sheriff()) + 1);
     }
 }

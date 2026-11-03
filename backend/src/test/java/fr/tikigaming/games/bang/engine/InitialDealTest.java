@@ -69,4 +69,16 @@ class InitialDealTest {
         assertThat(allCards).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(catalog.cards());
         assertThat(catalog.cards().getFirst()).isEqualTo("test-card-1");
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3, 4})
+    void theFirstTurnBelongsToTheSheriffWhateverTheirSeat(int sheriffSeat) {
+        InitialDeal controlled =
+                new InitialDeal(Optional.of(catalog), list -> Collections.rotate(list, sheriffSeat - 1));
+
+        GameState game = controlled.deal(List.of("creator", "second", "third", "fourth"));
+
+        assertThat(game.currentSeat()).isEqualTo(sheriffSeat);
+        assertThat(game.players().get(sheriffSeat - 1).role()).isEqualTo("Shérif");
+    }
 }

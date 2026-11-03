@@ -74,7 +74,7 @@ class GameStartHttpTest {
 
         postAs(TABLES + "/" + code + "/start", sessionFor("third"))
                 .andExpect(status().isOk())
-                .andExpect(content().json("{\"code\":\"" + code + "\",\"currentSeat\":1}", JsonCompareMode.STRICT));
+                .andExpect(content().json("{\"code\":\"" + code + "\",\"currentSeat\":3}", JsonCompareMode.STRICT));
 
         GameState game = tables.game(code);
         assertThat(game.players())
@@ -119,6 +119,23 @@ class GameStartHttpTest {
         assertThat(game.players().get(2).hand()).hasSize(4);
         assertThat(game.drawPile()).hasSize(24);
         assertThat(allCards).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(new TestGameCatalog().cards());
+    }
+
+    @Test
+    void paulRegretAsSheriffInTheThirdSeatStartsWithFourHealthFourCardsAndTheFirstTurn() throws Exception {
+        String code = fullTable();
+
+        postAs(TABLES + "/" + code + "/start", sessionFor("creator")).andExpect(status().isOk());
+
+        GameState game = tables.game(code);
+        GameState.Player paul = game.players().get(2);
+        assertThat(paul.character().id()).isEqualTo("Paul Regret");
+        assertThat(paul.role()).isEqualTo("Shérif");
+        assertThat(paul.health()).isEqualTo(4);
+        assertThat(paul.maxHealth()).isEqualTo(4);
+        assertThat(paul.hand()).hasSize(4);
+        assertThat(game.currentSeat()).isEqualTo(3);
+        assertThat(game.drawPile()).hasSize(24);
     }
 
     private String fullTable() throws Exception {
