@@ -1,4 +1,5 @@
 import { apiGet } from './api'
+import { logger } from './logger'
 
 export type AuthUser = { id: string; email: string | null }
 
@@ -44,8 +45,8 @@ export async function getAccessToken(): Promise<string | null> {
     if (!current || (current.user && (current.expiresAt ?? 0) - Date.now() < REFRESH_MARGIN_MS)) {
       await fetchSession()
     }
-  } catch (e) {
-    console.error('Session indisponible, requêtes en anonyme', e)
+  } catch (err) {
+    logger.warn({ err }, 'Session indisponible, requêtes en anonyme')
     return null
   }
   return current?.accessToken ?? null
