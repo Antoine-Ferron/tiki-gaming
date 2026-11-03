@@ -85,6 +85,35 @@ public class PrivateTableController {
     }
 
     @PostMapping("/{code}/start")
+    @Operation(
+            summary = "Démarrer une partie à quatre",
+            description = "Tout compte connecté et assis à cette table peut la démarrer. Le Shérif joue en premier. "
+                    + "Les demandes suivantes conservent la donne, même simultanées. "
+                    + "La réponse contient uniquement le code de table et la place du joueur actif.")
+    @ApiResponse(responseCode = "200", description = "Partie démarrée ou déjà en cours")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF absent ou invalide (CsrfErrorResponse), ou compte non assis (ApiError)",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(oneOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Code de table inconnu",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Moins de quatre joueurs assis",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "503",
+            description = "Les cartes de mise en place ne sont pas encore disponibles",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     GameStarted start(@PathVariable String code, HttpServletRequest request) {
         return new GameStarted(
                 code, tables.start(code, connectedAccountId(request)).currentSeat());

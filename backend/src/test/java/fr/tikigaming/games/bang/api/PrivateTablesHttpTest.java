@@ -89,6 +89,45 @@ class PrivateTablesHttpTest {
     }
 
     @Test
+    void fullTablesWaitForTheProductionCatalogues() throws Exception {
+        String code = createTable("creator");
+        for (int seat = 2; seat <= 4; seat++) {
+            postAs(TABLES + "/" + code + "/join", sessionFor("player-" + seat)).andExpect(status().isOk());
+        }
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            postAs(TABLES + "/" + code + "/start", sessionFor("creator"))
+                    .andExpect(status().isServiceUnavailable())
+                    .andExpect(
+                            jsonPath("$.error").value("Les cartes de mise en place ne sont pas encore disponibles."));
+        }
+    }
+
+    @Test
+    void swaggerDocumentsStartingWithoutExposingTheServerState() throws Exception {
+        String path = "$.paths['" + TABLES + "/{code}/start'].post";
+        ResultActions docs = mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(path + ".tags[0]").value("bang"))
+                .andExpect(jsonPath(path + ".summary", not(emptyOrNullString())))
+                .andExpect(jsonPath(path + ".responses['200'].content['*/*'].schema['$ref']")
+                        .value("#/components/schemas/GameStarted"))
+                .andExpect(jsonPath("$.components.schemas.GameStarted.properties.*", org.hamcrest.Matchers.hasSize(2)))
+                .andExpect(jsonPath("$.components.schemas.GameStarted.properties.code")
+                        .exists())
+                .andExpect(jsonPath("$.components.schemas.GameStarted.properties.currentSeat")
+                        .exists())
+                .andExpect(jsonPath(path + ".responses['403'].content['application/json'].schema.oneOf[*]['$ref']")
+                        .value(org.hamcrest.Matchers.containsInAnyOrder(
+                                "#/components/schemas/ApiError", "#/components/schemas/CsrfErrorResponse")));
+
+        for (int error : List.of(401, 404, 409, 503)) {
+            docs.andExpect(jsonPath(path + ".responses['" + error + "'].content.*.schema['$ref']")
+                    .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
+        }
+    }
+
+    @Test
     void connectedPlayerCreatesAPrivateTableAndTakesTheFirstSeat() throws Exception {
         postAs(TABLES, sessionFor("creator"))
                 .andExpect(status().isCreated())

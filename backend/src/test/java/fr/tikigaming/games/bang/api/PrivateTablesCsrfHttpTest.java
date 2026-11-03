@@ -37,7 +37,12 @@ class PrivateTablesCsrfHttpTest {
     private ObjectMapper json;
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/games/bang/tables", "/api/games/bang/tables/{code}/join"})
+    @ValueSource(
+            strings = {
+                "/api/games/bang/tables",
+                "/api/games/bang/tables/{code}/join",
+                "/api/games/bang/tables/{code}/start"
+            })
     void swaggerMatchesTheJsonCsrfResponseFromTheEmbeddedServer(String documentedPath) throws Exception {
         String path = documentedPath.replace("{code}", "UNKNOWN");
         try (HttpClient client = HttpClient.newHttpClient()) {
@@ -64,6 +69,15 @@ class PrivateTablesCsrfHttpTest {
                     .path("content")
                     .path("application/json")
                     .path("schema");
+            if (schema.has("oneOf")) {
+                JsonNode alternatives = schema.get("oneOf");
+                for (int index = 0; index < alternatives.size(); index++) {
+                    JsonNode alternative = alternatives.get(index);
+                    if (alternative.path("$ref").asString().equals("#/components/schemas/CsrfErrorResponse")) {
+                        schema = alternative;
+                    }
+                }
+            }
             if (schema.has("$ref")) {
                 schema = openApi.at(schema.get("$ref").asString().substring(1));
             }
