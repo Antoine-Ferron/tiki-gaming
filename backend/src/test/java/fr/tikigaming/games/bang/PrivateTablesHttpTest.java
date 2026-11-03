@@ -16,6 +16,8 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -103,13 +105,44 @@ class PrivateTablesHttpTest {
                 .andExpect(jsonPath("$.error").value("Cette table est pleine."));
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3, 4})
+    void aSeatedAccountReturnsToItsSeatAfterRefreshAndANewHttpSessionAtAFullTable(int seat) throws Exception {
+        List<MockHttpSession> sessions =
+                List.of(sessionFor("player-1"), sessionFor("player-2"), sessionFor("player-3"), sessionFor("player-4"));
+        String code = createTable(sessions.getFirst());
+        for (int player = 2; player <= 4; player++) {
+            postAs(TABLES + "/" + code + "/join", sessions.get(player - 1)).andExpect(status().isOk());
+        }
+
+        MockHttpSession previousSession = sessions.get(seat - 1);
+        String previousSessionId = previousSession.getId();
+        postAs(TABLES + "/" + code + "/join", previousSession)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seat").value(seat))
+                .andExpect(jsonPath("$.playerCount").value(4));
+        postAs("/api/auth/logout", previousSession).andExpect(status().isNoContent());
+        MockHttpSession newSession = sessionFor("player-" + seat);
+        assertThat(newSession.getId()).isNotEqualTo(previousSessionId);
+
+        postAs(TABLES + "/" + code + "/join", newSession)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(code))
+                .andExpect(jsonPath("$.seat").value(seat))
+                .andExpect(jsonPath("$.playerCount").value(4));
+    }
+
     private MvcResult joinAtTheSameTime(String code, String accountId, CyclicBarrier start) throws Exception {
         start.await(5, TimeUnit.SECONDS);
         return postAs(TABLES + "/" + code + "/join", sessionFor(accountId)).andReturn();
     }
 
     private String createTable(String accountId) throws Exception {
-        String body = postAs(TABLES, sessionFor(accountId))
+        return createTable(sessionFor(accountId));
+    }
+
+    private String createTable(MockHttpSession session) throws Exception {
+        String body = postAs(TABLES, session)
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()

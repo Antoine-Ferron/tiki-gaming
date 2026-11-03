@@ -50,4 +50,16 @@ class PrivateTableServiceTest {
                         ResponseStatusException.class,
                         error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
     }
+
+    @Test
+    void theSameAccountKeepsItsSeatWithoutConsumingAnotherPlace() {
+        String code = tables.create("creator").code();
+        TableSeat second = tables.join(code, "second");
+
+        assertThat(tables.join(code, "second")).isEqualTo(second);
+        assertThat(tables.join(code, "creator")).isEqualTo(new TableSeat(code, 1, 2));
+        assertThat(tables.join(code, "third")).isEqualTo(new TableSeat(code, 3, 3));
+        assertThat(tables.join(code, "fourth")).isEqualTo(new TableSeat(code, 4, 4));
+        assertThat(tables.join(code, "second")).isEqualTo(new TableSeat(code, 2, 4));
+    }
 }
