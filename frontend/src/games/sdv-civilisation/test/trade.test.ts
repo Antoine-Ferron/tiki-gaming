@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fixedRate, FakeTreasuryRegistry } from './testing/fakes'
-import { buyFromNeighbour } from './trade'
-import { createTreasury } from './treasury'
+import { fixedRate, FakeTreasuryRegistry } from './fakes'
+import { buyFromNeighbour } from '../trade'
+import { createTreasury } from '../treasury'
 
 function setup(balances: Record<string, number>) {
   const registry = new FakeTreasuryRegistry(balances)

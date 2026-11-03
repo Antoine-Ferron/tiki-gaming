@@ -1,6 +1,6 @@
 /**
  * Contrats du jeu : interfaces pures, sans I/O, dont dépend la logique.
- * Implémentations de production dans ./adapters, doublures de test dans ./testing/fakes.
+ * Implémentations de production dans ./adapters, doublures de test dans ./test/fakes.
  */
 
 export type Resource = 'wood' | 'stone' | 'clay' | 'ore' | 'glass' | 'papyrus' | 'textile'

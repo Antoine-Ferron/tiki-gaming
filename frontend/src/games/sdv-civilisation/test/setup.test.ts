@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createPlayers, neighbours } from './setup'
+import { createPlayers, neighbours } from '../setup'
 
 describe('createPlayers', () => {
   it('crée un joueur par nom, avec 1 pièce', () => {

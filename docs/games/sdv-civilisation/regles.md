@@ -240,7 +240,7 @@ côtés, chacun avec ses implémentations de production et ses doublures de test
 
 #### Front (Vitest)
 
-Contrats dans `ports.ts`, production dans `adapters.ts`, doublures dans `testing/fakes.ts`.
+Contrats dans `ports.ts`, production dans `adapters.ts`, tests et doublures dans `test/` (`test/fakes.ts`).
 
 | Contrat             | Rôle                                   | Production                   | Doublure de test                         |
 | ------------------- | -------------------------------------- | ---------------------------- | ---------------------------------------- |
@@ -264,5 +264,5 @@ Package `fr.tikigaming.games.sdv_civilisation` ; doublures dans le même package
 
 | Côté  | Emplacement                                                           | Lancer                        |
 | ----- | --------------------------------------------------------------------- | ----------------------------- |
-| Front | `frontend/src/games/sdv-civilisation/*.test.ts` (Vitest)              | `npm test` dans `frontend/`   |
+| Front | `frontend/src/games/sdv-civilisation/test/*.test.ts` (Vitest)         | `npm test` dans `frontend/`   |
 | Back  | `backend/src/test/java/fr/tikigaming/games/sdv_civilisation/` (JUnit) | `mvn -f backend/pom.xml test` |

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { playersTreasury, standardTrade, systemClock, TRADE_PRICE } from './adapters'
-import { createPlayers } from './setup'
+import { playersTreasury, standardTrade, systemClock, TRADE_PRICE } from '../adapters'
+import { createPlayers } from '../setup'
 
 describe('standardTrade', () => {
   it('fixe le prix standard à 2 pièces par ressource', () => {

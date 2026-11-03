@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { FakeClock } from './testing/fakes'
-import { startTurn, TURN_DURATION_MS, TURN_WARNING_MS } from './turnTimer'
+import { FakeClock } from './fakes'
+import { startTurn, TURN_DURATION_MS, TURN_WARNING_MS } from '../turnTimer'
 
 describe('startTurn', () => {
   it('dure 60 secondes, dont 10 de fin de tour', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { AuditNotifier } from './ports'
-import { FakeTreasuryRegistry } from './testing/fakes'
-import { createTreasury, TREASURY_ALERT_THRESHOLD } from './treasury'
+import type { AuditNotifier } from '../ports'
+import { FakeTreasuryRegistry } from './fakes'
+import { createTreasury, TREASURY_ALERT_THRESHOLD } from '../treasury'
 
 /** Mock : enregistre les appels à la passerelle d'audit, sans journal réel. */
 function mockAudit() {
