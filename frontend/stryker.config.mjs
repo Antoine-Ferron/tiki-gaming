@@ -10,6 +10,8 @@ export default {
     'src/games/scoreQueue.ts',
     'src/games/sdk.ts',
     'src/lib/validation.ts',
+    // Domaine de LemurTiki : logique pure du jeu (l'interface React et le canvas sont des adaptateurs).
+    'src/games/lemur/domain/**/*.ts',
     '!src/**/*.test.ts',
   ],
   coverageAnalysis: 'perTest',
