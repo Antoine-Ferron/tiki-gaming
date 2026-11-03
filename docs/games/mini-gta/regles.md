@@ -23,6 +23,8 @@ pour gagner de l'argent et échappe à la police quand tu enfreins la loi.
 | R6 | Les crimes font monter le **niveau de recherche** (1 à 5 étoiles). Hors de vue de la police, le niveau finit par retomber. |
 | R7 | Si tu meurs, les frais d'hôpital sont de 10 % de ton argent (100 $ minimum). Si tu es arrêté, la caution est de 15 % (200 $ minimum) et tu perds tes armes. Le solde ne descend jamais sous 0. |
 | R8 | **Score** : tout l'argent gagné depuis le début de la partie (missions et billets). Les dépenses ne le font pas baisser. Il est plafonné à **1 000 000** (`scoreLimits.max` = `games.max_score`). |
+| R9 | **Tremplins** : buttes de terre dans les parcs et en bord de route dans les collines, rampes de chargement sur le port, rampes en planches sur des chantiers. Générés par le backend (graine fixe), hors des routes empruntées par le trafic : une voiture lancée décolle et retombe. |
+| R10 | **Bâtiments ouverts** : environ un bâtiment ordinaire sur cinq (maisons et immeubles) a un rez-de-chaussée accessible : porte de 1,5 m côté rue (trop étroite pour une voiture), pièce meublée, cloison percée d'un passage dans les plus profonds. Les étages restent fermés. |
 
 ## 3. Plateforme
 
@@ -36,6 +38,26 @@ pour gagner de l'argent et échappe à la police quand tu enfreins la loi.
 | Erreurs du SDK | Le message est affiché tel quel (notification en jeu ou texte d'erreur à l'accueil), sans bloquer la partie. |
 | Mobile | Sans souris (pointeur grossier) ou sous 360 px de large : « Ce jeu se joue au clavier et à la souris, sur ordinateur. » |
 | Réglages | Qualité graphique, densités et souris dans le `localStorage` de l'appareil (`mini-gta:settings`). |
+
+### Chat et commandes
+
+T ou Entrée ouvre le chat (en bas à gauche) : le jeu est en pause et les touches tapées ne pilotent pas le
+joueur. Entrée exécute, Échap ferme, ↑/↓ rappellent les lignes précédentes, Tab complète la commande et son
+argument. Les noms acceptent les accents ou non (« hélico » = « helico »).
+
+| Commande | Effet |
+|----------|-------|
+| `/aide` | liste des commandes |
+| `/summon <véhicule>` | fait apparaître un véhicule devant toi, posé sur le sol, sur une place dégagée : `sedan` (`berline`), `sport` (`sportive`), `suv`, `taxi`, `police`, `van` (`utilitaire`), `swat`, `bus`, `truck` (`camion`), `bike` (`moto`), `heli` (`helico`), `policeHeli`, `plane` (`avion`) |
+| `/nettoyer` | retire les véhicules invoqués |
+| `/tp <lieu>` | téléporte : `depart`, `planque`, `garage`, `armurerie`, `entrepot`/`port`, `hopital`, `commissariat`, `aerodrome`, `heliport` |
+| `/heure <h>` | règle l'heure (`21`, `21h30`) |
+| `/meteo <temps>` | `clair`, `nuageux`, `pluie` ou `auto` |
+| `/recherche <0-5>` | règle le niveau de recherche |
+| `/soigner` | rend toute la santé |
+| `/armes` | donne toutes les armes avec des munitions |
+
+Aucune commande ne touche à l'argent : il passe par le serveur.
 
 ## 4. Architecture
 
@@ -96,6 +118,11 @@ reprend le sous-ensemble de l'API Rapier utilisé par le jeu, au-dessus de **can
   environ 7 par véhicule.
 - Les couleurs des matériaux 3D sont en TypeScript. Celles de l'interface (HUD, menus, carte) passent par les
   tokens de la plateforme et des variables `--mini-gta-*` déclarées sur `.mini-gta-play`.
+- `/world` porte `ramps` (`x, y, z, rot, length, width, height, kind`) et, pour un bâtiment ouvert, `hollow.floorHeight` (hauteur
+  du rez-de-chaussée creux ; absent pour les bâtiments spéciaux, entièrement creux). Ces tirages sont faits après tout
+  le reste (`rng.fork("entrances")`, `rng.fork("ramps")`) : le reste de la ville ne change pas.
+- Les tremplins sont les seuls obstacles statiques inclinés : le contrôleur de personnage les contourne (on ne
+  peut pas les gravir à pied).
 - Les entités qui apparaissent près d'un trottoir sont posées sur le sol réel : les dalles des îlots sont 15 cm
   plus hautes que la route.
 - Appuis de touches : la simulation lit `input.wasPressed` (gardé jusqu'au pas suivant), l'interface lit
