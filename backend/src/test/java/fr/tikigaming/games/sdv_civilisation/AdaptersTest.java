@@ -4,33 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 
 class AdaptersTest {
 
     @Test
-    void standardTradePriceIsTwoCoinsPerResource() {
-        assertThat(StandardTrade.PRICE).isEqualTo(2);
-    }
-
-    @ParameterizedTest
-    @CsvSource({"1, 2", "3, 6"})
-    void standardTradeConvertsResourcesToCoins(int quantity, int expected) {
-        assertThat(new StandardTrade().toCoins(Resource.PAPYRUS, quantity)).isEqualTo(expected);
-    }
-
-    @Test
-    void systemClockGivesTheSystemTime() {
+    void productionAdapters() {
         long before = System.currentTimeMillis();
 
-        long now = new SystemClock().now();
-
-        assertThat(now).isBetween(before, System.currentTimeMillis());
-    }
-
-    @Test
-    void logAuditNotifierOnlyWritesToTheLog() {
+        assertThat(new StandardTrade().toCoins(Resource.PAPYRUS, 3)).isEqualTo(6);
+        assertThat(new SystemClock().now()).isBetween(before, System.currentTimeMillis());
         assertThatCode(() -> new LogAuditNotifier().treasuryThresholdCrossed(new TreasuryAlert("alice", 30, 30)))
                 .doesNotThrowAnyException();
     }

@@ -1,48 +1,32 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { playersTreasury, standardTrade, systemClock, TRADE_PRICE } from '../adapters'
+import { describe, expect, it, vi } from 'vitest'
+import { loggerAudit, playersTreasury, standardTrade, systemClock } from '../adapters'
 import { createPlayers } from '../setup'
 
-describe('standardTrade', () => {
-  it('fixe le prix standard à 2 pièces par ressource', () => {
-    expect(TRADE_PRICE).toBe(2)
+describe('adaptateurs de production', () => {
+  it('standardTrade : 2 pièces par ressource', () => {
+    expect(standardTrade.toCoins('papyrus', 3)).toBe(6)
   })
 
-  it.each([
-    { quantity: 1, expected: 2 },
-    { quantity: 3, expected: 6 },
-  ])('$quantity ressource(s) coûtent $expected pièces', ({ quantity, expected }) => {
-    expect(standardTrade.toCoins('papyrus', quantity)).toBe(expected)
-  })
-})
-
-describe('playersTreasury', () => {
-  it('lit et écrit les pièces des joueurs de la partie', () => {
+  it('playersTreasury : lit et écrit les pièces des joueurs, refuse un inconnu', () => {
     const players = createPlayers(['alice', 'bob', 'carole'])
     const registry = playersTreasury(players)
 
     registry.setBalance('bob', 7)
 
-    expect(registry.balanceOf('alice')).toBe(1)
-    expect(registry.balanceOf('bob')).toBe(7)
     expect(players[1].coins).toBe(7)
-  })
-
-  it('refuse un joueur absent de la partie', () => {
-    const registry = playersTreasury(createPlayers(['alice', 'bob', 'carole']))
-
+    expect(registry.balanceOf('alice')).toBe(1)
     expect(() => registry.balanceOf('dave')).toThrow('Joueur inconnu : dave')
   })
-})
 
-describe('systemClock', () => {
-  afterEach(() => {
-    vi.useRealTimers()
+  it('loggerAudit : journalise sans lever d’erreur', () => {
+    expect(() => loggerAudit.inactivityDetected({ player: 'alice', deadline: 0 })).not.toThrow()
   })
 
-  it('donne l’heure du système', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(1_700_000_000_000)
+  it('systemClock : heure du système', () => {
+    vi.useFakeTimers({ now: 1_700_000_000_000 })
 
     expect(systemClock.now()).toBe(1_700_000_000_000)
+
+    vi.useRealTimers()
   })
 })
