@@ -65,8 +65,39 @@ export function isFleetSunk(fleet: PlacedShip[], shots: Set<string>): boolean {
   return fleet.every((p) => p.coords.every((c) => shots.has(coordKey(c))))
 }
 
+export function countHits(fleet: PlacedShip[], shots: Set<string>): number {
+  const fleetKeys = new Set(fleet.flatMap((p) => p.coords.map(coordKey)))
+  let hits = 0
+  for (const key of shots) if (fleetKeys.has(key)) hits++
+  return hits
+}
+
 /** Plus haut = meilleur : score de base moins les tirs dans l'eau. */
 export function computeScore(shots: number, hits: number): number {
   const misses = shots - hits
   return Math.max(10, 1000 + hits * 20 - misses * 10)
+}
+
+export type SubmitScore = (score: number, metadata: { shots: number; hits: number }) => Promise<boolean>
+
+/**
+ * Tire sur la flotte adverse puis, si ce tir coule son dernier navire, calcule le score et le
+ * soumet via la fonction injectée. `submitScore` n'est jamais appelé pour un tir répété ni tant
+ * que la flotte adverse n'est pas entièrement coulée.
+ */
+export async function fireAndSubmitIfOver(
+  fleet: PlacedShip[],
+  shots: Set<string>,
+  target: Coord,
+  submitScore: SubmitScore,
+): Promise<{ result: ShotResult; sunk?: Ship; gameOver: boolean }> {
+  const outcome = fireShot(fleet, shots, target)
+  if (outcome.result === 'repeat') return { ...outcome, gameOver: false }
+
+  const gameOver = isFleetSunk(fleet, shots)
+  if (gameOver) {
+    const hits = countHits(fleet, shots)
+    await submitScore(computeScore(shots.size, hits), { shots: shots.size, hits })
+  }
+  return { ...outcome, gameOver }
 }
