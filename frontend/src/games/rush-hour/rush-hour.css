@@ -54,6 +54,11 @@
   position: absolute;
   padding: 0.2rem;
   box-sizing: border-box;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  cursor: grab;
+  touch-action: none;
   transition:
     left 0.2s ease,
     top 0.2s ease;
@@ -91,4 +96,33 @@
   .rush-hour-vehicle {
     transition: none;
   }
+}
+
+.rush-hour-vehicle:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.rush-hour-vehicle:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.rush-hour-dragging {
+  cursor: grabbing;
+  transition: none;
+  z-index: 1;
+}
+
+.rush-hour-stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rush-hour-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
