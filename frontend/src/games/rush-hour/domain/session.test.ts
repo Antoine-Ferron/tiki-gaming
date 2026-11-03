@@ -223,3 +223,55 @@ describe('GameSession : un même véhicule déplacé plusieurs fois de suite = u
     expect(session.moveCount).toBe(0)
   })
 })
+
+describe('GameSession : indices (P5)', () => {
+  test('l’indice est le prochain coup de la solution la plus courte, et il est compté', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+
+    // Act
+    const hint = session.hint()
+
+    // Assert : il faut d'abord faire monter le camion A
+    expect(hint).toEqual({ id: 'A', delta: -1 })
+    expect(session.hintsUsed).toBe(1)
+  })
+
+  test('l’indice tient compte de la position actuelle', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+    session.move('A', -1)
+
+    // Act
+    const hint = session.hint()
+
+    // Assert
+    expect(hint).toEqual({ id: 'X', delta: 4 })
+  })
+
+  test('après la victoire, plus d’indice et rien n’est compté', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+    session.move('A', -1)
+    session.move('X', 4)
+
+    // Act
+    const hint = session.hint()
+
+    // Assert
+    expect(hint).toBeNull()
+    expect(session.hintsUsed).toBe(0)
+  })
+
+  test('Recommencer remet les indices à zéro', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+    session.hint()
+
+    // Act
+    session.reset()
+
+    // Assert
+    expect(session.hintsUsed).toBe(0)
+  })
+})
