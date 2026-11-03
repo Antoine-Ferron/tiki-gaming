@@ -1,12 +1,14 @@
+/* v8 ignore file -- rendu visuel (WebGL, shaders, géométries, canvas) : vérifié à l'écran, sans règle de jeu. Voir docs/games/mini-gta/regles.md § 6. */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { NoToneMapping, PCFShadowMap } from 'three'
 import type { GameContext } from '../types'
-import { scoreToSubmit, type MiniGtaSave } from './domain/save'
+import type { MiniGtaSave } from './domain/save'
 import { GameRoot } from './game/GameRoot'
 import { PostFX } from './render/PostFX'
 import { bindSession, progressOf, useGameStore } from './state/gameStore'
 import { useHudStore } from './state/hudStore'
+import { createProgressSession } from './state/session'
 import { useSettingsStore } from './state/settingsStore'
 import { useUiStore } from './state/uiStore'
 import { Hud } from './ui/Hud'
@@ -41,25 +43,7 @@ export default function MiniGtaPlay({ ctx, save, best, onExit }: Props) {
 
   useLayoutEffect(() => {
     if (rootRef.current) loadMapColors(rootRef.current)
-    let lastSent = best
-    bindSession({
-      async persist(progress) {
-        // Sauvegarde et score sont indépendants : l'échec de l'un n'empêche pas l'autre.
-        try {
-          await ctx.save(progress)
-        } catch (e) {
-          useUiStore.getState().notify((e as Error).message, 'fail')
-        }
-        const score = scoreToSubmit(progress.totalEarned, lastSent)
-        if (score === null || ctx.isGuest) return
-        try {
-          await ctx.submitScore(score, { missions: progress.completedMissions.length })
-          lastSent = score
-        } catch (e) {
-          useUiStore.getState().notify((e as Error).message, 'fail')
-        }
-      },
-    })
+    bindSession(createProgressSession(ctx, best, (message) => useUiStore.getState().notify(message, 'fail')))
     useUiStore.setState({ exit: () => onExit(progressOf(useGameStore.getState())) })
     return () => {
       bindSession(null)
