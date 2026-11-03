@@ -172,4 +172,4 @@ Effets de carte permettant de rejouer une carte ou une action supplémentaire, m
 | Côté  | Emplacement                                                            | Lancer                        |
 | ----- | ---------------------------------------------------------------------- | ----------------------------- |
 | Front | `frontend/src/games/sdv-civilisation/*.test.ts` (Vitest)               | `npm test` dans `frontend/`   |
-| Back  | `backend/src/test/java/fr/tikigaming/games/sdvcivilisation/` (JUnit)   | `mvn -f backend/pom.xml test` |
+| Back  | `backend/src/test/java/fr/tikigaming/games/sdv_civilisation/` (JUnit)  | `mvn -f backend/pom.xml test` |
