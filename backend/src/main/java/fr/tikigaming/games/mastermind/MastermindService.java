@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.random.RandomGenerator;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -28,20 +27,22 @@ public class MastermindService {
     }
 
     public MastermindGameSnapshot get(UUID id) {
+        purgeExpired();
         return find(id).game().snapshot();
     }
 
     public MastermindGameSnapshot guess(UUID id, List<MastermindColor> colors) {
+        purgeExpired();
         return find(id).game().guess(colors);
     }
 
     public MastermindGameSnapshot restart(UUID id) {
+        purgeExpired();
         MastermindGame game = find(id).game();
         game.restart(generateSecret());
         return game.snapshot();
     }
 
-    @Scheduled(fixedDelayString = "${mastermind.cleanup-interval-ms:900000}")
     void purgeExpired() {
         long cutoff = System.currentTimeMillis() - INACTIVITY_TIMEOUT_MILLIS;
         games.entrySet().removeIf(entry -> entry.getValue().lastAccessMillis() < cutoff);
