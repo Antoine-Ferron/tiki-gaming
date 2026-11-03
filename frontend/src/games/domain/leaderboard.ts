@@ -3,7 +3,8 @@ export type RankableEntry = { user_id: string; username: string; best_score: num
 
 export type Ranked<T extends RankableEntry> = T & { rank: number }
 
-const byUsername = new Intl.Collator('fr', { sensitivity: 'base' })
+// Les pseudos sont uniques sans tenir compte de la casse (index lower(username)) : jamais d'égalité.
+const byUsername = new Intl.Collator('fr')
 
 /**
  * Classe les entrées par meilleur score décroissant. Les ex æquo partagent le même rang et les rangs
