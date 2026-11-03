@@ -8,14 +8,14 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 
 ## Format
 
-| Élément      | Valeur                                                                     |
-| ------------ | -------------------------------------------------------------------------- |
-| Catégorie    | `multi` (3 joueurs et +)                                                   |
-| Mode         | `multiplayer` : compte requis, les joueurs s'affrontent en ligne           |
-| Joueurs      | 3 à 7 joueurs connectés, assis en cercle ; places libres prises par des IA |
-| Durée        | 3 âges de 6 tours                                                          |
-| Score envoyé | total de points de victoire de chaque joueur (`ctx.submitScore`)           |
-| Sauvegarde   | état complet de la partie en cours (`ctx.save`), reprise au chargement     |
+| Élément      | Valeur                                                                   |
+| ------------ | ------------------------------------------------------------------------ |
+| Catégorie    | `multi` (3 joueurs et +)                                                 |
+| Mode         | `solo` : jouable sans compte, contre 2 IA (multijoueur en ligne à venir) |
+| Joueurs      | 3 assis en cercle : le joueur et 2 IA ; à terme 3 à 7 joueurs en ligne   |
+| Durée        | 3 âges de 6 tours                                                        |
+| Score envoyé | total de points de victoire du joueur (`ctx.submitScore`)                |
+| Sauvegarde   | état complet de la partie en cours (`ctx.save`), reprise au chargement   |
 
 ## Mise en place
 
@@ -171,6 +171,27 @@ Score = (nb de tablettes)² + (nb de roues)² + (nb de compas)² + **7 par séri
 Le joueur au plus haut total gagne. En cas d'égalité, celui qui a le plus de pièces l'emporte ; si
 l'égalité persiste, les joueurs concernés partagent la victoire.
 
+## Version contre IA
+
+Première version jouable : le joueur affronte 2 IA, sur un catalogue réduit. Les règles ci-dessus
+s'appliquent, avec ces simplifications :
+
+- **Catalogue** : 7 cartes par âge, chacune en un exemplaire par joueur (`cards.ts`). Chaque joueur
+  reçoit 7 cartes tirées au hasard dans le paquet de l'âge.
+- **Pas de merveilles, de chaînes de construction, de guildes ni de prix réduits** pour l'instant.
+- **Commerce automatique** : une ressource manquante est achetée d'abord au voisin de gauche, puis à
+  celui de droite, à 2 pièces l'unité, dans la limite de ce qu'ils produisent.
+- **Actions** : construire la carte choisie ou la défausser pour 3 pièces. Une carte jaune peut
+  rapporter des pièces dès sa construction.
+- **IA** (`ai.ts`) : elle construit la carte payable la plus intéressante (points, boucliers et
+  science d'abord), sinon elle défausse la moins intéressante.
+
+| Âge | Cartes                                                                                  |
+| --- | --------------------------------------------------------------------------------------- |
+| I   | Chantier, Cavité, Filon, Verrerie (ressources), Bains, Palissade, Atelier               |
+| II  | Scierie, Carrière (ressources ×2), Taverne, Aqueduc, Écuries, Bibliothèque, Dispensaire |
+| III | Panthéon, Jardins, Fortifications, Arsenal, Université, Observatoire, Académie          |
+
 ## Hors périmètre (première version)
 
 Effets de carte permettant de rejouer une carte ou une action supplémentaire.
@@ -183,13 +204,13 @@ Effets de carte permettant de rejouer une carte ou une action supplémentaire.
 
 ## Critères d'acceptation
 
-- [ ] Une partie complète (3 âges) se joue de bout en bout entre 3 à 7 joueurs connectés.
-- [ ] Seuls les coups payables sont proposés ; une action impossible est refusée.
+- [x] Une partie complète (3 âges) se joue de bout en bout contre 2 IA.
+- [ ] Une partie complète se joue entre 3 à 7 joueurs connectés.
+- [x] Seuls les coups payables sont proposés ; une action impossible est refusée.
 - [ ] Le commerce avec les voisins et les chaînes de construction sont appliqués.
-- [ ] Les conflits militaires sont résolus à la fin de chaque âge.
-- [ ] Le score final détaillé par catégorie s'affiche en fin de partie et est envoyé à `ctx.submitScore`.
+- [x] Les conflits militaires sont résolus à la fin de chaque âge.
+- [x] Le score final détaillé par catégorie s'affiche en fin de partie et est envoyé à `ctx.submitScore`.
 - [ ] Une partie en cours est sauvegardée et peut être reprise.
-- [ ] Le jeu demande d'être connecté (mode `multiplayer`).
 - [ ] Chaque règle ci-dessus est couverte par un test unitaire.
 
 ## Avancement
@@ -204,7 +225,7 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 - [x] 3 à 7 joueurs, 1 pièce chacun au départ (`setup.ts`)
 - [x] Voisins de gauche et de droite, assis en cercle (`setup.ts`)
 - [ ] Tirage des plateaux de merveille et ressource de départ
-- [ ] Paquets des trois âges selon le nombre de joueurs
+- [x] Paquets des trois âges, mélangés et distribués (`game.ts`, catalogue réduit `cards.ts`)
 
 ### Tour de jeu
 
@@ -212,9 +233,9 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 - [x] Compte à rebours affiché à partir de l'heure limite (front `turnCountdown.ts`)
 - [x] Signalement d'inactivité, une seule fois, à l'expiration du tour (front `turnCountdown.ts`)
 - [ ] Défausse automatique à l'expiration du tour
-- [ ] Choix simultané des cartes et passage des mains selon l'âge
-- [ ] Défausser une carte pour 3 pièces
-- [ ] Fin d'âge après 6 tours
+- [x] Choix simultané des cartes et passage des mains selon l'âge (`game.ts`)
+- [x] Défausser une carte pour 3 pièces (`game.ts`)
+- [x] Fin d'âge après 6 tours, dernière carte défaussée (`game.ts`)
 
 ### Économie
 
@@ -222,32 +243,33 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 - [x] Audit anti-triche au franchissement du seuil critique de 30 pièces (back `Treasury.java`)
 - [x] Achat de ressources à un voisin au prix standard de 2 pièces (back `Trade.java`)
 - [x] Devis d'achat : prix et achat possible ou non, sans débit (front `tradeQuote.ts`)
-- [ ] Vérifier que le vendeur est un voisin et produit la ressource
+- [x] Achat des ressources manquantes aux voisins qui les produisent, pendant une construction (front `game.ts`)
 - [ ] Prix réduit à 1 pièce (cartes jaunes)
 
 ### Construction
 
-- [ ] Payer le coût d'une carte (ressources produites + commerce)
-- [ ] Refuser une carte déjà construite
+- [x] Payer le coût d'une carte : pièces, ressources produites et commerce (`game.ts`)
+- [x] Refuser une carte déjà construite, impayable ou absente de la main (`game.ts`)
 - [ ] Chaînes de construction gratuites
 - [ ] Étapes de merveille dans l'ordre
 
 ### Fin d'âge et score
 
-- [ ] Conflits militaires
-- [x] Score de science (back : `ScienceScore.java`)
-- [ ] Score final par catégorie et départage
-- [ ] Envoi du score (`ctx.submitScore`)
+- [x] Conflits militaires (`game.ts`)
+- [x] Score de science (back `ScienceScore.java`, front `score.ts`)
+- [x] Score final par catégorie et départage par les pièces (`score.ts`)
+- [x] Envoi du score en fin de partie (`ctx.submitScore`)
 
 ### Plateforme
 
 - [x] Déclaration du jeu (`index.ts`, `registry.ts`) et migration du catalogue
 - [x] Premier écran : table de jeu (joueur connecté + places libres, voisins) et classement (`SdvCivilisationGame.tsx`)
 - [x] Places libres complétées par des IA en attendant le multijoueur (`bots.ts`)
-- [ ] Décisions des IA (choisir et jouer une carte)
+- [x] Décisions des IA : construire la meilleure carte payable, sinon défausser (`ai.ts`)
 - [ ] Salle d'attente et parties en ligne entre joueurs
 - [ ] Sauvegarde et reprise de partie
-- [ ] Interface de jeu complète (main, plateau, merveille)
+- [x] Interface jouable : main face visible, construire ou défausser, dernier tour, fin de partie (`SdvCivilisationGame.tsx`)
+- [ ] Plateau de merveille à l'écran
 
 ### Architecture testable
 
@@ -280,5 +302,12 @@ Contrats dans `ports.ts`, production dans `adapters.ts`, tests et doublures dans
 
 | Côté  | Emplacement                                                           | Lancer                        |
 | ----- | --------------------------------------------------------------------- | ----------------------------- |
-| Front | `frontend/src/games/sdv-civilisation/test/*.test.ts` (Vitest)         | `npm test` dans `frontend/`   |
+| Front | `frontend/src/games/sdv-civilisation/test/*.test.ts(x)` (Vitest)      | `npm test` dans `frontend/`   |
+| BDD   | `frontend/src/games/sdv-civilisation/test/partie.feature` (Gherkin)   | `npm test` dans `frontend/`   |
 | Back  | `backend/src/test/java/fr/tikigaming/games/sdv_civilisation/` (JUnit) | `mvn -f backend/pom.xml test` |
+
+Les règles de la partie sont décrites en Gherkin dans `partie.feature` (Soit / Quand / Alors), à partir
+d'un atelier « 3 amigos » résumé en tête du fichier. Les étapes (`partie.steps.test.ts`) appellent le
+moteur de partie, jamais l'écran. Doublures utilisées : stubs (`identityShuffler`, `fixedRate`), fakes
+(`FakeScores`, registre et horloge en mémoire) et mocks (`vi.fn` / `vi.spyOn` sur le convertisseur,
+`submitScore` et `onReplay`).
