@@ -1,6 +1,7 @@
 package fr.tikigaming.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -83,9 +84,14 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.user.email").value("joueur@example.com"))
                 .andExpect(jsonPath("$.accessToken").isString())
                 .andExpect(result -> {
-                    long expiresAt = Long.parseLong(
-                            result.getResponse().getContentAsString().replaceAll(".*\"expiresAt\":(\\d+).*", "$1"));
-                    assertThat(expiresAt).isBetween(before + 3_590_000, before + 3_610_000);
+                    String responseBody = result.getResponse().getContentAsString();
+                    String expiresAtRaw = responseBody.replaceAll(".*\"expiresAt\":(\\d+).*", "$1");
+                    try {
+                        long expiresAt = Long.parseLong(expiresAtRaw);
+                        assertThat(expiresAt).isBetween(before + 3_590_000, before + 3_610_000);
+                    } catch (NumberFormatException e) {
+                        fail("Unable to parse expiresAt as a long from response body: " + responseBody, e);
+                    }
                 });
     }
 
