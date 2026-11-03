@@ -52,6 +52,17 @@ class PrivateTablesHttpTest {
     private ObjectMapper json;
 
     @Test
+    void threePlayersCannotStartAPrivateTable() throws Exception {
+        String code = createTable("creator");
+        postAs(TABLES + "/" + code + "/join", sessionFor("second")).andExpect(status().isOk());
+        postAs(TABLES + "/" + code + "/join", sessionFor("third")).andExpect(status().isOk());
+
+        postAs(TABLES + "/" + code + "/start", sessionFor("creator"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Il faut quatre joueurs pour démarrer la partie."));
+    }
+
+    @Test
     void connectedPlayerCreatesAPrivateTableAndTakesTheFirstSeat() throws Exception {
         postAs(TABLES, sessionFor("creator"))
                 .andExpect(status().isCreated())

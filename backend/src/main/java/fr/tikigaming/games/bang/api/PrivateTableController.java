@@ -83,6 +83,11 @@ public class PrivateTableController {
         return tables.join(code, connectedAccountId(request));
     }
 
+    @PostMapping("/{code}/start")
+    void start(@PathVariable String code, HttpServletRequest request) {
+        tables.start(code, connectedAccountId(request));
+    }
+
     private static String connectedAccountId(HttpServletRequest request) {
         AuthUser user = AuthSession.currentUser(request);
         if (user == null) throw new AuthException(401, "Non connecté");

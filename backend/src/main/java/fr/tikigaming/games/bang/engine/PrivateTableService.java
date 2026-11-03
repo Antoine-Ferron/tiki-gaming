@@ -38,4 +38,11 @@ public class PrivateTableService {
         players.add(accountId);
         return new TableSeat(code, players.size(), players.size());
     }
+
+    public synchronized void start(String code, String accountId) {
+        List<String> players = tables.get(code);
+        if (players.size() < 4) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Il faut quatre joueurs pour démarrer la partie.");
+        }
+    }
 }
