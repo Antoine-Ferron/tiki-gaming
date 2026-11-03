@@ -1,4 +1,4 @@
-import { type Board, SIZE, type Vehicle } from './board'
+import { type Board, EXIT_ROW, RED_CAR, SIZE, type Vehicle } from './board'
 
 /** Amplitude d'un glissement : min (≤ 0) vers la gauche ou le haut, max (≥ 0) vers la droite ou le bas. */
 export interface MoveRange {
@@ -37,6 +37,11 @@ export function moveVehicle(board: Board, id: string, delta: number): Board {
       return { ...v, row, col }
     }),
   }
+}
+
+/** Victoire : la voiture rouge touche la sortie, au bord droit de la ligne de sortie. */
+export function isSolved(board: Board): boolean {
+  return board.vehicles.some((v) => v.id === RED_CAR && v.row === EXIT_ROW && v.col + v.length === SIZE)
 }
 
 /** Case située à `offset` cases de l'avant-gauche (ou du haut) du véhicule, dans son sens. */
