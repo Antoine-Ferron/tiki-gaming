@@ -325,33 +325,47 @@ export class Pedestrians {
   }
 
   /** Pedestrians hit by fast vehicles are thrown and hurt. */
+  /** Dernier choc reçu par un personnage armé (policier, garde), pour ne pas le compter à chaque pas. */
+  private struck = new WeakMap<Actor, number>()
+
+  /**
+   * Véhicules rapides qui percutent quelqu'un : les piétons sont projetés, les policiers et les ennemis des
+   * missions sont blessés ou tués. La marge de détection grandit avec la vitesse, pour que le choc soit vu
+   * avant que la capsule du personnage n'arrête la voiture.
+   */
   private vehicleHits() {
+    const now = this.game.time
     for (const v of this.game.vehicles) {
       if (v.mode !== 'dynamic' || Math.abs(v.speed) < 4 || v.isAircraft) continue
       const inv = v.visual.root.quaternion.clone().invert()
       const lin = v.body.linvel()
-      for (const p of this.peds) {
-        if (p.state === 'dead' || p.state === 'knocked') continue
-        _l.copy(p.actor.position).sub(v.position).applyQuaternion(inv)
-        if (
-          Math.abs(_l.x) > v.spec.width / 2 + 0.45 ||
-          Math.abs(_l.z) > v.spec.length / 2 + 0.45 ||
-          _l.y < -1 ||
-          _l.y > 2.5
+      const speed = Math.abs(v.speed)
+      const margin = 0.45 + speed / 30
+      const touches = (a: Actor) => {
+        _l.copy(a.position).sub(v.position).applyQuaternion(inv)
+        return (
+          Math.abs(_l.x) <= v.spec.width / 2 + margin &&
+          Math.abs(_l.z) <= v.spec.length / 2 + margin &&
+          _l.y >= -1 &&
+          _l.y <= 2.5
         )
-          continue
-        const speed = Math.abs(v.speed)
+      }
+      const hit = (a: Actor) => {
+        a.damage({ amount: speed * 7, from: v.driver, kind: 'vehicle', dir: { x: lin.x / speed, z: lin.z / speed } })
+        this.game.effects.impact(a.chest(new Vector3()), new Vector3(0, 1, 0), 'blood')
+        v.body.applyImpulse({ x: -lin.x * 20, y: 0, z: -lin.z * 20 }, true)
+      }
+      for (const p of this.peds) {
+        if (p.state === 'dead' || p.state === 'knocked' || !touches(p.actor)) continue
         p.state = 'knocked'
         p.timer = 1.5
         p.vel.set(lin.x * 0.9, 3 + speed * 0.15, lin.z * 0.9)
-        p.actor.damage({
-          amount: speed * 7,
-          from: v.driver,
-          kind: 'vehicle',
-          dir: { x: lin.x / speed, z: lin.z / speed },
-        })
-        this.game.effects.impact(p.actor.chest(new Vector3()), new Vector3(0, 1, 0), 'blood')
-        v.body.applyImpulse({ x: -lin.x * 20, y: 0, z: -lin.z * 20 }, true)
+        hit(p.actor)
+      }
+      for (const a of [...this.game.police.actors(), ...this.game.missions.actors()]) {
+        if (a.dead || a === v.driver || now - (this.struck.get(a) ?? -Infinity) < 1 || !touches(a)) continue
+        this.struck.set(a, now)
+        hit(a)
       }
     }
   }
