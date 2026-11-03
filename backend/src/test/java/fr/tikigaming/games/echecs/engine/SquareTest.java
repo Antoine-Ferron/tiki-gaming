@@ -78,4 +78,25 @@ class SquareTest {
         // Act + Assert
         assertThatThrownBy(() -> new Square(file, rank)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("une case s'écrit en notation algébrique")
+    void uneCaseSEcritEnNotationAlgebrique() {
+        // Arrange
+        Square square = new Square(4, 3);
+
+        // Act
+        String notation = square.toString();
+
+        // Assert
+        assertThat(notation).isEqualTo("e4");
+    }
+
+    @ParameterizedTest(name = "{0} → lue puis réécrite → {0}")
+    @ValueSource(strings = {"a1", "h1", "a8", "h8", "e4"})
+    @DisplayName("lire puis réécrire une case redonne la même notation (aller-retour)")
+    void lirePuisReecrireUneCaseRedonneLaMemeNotation(String notation) {
+        // Act + Assert
+        assertThat(Square.of(notation).toString()).isEqualTo(notation);
+    }
 }
