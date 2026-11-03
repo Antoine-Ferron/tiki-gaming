@@ -6,6 +6,9 @@
 
 export const STEP_S = 1 / 60
 export const WORLD_WIDTH = 360
+/** Hauteur de l'écran de jeu, en pixels du monde. */
+export const VIEW_HEIGHT = 640
+export const PX_PER_METER = 10
 export const GRAVITY = 1800
 /** Vitesse d'un saut normal (≈ 22 m de haut). */
 export const JUMP_SPEED = 900
@@ -26,6 +29,8 @@ export type Branch = { x: number; y: number }
 export type GameState = {
   maki: Maki
   branches: Branch[]
+  /** Hauteur du bas de l'écran dans le monde (EF-2). */
+  cameraY: number
 }
 
 /** Avance la partie d'une image. */
