@@ -5,7 +5,7 @@ Tiki Gaming est un monorepo en trois briques :
 | Brique      | Dossier      | Technologies                                         | Responsabilité                                   |
 |-------------|--------------|------------------------------------------------------|--------------------------------------------------|
 | Front       | `frontend/`  | Vite · React 19 · TypeScript · React Router          | Interface, catalogue, exécution des jeux          |
-| Backend     | `backend/`   | Java 21 · Spring Boot 3.5 · Spring Security · Maven  | Authentification et session                       |
+| Backend     | `backend/`   | Java 21 · Spring Boot 4.1 · Spring Security · Maven  | Authentification et session                       |
 | Données     | `supabase/`  | Supabase (Postgres + RLS + API REST PostgREST)       | Comptes (`auth.users`), profils, scores, sauvegardes |
 
 Le front lit et écrit **directement** dans Supabase via supabase-js. Le backend Java ne fait **que**
@@ -96,6 +96,22 @@ accepté), sinon un compte est créé.
 Les `POST` exigent l'en-tête `X-XSRF-TOKEN` (copie du cookie `XSRF-TOKEN`), ajouté par
 `frontend/src/lib/api.ts`. Les erreurs sont renvoyées sous la forme `{ "error": "message" }`.
 
+### Swagger (OpenAPI)
+
+La documentation interactive de l'API est générée depuis le code (springdoc-openapi) :
+
+| URL (backend lancé)                     | Contenu                                    |
+|-----------------------------------------|--------------------------------------------|
+| http://localhost:8080/swagger-ui.html   | Swagger UI : endpoints, schémas, « Try it out » |
+| http://localhost:8080/v3/api-docs       | Spécification OpenAPI 3.1 (JSON)           |
+
+- Seuls les chemins `/api/**` sont documentés, regroupés par tag (`Authentification`, puis un tag par jeu).
+- « Try it out » gère le CSRF comme le front : appeler `GET /api/auth/session` une fois, et Swagger
+  recopie ensuite le cookie `XSRF-TOKEN` dans l'en-tête `X-XSRF-TOKEN`. La session (cookie `JSESSIONID`)
+  est partagée avec le front, car les cookies ne dépendent pas du port.
+- Activé par défaut ; `SWAGGER_ENABLED=false` (à mettre en production) désactive l'interface et la
+  spécification (404).
+
 ### Même origine
 
 Le front et le backend doivent être servis sur **la même origine** pour que le cookie de session soit
@@ -111,7 +127,9 @@ frontend/src/
 ├── App.tsx                  Déclaration des routes
 ├── styles.css               Tokens et composants (voir charte-graphique.md)
 ├── lib/
-│   ├── api.ts               Appels au backend (cookie de session + CSRF)
+│   ├── api.ts               Appels au backend (cookie de session + CSRF), ApiError
+│   ├── logger.ts            Logger Pino du navigateur
+│   ├── validation.ts        Schémas Zod des formulaires (messages d'erreur)
 │   ├── session.ts           Session backend + JWT, rafraîchi avant expiration
 │   ├── supabase.ts          Client Supabase unique (clé anon + JWT du backend)
 │   └── database.types.ts    Types de la base
@@ -119,12 +137,19 @@ frontend/src/
 │   ├── AuthContext.ts       useAuth() → user, profile, refreshSession, signOut…
 │   ├── AuthProvider.tsx     Lit la session du backend, charge le profil
 │   └── ProtectedRoute.tsx   ProtectedRoute / GuestOnlyRoute
-├── components/              Layout, Leaderboard, GameTags…
+├── components/              Layout, Leaderboard, GameTags, Field (champ + message d'erreur)…
 ├── pages/                   Home, Game, Login, Signup, ForgotPassword, UpdatePassword, Profile
 └── games/
     ├── types.ts             Contrat GameDefinition / GameContext  ← à lire en premier
     ├── categories.ts        Catégories de jeux (solo, duel, multi)
-    ├── sdk.ts               Implémentation du GameContext (scores, saves, classement)
+    ├── sdk.ts               Implémentation du GameContext (scores, saves, classement, file d'attente)
+    ├── ports.ts             Interfaces ScoreRepository / SaveStore (architecture hexagonale)
+    ├── adapters/            Adaptateurs Supabase (connecté) et localStorage (invité)
+    ├── domain/              Règles pures : classement (ex æquo), validation des scores, accès aux jeux
+    ├── errors.ts            GameError : erreurs traduites en messages pour le joueur
+    ├── scoreQueue.ts        Scores en attente après une coupure réseau
+    ├── GameErrorBoundary.tsx Isole un jeu qui plante du reste du lobby
+    ├── testing/fakes.ts     Fakes en mémoire des ports, pour les tests
     ├── registry.ts          Catalogue des jeux
     └── clicker/             Jeu d'exemple = template
 ```
@@ -149,10 +174,25 @@ Chaque jeu est un module autonome dans `frontend/src/games/<slug>/` qui exporte 
 | `title`, `description`, `thumbnail?` | Affichage dans le catalogue                       |
 | `category`    | **Obligatoire.** Format de jeu : `solo`, `duel` ou `multi` (voir ci-dessous) |
 | `mode`        | Accès : `solo` = jouable sans compte, `multiplayer` = connexion obligatoire |
+| `scoreLimits?`| Score maximal accepté (`{ max }`), vérifié avant l'envoi ; = `games.max_score` en base |
 | `component`   | Composant chargé à la demande (`lazy`)                                    |
 
 Le jeu reçoit un `GameContext` (`ctx`) déjà limité au jeu et au joueur courants : scores,
 classement, sauvegarde. Un jeu **n'importe jamais `@/lib/supabase`** directement.
+
+#### SDK : architecture hexagonale
+
+```
+GamePage ──> createGameContext(game, player, platformDeps()) ──> domaine pur (checkScore, rankLeaderboard)
+                         │
+                         ├─ ScoreRepository ──> supabaseScores      (fake : FakeScores)
+                         ├─ SaveStore       ──> supabaseSaves / localSaves (fake : FakeSaves)
+                         └─ KeyValueStorage ──> localStorage        (fake : MemoryStorage)
+```
+
+Le contexte ne connaît que les ports (`ports.ts`) : `sdk.ts` n'importe aucun adaptateur. C'est la page
+de jeu (point d'assemblage) qui branche les adaptateurs avec `platformDeps()` (`adapters/index.ts`). Les
+adaptateurs traduisent toute erreur en `GameError`. Les tests injectent des fakes en mémoire : aucun test unitaire ne touche le réseau.
 
 #### Catégories
 
@@ -160,7 +200,7 @@ classement, sauvegarde. Un jeu **n'importe jamais `@/lib/supabase`** directement
 |-----------|---------|----------------|---------------------------------------|
 | `solo`    | Solo    | 1 joueur       | Clicker, Rush Hour, Mastermind        |
 | `duel`    | Duel    | 2 joueurs      | Échecs, Bataille navale, Orapa Mine   |
-| `multi`   | Multi   | 3 joueurs et + | 7 Wonders, Yam                        |
+| `multi`   | Multi   | 3 joueurs et + | SDV Civilisation, Yam                 |
 
 La catégorie et le mode sont indépendants : un jeu `duel` contre une IA peut être en `mode: 'solo'`
 (jouable sans compte). Les exemples ci-dessus sont indicatifs : chaque équipe choisit la catégorie de son jeu.
@@ -175,6 +215,8 @@ contrainte + une entrée dans `GAME_CATEGORIES` + un token `--cat-<nom>` dans la
 backend/src/main/java/fr/tikigaming/
 ├── TikiGamingApplication.java
 ├── config/
+│   ├── ApiExceptionHandler.java       Format { error, fields } des erreurs de l'API + logs
+│   ├── OpenApiConfig.java             Informations de la documentation Swagger
 │   ├── SecurityConfig.java            OAuth2 Google, CSRF par cookie, session
 │   └── TikiProperties.java            Configuration tiki.* (application.yml)
 ├── auth/
@@ -182,6 +224,8 @@ backend/src/main/java/fr/tikigaming/
 │   ├── AuthSession.java               Utilisateur en session, redirections sûres
 │   ├── GoogleLoginSuccessHandler.java Rattache le compte Google à auth.users
 │   ├── SupabaseAuthClient.java        API Auth / RPC Supabase (clé service_role)
+│   ├── SupabaseErrors.java            Codes d'erreur Supabase → messages en français
+│   ├── Username.java                  Contrainte @Username (+ UsernameValidator)
 │   └── SupabaseTokenService.java      JWT au format Supabase pour la RLS
 └── games/
     └── <slug>/                        Code serveur d'un jeu, endpoints /api/games/<slug>/*

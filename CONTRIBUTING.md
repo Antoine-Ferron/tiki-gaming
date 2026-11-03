@@ -17,7 +17,9 @@
   être livré (checklist de tâches, règles à implémenter, critères d'acceptation), pas seulement un
   titre. Une issue vide ou trop vague se complète avant de coder.
 - La PR référence son issue dans sa description (`Closes #12`). `dev` n'étant pas la branche par
-  défaut, GitHub ne ferme pas l'issue à la fusion dans `dev` : la fermer à la main une fois la PR fusionnée.
+  défaut, GitHub ne ferme pas l'issue à la fusion dans `dev` : **une fois la PR validée et fusionnée,
+  fermer l'issue comme complétée** (*Close as completed*, ou `gh issue close 12 --reason completed`),
+  après avoir coché les cases de sa checklist. *Close as not planned* est réservé aux issues abandonnées.
 
 ### Nommage
 
@@ -36,9 +38,13 @@ En minuscules, mots séparés par des tirets, sans accents.
 1. Partir de `dev` à jour : `git switch dev && git pull && git switch -c game/mon-jeu/premiere-version`
 2. Faire des commits petits et explicites (voir ci-dessous).
 3. Avant de pousser, les vérifications de la partie modifiée doivent passer (la CI les relance sur la PR) :
-   - front, dans `frontend/` : `npm run format && npm run lint && npm run build` ;
+   - front, dans `frontend/` : `npm run format && npm run lint && npm run test:coverage && npm run build` ;
    - backend, dans `backend/` : `mvn spotless:apply` puis `mvn verify` (voir [Backend](#backend)).
 4. Ouvrir une pull request vers `dev` (jamais vers `main`), la garder courte et ciblée (un sujet par PR).
+   **Tant que le travail n'est pas terminé, la PR est en draft** (`gh pr create --draft`, ou
+   *Convert to draft* / `gh pr ready 12 --undo` sur une PR déjà ouverte). Une draft ne se relit pas et ne
+   se fusionne pas : la passer en *Ready for review* (`gh pr ready 12`) quand tout est livré et la CI verte,
+   et la repasser en draft si un retour de relecture demande encore du travail.
 5. **CI verte et 1 relecture approuvée minimum** avant de fusionner :
    - une PR qui ne touche que `frontend/src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut
      être relue par l'équipe du jeu ;
@@ -47,7 +53,11 @@ En minuscules, mots séparés par des tirets, sans accents.
    - une PR qui touche la plateforme (`backend/`, `frontend/src/auth`, `frontend/src/lib`,
      `frontend/src/games/sdk.ts`, `frontend/src/games/types.ts`, `frontend/src/pages`, `supabase/`) doit
      être relue par l'équipe plateforme.
-6. Fusion en **squash merge**, puis suppression de la branche.
+6. Fusion en **squash merge**, puis :
+   - fermer l'issue comme complétée (voir [Issues](#issues)) ;
+   - **supprimer la branche** sur GitHub (*Delete branch* après la fusion, ou `gh pr merge 12 --squash
+     --delete-branch`) et en local : `git switch dev && git pull && git branch -D <branche>`
+     (`-D` car le squash merge ne garde pas les commits de la branche).
 7. Garder sa branche à jour avec `dev` (`git pull --rebase origin dev`) plutôt que de laisser
    s'accumuler les conflits.
 
@@ -92,9 +102,65 @@ serveur (Google OAuth, `SUPABASE_JWT_SECRET`, clé `service_role`) vont uniqueme
 | `npm run format:check` | Vérifie le formatage sans rien modifier (utilisé par la CI)           |
 | `npm run lint`         | **Linter** : ESLint (TypeScript, règles des hooks React)              |
 | `npm run build`        | Vérification des types + build de production                          |
+| `npm test`             | Tests unitaires et de composants (Vitest), fichiers `*.test.ts(x)` à côté du code testé |
+| `npm run test:mutation`| **Mutation testing** (Stryker) du cœur de la plateforme ; échoue sous 75 % (rapport : `reports/mutation/`) |
+| `npm run test:e2e`     | **E2E** (Playwright, Chromium) : parcours du lobby et audit d'accessibilité axe ; `npx playwright install chromium` la première fois |
+| `npm run test:coverage`| Tests + **couverture**, échoue sous les seuils (voir *Front → Tests → Couverture minimale*) ; rapport `coverage/lcov.info` lu par SonarQube |
+| `npm run test:integration` | **Tests d'intégration** (Testcontainers, Docker requis) : migrations, RLS et catalogue sur une vraie base |
 
 Lancer `npm run format` avant chaque commit : la CI refuse un code non formaté. Comme pour le backend,
 c'est le formatter qui tranche les questions de style.
+
+### Validation et erreurs
+
+- Les règles des formulaires sont des schémas **Zod** (`zod/mini`, léger pour le navigateur) dans
+  `src/lib/validation.ts`, testés dans `validation.test.ts`. Les formulaires sont en `noValidate` : pas
+  de bulle du navigateur, le message s'affiche sous le champ avec le composant `Field`.
+- Un message d'erreur dit **quoi corriger** (« Caractère non autorisé : ' — … »), sans code technique.
+- Toute règle existe aussi côté backend (Bean Validation) avec le même message : le front n'est pas une
+  sécurité. Le backend renvoie `{ error, fields: { champ: message } }` ; `toFormErrors()` (`src/lib/api.ts`)
+  place chaque message sous son champ.
+
+### Tests
+
+- **Unitaires** (`*.test.ts`) : logique pure, sans réseau ni stockage réel, quelques millisecondes par test.
+  Une ligne par partition et par frontière (`test.each`), au format Arrange / Act / Assert.
+- **Composants** (`*.test.tsx`, `// @vitest-environment jsdom` en tête de fichier) : Testing Library,
+  on vérifie ce que le joueur voit (texte, rôles ARIA), pas l'implémentation.
+- Le SDK des jeux se teste avec les **fakes** de `src/games/testing/fakes.ts` (`fakeDeps()`) : scores,
+  sauvegardes et stockage en mémoire, pannes simulées avec `FakeScores.failNext()`. Pas de mock de Supabase.
+- **Intégration** (`tests/integration/`) : un conteneur `supabase/postgres` (même version que la prod) est
+  démarré une fois pour la suite, les migrations du dépôt y sont rejouées, puis chaque test tourne dans une
+  transaction annulée à la fin. `as(db, userId, …)` exécute une requête avec les droits d'un joueur
+  (`authenticated` + JWT) ou d'un visiteur (`anon`, `userId` à `null`) : c'est la RLS réelle qui est testée.
+  **Toute nouvelle table ou politique RLS arrive avec ses tests d'intégration.** Sans Docker, ces tests sont
+  ignorés en local (la CI, elle, échoue).
+- **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
+  écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
+  le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+- **E2E** (`e2e/`) : peu de tests, réservés aux parcours vitaux (accueil → jeu → partie, panne, redirection)
+  et à l'audit axe. Backend et Supabase sont simulés (`e2e/fixtures.ts`) ; le temps est contrôlé avec
+  `page.clock` (pas d'attente réelle de 10 s). Aucune violation WCAG sérieuse ou critique n'est tolérée.
+- **Couverture minimale** : la CI échoue sous ces seuils (front : `vite.config.ts`,
+  backend : règles JaCoCo de `pom.xml`, vérifiées par `mvn verify`).
+
+  | Périmètre | Lignes | Branches | Fonctions | Instructions |
+  |-----------|--------|----------|-----------|--------------|
+  | Front, cœur du lobby (`games/domain`, `errors.ts`, `scoreQueue.ts`, `sdk.ts`, `lib/validation.ts`) | 95 % | 95 % | 95 % | 95 % |
+  | Front, global | 40 % | 44 % | 47 % | 42 % |
+  | Backend, cœur (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`) | 95 % | 95 % | — | — |
+  | Backend, global | 52 % | 64 % | — | — |
+
+  Le global est fixé juste sous la couverture actuelle : il empêche les régressions, y compris quand un jeu arrive
+  sans tests. **On le relève quand la couverture monte, on ne le baisse jamais** (une baisse se discute en PR
+  plateforme). En local, JaCoCo cumule les exécutions : `mvn clean verify` pour une mesure fidèle.
+- Mutation testing : un mutant survivant se tue par un test. S'il est équivalent (journalisation…), on le
+  désactive sur la ligne avec sa justification : `// Stryker disable next-line all: journalisation seule`.
+
+### Logs
+
+Pas de `console.*` : utiliser `logger` (**Pino**, `src/lib/logger.ts`) avec l'erreur en premier argument,
+`logger.error({ err }, 'Ce qui a échoué')`. Jamais de mot de passe ni de jeton dans un log.
 
 ## Backend
 
@@ -106,13 +172,33 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 |--------------------------|--------------------------------------------------------------------------|
 | `mvn spotless:apply`     | **Formatter** : reformate le code (palantir-java-format, 4 espaces, 120 colonnes) |
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
-| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ)                                      |
-| `mvn verify`             | Tout à la fois : linter, compilation, tests, et échec si le code n'est pas formaté |
+| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
+| `mvn verify`             | Tout à la fois : linter, compilation, tests, couverture minimale (JaCoCo), et échec si le code n'est pas formaté |
+| `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
+
+Une fois le serveur lancé, l'API est documentée et testable sur **http://localhost:8080/swagger-ui.html**
+(voir [docs/architecture.md](docs/architecture.md#swagger-openapi)).
 
 Lancer `mvn spotless:apply` avant chaque commit : la CI refuse un code non formaté. Le style n'est pas
 négociable en relecture, c'est le formatter qui tranche. Une règle du linter qui gêne se discute dans une
 PR `chore/` qui modifie `checkstyle.xml`, pas avec des `@SuppressWarnings` au cas par cas.
+
+### Validation et erreurs
+
+- Les corps de requête sont des `record` annotés (Bean Validation : `@NotBlank`, `@Size`, `@Email`, ou une
+  contrainte maison comme `@Username`) et reçus avec `@Valid` ; les messages, en français, sont les mêmes
+  que ceux du front.
+- Les erreurs sont mises en forme par `config/ApiExceptionHandler` : `400 { error, fields }` pour une saisie
+  refusée, `502` si Supabase échoue, `500` générique pour le reste. Pas de `@ExceptionHandler` dans les
+  contrôleurs, et jamais de détail technique dans la réponse.
+
+### Logs
+
+SLF4J (`LoggerFactory.getLogger(MaClasse.class)`), avec Logback fourni par Spring Boot. Une erreur
+inattendue se logue avec son exception en dernier argument (`log.error("…", e)`) pour garder la trace.
+`LOG_LEVEL` règle le niveau des logs `fr.tikigaming` ; en production, `LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs`
+les écrit en JSON. Jamais de mot de passe, de jeton ni de clé dans un log.
 
 ### Packages
 
@@ -128,22 +214,62 @@ fr.tikigaming
   anti-triche…) a **son propre package** `fr.tikigaming.games.<slug>`, le slug étant écrit avec des `_`
   à la place des tirets (`mon-jeu` → `mon_jeu`). Ses tests vont dans le même package sous `src/test/java`.
 - Ses endpoints sont préfixés par le slug : `/api/games/<slug>/...`.
+- Ils apparaissent automatiquement dans Swagger. Chaque contrôleur porte `@Tag(name = "<slug>")` et
+  chaque endpoint un `@Operation(summary = "...")` ainsi que ses `@ApiResponse` (codes d'erreur
+  compris), sur le modèle d'`AuthController`. Pas de secret ni de vraie donnée utilisateur dans les
+  exemples (`@Schema(example = ...)`).
 - Un jeu **n'importe jamais** le package d'un autre jeu. Ce qui sert à plusieurs jeux est ajouté à la
   plateforme (nouveau package hors de `games/`), comme pour le SDK du front.
 - Un jeu sans logique serveur n'a pas de package backend : tout passe par le `GameContext` et Supabase.
+- Spring Boot 4 utilise **Jackson 3** : importer `tools.jackson.databind.*` (`JsonNode`, `ObjectMapper`),
+  jamais `com.fasterxml.jackson.databind.*`. Ce dernier compile, car springdoc l'embarque, mais l'application
+  ne démarre pas (pas de bean `ObjectMapper` Jackson 2). Les annotations `com.fasterxml.jackson.annotation.*`
+  (`@JsonInclude`…) restent valables.
 - Même [approche TDD](#approche-tdd) que côté front : le test de la règle (validation, calcul,
   sécurité) s'écrit avant son implémentation.
 
 ## Intégration continue
 
-`.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main` :
+`.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main`. Un job ne tourne
+que si sa zone a changé ; sinon il apparaît « skipped », ce qui compte comme réussi pour la fusion :
 
-| Job        | Étapes                                             |
-|------------|----------------------------------------------------|
-| `frontend` | `npm ci` → `npm run format:check` → `npm run lint` → `npm run build` |
-| `backend`  | `mvn -B verify` (linter, compilation, tests, format) |
+| Job                 | Tourne si                         | Étapes                                             |
+|---------------------|-----------------------------------|----------------------------------------------------|
+| `frontend`          | `frontend/**`                     | `npm ci` → `npm run format:check` → `npm run lint` → `npm run test:coverage` (seuils) → `npm run build` |
+| `backend`           | `backend/**`                      | `mvn -B verify` (linter, compilation, tests, format) |
+| `integration`       | `frontend/**` ou `supabase/**`    | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
+| `mutation-frontend` | `frontend/**`                     | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
+| `mutation-backend`  | `backend/**`                      | Pitest (seuil 75 %), rapport en artefact |
+| `e2e`               | `frontend/**`                     | `npm run test:e2e` : Playwright + audit WCAG 2.1 AA (axe), rapport en artefact en cas d'échec |
+| `performance`       | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 sur base éphémère + PostgREST + backend : P95 < 300 ms, < 1 % d'erreurs (voir [quality/](quality/README.md)) |
+| `dast`              | `frontend/**`, `backend/**` ou `quality/**` | Scan ZAP baseline du front buildé et du backend, échoue sur toute alerte non acceptée |
+| `sonar`             | `frontend/**` ou `backend/**`     | SonarQube Cloud et son Quality Gate, actif dès que le secret `SONAR_TOKEN` est configuré |
+| `security`          | toujours                          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
+
+Modifier `.github/workflows/ci.yml` relance tous les jobs. Si le job `changes` (détection des zones)
+échoue, tous les jobs tournent aussi.
+
+### Caches
+
+| Cache | Effet |
+|-------|-------|
+| npm, Maven | dépendances téléchargées une fois (`setup-node`, `setup-java`) |
+| Prettier, ESLint | seuls les fichiers dont le **contenu** a changé sont revérifiés (aussi en local : `node_modules/.cache`) |
+| Playwright | navigateurs réinstallés seulement quand la version change |
+| Stryker, Pitest | **sur une PR**, seuls les mutants concernés par le changement sont rejoués ; un push vers `dev` ou `main` refait un run **complet**, qui sert de référence aux PR suivantes |
+
+Les seuils et le résultat des checks ne changent pas : un test affaibli fait toujours apparaître ses
+mutants survivants, en incrémental comme en complet. En cas de doute sur un résultat de mutation d'une
+PR, supprimer ses caches `stryker-…` / `pitest-…` (onglet *Actions → Caches*) puis relancer le job :
+*Re-run* seul relit le cache.
+
+`.github/workflows/codeql.yml` lance en plus l'analyse de sécurité **CodeQL** (TypeScript et Java) sur
+chaque PR, chaque push et chaque lundi ; les alertes sont dans l'onglet *Security* du dépôt.
 
 Une PR ne se fusionne qu'avec une CI verte.
+Les noms des jobs (`Frontend (format + lint + build)`, `Backend (format + lint + tests)`) sont des checks
+**obligatoires** de la protection de `dev` et `main` : ne pas les renommer sans mettre à jour la règle
+dans *Settings → Rules*, sinon les PR restent bloquées en attente d'un check qui n'arrive jamais.
 
 ### Dependabot
 
@@ -183,6 +309,7 @@ const monJeu: GameDefinition = {
   category: 'duel',        // obligatoire : 'solo' (1 joueur) · 'duel' (2) · 'multi' (3 et +)
   mode: 'solo',            // accès : 'solo' = jouable sans compte · 'multiplayer' = connexion obligatoire
   thumbnail: '/games/mon-jeu/thumbnail.webp', // optionnel, fichier dans frontend/public/games/mon-jeu/
+  scoreLimits: { max: 5000 }, // optionnel : score maximal plausible, refusé au-delà (aligné avec games.max_score)
   component: lazy(() => import('./MonJeu')),
 }
 export default monJeu
@@ -226,10 +353,27 @@ export default function MonJeu({ ctx }: GameProps) {
   await ctx.getLeaderboard(10)   // top 10 (meilleur score par joueur)
   await ctx.getMyBest()          // meilleur score du joueur, ou null
   await ctx.save({ level: 3 })   // sauvegarde JSON (écrase la précédente)
-  await ctx.loadSave<MaSave>()   // ou null
+  await ctx.loadSave(saveSchema) // validée par un schéma Zod : null si absente, corrompue ou d'un ancien format
   await ctx.clearSave()
 }
 ```
+
+#### Erreurs
+
+Les méthodes du `ctx` rejettent avec une `GameError` (`src/games/errors.ts`) dont le **`message` est écrit
+pour le joueur** : l'afficher tel quel (`setError(e.message)`), sans code technique. `e.code` permet
+d'adapter la réaction :
+
+| `code`      | Cas                                                        |
+|-------------|------------------------------------------------------------|
+| `invalid`   | score refusé avant l'envoi (pas un entier, négatif, au-dessus de `scoreLimits.max`) |
+| `queued`    | coupure réseau : le score est gardé sur l'appareil et renvoyé à la prochaine partie (5 essais) |
+| `network`   | serveur injoignable (lecture du classement, sauvegarde…) : réessayer plus tard |
+| `session`   | session expirée : se reconnecter                           |
+| `forbidden` / `not_found` | refusé par la RLS, ou jeu absent de `public.games` |
+
+Si le jeu plante pendant son rendu, la plateforme l'isole (`GameErrorBoundary`) : le joueur voit un
+message et un bouton « Relancer le jeu », le reste du site continue de fonctionner.
 
 ### Mode invité (jeux `solo`)
 
@@ -256,7 +400,16 @@ joueur à se connecter pour être classé (voir le clicker).
 4. Recommencer pour la règle suivante.
 
 Priorité aux règles du jeu et à la logique métier (calcul du score, conditions de victoire, coups
-valides…) plutôt qu'au rendu visuel.
+valides…) plutôt qu'au rendu visuel. Pour tester un composant qui reçoit `ctx` sans réseau :
+
+```ts
+import { createGameContext } from '@/games/sdk'
+import { fakeDeps, FakeScores } from '@/games/testing/fakes'
+
+const scores = new FakeScores({ id: 'p1', username: 'alice' })
+const ctx = createGameContext(monJeu, { id: 'p1', username: 'alice' }, fakeDeps({ scores }))
+scores.failNext(new GameError('network', 'hors ligne')) // simule une coupure au prochain envoi
+```
 
 ### Règles
 
@@ -269,4 +422,4 @@ valides…) plutôt qu'au rendu visuel.
 - Le jeu est chargé à la demande (`lazy`) : les dépendances lourdes (Phaser, Three.js…) n'alourdissent pas la plateforme.
 - Besoin de tables propres au jeu ? Les préfixer par le slug (`mon_jeu_xxx`), activer la RLS, et
   passer en revue avec l'équipe plateforme.
-- Avant de pousser (dans `frontend/`) : `npm run format && npm run lint && npm run build`.
+- Avant de pousser (dans `frontend/`) : `npm run format && npm run lint && npm run test:coverage && npm run build`.
