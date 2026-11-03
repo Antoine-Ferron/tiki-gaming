@@ -31,6 +31,8 @@ public final class Fen {
         CastlingRights castling =
                 new CastlingRights(c.contains("K"), c.contains("Q"), c.contains("k"), c.contains("q"));
         Optional<Square> enPassant = fields[3].equals("-") ? Optional.empty() : Optional.of(Square.of(fields[3]));
-        return new Position(pieces, turn, castling, enPassant);
+        int halfmoveClock = Integer.parseInt(fields[4]);
+        int fullmoveNumber = Integer.parseInt(fields[5]);
+        return new Position(pieces, turn, castling, enPassant, halfmoveClock, fullmoveNumber);
     }
 }
