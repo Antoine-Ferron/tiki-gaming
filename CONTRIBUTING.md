@@ -147,7 +147,7 @@ c'est le formatter qui tranche les questions de style.
   | Périmètre | Lignes | Branches | Fonctions | Instructions |
   |-----------|--------|----------|-----------|--------------|
   | Front, cœur du lobby (`games/domain`, `errors.ts`, `scoreQueue.ts`, `sdk.ts`, `lib/validation.ts`) | 95 % | 95 % | 95 % | 95 % |
-  | Front, global | 40 % | 44 % | 47 % | 42 % |
+  | Front, global | 78 % | 80 % | 75 % | 79 % |
   | Backend, cœur (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`) | 95 % | 95 % | — | — |
   | Backend, global | 52 % | 64 % | — | — |
 
