@@ -11,10 +11,10 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 | Élément      | Valeur                                                                 |
 | ------------ | ---------------------------------------------------------------------- |
 | Catégorie    | `multi` (3 joueurs et +)                                               |
-| Mode         | `solo` : jouable sans compte, le joueur affronte des IA                |
-| Joueurs      | 3 à 7 : le joueur humain + 2 à 6 IA, assis en cercle                   |
+| Mode         | `multiplayer` : compte requis, les joueurs s'affrontent en ligne       |
+| Joueurs      | 3 à 7 joueurs connectés, assis en cercle                               |
 | Durée        | 3 âges de 6 tours                                                      |
-| Score envoyé | total de points de victoire du joueur humain (`ctx.submitScore`)       |
+| Score envoyé | total de points de victoire de chaque joueur (`ctx.submitScore`)       |
 | Sauvegarde   | état complet de la partie en cours (`ctx.save`), reprise au chargement |
 
 ## Mise en place
@@ -173,7 +173,7 @@ l'égalité persiste, les joueurs concernés partagent la victoire.
 
 ## Hors périmètre (première version)
 
-Effets de carte permettant de rejouer une carte ou une action supplémentaire, multijoueur en ligne.
+Effets de carte permettant de rejouer une carte ou une action supplémentaire.
 
 ## Points à préciser
 
@@ -183,13 +183,13 @@ Effets de carte permettant de rejouer une carte ou une action supplémentaire, m
 
 ## Critères d'acceptation
 
-- [ ] Une partie complète (3 âges) se joue de bout en bout contre 2 à 6 IA.
+- [ ] Une partie complète (3 âges) se joue de bout en bout entre 3 à 7 joueurs connectés.
 - [ ] Seuls les coups payables sont proposés ; une action impossible est refusée.
 - [ ] Le commerce avec les voisins et les chaînes de construction sont appliqués.
 - [ ] Les conflits militaires sont résolus à la fin de chaque âge.
 - [ ] Le score final détaillé par catégorie s'affiche en fin de partie et est envoyé à `ctx.submitScore`.
-- [ ] Une partie en cours est sauvegardée et peut être reprise (en base connecté, en local en invité).
-- [ ] En invité, le jeu fonctionne et invite à se connecter pour être classé.
+- [ ] Une partie en cours est sauvegardée et peut être reprise.
+- [ ] Le jeu demande d'être connecté (mode `multiplayer`).
 - [ ] Chaque règle ci-dessus est couverte par un test unitaire.
 
 ## Avancement
@@ -241,9 +241,11 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 
 ### Plateforme
 
-- [ ] Déclaration du jeu (`index.ts`, `registry.ts`) et migration du catalogue
+- [x] Déclaration du jeu (`index.ts`, `registry.ts`) et migration du catalogue
+- [x] Premier écran : table de jeu (joueur connecté + places libres, voisins) et classement (`SdvCivilisationGame.tsx`)
+- [ ] Salle d'attente et parties en ligne entre joueurs
 - [ ] Sauvegarde et reprise de partie
-- [ ] Interface de jeu et IA adverses
+- [ ] Interface de jeu complète (main, plateau, merveille)
 
 ### Architecture testable
 
