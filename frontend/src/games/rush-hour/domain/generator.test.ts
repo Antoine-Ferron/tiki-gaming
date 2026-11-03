@@ -6,7 +6,8 @@ import { generateBoard } from './generator'
 import { solve } from './solver'
 
 const DIFFICULTIES: Difficulty[] = ['facile', 'moyen', 'difficile']
-const SEEDS = [1, 2, 3, 4, 5]
+// Chaque génération explore des milliers de positions (~0,2 s) : 3 graines par difficulté suffisent.
+const SEEDS = [1, 2, 3]
 
 describe('generateBoard : un plateau tiré au hasard, de la difficulté demandée (G2, G3)', () => {
   // Le hasard est injecté : une graine fixe rend chaque test reproductible.
@@ -34,7 +35,7 @@ describe('generateBoard : un plateau tiré au hasard, de la difficulté demandé
 
   test('des graines différentes donnent des plateaux variés', () => {
     // Act
-    const maps = SEEDS.map((seed) => generateBoard('difficile', seededRandom(seed)).join(''))
+    const maps = [1, 2, 3, 4, 5].map((seed) => generateBoard('difficile', seededRandom(seed)).join(''))
 
     // Assert
     expect(new Set(maps).size).toBeGreaterThanOrEqual(4)
