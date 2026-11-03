@@ -77,7 +77,7 @@ class OpenApiDocsTest {
                             everyItem(anyOf(
                                     containsString("Authentification"),
                                     containsString("mastermind"),
-                                    containsString("prismine")))));
+                                    containsString("prismine"),
                                     containsString("bang")))));
         }
 
