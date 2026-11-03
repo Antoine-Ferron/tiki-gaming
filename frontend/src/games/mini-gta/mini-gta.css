@@ -12,7 +12,7 @@
   text-align: center;
 }
 
-.mini-gta-progress {
+.mini-gta-save {
   display: grid;
   grid-template-columns: auto auto;
   gap: 0.25rem 1rem;
@@ -20,11 +20,471 @@
   text-align: left;
 }
 
-.mini-gta-progress dt {
+.mini-gta-save dt {
   color: var(--muted);
 }
 
-.mini-gta-progress dd {
+.mini-gta-save dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Partie en plein écran ---------- */
+
+.mini-gta-play {
+  /* Couleurs propres au jeu (voir docs/charte-graphique.md, section Jeux) */
+  --mini-gta-health: #4ade80;
+  --mini-gta-armor: #5cc8ff;
+  --mini-gta-vehicle: #f5d14a;
+  --mini-gta-shadow: #000;
+  --mini-gta-star: #ecebff;
+  /* Carte et minimap (lues par ui/palette.ts) */
+  --mini-gta-map-airfield: #9fd3ff;
+  --mini-gta-map-apron: #585b60;
+  --mini-gta-map-background: #25303a;
+  --mini-gta-map-block: #6d7175;
+  --mini-gta-map-building: #4a4e55;
+  --mini-gta-map-enemy: #ff4d4d;
+  --mini-gta-map-glyph-text: #111;
+  --mini-gta-map-gunshop: #ff9f43;
+  --mini-gta-map-highway: #e0c060;
+  --mini-gta-map-hospital: #ff5c5c;
+  --mini-gta-map-mission: #ffd23f;
+  --mini-gta-map-outline: #000;
+  --mini-gta-map-park: #4f7d43;
+  --mini-gta-map-pickup: #7fe0a0;
+  --mini-gta-map-player: #ffffff;
+  --mini-gta-map-police: #5c8dff;
+  --mini-gta-map-port-block: #5b5f63;
+  --mini-gta-map-road: #c9ccd1;
+  --mini-gta-map-road-edge: #1d1f22;
+  --mini-gta-map-runway: #2a2c30;
+  --mini-gta-map-safehouse: #5bd16b;
+  --mini-gta-map-search-blue: rgb(40 80 255 / 18%);
+  --mini-gta-map-search-red: rgb(255 40 40 / 18%);
+  --mini-gta-map-siren-blue: #3b6bff;
+  --mini-gta-map-siren-red: #ff3b3b;
+  --mini-gta-map-special-building: #9a8c6a;
+  --mini-gta-map-waypoint: #c77dff;
+
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: var(--mini-gta-shadow);
+  color: var(--text);
+  user-select: none;
+}
+
+.mini-gta-canvas {
+  position: absolute !important;
+  inset: 0;
+  transition: filter 1.2s;
+}
+
+.mini-gta-canvas.mini-gta-grayscale {
+  filter: grayscale(0.9) brightness(0.8);
+}
+
+/* HUD */
+.mini-gta-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  text-shadow: 0 2px 3px color-mix(in srgb, var(--mini-gta-shadow) 90%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-gta-bottom-left {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 1.5rem;
+  width: 210px;
+}
+
+.mini-gta-minimap {
+  display: block;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--surface);
+}
+
+.mini-gta-bars {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.mini-gta-bar {
+  flex: 1;
+  height: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.mini-gta-bar > div {
+  height: 100%;
+  transition: width 0.2s;
+}
+
+.mini-gta-bar.mini-gta-health > div {
+  background: var(--mini-gta-health);
+}
+
+.mini-gta-bar.mini-gta-armor > div {
+  background: var(--mini-gta-armor);
+}
+
+.mini-gta-bar.mini-gta-vhealth > div {
+  background: var(--mini-gta-vehicle);
+}
+
+.mini-gta-top-right {
+  position: absolute;
+  right: 1.5rem;
+  top: 1.5rem;
+  text-align: right;
+  font-weight: 700;
+}
+
+.mini-gta-clock,
+.mini-gta-weapon {
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
+.mini-gta-weapon .mini-gta-ammo {
+  display: block;
+  font-size: 1.5rem;
+  color: var(--text);
+}
+
+.mini-gta-money {
+  font-size: 2rem;
+  color: var(--success);
+}
+
+.mini-gta-stars {
+  font-size: 1.75rem;
+  letter-spacing: 2px;
+}
+
+.mini-gta-stars .mini-gta-on {
+  color: var(--mini-gta-star);
+}
+
+.mini-gta-stars .mini-gta-off {
+  color: color-mix(in srgb, var(--mini-gta-star) 15%, transparent);
+}
+
+.mini-gta-stars.mini-gta-flashing .mini-gta-on {
+  animation: mini-gta-blink 0.6s steps(2) infinite;
+}
+
+@keyframes mini-gta-blink {
+  50% {
+    color: color-mix(in srgb, var(--mini-gta-star) 25%, transparent);
+  }
+}
+
+.mini-gta-speedo {
+  position: absolute;
+  right: 2rem;
+  bottom: 2rem;
+  width: 180px;
+  text-align: right;
+}
+
+.mini-gta-speedo .mini-gta-speed {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.mini-gta-speedo .mini-gta-alt,
+.mini-gta-speedo .mini-gta-vname {
+  margin: 0.25rem 0;
+  color: var(--muted);
+}
+
+.mini-gta-mission {
+  position: absolute;
+  bottom: 4.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.mini-gta-objective {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.mini-gta-timer {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.mini-gta-timer.mini-gta-urgent {
+  color: var(--error);
+}
+
+.mini-gta-prompt,
+.mini-gta-toast {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  text-shadow: none;
+}
+
+.mini-gta-prompt {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  max-width: 420px;
+}
+
+.mini-gta-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  border-radius: 50%;
+  background: var(--text);
+  box-shadow: 0 0 0 1.5px var(--mini-gta-shadow);
+}
+
+.mini-gta-scope {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--mini-gta-shadow), var(--mini-gta-shadow)) center/2px 100% no-repeat,
+    linear-gradient(var(--mini-gta-shadow), var(--mini-gta-shadow)) center/100% 2px no-repeat,
+    radial-gradient(circle at center, transparent 0 34vh, var(--mini-gta-shadow) 34.3vh);
+}
+
+.mini-gta-big-text {
+  position: absolute;
+  top: 38%;
+  width: 100%;
+  text-align: center;
+  font-size: 4rem;
+  font-weight: 800;
+  color: var(--accent);
+  animation: mini-gta-pop 0.3s ease-out;
+}
+
+.mini-gta-big-text.mini-gta-death {
+  color: var(--error);
+  font-size: 5rem;
+}
+
+@keyframes mini-gta-pop {
+  from {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.mini-gta-toasts {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 640px;
+}
+
+.mini-gta-toast {
+  text-align: center;
+  animation: mini-gta-fadein 0.3s;
+}
+
+.mini-gta-toast.mini-gta-success {
+  border-left: 4px solid var(--success);
+}
+
+.mini-gta-toast.mini-gta-fail {
+  border-left: 4px solid var(--error);
+}
+
+.mini-gta-toast.mini-gta-info {
+  border-left: 4px solid var(--accent);
+}
+
+@keyframes mini-gta-fadein {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* Menus */
+.mini-gta-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+}
+
+.mini-gta-overlay h1,
+.mini-gta-overlay h2 {
+  margin: 0;
+}
+
+.mini-gta-start {
+  background: var(--bg);
+}
+
+.mini-gta-loading {
+  width: min(420px, 100%);
+  text-align: center;
+}
+
+.mini-gta-progress {
+  height: 6px;
+  margin-bottom: 0.75rem;
+  border-radius: 999px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.mini-gta-progress > div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.mini-gta-hint {
+  color: var(--muted);
+  text-align: center;
+}
+
+.mini-gta-controls,
+.mini-gta-shop table {
+  border-collapse: collapse;
+}
+
+.mini-gta-controls td,
+.mini-gta-shop td {
+  padding: 0.25rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.mini-gta-controls .mini-gta-key {
+  color: var(--accent);
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mini-gta-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mini-gta-tabs button {
+  border: 1px solid var(--muted);
+  background: transparent;
+  color: var(--text);
+}
+
+.mini-gta-tabs button.mini-gta-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mini-gta-menu-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mini-gta-settings {
+  display: grid;
+  gap: 0.75rem;
+  width: min(460px, 100%);
+}
+
+.mini-gta-settings label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text);
+}
+
+.mini-gta-map canvas {
+  width: min(86vh, 86vw);
+  height: min(86vh, 86vw);
+  cursor: crosshair;
+  border-radius: 8px;
+}
+
+.mini-gta-wheel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  pointer-events: none;
+}
+
+.mini-gta-wheel .mini-gta-slot,
+.mini-gta-wheel .mini-gta-center {
+  position: absolute;
+  left: -60px;
+  top: -24px;
+  width: 120px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  font-weight: 700;
+}
+
+.mini-gta-wheel .mini-gta-slot.mini-gta-empty {
+  opacity: 0.4;
+}
+
+.mini-gta-wheel .mini-gta-slot.mini-gta-selected {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mini-gta-wheel .mini-gta-center {
+  border: none;
+  background: transparent;
+  font-size: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-gta-canvas,
+  .mini-gta-bar > div,
+  .mini-gta-progress > div {
+    transition: none;
+  }
+
+  .mini-gta-big-text,
+  .mini-gta-toast,
+  .mini-gta-stars.mini-gta-flashing .mini-gta-on {
+    animation: none;
+  }
 }
