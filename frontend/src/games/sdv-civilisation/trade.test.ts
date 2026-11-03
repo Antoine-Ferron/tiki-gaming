@@ -10,11 +10,15 @@ function setup(balances: Record<string, number>) {
 }
 
 describe('buyFromNeighbour', () => {
-  it('fait payer au vendeur le prix donné par le convertisseur', () => {
+  it('fait payer au vendeur, par l’acheteur, le prix donné par le convertisseur', () => {
     // Taux figé à 5 : le prix vient bien du convertisseur, pas d'un tarif codé en dur.
     const { registry, treasury } = setup({ alice: 12, bob: 0 })
 
-    const price = buyFromNeighbour({ buyer: 'alice', seller: 'bob', resource: 'wood', quantity: 2 }, fixedRate(5), treasury)
+    const price = buyFromNeighbour(
+      { buyer: 'alice', seller: 'bob', resource: 'wood', quantity: 2 },
+      fixedRate(5),
+      treasury,
+    )
 
     expect(price).toBe(10)
     expect(registry.balanceOf('alice')).toBe(2)
