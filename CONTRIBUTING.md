@@ -230,6 +230,8 @@ fr.tikigaming
 
 ## Intégration continue
 
+> Explication détaillée, étape par étape, avec les seuils et que faire en cas d'échec : [docs/ci.md](docs/ci.md).
+
 `.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main`. Un job ne tourne
 que si sa zone a changé ; sinon il apparaît « skipped », ce qui compte comme réussi pour la fusion :
 
