@@ -130,6 +130,24 @@ class FenTest {
         assertThatThrownBy(() -> Fen.parse(fen)).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @ParameterizedTest(name = "\"{0}\" est refusée")
+    @ValueSource(
+            strings = {
+                "4k3/8/8/8/8/8/8/8 w - - 0 1", // aucun roi blanc
+                "8/8/8/8/8/8/8/4K3 w - - 0 1", // aucun roi noir
+                "4k3/8/8/8/8/8/8/3KK3 w - - 0 1", // deux rois blancs
+                "3kk3/8/8/8/8/8/8/4K3 w - - 0 1", // deux rois noirs
+                "4k3/8/8/8/8/8/8/P3K3 w - - 0 1", // pion blanc en rangée 1
+                "P3k3/8/8/8/8/8/8/4K3 w - - 0 1", // pion blanc en rangée 8
+                "4k3/8/8/8/8/8/8/p3K3 w - - 0 1", // pion noir en rangée 1
+                "p3k3/8/8/8/8/8/8/4K3 w - - 0 1" // pion noir en rangée 8
+            })
+    @DisplayName("une position impossible aux échecs est refusée (un roi par camp, pas de pion en rangée 1 ou 8)")
+    void unePositionImpossibleEstRefusee(String fen) {
+        // Act + Assert
+        assertThatThrownBy(() -> Fen.parse(fen)).isInstanceOf(IllegalArgumentException.class);
+    }
+
     private static final String AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
 
     private static final String START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
