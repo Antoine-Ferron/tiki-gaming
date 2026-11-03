@@ -30,10 +30,12 @@ type BoardProps = {
   board: BoardModel
   /** Plus aucun déplacement (partie gagnée). */
   locked: boolean
+  /** Véhicule à mettre en avant (indice). */
+  highlight?: string
   onMove: (id: string, delta: number) => void
 }
 
-export function Board({ board, locked, onMove }: BoardProps) {
+export function Board({ board, locked, highlight, onMove }: BoardProps) {
   const boardRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
 
@@ -77,7 +79,7 @@ export function Board({ board, locked, onMove }: BoardProps) {
             <button
               key={v.id}
               type="button"
-              className={`rush-hour-vehicle${drag?.id === v.id ? ' rush-hour-dragging' : ''}`}
+              className={`rush-hour-vehicle${drag?.id === v.id ? ' rush-hour-dragging' : ''}${highlight === v.id ? ' rush-hour-hinted' : ''}`}
               aria-label={vehicleLabel(v)}
               disabled={locked}
               style={{
