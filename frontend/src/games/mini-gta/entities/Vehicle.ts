@@ -28,15 +28,25 @@ export interface VehicleControl {
   lift: number // heli collective / plane throttle delta
 }
 
-/** Global driving tuning (exposed in the debug panel). */
+/** Réglages globaux de la conduite. */
 export const DRIVING = {
-  gripScale: 1,
-  engineScale: 1.7,
-  lateralAssist: 0.06,
+  /** Adhérence de pointe des pneus (G) = grip du véhicule × ce facteur. */
+  gripScale: 0.55,
+  engineScale: 1.6,
+  /** Force de freinage par roue (N) = brake du véhicule × ce facteur. */
+  brakeScale: 60,
+  /** Part du freinage sur l'essieu avant. */
+  brakeBiasFront: 0.6,
   downforce: 0.35,
   compression: 4.4,
   relaxation: 5.3,
 }
+
+/** Rapports de boîte, du premier (couple maximal) au dernier ; la force motrice leur est proportionnelle. */
+export const GEARS = [3.33, 2.72, 2.11, 1.51, 0.9]
+const GEAR_MEAN = 1.8
+/** Durée (s) de la coupure de puissance à chaque passage de rapport. */
+const SHIFT_TIME = 0.25
 
 const _v = new Vector3()
 const _q = new Quaternion()
@@ -64,6 +74,9 @@ export class Vehicle {
   playerDriven = false
   /** Speed along the forward axis (m/s). */
   speed = 0
+  /** Rapport engagé (1 à 5). */
+  gear = 1
+  private shiftTimer = 0
   /** Owned by the traffic system while set. */
   traffic: unknown = null
   /** Owned by an AI driver (police, missions). */
@@ -107,7 +120,7 @@ export class Vehicle {
     const desc = (mode === 'kinematic' ? RigidBodyDesc.kinematicPositionBased() : RigidBodyDesc.dynamic())
       .setTranslation(x, y, z)
       .setRotation(rot)
-      .setLinearDamping(spec.kind === 'heli' ? 0.4 : 0.05)
+      .setLinearDamping(spec.kind === 'heli' ? 0.4 : spec.kind === 'plane' ? 0.05 : 0) // voitures et motos : traînée explicite
       .setAngularDamping(spec.kind === 'car' || spec.kind === 'bike' ? 1.2 : 2.5)
       .setCanSleep(true)
     this.body = w.createRigidBody(desc)
@@ -120,8 +133,9 @@ export class Vehicle {
     let cy = clear + hy + 0.05
     if (spec.kind === 'bike') {
       hx = 0.3
-      hy = 0.45
-      cy = spec.wheelRadius + 0.35
+      hy = 0.4
+      // Fond de caisse à la hauteur de l'axe des roues : il ne frotte jamais le sol, même à pleine vitesse.
+      cy = spec.wheelRadius + 0.45
     } else if (spec.kind === 'heli') {
       hx = 1.1
       hy = 0.85
@@ -248,6 +262,19 @@ export class Vehicle {
     this.traffic = null
   }
 
+  /** Passe les rapports selon la vitesse : chaque rapport couvre une part de la vitesse de pointe. */
+  private selectGear() {
+    const top = (g: number) => (this.spec.maxSpeed * GEARS[GEARS.length - 1]) / GEARS[g - 1]
+    const v = Math.max(0, this.speed)
+    let g = this.gear
+    if (g < GEARS.length && v > top(g) * 0.97) g++
+    else if (g > 1 && v < top(g - 1) * 0.75) g--
+    if (g !== this.gear) {
+      this.gear = g
+      this.shiftTimer = SHIFT_TIME
+    }
+  }
+
   /** Apply controls before the physics step. */
   update(dt: number) {
     if (this.mode !== 'dynamic') return
@@ -278,41 +305,53 @@ export class Vehicle {
       return
     }
 
-    // --- Cars & bikes
+    // --- Cars & bikes : boîte de vitesses, traînée et freins ; l'adhérence est celle des pneus (moteur physique).
     const absSpeed = Math.abs(this.speed)
     const steerTarget = -c.steer * spec.steer * (1 / (1 + absSpeed * 0.045))
     this.steerSmoothed = damp(this.steerSmoothed, steerTarget, 8, dt)
-    let engine = 0
+    const total = 2 * spec.engine * DRIVING.engineScale
+    this.shiftTimer = Math.max(0, this.shiftTimer - dt)
+    this.selectGear()
+    let drive = 0
     let brake = 0
     if (c.throttle > 0.05) {
-      if (this.speed < -1) brake = spec.brake
-      else engine = spec.engine * DRIVING.engineScale * c.throttle * (1 - clamp(this.speed / spec.maxSpeed, 0, 1) ** 2)
+      if (this.speed < -1) brake = spec.brake * DRIVING.brakeScale
+      else if (this.shiftTimer === 0) drive = (total * GEARS[this.gear - 1] * c.throttle) / GEAR_MEAN
     } else if (c.throttle < -0.05) {
-      if (this.speed > 1) brake = spec.brake
-      else engine = -spec.engine * 0.5 * -c.throttle * (1 - clamp(-this.speed / 12, 0, 1))
+      if (this.speed > 1) brake = spec.brake * DRIVING.brakeScale
+      else drive = -total * 0.6 * -c.throttle * (1 - clamp(-this.speed / 12, 0, 1))
     } else {
-      brake = spec.brake * 0.08
+      // Frein moteur.
+      brake = spec.brake * DRIVING.brakeScale * 0.06
     }
-    if (!this.driver) brake = spec.brake * 0.5
+    if (!this.driver) brake = spec.brake * DRIVING.brakeScale * 0.5
     const driven = spec.drive === 'awd' ? [0, 1, 2, 3] : spec.drive === 'fwd' ? [0, 1] : [2, 3]
+    const grip = spec.grip * DRIVING.gripScale
     for (let i = 0; i < n; i++) {
-      vc.setWheelEngineForce(i, driven.includes(i) ? engine / (driven.length / 2) : 0)
-      vc.setWheelSteering(i, i < 2 ? this.steerSmoothed : 0)
       const rear = i >= 2
-      vc.setWheelBrake(i, brake + (c.handbrake && rear ? spec.brake * 0.8 : 0))
-      vc.setWheelSideFrictionStiffness(i, c.handbrake && rear ? 0.35 : 1)
-      vc.setWheelFrictionSlip(i, spec.grip * DRIVING.gripScale)
+      vc.setWheelEngineForce(i, driven.includes(i) ? drive / driven.length : 0)
+      vc.setWheelSteering(i, i < 2 ? this.steerSmoothed : 0)
+      // Répartition 60/40 : le freinage charge l'avant.
+      const bias = n < 4 ? 1 : rear ? 2 * (1 - DRIVING.brakeBiasFront) : 2 * DRIVING.brakeBiasFront
+      vc.setWheelBrake(i, brake * bias + (c.handbrake && rear ? spec.brake * DRIVING.brakeScale * 3 : 0))
+      // Frein à main : l'arrière bloqué perd de l'adhérence latérale et décroche (dérapage contrôlé).
+      vc.setWheelSideFrictionStiffness(i, c.handbrake && rear ? 0.3 : 1)
+      vc.setWheelFrictionSlip(i, grip)
     }
     vc.updateVehicle(dt, undefined, Groups.wheels, (col) => col.parent()?.handle !== body.handle)
 
     let grounded = 0
     for (let i = 0; i < n; i++) if (vc.wheelIsInContact(i)) grounded++
+    // Traînée : elle égale la poussée du dernier rapport à la vitesse de pointe du modèle.
+    const drag = ((total * GEARS[GEARS.length - 1]) / GEAR_MEAN / (spec.maxSpeed * spec.maxSpeed)) * dt
+    const v2 = lv.x * lv.x + lv.z * lv.z
+    if (v2 > 0.01) {
+      const v = Math.sqrt(v2)
+      body.applyImpulse({ x: -lv.x * v * drag, y: 0, z: -lv.z * v * drag }, true)
+    }
     if (grounded > 0) {
-      // Downforce + lateral grip assist (arcade feel).
+      // Appui aérodynamique : charge les pneus (donc l'adhérence) avec la vitesse.
       body.applyImpulse({ x: 0, y: -mass * DRIVING.downforce * absSpeed * dt, z: 0 }, true)
-      const lat = lv.x * _right.x + lv.y * _right.y + lv.z * _right.z
-      const k = (c.handbrake ? 0.012 : DRIVING.lateralAssist) * mass * (grounded / n)
-      body.applyImpulse({ x: -_right.x * lat * k, y: 0, z: -_right.z * lat * k }, true)
     }
     // Roll stabilisation (strong for bikes), keeps cars from tipping too easily.
     const rollRight = -Math.asin(clamp(_right.y, -1, 1))

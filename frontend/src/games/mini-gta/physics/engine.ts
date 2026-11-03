@@ -1436,6 +1436,24 @@ interface Wheel {
   forwardWS: Vec
   sideImpulse: number
   forwardImpulse: number
+  /** Le pneu glisse (au-delà du cercle d'adhérence) : il garde l'adhérence de glisse jusqu'à se rétablir. */
+  sliding: boolean
+}
+
+/** Réglages du modèle de pneus (valeurs propres au jeu). */
+export const TIRE = {
+  /** Adhérence en glisse, en part de l'adhérence de pointe. */
+  slideRatio: 0.72,
+  /** Angle de dérive (rad) où l'adhérence latérale est maximale. */
+  peakSlip: 0.14,
+  /** Vitesse (m/s) sous laquelle l'angle de dérive est calculé comme à cette vitesse (stabilité à l'arrêt). */
+  lowSpeed: 2,
+  /** Résistance au roulement, en part de la charge. */
+  rolling: 0.015,
+  /** Le pneu se rétablit quand l'effort repasse sous cette part du cercle d'adhérence. */
+  regrip: 0.85,
+  /** Hauteur (m) du centre de roulis au-dessus du contact, où s'appliquent les forces latérales. */
+  rollCentre: 0.25,
 }
 
 export class VehicleController {
@@ -1460,7 +1478,7 @@ export class VehicleController {
       relaxation: 0.88,
       maxTravel: 5,
       maxForce: 6000,
-      frictionSlip: 10.5,
+      frictionSlip: 1.2,
       sideStiffness: 1,
       steering: 0,
       engine: 0,
@@ -1477,6 +1495,7 @@ export class VehicleController {
       forwardWS: { x: 0, y: 0, z: 1 },
       sideImpulse: 0,
       forwardImpulse: 0,
+      sliding: false,
     })
   }
 
@@ -1498,18 +1517,21 @@ export class VehicleController {
   setWheelMaxSuspensionForce(i: number, v: number) {
     this.wheels[i].maxForce = v
   }
+  /** Adhérence de pointe du pneu, en G (1 = la charge de la roue en force latérale maximale). */
   setWheelFrictionSlip(i: number, v: number) {
     this.wheels[i].frictionSlip = v
   }
   setWheelSideFrictionStiffness(i: number, v: number) {
     this.wheels[i].sideStiffness = v
   }
+  /** Force motrice de la roue (N). */
   setWheelEngineForce(i: number, v: number) {
     this.wheels[i].engine = v
   }
   setWheelSteering(i: number, v: number) {
     this.wheels[i].steering = v
   }
+  /** Force de freinage de la roue (N) ; elle ne peut qu'arrêter la roue, pas la faire reculer. */
   setWheelBrake(i: number, v: number) {
     this.wheels[i].brake = v
   }
@@ -1595,13 +1617,11 @@ export class VehicleController {
       body.applyImpulseAtPoint({ x: w.normal.x * f, y: w.normal.y * f, z: w.normal.z * f }, w.point, false)
     }
 
-    // Frottements
-    let sliding = false
-    const skid: number[] = []
+    // Pneus : adhérence en G proportionnelle à la charge de chaque roue (la suspension porte le transfert
+    // de masse), courbe de dérive avec pic puis glisse, cercle d'adhérence partagé entre traction, freinage
+    // et virage.
     for (const w of this.wheels) {
-      w.sideImpulse = 0
-      w.forwardImpulse = 0
-      skid.push(1)
+      w.sliding = w.inContact && w.sliding
       if (!w.inContact) continue
       const n = w.normal
       const a = w.axleWS
@@ -1613,73 +1633,77 @@ export class VehicleController {
       const fwd = cross(n, ax)
       const fl = Math.hypot(fwd.x, fwd.y, fwd.z) || 1
       w.forwardWS = { x: fwd.x / fl, y: fwd.y / fl, z: fwd.z / fl }
-      w.sideImpulse = this.bilateral(w.point, ax, w.ground) * w.sideStiffness
-    }
-    for (let i = 0; i < this.wheels.length; i++) {
-      const w = this.wheels[i]
-      if (!w.inContact) continue
-      let rolling: number
-      if (w.engine !== 0) rolling = w.engine * dt
-      else rolling = this.rollingFriction(w.point, w.forwardWS, w.ground, w.brake)
-      w.forwardImpulse = rolling
-      const maxImp = w.force * dt * w.frictionSlip
-      const x = rolling * 0.5
-      const y = w.sideImpulse
-      const sq = x * x + y * y
-      if (sq > maxImp * maxImp) {
-        sliding = true
-        skid[i] = maxImp / Math.sqrt(sq)
-      }
-    }
-    if (sliding) {
-      for (let i = 0; i < this.wheels.length; i++) {
-        const w = this.wheels[i]
-        if (w.sideImpulse !== 0 && skid[i] < 1) {
-          w.forwardImpulse *= skid[i]
-          w.sideImpulse *= skid[i]
-        }
-      }
-    }
-    for (const w of this.wheels) {
-      if (!w.inContact) continue
-      if (w.forwardImpulse !== 0) {
-        const f = w.forwardWS
-        body.applyImpulseAtPoint(
-          { x: f.x * w.forwardImpulse, y: f.y * w.forwardImpulse, z: f.z * w.forwardImpulse },
-          w.point,
-          false,
-        )
-      }
-      if (w.sideImpulse !== 0) {
-        const a = w.axleWS
-        const imp = { x: a.x * w.sideImpulse, y: a.y * w.sideImpulse, z: a.z * w.sideImpulse }
-        body.applyImpulseAtPoint(imp, w.point, false)
-        w.ground?.applyImpulseAtPoint({ x: -imp.x, y: -imp.y, z: -imp.z }, w.point, true)
-      }
+      this.tire(w, dt)
     }
     if (this.wheels.some((w) => w.inContact)) body.wakeUp()
   }
 
-  /** Impulsion qui annule (en partie) la vitesse relative le long de n (resolveSingleBilateral de Bullet). */
-  private bilateral(p: Vec, n: Vec, ground: RigidBody | null): number {
-    const body = this.body
-    const v1 = body.velocityAt(p)
-    const v2 = ground ? ground.velocityAt(p) : { x: 0, y: 0, z: 0 }
-    const rel = dot(n, { x: v1.x - v2.x, y: v1.y - v2.y, z: v1.z - v2.z })
-    const denom = body.impulseDenominator(p, n) + (ground ? ground.impulseDenominator(p, n) : 0)
-    if (denom <= 1e-12) return 0
-    return (-0.2 * rel) / denom
+  wheelIsSliding(i: number): boolean {
+    return this.wheels[i]?.sliding ?? false
   }
 
-  private rollingFriction(p: Vec, fwd: Vec, ground: RigidBody | null, maxImpulse: number): number {
+  /** Forces d'un pneu au contact, appliquées comme impulsions pour ce pas. */
+  private tire(w: Wheel, dt: number) {
     const body = this.body
-    const v1 = body.velocityAt(p)
-    const v2 = ground ? ground.velocityAt(p) : { x: 0, y: 0, z: 0 }
-    const vrel = dot(fwd, { x: v1.x - v2.x, y: v1.y - v2.y, z: v1.z - v2.z })
-    const denom = body.impulseDenominator(p, fwd) + (ground ? ground.impulseDenominator(p, fwd) : 0)
-    if (denom <= 1e-12) return 0
-    const j = -vrel / denom
-    return Math.max(-maxImpulse, Math.min(maxImpulse, j))
+    const ground = w.ground
+    const v1 = body.velocityAt(w.point)
+    const v2 = ground ? ground.velocityAt(w.point) : { x: 0, y: 0, z: 0 }
+    const v = { x: v1.x - v2.x, y: v1.y - v2.y, z: v1.z - v2.z }
+    const vLong = dot(v, w.forwardWS)
+    const vLat = dot(v, w.axleWS)
+    const denLong =
+      body.impulseDenominator(w.point, w.forwardWS) + (ground?.impulseDenominator(w.point, w.forwardWS) ?? 0)
+    const denLat = body.impulseDenominator(w.point, w.axleWS) + (ground?.impulseDenominator(w.point, w.axleWS) ?? 0)
+    if (denLong <= 1e-12 || denLat <= 1e-12) return
+    const load = Math.min(w.force, w.maxForce)
+    const peak = w.frictionSlip
+    const slide = peak * TIRE.slideRatio
+    const mu = w.sliding ? slide : peak
+
+    // Latéral : l'adhérence croît avec l'angle de dérive jusqu'au pic, puis retombe vers la glisse.
+    const alpha = Math.atan2(Math.abs(vLat), Math.max(Math.abs(vLong), TIRE.lowSpeed))
+    const curve =
+      alpha <= TIRE.peakSlip
+        ? mu * (alpha / TIRE.peakSlip)
+        : mu - (mu - slide) * Math.min(1, (alpha - TIRE.peakSlip) / TIRE.peakSlip)
+    const latMax = curve * w.sideStiffness * load * dt
+    let jLat = -Math.sign(vLat) * Math.min(latMax, Math.abs(vLat) / denLat)
+
+    // Longitudinal : moteur, frein (qui ne peut qu'arrêter la roue) et résistance au roulement.
+    const stop = Math.abs(vLong) / denLong
+    const brake = Math.min((w.brake + TIRE.rolling * load) * dt, stop)
+    let jLong = w.engine * dt - Math.sign(vLong) * brake
+
+    // Cercle d'adhérence : au-delà, le pneu glisse (et garde l'adhérence réduite tant qu'il glisse).
+    const budget = mu * load * dt
+    const total = Math.hypot(jLong, jLat)
+    if (total > budget && total > 0) {
+      const k = budget / total
+      jLong *= k
+      jLat *= k
+      w.sliding = true
+    } else if (total < budget * TIRE.regrip) {
+      w.sliding = false
+    }
+
+    if (jLong !== 0) {
+      const f = w.forwardWS
+      const imp = { x: f.x * jLong, y: f.y * jLong, z: f.z * jLong }
+      body.applyImpulseAtPoint(imp, w.point, false)
+      ground?.applyImpulseAtPoint({ x: -imp.x, y: -imp.y, z: -imp.z }, w.point, true)
+    }
+    if (jLat !== 0) {
+      // Appliquée au centre de roulis, au-dessus du sol : la caisse penche sans se retourner.
+      const at = {
+        x: w.point.x + w.normal.x * TIRE.rollCentre,
+        y: w.point.y + w.normal.y * TIRE.rollCentre,
+        z: w.point.z + w.normal.z * TIRE.rollCentre,
+      }
+      const a = w.axleWS
+      const imp = { x: a.x * jLat, y: a.y * jLat, z: a.z * jLat }
+      body.applyImpulseAtPoint(imp, at, false)
+      ground?.applyImpulseAtPoint({ x: -imp.x, y: -imp.y, z: -imp.z }, w.point, true)
+    }
   }
 }
 

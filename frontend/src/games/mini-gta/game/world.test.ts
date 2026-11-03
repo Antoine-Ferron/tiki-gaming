@@ -193,12 +193,12 @@ describe('conduite', () => {
     return v
   }
 
-  test('la berline passe de 0 à 80 km/h en moins de 4,5 s', () => {
+  test('la berline atteint 80 km/h en moins de 5,5 s en ville', () => {
     const { a, d } = street()
     const car = launch('sedan', a.x + d.x * 5, a.z + d.z * 5, Math.atan2(d.x, d.z))
 
     t.key('KeyW', true)
-    const reached = t.until(() => car.speed * 3.6 >= 80, 4.5)
+    const reached = t.until(() => car.speed * 3.6 >= 80, 5.5)
     t.key('KeyW', false)
 
     expect(reached).toBe(true)
