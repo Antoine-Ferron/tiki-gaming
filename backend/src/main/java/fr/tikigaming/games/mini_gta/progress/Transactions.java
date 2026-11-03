@@ -3,6 +3,7 @@ package fr.tikigaming.games.mini_gta.progress;
 import fr.tikigaming.games.mini_gta.missions.MissionDef;
 import fr.tikigaming.games.mini_gta.weapons.WeaponDef;
 import fr.tikigaming.games.mini_gta.weapons.WeaponId;
+import java.util.Objects;
 
 /**
  * Règles d'argent du jeu, appliquées par le serveur à la progression envoyée par le client : récompenses de
@@ -40,7 +41,8 @@ public final class Transactions {
             price = ARMOR_PRICE;
             rounds = 0;
         } else {
-            WeaponDef def = weapon.def();
+            // sells() a déjà refusé une arme absente pour tout autre article que l'armure.
+            WeaponDef def = Objects.requireNonNull(weapon).def();
             if (item == Purchase.Item.WEAPON) {
                 price = def.price();
                 rounds = def.thrown() ? def.ammoPack() : def.magazine() * 2;

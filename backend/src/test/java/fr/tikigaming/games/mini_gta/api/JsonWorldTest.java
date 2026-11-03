@@ -2,6 +2,7 @@ package fr.tikigaming.games.mini_gta.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import fr.tikigaming.games.mini_gta.world.CityData;
@@ -25,6 +26,7 @@ class JsonWorldTest {
             anyTier |= b.has("tier");
         }
         assertTrue(anyTier);
+        assertNotNull(safehouse);
         assertEquals(3, safehouse.get("style").asInt()); // HOUSE
         assertEquals("flat", safehouse.get("roof").asString());
         assertTrue(safehouse.get("hollow").has("doorSide"));
@@ -33,6 +35,7 @@ class JsonWorldTest {
         for (JsonNode p : JsonTrees.tree(Json.world(full)).get("props")) {
             if (p.get("kind").asString().equals("trafficLight")) light = p;
         }
+        assertNotNull(light);
         assertTrue(light.has("node") && light.has("edge"));
         assertFalse(light.get("destroyed").asBoolean());
     }

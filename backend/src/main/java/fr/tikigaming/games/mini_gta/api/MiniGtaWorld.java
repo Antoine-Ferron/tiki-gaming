@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.LongFunction;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -33,6 +34,7 @@ public class MiniGtaWorld {
     private final long seed;
     private Generated generated;
 
+    @Autowired
     public MiniGtaWorld() {
         this(CityGenerator::generate, SEED);
     }

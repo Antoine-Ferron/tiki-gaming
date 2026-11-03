@@ -10,11 +10,13 @@ import fr.tikigaming.games.mini_gta.world.WorldConstants.Airfield;
 import fr.tikigaming.games.mini_gta.world.WorldConstants.Downtown;
 import fr.tikigaming.games.mini_gta.world.WorldConstants.Ring;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -71,7 +73,32 @@ public final class CityGenerator {
     /** Vecteurs unitaires des quatre côtés : 0 = -z, 1 = +x, 2 = +z, 3 = -x. */
     private static final int[][] SIDES = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
 
-    private record SpecialSpec(SpecialKind kind, Set<District> districts, double nearX, double nearZ, double[] size) {}
+    /** Bâtiment spécial à placer ; {@code size} (demi-largeur, demi-profondeur, hauteur) est facultatif. */
+    private record SpecialSpec(SpecialKind kind, Set<District> districts, double nearX, double nearZ, double[] size) {
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof SpecialSpec s
+                    && kind == s.kind
+                    && districts.equals(s.districts)
+                    && Double.compare(nearX, s.nearX) == 0
+                    && Double.compare(nearZ, s.nearZ) == 0
+                    && Arrays.equals(size, s.size);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(kind, districts, nearX, nearZ) * 31 + Arrays.hashCode(size);
+        }
+
+        @Override
+        public String toString() {
+            return "SpecialSpec[" + kind + ", " + districts + ", " + nearX + ", " + nearZ + ", " + Arrays.toString(size)
+                    + "]";
+        }
+    }
+
+    /** Case de la grille des îlots (clé du graphe piéton). */
+    private record GridCell(int i, int j) {}
 
     private record Placed(Building building, Block block) {}
 
@@ -326,8 +353,8 @@ public final class CityGenerator {
     }
 
     private void addContainerYard(Rect lot, double y0) {
-        long rows = (long) Math.floor((lot.depth() - 6) / 4);
-        long cols = (long) Math.floor((lot.width() - 6) / 13);
+        int rows = (int) Math.floor((lot.depth() - 6) / 4);
+        int cols = (int) Math.floor((lot.width() - 6) / 13);
         for (int a = 0; a < cols; a++) {
             for (int b = 0; b < rows; b++) {
                 if (r.chance(0.25)) continue;
@@ -586,7 +613,7 @@ public final class CityGenerator {
                 }
             }
             if (block.park()) {
-                long count = (long) Math.floor((sx * sz) / 160);
+                int count = (int) Math.floor((sx * sz) / 160);
                 for (int k = 0; k < count; k++) {
                     addProp(
                             PropKind.TREE,
@@ -670,7 +697,7 @@ public final class CityGenerator {
 
     /** Graphe piéton : quatre coins par îlot de la grille, reliés aux îlots voisins. */
     private void generateSidewalks() {
-        Map<String, int[]> cornerIds = new LinkedHashMap<>();
+        Map<GridCell, int[]> cornerIds = new LinkedHashMap<>();
         for (Block block : blocks) {
             if (block.gi() < 0 || block.gj() < 0 || block.district() == District.PORT) continue;
             double i = 2;
@@ -681,19 +708,18 @@ public final class CityGenerator {
                 addSidewalk(block.x0() + i, block.z1() - i),
             };
             for (int k = 0; k < 4; k++) link(c[k], c[(k + 1) % 4]);
-            cornerIds.put(block.gi() + "," + block.gj(), c);
+            cornerIds.put(new GridCell(block.gi(), block.gj()), c);
         }
-        for (Map.Entry<String, int[]> entry : cornerIds.entrySet()) {
-            String[] parts = entry.getKey().split(",");
-            int i = Integer.parseInt(parts[0]);
-            int j = Integer.parseInt(parts[1]);
+        for (Map.Entry<GridCell, int[]> entry : cornerIds.entrySet()) {
+            int i = entry.getKey().i();
+            int j = entry.getKey().j();
             int[] c = entry.getValue();
-            int[] right = cornerIds.get((i + 1) + "," + j);
+            int[] right = cornerIds.get(new GridCell(i + 1, j));
             if (right != null) {
                 link(c[1], right[0]);
                 link(c[2], right[3]);
             }
-            int[] down = cornerIds.get(i + "," + (j + 1));
+            int[] down = cornerIds.get(new GridCell(i, j + 1));
             if (down != null) {
                 link(c[3], down[0]);
                 link(c[2], down[1]);

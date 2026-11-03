@@ -58,8 +58,9 @@ public final class Json {
 
     /** Map ordonnée construite par paires clé/valeur ; les valeurs nulles sont omises. */
     private static Map<String, Object> obj(Object... kv) {
+        if (kv.length % 2 != 0) throw new IllegalArgumentException("obj() attend des paires clé/valeur");
         Map<String, Object> m = new LinkedHashMap<>();
-        for (int i = 0; i < kv.length; i += 2) {
+        for (int i = 0; i + 1 < kv.length; i += 2) {
             if (kv[i + 1] != null) m.put((String) kv[i], kv[i + 1]);
         }
         return m;

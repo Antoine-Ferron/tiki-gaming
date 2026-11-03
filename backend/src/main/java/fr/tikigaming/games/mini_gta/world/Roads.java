@@ -101,7 +101,7 @@ public final class Roads {
             RoadNode a = tops.get(k);
             RoadNode b = tops.get(k + 1);
             double len = Math.hypot(b.x - a.x, b.z - a.z);
-            long segs = Math.max(2, Math.round(len / 25));
+            int segs = (int) Math.max(2, Math.round(len / 25));
             double wig = r.range(20, 35);
             List<Polyline.Point> pts = new ArrayList<>(List.of(new Polyline.Point(a.x, a.z)));
             List<Integer> ids = new ArrayList<>(List.of(a.id));
