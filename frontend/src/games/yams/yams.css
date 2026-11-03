@@ -1,22 +1,83 @@
-.yams-sheet {
-  margin-block: 1rem;
-}
-
-.yams-categories {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.yams {
   display: grid;
-  gap: 0.25rem;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
-.yams-category {
+.yams-board {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: center;
   gap: 1rem;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.yams-turn {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.yams-dice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.yams-die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0;
+  font-size: 2.75rem;
+  line-height: 1;
+  border: 2px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
+  color: var(--text);
+}
+
+.yams-die[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.yams-roll {
+  font-size: 1.25rem;
+  min-width: 200px;
+  min-height: 56px;
+}
+
+.yams-sheet {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.yams-sheet th,
+.yams-sheet td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.yams-sheet th[scope='row'] {
+  text-align: left;
+  font-weight: normal;
+}
+
+.yams-current {
+  color: var(--accent);
+}
+
+.yams-total th[scope='row'],
+.yams-total td {
+  font-weight: bold;
+}
+
+.yams-choice {
+  min-width: 3rem;
+  padding: 0.15rem 0.5rem;
 }

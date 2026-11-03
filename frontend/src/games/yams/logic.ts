@@ -170,6 +170,15 @@ export function fillCategory(sheet: Sheet, category: Category, dice: Dice): Shee
 
 // --- Tour de jeu ---------------------------------------------------------
 
+/** Premier lancer des cinq dés : rollsUsed = 1, aucun dé conservé. */
+export function startTurn(rollDie: RollDie): Turn {
+  return {
+    dice: [rollDie(), rollDie(), rollDie(), rollDie(), rollDie()],
+    kept: [false, false, false, false, false],
+    rollsUsed: 1,
+  }
+}
+
 export function canReroll(turn: Turn): boolean {
   return turn.rollsUsed < MAX_ROLLS
 }
@@ -189,4 +198,44 @@ export function reroll(turn: Turn, rollDie: RollDie): Turn {
   }
   const dice = turn.dice.map((die, i) => (turn.kept[i] ? die : rollDie())) as unknown as Dice
   return { ...turn, dice, rollsUsed: turn.rollsUsed + 1 }
+}
+
+// --- Partie à deux joueurs -----------------------------------------------
+
+/** 0 = joueur 1 (le compte connecté), 1 = joueur 2 (invité sur le même écran). */
+export type PlayerIndex = 0 | 1
+
+export type Game = {
+  readonly sheets: readonly [Sheet, Sheet]
+  readonly current: PlayerIndex
+  /** null : le joueur courant n'a pas encore lancé les dés. */
+  readonly turn: Turn | null
+}
+
+export function newGame(): Game {
+  return { sheets: [{}, {}], current: 0, turn: null }
+}
+
+/** Premier lancer du tour, puis relances. */
+export function roll(game: Game, rollDie: RollDie): Game {
+  return { ...game, turn: game.turn ? reroll(game.turn, rollDie) : startTurn(rollDie) }
+}
+
+/** Inscrit les dés du tour dans la case choisie par le joueur courant, puis passe la main. */
+export function playCategory(game: Game, category: Category): Game {
+  if (!game.turn) throw new Error('Lance les dés avant de choisir une case')
+  const sheets: [Sheet, Sheet] = [...game.sheets]
+  sheets[game.current] = fillCategory(sheets[game.current], category, game.turn.dice)
+  return { sheets, current: game.current === 0 ? 1 : 0, turn: null }
+}
+
+export function isGameOver(game: Game): boolean {
+  return game.sheets.every(isSheetComplete)
+}
+
+/** Joueur au plus gros total, ou null en cas d'égalité. */
+export function winner(game: Game): PlayerIndex | null {
+  const [first, second] = game.sheets.map(totalScore)
+  if (first === second) return null
+  return first > second ? 0 : 1
 }
