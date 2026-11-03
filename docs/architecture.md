@@ -183,15 +183,16 @@ classement, sauvegarde. Un jeu **n'importe jamais `@/lib/supabase`** directement
 #### SDK : architecture hexagonale
 
 ```
-GamePage ──> createGameContext(game, player, deps) ──> domaine pur (checkScore, rankLeaderboard)
+GamePage ──> createGameContext(game, player, platformDeps()) ──> domaine pur (checkScore, rankLeaderboard)
                          │
                          ├─ ScoreRepository ──> supabaseScores      (fake : FakeScores)
                          ├─ SaveStore       ──> supabaseSaves / localSaves (fake : FakeSaves)
                          └─ KeyValueStorage ──> localStorage        (fake : MemoryStorage)
 ```
 
-Le contexte ne connaît que les ports (`ports.ts`) ; les adaptateurs traduisent toute erreur en
-`GameError`. Les tests injectent des fakes en mémoire : aucun test unitaire ne touche le réseau.
+Le contexte ne connaît que les ports (`ports.ts`) : `sdk.ts` n'importe aucun adaptateur. C'est la page
+de jeu (point d'assemblage) qui branche les adaptateurs avec `platformDeps()` (`adapters/index.ts`). Les
+adaptateurs traduisent toute erreur en `GameError`. Les tests injectent des fakes en mémoire : aucun test unitaire ne touche le réseau.
 
 #### Catégories
 

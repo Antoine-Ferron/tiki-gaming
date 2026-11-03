@@ -2,13 +2,15 @@ import type { Json } from '@/lib/database.types'
 import { logger } from '@/lib/logger'
 import { checkScore } from './domain/score'
 import { GameError, MESSAGES, toGameError } from './errors'
-import { browserStorage, localSaves } from './adapters/local'
-import { supabaseSaves, supabaseScores } from './adapters/supabase'
+import { localSaves } from './adapters/local'
 import type { KeyValueStorage, SaveStore, ScoreRepository } from './ports'
 import { createScoreQueue, type ScoreQueue } from './scoreQueue'
 import type { GameContext, GameDefinition, Player, SaveSchema } from './types'
 
-/** Dépendances du contexte de jeu : remplaçables par des fakes dans les tests (voir ./testing/fakes). */
+/**
+ * Dépendances du contexte de jeu (ports). En production : `platformDeps()` (./adapters), branché par GamePage ;
+ * dans les tests : `fakeDeps()` (./testing/fakes). Ce module n'importe aucun adaptateur d'infrastructure.
+ */
 export type GameDeps = {
   scores: ScoreRepository
   /** Sauvegarde du joueur connecté. */
@@ -17,13 +19,9 @@ export type GameDeps = {
   storage: KeyValueStorage | null
 }
 
-export function defaultDeps(): GameDeps {
-  return { scores: supabaseScores, playerSaves: supabaseSaves, storage: browserStorage() }
-}
-
 type GameInfo = Pick<GameDefinition, 'slug' | 'scoreLimits'>
 
-export function createGameContext(game: GameInfo, player: Player | null, deps: GameDeps = defaultDeps()): GameContext {
+export function createGameContext(game: GameInfo, player: Player | null, deps: GameDeps): GameContext {
   return player ? createPlayerContext(game, player, deps) : createGuestContext(game, deps)
 }
 

@@ -2,6 +2,7 @@ import { Suspense, useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
 import { GameTags } from '@/components/GameTags'
+import { platformDeps } from '@/games/adapters'
 import { gameAccess } from '@/games/domain/access'
 import { GameErrorBoundary } from '@/games/GameErrorBoundary'
 import { getGame } from '@/games/registry'
@@ -28,6 +29,7 @@ export default function GamePage() {
         ? createGameContext(
             game,
             access === 'player' && profile ? { id: profile.id, username: profile.username } : null,
+            platformDeps(),
           )
         : null,
     [game, playable, access, profile],
