@@ -75,6 +75,7 @@ Package `fr.tikigaming.sudoku`, sans état (rien n'est stocké côté serveur).
 | `SudokuService`    | Vérifie une partie (forme des grilles, indices intacts, conflits) et calcule le score |
 | `SudokuController` | Les endpoints REST, documentés dans OpenAPI (tag « Sudoku »)                      |
 | `Clock`, `CurrencyConverter`, `AuditNotifier` | Contrats purs sans I/O (voir [Contrats d'abstraction](#contrats-dabstraction)) |
+| `Ledger`, `LedgerEntry`, `RewardService` | Registre des pièces et service qui convertit un score en pièces (voir [Récompense en pièces](#récompense-en-pièces)) |
 
 ### API
 
@@ -142,6 +143,22 @@ n'a besoin d'une devise, d'un audit ou de l'heure.
 ou une date manquante. `Clock` n'est pas `java.time.Clock` : attention à l'import si les deux servent
 dans la même classe.
 
+### Récompense en pièces
+
+`RewardService` est le premier code qui s'appuie sur les contrats : pour un joueur et un score, il
+convertit les points (`PTS`) en pièces (`TIKI`) avec `CurrencyConverter`, inscrit une ligne dans le
+`Ledger` (registre) à l'heure donnée par `Clock`, puis envoie un événement `REWARD_GRANTED` à
+`AuditNotifier`. Il renvoie les pièces créditées.
+
+- Un joueur vide ou un score négatif est refusé (`IllegalArgumentException`).
+- Si la conversion échoue (devise inconnue), **ni le registre ni l'audit ne sont modifiés**.
+- Un score de 0 est inscrit au registre pour 0 pièce.
+- Le service est **hypothétique** : le taux `PTS` → `TIKI` et le principe de pièces n'existent pas dans
+  la plateforme. Il n'est pas branché au Sudoku ni exposé par l'API.
+
+`Ledger` est un contrat (`record`, `entriesOf`, `balanceOf`) : aucune implémentation de production
+n'existe pour l'instant, seulement le fake en mémoire des tests.
+
 ## Tests
 
 Les tests unitaires du backend sont dans `backend/src/test/java/fr/tikigaming/sudoku/` :
@@ -157,6 +174,16 @@ Les tests unitaires du backend sont dans `backend/src/test/java/fr/tikigaming/su
 | `ClockTest`               | Horloge figée, avancée à la main, calcul d'une durée                 |
 | `FixedRateCurrencyConverterTest` | Conversion via la référence, arrondi, devise inconnue, montant négatif |
 | `AuditNotifierTest`       | Ordre des événements, immutabilité des détails, entrées invalides    |
+| `RewardServiceTest`       | Conversion au taux figé, registre, audit, solde, entrées invalides, échec de conversion |
+
+**Doubles de test** (en RAM, dans `src/test`), tous sans I/O :
+
+| Double                  | Type | Rôle                                                                   |
+|-------------------------|------|------------------------------------------------------------------------|
+| `StubCurrencyConverter` | Stub | Taux de change figé (ex. 1 PTS = 0,01 TIKI) ; refuse toute autre paire de devises |
+| `InMemoryLedger`        | Fake | Vrai registre fonctionnel, stocké dans une liste                      |
+| `FixedClock`            | Stub | Heure figée, avancée à la main                                         |
+| `RecordingAuditNotifier`| Spy  | Garde les événements reçus pour les vérifier                           |
 
 Exigences : logique pure, aucun accès réseau ni disque, pas de contexte Spring. Le seul aléa est un
 `Random` à graine fixe. Les tests à backtracking (générateur, solveur) prennent quelques dizaines de ms
