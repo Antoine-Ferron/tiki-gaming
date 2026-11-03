@@ -15,6 +15,7 @@ import {
   type WeaponDef,
   type WeaponId,
 } from './weapons'
+import { Bloom, damageFalloff, hitZone, recoilKick, shotSpread, zoneMultiplier } from './ballistics'
 
 interface Grenade {
   body: RigidBody
@@ -37,6 +38,15 @@ export class Combat {
   private attackAnim = 0
   /** Accumulated recoil kick (rad) applied to the camera. */
   recoil = 0
+  /** Recul horizontal accumulé (rad). */
+  recoilYaw = 0
+  /** Dispersion accumulée par les tirs rapprochés du joueur. */
+  readonly bloom = new Bloom()
+  /** Tirs rapprochés consécutifs (le recul d'une rafale s'accentue). */
+  private burstShots = 0
+  private sinceShot = 99
+  /** Dernière touche du joueur, pour le marqueur du HUD (horodatage `performance.now()`). */
+  hitMarker: { at: number; kill: boolean } | null = null
 
   constructor(private game: Game) {}
 
@@ -64,6 +74,10 @@ export class Combat {
       }
     }
     const inv = player.inventory
+    a.tickReactions(dt)
+    this.sinceShot += dt
+    this.bloom.recover(WEAPONS[inv.current], dt)
+    if (this.sinceShot > WEAPONS[inv.current].interval * 2.5) this.burstShots = 0
     if (this.reloading > 0) {
       this.reloading -= dt
       if (this.reloading <= 0) reload(inv)
@@ -115,7 +129,17 @@ export class Combat {
     const chest = a.chest(_p)
     const t = Math.max(0, chest.clone().sub(ray.o).dot(ray.d))
     _o.copy(ray.o).addScaledVector(ray.d, t)
-    const spread = def.spread * (player.aiming ? 1 : 3) * (a.anim.speed > 1 ? 1.6 : 1)
+    const spread = shotSpread(
+      def,
+      {
+        aiming: player.aiming,
+        crouching: a.anim.crouch,
+        moving: a.anim.speed > 1,
+        sprinting: a.anim.speed > 5,
+        airborne: !a.anim.grounded,
+      },
+      this.bloom.value,
+    )
     const muzzle = a
       .chest(new Vector3())
       .add(new Vector3(Math.sin(a.heading), 0.1, Math.cos(a.heading)).multiplyScalar(0.6))
@@ -128,7 +152,11 @@ export class Combat {
       this.hitscan(_o, _d, def, a, muzzle, player.vehicle?.body ?? player.body.body)
     }
     game.effects.muzzle(muzzle, ray.d)
-    this.recoil += def.id === 'sniper' ? 0.06 : def.id === 'shotgun' ? 0.05 : 0.015
+    const kick = recoilKick(def, this.burstShots++)
+    this.recoil += kick.pitch
+    this.recoilYaw += kick.yaw
+    this.bloom.fire(def)
+    this.sinceShot = 0
     game.events.emit('noise', { x: a.position.x, y: a.position.y, z: a.position.z, radius: def.noise, source: a })
     if (slotOf(inv, inv.current)!.clip === 0) this.startReload()
   }
@@ -152,7 +180,15 @@ export class Combat {
   }
 
   /** Cast a bullet and apply its effects. Returns the hit point. */
-  hitscan(origin: Vector3, dir: Vector3, def: WeaponDef, shooter: Actor | null, muzzle: Vector3, exclude?: RigidBody) {
+  hitscan(
+    origin: Vector3,
+    dir: Vector3,
+    def: WeaponDef,
+    shooter: Actor | null,
+    muzzle: Vector3,
+    exclude?: RigidBody,
+    damageScale = 1,
+  ) {
     const game = this.game
     const hit = game.physics.raycast(
       origin.x,
@@ -170,13 +206,27 @@ export class Combat {
     if (!hit) return null
     _n.set(hit.nx, hit.ny, hit.nz)
     const owner = game.physics.ownerOf(hit.collider)
-    const dmg = def.damage * (hit.distance > def.range * 0.6 ? 0.7 : 1)
+    const dmg = def.damage * damageScale * damageFalloff(def, hit.distance)
     if (owner?.kind === 'character') {
       const target = owner.ref as Actor
-      // Headshots: top of the capsule.
-      const head = hit.y - target.position.y > 1.5 ? 2.5 : 1
-      target.damage({ amount: dmg * head, from: shooter, kind: 'bullet', dir: { x: dir.x, z: dir.z } })
+      // Zone touchée : hauteur au-dessus des pieds et écart latéral à l'axe du corps (vu du tireur).
+      const dx = hit.x - target.position.x
+      const dz = hit.z - target.position.z
+      const zone = hitZone(hit.y - target.position.y, dx * -dir.z + dz * dir.x, target.anim.crouch)
+      const isPlayer = target === game.player.actor
+      // Le joueur encaisse moins à la tête : les PNJ ne doivent pas le tuer d'une balle.
+      const mult = isPlayer ? Math.min(1.8, zoneMultiplier(zone, def)) : zoneMultiplier(zone, def)
+      const killed = target.damage({
+        amount: dmg * mult,
+        from: shooter,
+        kind: 'bullet',
+        dir: { x: dir.x, z: dir.z },
+        zone,
+        push: (def.damage * def.pellets) / 45,
+      })
       game.effects.impact(end, _n, 'blood')
+      if (isPlayer) game.cameraCtl.addShake(0.12)
+      if (shooter === game.player.actor) this.hitMarker = { at: performance.now(), kill: killed || target.dead }
     } else if (owner?.kind === 'vehicle') {
       const v = owner.ref as Vehicle
       v.lastAttacker = shooter
@@ -222,7 +272,7 @@ export class Combat {
       _d.y += (Math.random() - 0.5) * 2 * miss
       _d.z += (Math.random() - 0.5) * 2 * miss
       _d.normalize()
-      this.hitscan(from, _d, { ...def, damage: def.damage * 0.55 }, shooter, from, exclude)
+      this.hitscan(from, _d, def, shooter, from, exclude, 0.55)
     }
     this.game.effects.muzzle(from, dir)
     this.game.events.emit('noise', { x: from.x, y: from.y, z: from.z, radius: def.noise * 0.7, source: shooter })
@@ -251,7 +301,13 @@ export class Combat {
       Groups.rayAll,
     )
     for (const t of hitActors) {
-      t.damage({ amount: def.damage, from: attacker, kind: 'melee', dir: { x: Math.sin(h), z: Math.cos(h) } })
+      t.damage({
+        amount: def.damage,
+        from: attacker,
+        kind: 'melee',
+        dir: { x: Math.sin(h), z: Math.cos(h) },
+        push: def.id === 'bat' ? 2.5 : 1,
+      })
       game.effects.impact(t.chest(new Vector3()), new Vector3(-Math.sin(h), 0, -Math.cos(h)), 'blood')
     }
     if (hitActors.size) game.events.emit('noise', { x: c.x, y: c.y, z: c.z, radius: 15, source: attacker })
@@ -302,6 +358,7 @@ export class Combat {
         from: attacker,
         kind: 'explosion',
         dir: { x: dir.x, z: dir.z },
+        push: 8 * k,
       })
     }
     for (const v of game.vehicles) {
@@ -357,10 +414,14 @@ export class Combat {
       g.mesh.position.set(t.x, t.y, t.z)
       g.mesh.quaternion.set(r.x, r.y, r.z, r.w)
     }
-    if (this.recoil > 0) {
+    // Le recul relève la visée (et la décale un peu) ; au joueur de la ramener.
+    if (this.recoil > 0 || this.recoilYaw !== 0) {
       this.game.cameraCtl.pitch -= this.recoil * 0.5
+      this.game.cameraCtl.yaw += this.recoilYaw * 0.5
       this.recoil *= 0.5
+      this.recoilYaw *= 0.5
       if (this.recoil < 0.001) this.recoil = 0
+      if (Math.abs(this.recoilYaw) < 0.0005) this.recoilYaw = 0
     }
   }
 

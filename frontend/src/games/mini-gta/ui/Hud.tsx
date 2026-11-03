@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+import { getGame } from '../game/current'
 import { useHudStore } from '../state/hudStore'
 import { useGameStore } from '../state/gameStore'
 import { useUiStore } from '../state/uiStore'
@@ -39,6 +41,31 @@ function Notifications() {
       </div>
     </>
   )
+}
+
+/** Durée d'affichage du marqueur de touche (ms). */
+const HIT_MARKER_MS = 220
+
+/**
+ * Marqueur de touche : une croix brève au centre quand une balle du joueur touche, rouge si elle tue.
+ * Mis à jour hors React (une classe sur l'élément), sans état par image.
+ */
+export function HitMarker() {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    let raf = 0
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      const el = ref.current
+      const hit = getGame()?.combat.hitMarker
+      if (!el) return
+      const shown = !!hit && performance.now() - hit.at < HIT_MARKER_MS
+      el.className = `mini-gta-hitmarker${shown ? ' mini-gta-hitmarker-on' : ''}${shown && hit.kill ? ' mini-gta-hitmarker-kill' : ''}`
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+  return <div ref={ref} className="mini-gta-hitmarker" aria-hidden="true" />
 }
 
 function formatTime(h: number) {
@@ -106,6 +133,7 @@ export function Hud() {
       )}
       {h.prompt && menu === null && <div className="mini-gta-prompt">{h.prompt}</div>}
       {showCross && <div className="mini-gta-crosshair" />}
+      <HitMarker />
       {h.aiming && h.weapon === 'sniper' && <div className="mini-gta-scope" />}
       <Notifications />
     </div>

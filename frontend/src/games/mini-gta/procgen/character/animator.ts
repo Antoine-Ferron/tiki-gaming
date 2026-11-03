@@ -22,6 +22,10 @@ export interface AnimState {
   dead: number
   /** Hands raised (surrender / cower). */
   handsUp: boolean
+  /** À-coup d'un impact reçu (1 au choc, retombe à 0). */
+  flinch: number
+  /** Projection à la mort (m), dans le sens du tir. */
+  deathPush: number
 }
 
 export function defaultAnimState(): AnimState {
@@ -37,6 +41,8 @@ export function defaultAnimState(): AnimState {
     reclined: false,
     dead: 0,
     handsUp: false,
+    flinch: 0,
+    deathPush: 0,
   }
 }
 
@@ -190,11 +196,19 @@ export class CharacterAnimator {
       }
     }
 
+    if (s.flinch > 0 && s.dead === 0) {
+      // Impact : le buste et la tête partent en arrière, le torse vrille un peu.
+      t.spine = [t.spine[0] - 0.35 * s.flinch, t.spine[1], t.spine[2]]
+      t.chest = [t.chest[0] - 0.15 * s.flinch, t.chest[1] + 0.2 * s.flinch, t.chest[2]]
+      t.head = [t.head[0] - 0.3 * s.flinch, t.head[1], t.head[2]]
+    }
+
     if (s.dead > 0) {
       const k = clamp(s.dead / 0.6, 0, 1)
       rootX = (-Math.PI / 2) * k * this.deathSide
       rootY = 0.12 * k
-      rootZ = 0.3 * k
+      // Le corps face au tireur est projeté vers l'arrière, d'autant plus loin que l'arme est lourde.
+      rootZ = (0.3 - s.deathPush) * k
       hips = this.hipsY
       t.thighL = [0.1, 0, 0.3]
       t.thighR = [-0.1, 0, -0.2]

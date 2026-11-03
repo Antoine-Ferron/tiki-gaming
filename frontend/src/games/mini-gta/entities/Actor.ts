@@ -8,6 +8,7 @@ import {
 } from '../procgen/character/characterModel'
 import { buildWeaponMesh } from '../procgen/weapons/weaponModel'
 import { WEAPONS, type WeaponId } from '../systems/weapons'
+import type { HitZone } from '../systems/ballistics'
 import { Interp } from '../game/Interp'
 import type { Game } from '../game/Game'
 
@@ -19,6 +20,10 @@ export interface DamageInfo {
   kind: 'bullet' | 'melee' | 'explosion' | 'vehicle' | 'fall' | 'fire' | 'drown'
   /** Impact direction (for knockback / death fall). */
   dir?: { x: number; z: number }
+  /** Zone touchée par une balle : l'armure ne protège que le torse. */
+  zone?: HitZone
+  /** Vitesse de recul (m/s) transmise par l'impact ; à la mort, distance de projection. */
+  push?: number
 }
 
 let nextId = 1
@@ -42,6 +47,10 @@ export class Actor {
   /** Set while the actor sits in a vehicle (visual is parented to it). */
   seatedIn: unknown = null
   onDeath?: (info: DamageInfo) => void
+  /** Recul (m/s) reçu d'un impact, amorti ; les contrôleurs de déplacement l'ajoutent au mouvement. */
+  readonly knock = { x: 0, z: 0 }
+  /** Secondes de ralentissement après une blessure (le personnage accuse le coup). */
+  stagger = 0
   private tmp = new Vector3()
 
   constructor(
@@ -85,14 +94,24 @@ export class Actor {
   damage(info: DamageInfo): boolean {
     if (this.dead) return false
     let amount = info.amount
-    if (this.armor > 0 && info.kind !== 'drown' && info.kind !== 'fall') {
+    const armored = info.zone === undefined || info.zone === 'torso'
+    if (this.armor > 0 && armored && info.kind !== 'drown' && info.kind !== 'fall') {
       const absorbed = Math.min(this.armor, amount * 0.7)
       this.armor -= absorbed
       amount -= absorbed
     }
     this.health = Math.max(0, this.health - amount)
+    if (info.kind === 'bullet' || info.kind === 'melee' || info.kind === 'explosion') {
+      this.anim.flinch = 1
+      this.stagger = Math.max(this.stagger, info.kind === 'explosion' ? 0.8 : 0.35)
+      if (info.dir && info.push) {
+        this.knock.x += info.dir.x * info.push
+        this.knock.z += info.dir.z * info.push
+      }
+    }
     if (this.health <= 0) {
       this.deadTime = 0
+      this.anim.deathPush = Math.min(2.5, (info.push ?? 0) * 0.5)
       if (info.dir) this.heading = Math.atan2(-info.dir.x, -info.dir.z)
       this.onDeath?.(info)
       this.game.events.emit('actor:killed', { actor: this, info })
@@ -100,6 +119,19 @@ export class Actor {
     }
     this.game.events.emit('actor:hurt', { actor: this, info })
     return false
+  }
+
+  /** Pas fixe : amortit le recul reçu et le ralentissement de blessure. */
+  tickReactions(dt: number) {
+    const k = Math.exp(-8 * dt)
+    this.knock.x *= k
+    this.knock.z *= k
+    const m = Math.hypot(this.knock.x, this.knock.z)
+    if (m > 4) {
+      this.knock.x *= 4 / m
+      this.knock.z *= 4 / m
+    }
+    this.stagger = Math.max(0, this.stagger - dt)
   }
 
   /** Post-physics: record the new feet position. */
@@ -119,6 +151,7 @@ export class Actor {
       o.rotation.set(0, this.heading, 0)
     }
     if (this.dead) this.deadTime += dt
+    this.anim.flinch = Math.max(0, this.anim.flinch - dt * 4)
     this.anim.dead = this.dead ? Math.max(0.0001, this.deadTime) : 0
     const d = this.tmp.copy(o.getWorldPosition(this.tmp)).distanceTo(camPos)
     o.visible = d < 160

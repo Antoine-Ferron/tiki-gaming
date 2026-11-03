@@ -2,6 +2,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { Vector3 } from 'three'
 import { Rng } from '../core/rng'
+import { zoneMultiplier } from './ballistics'
 import { createTestGame, type TestGame } from '../game/testing/harness'
 import { addWeapon, slotOf, WEAPONS, type WeaponId } from './weapons'
 
@@ -93,7 +94,7 @@ describe('tir instantané (hitscan)', () => {
     expect(target.health).toBeCloseTo(100 - pistol().damage)
   })
 
-  test('une balle dans la tête fait 2,5 fois plus de dégâts', () => {
+  test('une balle dans la tête multiplie fortement les dégâts', () => {
     const target = dummy(road.clone().addScaledVector(along, 1))
     const origin = target.position
       .clone()
@@ -102,10 +103,52 @@ describe('tir instantané (hitscan)', () => {
 
     game.combat.hitscan(origin, along, pistol(), null, origin)
 
-    expect(target.health).toBeCloseTo(Math.max(0, 100 - pistol().damage * 2.5))
+    expect(target.health).toBeCloseTo(Math.max(0, 100 - pistol().damage * zoneMultiplier('head', pistol())))
   })
 
-  test('au-delà de 60 % de la portée, les dégâts baissent de 30 %', () => {
+  test('une balle dans les jambes blesse moins', () => {
+    const target = dummy(road.clone().addScaledVector(along, 1))
+    const origin = target.position
+      .clone()
+      .addScaledVector(along, -4)
+      .setY(target.position.y + 0.5)
+
+    game.combat.hitscan(origin, along, pistol(), null, origin)
+
+    expect(target.health).toBeCloseTo(100 - pistol().damage * zoneMultiplier('limb', pistol()))
+  })
+
+  test('le gilet protège le torse, pas la tête', () => {
+    const torso = dummy(road.clone().addScaledVector(along, 1))
+    torso.armor = 100
+    const origin = torso.position.clone().addScaledVector(along, -4)
+    game.combat.hitscan(origin.clone().setY(torso.position.y + 1.1), along, pistol(), null, origin)
+    expect(torso.armor).toBeLessThan(100)
+    torso.health = 0
+
+    const head = dummy(road.clone().addScaledVector(along, 1))
+    head.armor = 100
+    game.combat.hitscan(origin.clone().setY(head.position.y + 1.7), along, pistol(), null, origin)
+
+    expect(head.armor).toBe(100)
+    expect(head.health).toBeLessThan(100 - pistol().damage)
+  })
+
+  test('touché, le personnage accuse le coup : à-coup, recul et ralentissement', () => {
+    const target = dummy(road.clone().addScaledVector(along, 1))
+    const origin = target.position
+      .clone()
+      .addScaledVector(along, -4)
+      .setY(target.position.y + 1.1)
+
+    game.combat.hitscan(origin, along, WEAPONS.shotgun, null, origin)
+
+    expect(target.anim.flinch).toBe(1)
+    expect(target.stagger).toBeGreaterThan(0)
+    expect(target.knock.x * along.x + target.knock.z * along.z).toBeGreaterThan(0)
+  })
+
+  test('les dégâts décroissent avec la distance', () => {
     const target = dummy(road.clone().addScaledVector(along, 2))
     const origin = target.position
       .clone()
@@ -114,7 +157,8 @@ describe('tir instantané (hitscan)', () => {
 
     game.combat.hitscan(origin, along, { ...pistol(), range: 5, damage: 20 }, null, origin)
 
-    expect(target.health).toBeCloseTo(100 - 14)
+    expect(target.health).toBeGreaterThan(100 - 20)
+    expect(target.health).toBeLessThan(100 - 20 * 0.5)
   })
 
   test('une balle dans un véhicule l’abîme et retient le tireur', () => {

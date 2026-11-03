@@ -6,7 +6,7 @@ import { CharacterBody } from './CharacterBody'
 import type { WeaponId } from '../systems/weapons'
 import type { Game } from '../game/Game'
 
-export type NpcMode = 'idle' | 'guard' | 'chase' | 'arrest' | 'flee'
+export type NpcMode = 'idle' | 'guard' | 'chase' | 'arrest' | 'flee' | 'cover'
 
 const _t = new Vector3()
 const _c = new Vector3()
@@ -19,7 +19,8 @@ export class CombatNpc {
   weaponId: WeaponId
   /** Fire allowed (police only fires above 2 stars). */
   hostile = true
-  private fireTimer = 1 + Math.random()
+  // Le premier tir attend surtout le temps de réaction (voir `reaction`).
+  private fireTimer = 0.2 + Math.random() * 0.4
   private burst = 0
   private strafe = 0
   private strafeTimer = 0
@@ -31,6 +32,16 @@ export class CombatNpc {
   despawnTimer = 0
   private path: Vector3[] = []
   private repath = 0
+  /** Temps de réaction restant avant d'ouvrir le feu sur une cible qui vient d'apparaître. */
+  private reaction = 0
+  private sawTarget = false
+  /** Durée de visée continue : la précision s'affine. */
+  private aimTime = 0
+  /** Point d'abri visé quand il est blessé, et durée de repli. */
+  private cover: Vector3 | null = null
+  private coverTimer = 0
+  private coverCooldown = 0
+  private retreatTimer = 0
 
   constructor(
     private game: Game,
@@ -76,6 +87,21 @@ export class CombatNpc {
     const toZ = target.z - a.position.z
     const dist = Math.hypot(toX, toZ)
     const sees = this.sees()
+    a.tickReactions(dt)
+    this.coverCooldown -= dt
+    if (sees && !this.sawTarget) this.reaction = this.reactionTime()
+    this.sawTarget = sees
+    this.reaction = Math.max(0, this.reaction - dt)
+    this.aimTime = sees ? this.aimTime + dt : 0
+    // Blessé et exposé : il cherche un abri (ou recule en tirant s'il n'en trouve pas).
+    if (this.mode === 'chase' && sees && a.health < a.maxHealth * 0.5 && this.coverCooldown <= 0) {
+      this.coverCooldown = 7
+      this.cover = this.findCover()
+      if (this.cover) {
+        this.mode = 'cover'
+        this.coverTimer = 2.5 + Math.random() * 1.5
+      } else this.retreatTimer = 1.5
+    }
     let vx = 0
     let vz = 0
     let aiming = false
@@ -115,10 +141,37 @@ export class CombatNpc {
         vx = (dx / l) * 1.4
         vz = (dz / l) * 1.4
       }
+    } else if (this.mode === 'cover' && this.cover) {
+      this.coverTimer -= dt
+      const dx = this.cover.x - a.position.x
+      const dz = this.cover.z - a.position.z
+      const l = Math.hypot(dx, dz)
+      if (l > 0.6) {
+        vx = (dx / l) * 5.5
+        vz = (dz / l) * 5.5
+      }
+      // À l'abri, il attend puis ressort reprendre la poursuite.
+      if (this.coverTimer <= 0) {
+        this.mode = 'chase'
+        this.cover = null
+      }
     } else if (this.mode === 'flee') {
       vx = (-toX / (dist || 1)) * 5
       vz = (-toZ / (dist || 1)) * 5
     }
+
+    if (this.retreatTimer > 0 && this.mode === 'chase') {
+      this.retreatTimer -= dt
+      vx = (-toX / (dist || 1)) * 3
+      vz = (-toZ / (dist || 1)) * 3
+    }
+    // Sonné par un impact : il ralentit et subit le recul.
+    if (a.stagger > 0) {
+      vx *= 0.45
+      vz *= 0.45
+    }
+    vx += a.knock.x
+    vz += a.knock.z
 
     // Unstick: sidestep when not progressing.
     if (Math.hypot(vx, vz) > 1 && this.lastPos.distanceTo(a.position) < 0.02) this.stuckTimer += dt
@@ -141,25 +194,62 @@ export class CombatNpc {
     a.anim.aiming = aiming
     a.anim.aimPitch = Math.atan2(target.y - a.position.y, Math.max(1, dist)) * 0.8
 
-    if (aiming) {
+    if (aiming && this.reaction <= 0) {
       this.fireTimer -= dt
       if (this.fireTimer <= 0) {
         const auto = this.weaponId === 'rifle'
         const aim = player.vehicle
           ? player.vehicle.position.clone().setY(player.vehicle.position.y + 1)
           : player.actor.chest(new Vector3())
-        const acc =
-          this.accuracy * (player.vehicle ? 0.8 : 1) * (dist > 30 ? 0.6 : 1) * (player.actor.anim.speed > 4 ? 0.7 : 1)
+        const acc = npcAccuracy(this.accuracy, {
+          distance: dist,
+          targetSpeed: player.vehicle ? Math.abs(player.vehicle.speed) : player.actor.anim.speed,
+          aimTime: this.aimTime,
+          wounded: a.health < a.maxHealth * 0.5,
+          staggered: a.stagger > 0,
+        })
         game.combat.npcFire(a, aim, acc, this.weaponId, this.body.body)
-        if (auto && this.burst < 4) {
-          this.burst++
-          this.fireTimer = 0.12
+        // Rafales courtes : 3 à 5 balles au fusil d'assaut, 1 ou 2 au pistolet, puis une pause.
+        const burstLength = auto ? 3 + Math.floor(Math.random() * 3) : 1 + Math.floor(Math.random() * 2)
+        if (++this.burst < burstLength) {
+          this.fireTimer = auto ? 0.11 : 0.3
         } else {
           this.burst = 0
-          this.fireTimer = (auto ? 1.2 : 0.8) + Math.random() * 1.2
+          this.fireTimer = (auto ? 1.1 : 0.9) + Math.random() * 0.9
         }
       }
     }
+  }
+
+  /** Temps de réaction (s) avant de tirer sur une cible qui vient d'apparaître ; les SWAT sont plus vifs. */
+  private reactionTime() {
+    return (0.35 + Math.random() * 0.5) * (this.actor.tags.has('swat') ? 0.7 : 1)
+  }
+
+  /**
+   * Abri le plus proche : un point accessible en ligne droite d'où l'on ne voit plus le joueur (un mur, une
+   * voiture ou un coin de bâtiment s'interpose). Null s'il n'y en a pas à moins de 12 m.
+   */
+  private findCover(): Vector3 | null {
+    const ph = this.game.physics
+    const me = this.actor.position
+    const threat = this.game.player.actor.chest(new Vector3())
+    let best: Vector3 | null = null
+    let bestD = Infinity
+    for (const r of [4, 7, 11]) {
+      for (let k = 0; k < 12; k++) {
+        const ang = (k / 12) * Math.PI * 2
+        const p = new Vector3(me.x + Math.sin(ang) * r, me.y, me.z + Math.cos(ang) * r)
+        if (!ph.lineOfSight(me.x, me.y + 1, me.z, p.x, p.y + 1, p.z)) continue
+        if (ph.lineOfSight(p.x, p.y + 1.2, p.z, threat.x, threat.y, threat.z)) continue
+        if (r < bestD) {
+          bestD = r
+          best = p
+        }
+      }
+      if (best) return best
+    }
+    return best
   }
 
   /** Next point to walk to (sidewalk graph path, recomputed every 2 s). */
@@ -192,4 +282,19 @@ export class CombatNpc {
     this.body.dispose()
     this.actor.dispose()
   }
+}
+
+/**
+ * Précision d'un PNJ (0 à 1) : sa compétence, dégradée par la distance, une cible rapide ou sa propre blessure,
+ * affinée par le temps passé à viser.
+ */
+export function npcAccuracy(
+  base: number,
+  c: { distance: number; targetSpeed: number; aimTime: number; wounded: boolean; staggered: boolean },
+): number {
+  const range = 1 - Math.min(1, Math.max(0, (c.distance - 8) / 70)) * 0.55
+  const motion = c.targetSpeed > 5 ? 0.55 : c.targetSpeed > 1 ? 0.8 : 1.15
+  const settle = Math.min(0.2, c.aimTime * 0.07)
+  const hurt = (c.wounded ? 0.85 : 1) * (c.staggered ? 0.6 : 1)
+  return Math.min(0.95, Math.max(0.05, base * range * motion * hurt + settle))
 }
