@@ -12,9 +12,46 @@ concurrency:
 
 # Les noms des jobs sont des checks obligatoires de la règle « Protected » (dev, main) :
 # renommer un job bloque toutes les PR tant que la règle n'est pas mise à jour dans les settings du dépôt.
+#
+# Chaque job ne tourne que si sa zone a changé (job « changes »). Un job ignoré par son `if` est compté comme
+# réussi par la règle ; un workflow non déclenché, lui, laisserait les checks en attente : d'où des `if` au niveau
+# des jobs plutôt qu'un filtre `paths` sur le workflow. Si « changes » échoue, ses sorties sont vides et tous les
+# jobs tournent (`!= 'false'`).
 jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      database: ${{ steps.filter.outputs.database }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          # Modifier ce workflow relance tous les jobs.
+          filters: |
+            ci: &ci
+              - '.github/workflows/ci.yml'
+            frontend:
+              - *ci
+              - 'frontend/**'
+            backend:
+              - *ci
+              - 'backend/**'
+            database:
+              - *ci
+              - 'frontend/**'
+              - 'supabase/**'
+
   frontend:
     name: Frontend (format + lint + build)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.frontend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,6 +64,13 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      # Après `npm ci`, qui vide node_modules. Prettier et ESLint comparent le contenu des fichiers (pas leur date) :
+      # un fichier modifié est toujours revérifié. Une nouvelle clé par run, la plus récente est restaurée.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: frontend/node_modules/.cache
+          key: lint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ github.run_id }}
+          restore-keys: lint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
       - run: npm run format:check
       - run: npm run lint
       - run: npm test
@@ -34,6 +78,8 @@ jobs:
 
   backend:
     name: Backend (format + lint + tests)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.backend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -50,6 +96,8 @@ jobs:
 
   integration:
     name: Integration (Testcontainers)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.database != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -65,8 +113,13 @@ jobs:
       # Conteneur supabase/postgres éphémère, migrations rejouées sur base vide, puis RLS et catalogue.
       - run: npm run test:integration
 
+  # Mutation : incrémental sur les PR (seuls les mutants touchés par le changement sont rejoués), complet sur un
+  # push vers dev ou main, qui sert de filet de sécurité et alimente le cache lu par les PR suivantes. La clé
+  # contient le lockfile et la config : changer de version d'outil ou de config repart d'un run complet.
   mutation-frontend:
     name: Mutation (Stryker)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.frontend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -79,7 +132,17 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm run test:mutation
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: frontend/reports/stryker-incremental.json
+          key: stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-${{ github.head_ref || github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-${{ github.head_ref || github.ref_name }}-
+            stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-
+      - if: github.event_name == 'pull_request'
+        run: npm run test:mutation -- --incremental
+      - if: github.event_name != 'pull_request'
+        run: npm run test:mutation -- --incremental --force
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -88,10 +151,14 @@ jobs:
 
   mutation-backend:
     name: Mutation (Pitest)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.backend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
+    env:
+      PIT_HISTORY: target/pit-history/history.bin
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
@@ -99,13 +166,28 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
-      - run: mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: backend/target/pit-history
+          key: pitest-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}-${{ github.head_ref || github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            pitest-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}-${{ github.head_ref || github.ref_name }}-
+            pitest-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}-
+      - if: github.event_name == 'pull_request'
+        run: >-
+          mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
+          -DhistoryInputFile=$PIT_HISTORY -DhistoryOutputFile=$PIT_HISTORY
+      - if: github.event_name != 'pull_request'
+        run: >-
+          mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
+          -DhistoryOutputFile=$PIT_HISTORY
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: rapport-mutation-backend
           path: backend/target/pit-reports/
 
+  # Toujours exécuté : une nouvelle vulnérabilité peut être publiée sans qu'aucun fichier ne change.
   security:
     name: Security (npm audit + dependency review)
     runs-on: ubuntu-latest
@@ -127,6 +209,8 @@ jobs:
 
   e2e:
     name: E2E (Playwright + axe)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.frontend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -139,7 +223,17 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # Navigateurs Playwright mis en cache selon le lockfile (donc la version de Playwright) ; les dépendances
+      # système (apt) ne se mettent pas en cache et sont réinstallées à chaque run.
+      - id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       # Parcours du lobby et audit WCAG 2.1 AA ; backend et Supabase simulés par interception réseau.
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v7
