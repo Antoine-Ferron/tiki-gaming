@@ -38,6 +38,12 @@ a {
 a:hover {
   text-decoration: underline;
 }
+/* WCAG 1.4.1 : dans un texte, un lien ne se distingue pas que par sa couleur. */
+p a,
+.notice a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
 h1,
 h2 {
   margin: 0 0 0.5rem;
