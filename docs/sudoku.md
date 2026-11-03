@@ -75,6 +75,7 @@ Package `fr.tikigaming.sudoku`, sans état (rien n'est stocké côté serveur).
 | `SudokuService`    | Vérifie une partie (forme des grilles, indices intacts, conflits) et calcule le score |
 | `SudokuController` | Les endpoints REST, documentés dans OpenAPI (tag « Sudoku »)                      |
 | `Clock`, `CurrencyConverter`, `AuditNotifier` | Contrats purs sans I/O (voir [Contrats d'abstraction](#contrats-dabstraction)) |
+| `GameTimer`        | Chronomètre d'une partie, basé uniquement sur `Clock` (voir [Temps et tests](#temps-et-tests)) |
 | `Ledger`, `LedgerEntry`, `RewardService` | Registre des pièces et service qui convertit un score en pièces (voir [Récompense en pièces](#récompense-en-pièces)) |
 
 ### API
@@ -135,13 +136,29 @@ n'a besoin d'une devise, d'un audit ou de l'heure.
 
 | Interface           | Méthode                                      | Implémentation pure                                             |
 |---------------------|----------------------------------------------|-----------------------------------------------------------------|
-| `Clock`             | `Instant now()`                              | `SystemClock` (production) ; `FixedClock` (tests, avancée à la main) |
+| `Clock`             | `Instant now()`                              | `SystemClock` (production, lit une `java.time.Clock` injectée, UTC par défaut) ; `FixedClock` (tests, avancée à la main) |
 | `CurrencyConverter` | `BigDecimal convert(amount, from, to)`       | `FixedRateCurrencyConverter` : taux fixes en mémoire, passage par une devise de référence, arrondi à 2 décimales (au pair), refus des montants négatifs et des devises inconnues |
 | `AuditNotifier`     | `void notify(AuditEvent event)`              | `RecordingAuditNotifier` (tests) : garde les événements en mémoire, dans l'ordre |
 
 `AuditEvent` est un record immuable (type, date, détails copiés à la création) ; il refuse un type vide
 ou une date manquante. `Clock` n'est pas `java.time.Clock` : attention à l'import si les deux servent
 dans la même classe.
+
+### Temps et tests
+
+Règle du package : **le code Sudoku ne lit jamais l'heure directement** (`new Date()`, `Instant.now()`,
+`System.currentTimeMillis()` sont interdits). Il demande l'heure à `Clock`, injectée. Seul `SystemClock`
+lit l'heure réelle, et il peut lui-même recevoir une `java.time.Clock` figée ou décalée.
+
+`GameTimer` en est l'exemple : `start()`, `elapsedSeconds()` (secondes entières, tronquées) et `stop()`
+(fige la durée, idempotent). Il refuse les transitions invalides (démarrer deux fois, arrêter ou lire
+avant le démarrage) et ne renvoie jamais une durée négative si l'horloge recule.
+
+Les tests avancent `FixedClock` à la main : **aucun `sleep`**, donc aucun test dépendant du temps réel.
+Par exemple, le bonus de temps de `ScoreCalculator` s'active à 540 s de jeu (en facile) et pas à 541 s ;
+ces deux cas se vérifient instantanément.
+
+*Hors du périmètre Sudoku* : `auth/SupabaseTokenService` (plateforme) appelle encore `Instant.now()`.
 
 ### Récompense en pièces
 
@@ -175,7 +192,8 @@ Les tests unitaires du backend sont dans `backend/src/test/java/fr/tikigaming/su
 | `ScoreCalculatorTest`     | Paliers, seuil, bonus sans faute, bornes, déterminisme, débordement  |
 | `SudokuServiceTest`       | Grille résolue, incomplète, en conflit, indice modifié, entrées invalides |
 | `SudokuControllerTest`    | Réponses et erreurs 400, en appelant le controller comme un objet Java |
-| `ClockTest`               | Horloge figée, avancée à la main, calcul d'une durée                 |
+| `ClockTest`               | Horloge figée, avancée à la main ; `SystemClock` sur une horloge figée ou décalée |
+| `GameTimerTest`           | Durée écoulée, troncature, arrêt, transitions invalides, horloge qui recule, seuil du bonus de temps à 540 s / 541 s |
 | `FixedRateCurrencyConverterTest` | Conversion via la référence, arrondi, devise inconnue, montant négatif |
 | `AuditNotifierTest`       | Ordre des événements, immutabilité des détails, entrées invalides    |
 | `RewardServiceTest`       | Conversion au taux figé, registre, audit, solde, entrées invalides, échec de conversion |

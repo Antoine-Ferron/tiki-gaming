@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
 class ClockTest {
@@ -31,12 +32,25 @@ class ClockTest {
     }
 
     @Test
-    void systemClockNeverGoesBackwardsBetweenTwoReads() {
-        Clock clock = new SystemClock();
+    void systemClockReadsFromTheInjectedJavaClock() {
+        Instant instant = Instant.parse("2026-11-03T10:00:00Z");
+        Clock clock = new SystemClock(java.time.Clock.fixed(instant, ZoneOffset.UTC));
 
-        Instant first = clock.now();
-        Instant second = clock.now();
+        assertThat(clock.now()).isEqualTo(instant);
+        assertThat(clock.now()).isEqualTo(instant);
+    }
 
-        assertThat(second).isAfterOrEqualTo(first);
+    @Test
+    void systemClockFollowsTheUnderlyingClockWhenItMoves() {
+        java.time.Clock base = java.time.Clock.fixed(START, ZoneOffset.UTC);
+        Clock later = new SystemClock(java.time.Clock.offset(base, Duration.ofMinutes(5)));
+
+        assertThat(later.now()).isEqualTo(START.plus(Duration.ofMinutes(5)));
+    }
+
+    @Test
+    void defaultSystemClockIsUtcAndPlausible() {
+        // Seule lecture de l'heure réelle : une borne très large (jamais avant 2020), donc sans risque de flaky.
+        assertThat(new SystemClock().now()).isAfter(Instant.parse("2020-01-01T00:00:00Z"));
     }
 }
