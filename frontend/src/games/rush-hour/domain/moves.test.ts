@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { parseBoard } from './board'
-import { moveRange } from './moves'
+import { moveRange, moveVehicle } from './moves'
 
 const E = '......'
 
@@ -74,5 +74,52 @@ describe('moveRange : jusqu’où un véhicule peut glisser (R4, R5)', () => {
 
     // Assert
     expect(range).toThrow('Véhicule inconnu : Z')
+  })
+})
+
+describe('moveVehicle : un coup = un glissement dans son sens (R4 à R6)', () => {
+  // La voiture rouge peut avancer de 0 à 2 cases avant le camion A
+  const board = parseBoard([E, '....A.', 'XX..A.', E, E, E])
+  const colOf = (b: typeof board, id: string) => b.vehicles.find((v) => v.id === id)?.col
+
+  test.each([
+    { delta: 2, col: 2 }, // jusqu'à l'obstacle (N)
+    { delta: 1, col: 1 },
+  ])('avance la voiture rouge de $delta case(s)', ({ delta, col }) => {
+    // Act
+    const next = moveVehicle(board, 'X', delta)
+
+    // Assert
+    expect(colOf(next, 'X')).toBe(col)
+  })
+
+  // Valeurs limites : une case au-delà de l'amplitude, dans chaque sens
+  test.each([
+    { delta: 3, error: 'Déplacement impossible : X de 3' }, // N+1 vers le camion
+    { delta: -1, error: 'Déplacement impossible : X de -1' }, // contre le bord gauche
+    { delta: 0, error: 'Déplacement nul' },
+  ])('refuse un glissement de $delta', ({ delta, error }) => {
+    // Act
+    const move = () => moveVehicle(board, 'X', delta)
+
+    // Assert
+    expect(move).toThrow(error)
+  })
+
+  test('laisse le plateau de départ et les autres véhicules inchangés', () => {
+    // Act
+    const next = moveVehicle(board, 'X', 2)
+
+    // Assert
+    expect(colOf(board, 'X')).toBe(0)
+    expect(next.vehicles.find((v) => v.id === 'A')).toEqual(board.vehicles.find((v) => v.id === 'A'))
+  })
+
+  test('un véhicule vertical change de ligne, pas de colonne', () => {
+    // Act : le camion A descend d'une case
+    const next = moveVehicle(board, 'A', 1)
+
+    // Assert
+    expect(next.vehicles.find((v) => v.id === 'A')).toMatchObject({ row: 2, col: 4 })
   })
 })
