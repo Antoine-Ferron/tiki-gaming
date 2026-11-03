@@ -8,7 +8,7 @@ Espace de jeux en ligne : comptes joueurs, catalogue de jeux, scores, classement
 
 **Stack**
 - `frontend/` : Vite · React 19 · TypeScript · React Router · supabase-js (données uniquement)
-- `backend/` : Java 21 · Spring Boot 3.5 · Spring Security OAuth2 Client · Maven (authentification)
+- `backend/` : Java 21 · Spring Boot 4.1 · Spring Security OAuth2 Client · Maven (authentification)
 - Supabase : Postgres + RLS (et `auth.users` comme registre des comptes)
 
 ## Démarrage
@@ -73,6 +73,8 @@ CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, r
 - `/api/*`, `/oauth2/*` et `/login/oauth2/*` doivent être servis sur **la même origine que le front**
   (reverse proxy / rewrites) pour que le cookie de session reste first-party.
 - Ajouter `<URL de prod>/login/oauth2/code/google` aux redirect URIs du client OAuth Google.
+- Le front buildé doit être servi avec les en-têtes de sécurité de `frontend/security-headers.ts` (CSP, `X-Frame-Options`,
+  `nosniff`, `Permissions-Policy`…), que `vite preview` applique déjà. Le scan ZAP de [quality/](quality/README.md) les vérifie.
 
 ## Documentation
 
@@ -81,7 +83,9 @@ CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, r
 | [docs/architecture.md](docs/architecture.md)         | Briques, flux d'authentification, structure du code, modèle et catégories des jeux, sécurité |
 | [docs/modele-donnees.md](docs/modele-donnees.md)     | Schéma, tables, RLS et droits, fonctions, migrations        |
 | [docs/charte-graphique.md](docs/charte-graphique.md) | Couleurs, typographie, composants, règles pour les jeux, rédaction |
+| [docs/ci.md](docs/ci.md)                             | La CI étape par étape : ce qui est vérifié, les seuils, que faire quand un check échoue |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                   | Branches, PR, commits, création d'un jeu                    |
+| [quality/README.md](quality/README.md)               | Qualimétrie : SonarQube, charge k6 (P95), scan DAST ZAP     |
 
 ## Contribuer
 

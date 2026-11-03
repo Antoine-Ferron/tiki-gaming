@@ -1,0 +1,70 @@
+# Environnement de qualimétrie local et éphémère (aucune donnée réelle) :
+#   docker compose -f quality/docker-compose.yml up -d --wait db rest   → base + API REST pour k6
+#   docker compose -f quality/docker-compose.yml --profile sonar up -d --wait sonarqube
+#   docker compose -f quality/docker-compose.yml run --rm k6           → test de charge (rapport : reports/)
+#   docker compose -f quality/docker-compose.yml run --rm zap zap-baseline.py -t http://host.docker.internal:4173/ …
+# Voir quality/README.md.
+name: tiki-quality
+
+services:
+  # Même image que la production (PostgreSQL 17.11) : rôles anon / authenticated / authenticator, schéma auth.
+  db:
+    image: supabase/postgres:17.11.0.018
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports: ['54329:5432']
+    volumes:
+      - ./db-init/99999999999999_quality-setup.sql:/docker-entrypoint-initdb.d/migrations/99999999999999_quality-setup.sql:ro
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-h', '127.0.0.1']
+      interval: 2s
+      retries: 60
+
+  # API REST comme celle de Supabase (/rest/v1) : même rôles, même RLS, JWT HS256.
+  rest:
+    image: postgrest/postgrest:v16.5
+    environment:
+      PGRST_DB_URI: postgres://authenticator:postgres@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      # Secret de test, propre à cet environnement local (32 caractères minimum).
+      PGRST_JWT_SECRET: tiki-quality-local-jwt-secret-0123456789
+      PGRST_DB_POOL: 20
+    ports: ['54330:3000']
+    depends_on:
+      db:
+        condition: service_healthy
+
+  sonarqube:
+    profiles: [sonar]
+    image: sonarqube:26.10.0.133078-community
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: 'true'
+    ports: ['9000:9000']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:9000/api/system/status | grep -q UP']
+      interval: 5s
+      retries: 60
+
+  # Test de charge : PostgREST par le réseau du compose, backend Java sur la machine (host.docker.internal).
+  k6:
+    profiles: [tools]
+    image: grafana/k6:2.3.0
+    command: ['run', '--quiet', '/quality/k6/lobby.js']
+    environment:
+      REST_URL: http://rest:3000
+      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8080}
+      DURATION: ${K6_DURATION:-30s}
+    volumes: ['.:/quality']
+    user: '${HOST_UID:-1000}:${HOST_GID:-1000}'
+    extra_hosts: ['host.docker.internal:host-gateway']
+    depends_on:
+      rest:
+        condition: service_started
+
+  # Scan DAST passif (baseline) du front buildé (`vite preview`) et du backend, sur la machine.
+  zap:
+    profiles: [tools]
+    image: zaproxy/zap-stable:2.17.0
+    volumes: ['./reports:/zap/wrk:rw', './zap:/zap/rules:ro']
+    extra_hosts: ['host.docker.internal:host-gateway']
