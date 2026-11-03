@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -68,5 +69,13 @@ class SquareTest {
     void uneNotationDeCaseMalFormeeEstRefusee(String notation) {
         // Act + Assert
         assertThatThrownBy(() -> Square.of(notation)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest(name = "colonne {0}, rangée {1} est refusée")
+    @CsvSource({"8, 0", "-1, 0", "0, 8", "0, -1"})
+    @DisplayName("une case construite hors des bornes 0 à 7 est refusée (invariant)")
+    void uneCaseConstruiteHorsDesBornesEstRefusee(int file, int rank) {
+        // Act + Assert
+        assertThatThrownBy(() -> new Square(file, rank)).isInstanceOf(IllegalArgumentException.class);
     }
 }
