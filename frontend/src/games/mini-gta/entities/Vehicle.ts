@@ -31,7 +31,7 @@ export interface VehicleControl {
 /** Global driving tuning (exposed in the debug panel). */
 export const DRIVING = {
   gripScale: 1,
-  engineScale: 1,
+  engineScale: 1.7,
   lateralAssist: 0.06,
   downforce: 0.35,
   compression: 4.4,
@@ -112,7 +112,8 @@ export class Vehicle {
       .setCanSleep(true)
     this.body = w.createRigidBody(desc)
 
-    const clear = spec.wheelRadius * 0.55
+    // Garde au sol de la caisse : au-dessus des trottoirs (15 cm) et des jointures, une fois la suspension tassée.
+    const clear = spec.wheelRadius
     let hx = spec.width / 2
     let hy = (spec.belt + spec.cabin.height - clear) / 2 - 0.05
     let hz = spec.length / 2
@@ -144,15 +145,17 @@ export class Vehicle {
       this.body,
     )
     physics.setOwner(this.collider, { kind: 'vehicle', ref: this })
-    // Low ballast lowers the center of mass (stability).
+    // Lest bas : il abaisse le centre de gravité (stabilité). Il ne sert qu'à la masse, sans contact :
+    // la caisse, plus haute, touche seule le décor.
     const ballast = w.createCollider(
       ColliderDesc.cuboid(hx * 0.8, 0.1, hz * 0.8)
-        .setTranslation(0, spec.kind === 'heli' ? 0.3 : clear + 0.1, 0)
+        .setTranslation(0, spec.kind === 'heli' ? 0.3 : spec.wheelRadius * 0.55 + 0.1, 0)
         .setMass(spec.mass * 0.5)
         .setCollisionGroups(Groups.vehicle),
       this.body,
     )
     physics.setOwner(ballast, { kind: 'vehicle', ref: this })
+    if (spec.kind !== 'heli') ballast.setEnabled(false)
     if (spec.kind === 'heli') {
       for (const sx of [-0.9, 0.9]) {
         const skid = w.createCollider(

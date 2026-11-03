@@ -13,6 +13,8 @@ export const Layer = {
   Projectile: 1 << 5,
   Prop: 1 << 6,
   Sensor: 1 << 7,
+  /** Dalles des trottoirs : les roues montent dessus, la caisse des véhicules les ignore. */
+  Curb: 1 << 8,
 } as const
 
 const ALL = 0xffff
@@ -24,18 +26,20 @@ export function groups(membership: number, filter: number = ALL): number {
 
 export const Groups = {
   static: groups(Layer.Static),
+  curb: groups(Layer.Curb, ALL & ~Layer.Vehicle),
   prop: groups(Layer.Prop),
   player: groups(Layer.Player, ALL & ~Layer.Sensor),
   vehicle: groups(Layer.Vehicle),
   npc: groups(Layer.Npc, ALL & ~Layer.Npc & ~Layer.Sensor),
-  debris: groups(Layer.Debris),
-  projectile: groups(Layer.Projectile, Layer.Static | Layer.Vehicle | Layer.Prop | Layer.Debris),
+  /** Débris de props : ils ne bloquent pas les véhicules (un lampadaire renversé naît dans la voiture qui l'a percuté). */
+  debris: groups(Layer.Debris, ALL & ~Layer.Vehicle),
+  projectile: groups(Layer.Projectile, Layer.Static | Layer.Curb | Layer.Vehicle | Layer.Prop | Layer.Debris),
   /** Ray filters */
-  rayWorld: groups(ALL, Layer.Static | Layer.Prop),
+  rayWorld: groups(ALL, Layer.Static | Layer.Curb | Layer.Prop),
   rayCamera: groups(ALL, Layer.Static),
   rayAll: groups(ALL, ALL & ~Layer.Sensor),
   /** Wheels only touch the ground and static stuff, not NPC capsules. */
-  wheels: groups(ALL, Layer.Static | Layer.Prop | Layer.Vehicle | Layer.Debris),
+  wheels: groups(ALL, Layer.Static | Layer.Curb | Layer.Prop | Layer.Vehicle | Layer.Debris),
 }
 
 /** Something a collider belongs to, for hit resolution. */

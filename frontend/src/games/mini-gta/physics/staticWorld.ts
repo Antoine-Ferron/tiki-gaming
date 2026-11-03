@@ -12,6 +12,13 @@ export function buildStaticWorld(physics: Physics, city: CityData) {
     physics.setOwner(c, { kind: 'static' })
     return c
   }
+  const curb = (x: number, y: number, z: number, hx: number, hy: number, hz: number) => {
+    const c = world.createCollider(
+      ColliderDesc.cuboid(hx, hy, hz).setTranslation(x, y, z).setCollisionGroups(Groups.curb).setFriction(0.9),
+      body,
+    )
+    physics.setOwner(c, { kind: 'static' })
+  }
   const quatY = (a: number) => ({ x: 0, y: Math.sin(a / 2), z: 0, w: Math.cos(a / 2) })
   const cuboid = (x: number, y: number, z: number, hx: number, hy: number, hz: number, rot = 0) =>
     add(ColliderDesc.cuboid(hx, hy, hz).setTranslation(x, y, z).setRotation(quatY(rot)))
@@ -24,7 +31,8 @@ export function buildStaticWorld(physics: Physics, city: CityData) {
   }
   for (const bl of city.blocks) {
     const hy = (SLAB_HEIGHT + 0.3) / 2
-    cuboid((bl.x0 + bl.x1) / 2, SLAB_HEIGHT - hy, (bl.z0 + bl.z1) / 2, (bl.x1 - bl.x0) / 2, hy, (bl.z1 - bl.z0) / 2)
+    // Dalle de l'îlot : les roues la montent par raycast, la caisse des véhicules ne la heurte pas.
+    curb((bl.x0 + bl.x1) / 2, SLAB_HEIGHT - hy, (bl.z0 + bl.z1) / 2, (bl.x1 - bl.x0) / 2, hy, (bl.z1 - bl.z0) / 2)
   }
   for (const c of city.containers) cuboid(c.x, c.y, c.z, 1.25, 1.3, 6, c.rot)
   for (const crane of city.cranes) {
