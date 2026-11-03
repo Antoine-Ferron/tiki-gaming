@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { mockPlatform } from './fixtures'
 
 test.describe('Mastermind', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockPlatform(page)
+  })
+
   test('displays the game, colors and initial attempts', async ({ page }) => {
     await page.goto('/games/mastermind')
     await expect(page.getByRole('heading', { name: 'Mastermind' })).toBeVisible()
