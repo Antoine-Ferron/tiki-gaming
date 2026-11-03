@@ -190,3 +190,29 @@ describe('RushHourGame : choix des niveaux et progression (N3, N4, N5, S3)', () 
     expect(screen.getByRole('heading', { name: 'Niveau 2' })).toBeInTheDocument()
   })
 })
+
+describe('RushHourGame : indices (P5)', () => {
+  test('un indice indique le véhicule à déplacer, le sens et la distance', async () => {
+    // Arrange
+    const { user } = await renderGame()
+
+    // Act
+    await user.click(screen.getByRole('button', { name: 'Indice (−200 points)' }))
+
+    // Assert
+    expect(screen.getByText(new RegExp(`^Indice : ${labelOf(SOLUTION[0].id)}`))).toBeInTheDocument()
+  })
+
+  test('chaque indice coûte 200 points au score du niveau', async () => {
+    // Arrange
+    const { user, scores } = await renderGame()
+    await user.click(screen.getByRole('button', { name: 'Indice (−200 points)' }))
+
+    // Act
+    for (const move of SOLUTION) await playKeys(user, move)
+
+    // Assert
+    expect(await screen.findByText(`Bravo ! 800 points en ${OPTIMAL} coups`)).toBeInTheDocument()
+    expect(scores.rows.map((r) => r.score)).toEqual([800])
+  })
+})
