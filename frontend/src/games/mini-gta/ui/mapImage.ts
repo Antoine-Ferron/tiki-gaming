@@ -1,4 +1,3 @@
-/* v8 ignore file -- rendu visuel (WebGL, shaders, géométries, canvas) : vérifié à l'écran, sans règle de jeu. Voir docs/games/mini-gta/regles.md § 6. */
 import type { CityData } from '../world/city'
 import { AIRFIELD, MAP_HALF, MAP_SIZE, WATER_LEVEL } from '../world/constants'
 import { mapColors } from './palette'

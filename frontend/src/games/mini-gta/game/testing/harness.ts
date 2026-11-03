@@ -12,10 +12,12 @@ import { PerspectiveCamera, Scene, type WebGLRenderer } from 'three'
 /** Objet qui accepte n'importe quel accès ou appel : remplace le renderer WebGL et le contexte 2D. */
 export function anything(): unknown {
   const target = function () {}
+  // Pixels d'une ImageData : un seul tableau, sinon chaque lecture en allouerait un nouveau.
+  let data: Uint8ClampedArray | null = null
   const proxy: unknown = new Proxy(target, {
     get: (_, key) => {
       if (key === Symbol.toPrimitive) return () => 0
-      if (key === 'data') return new Uint8ClampedArray(4 * 1024 * 1024)
+      if (key === 'data') return (data ??= new Uint8ClampedArray(4 * 512 * 512))
       if (key === 'width' || key === 'height') return 1
       // WebGLCoordinateSystem de three : exigé par CubeCamera (reflets).
       if (key === 'coordinateSystem') return 2000
