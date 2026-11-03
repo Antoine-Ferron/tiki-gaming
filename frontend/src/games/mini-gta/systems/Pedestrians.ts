@@ -6,8 +6,9 @@ import { randomLook } from '../procgen/character/characterModel'
 import { Actor } from '../entities/Actor'
 import type { Vehicle } from '../entities/Vehicle'
 import type { Game } from '../game/Game'
+import { WEAPONS } from './weapons'
 
-type PedState = 'walk' | 'flee' | 'cower' | 'knocked' | 'dead' | 'idle'
+type PedState = 'walk' | 'flee' | 'cower' | 'knocked' | 'dead' | 'idle' | 'fight'
 
 interface Ped {
   actor: Actor
@@ -23,6 +24,8 @@ interface Ped {
   vel: Vector3
   /** Free-roaming target when not on the sidewalk graph (ejected drivers). */
   free: Vector3 | null
+  /** Délai avant le prochain coup (conducteur qui se bat). */
+  attackTimer?: number
 }
 
 export const PED_SETTINGS = { density: 30 }
@@ -106,21 +109,25 @@ export class Pedestrians {
     if (this.seated.delete(a)) a.dispose()
   }
 
-  /** Pull the driver out of a vehicle: becomes a fleeing pedestrian. */
-  ejectDriver(v: Vehicle) {
+  /**
+   * Sort le conducteur de son véhicule : il fuit, ou (« fight ») se retourne contre le voleur à mains nues.
+   * Un policier redevient un agent hostile.
+   */
+  ejectDriver(v: Vehicle, reaction: 'flee' | 'fight' = 'flee') {
     const a = v.driver
     if (!a) return
     v.driver = null
     v.driverAI = null
     this.game.traffic.release(v)
-    this.unseat(v, a, 1)
+    this.unseat(v, a, 1, reaction)
   }
 
+  /** Les passagers sortent côté passager et s'enfuient. */
   ejectPassenger(v: Vehicle, a: Actor) {
     this.unseat(v, a, -1)
   }
 
-  private unseat(v: Vehicle, a: Actor, side: number) {
+  private unseat(v: Vehicle, a: Actor, side: number, reaction: 'flee' | 'fight' = 'flee') {
     v.visual.root.updateMatrixWorld(true)
     const exit = v.visual.exit
       .clone()
@@ -141,10 +148,54 @@ export class Pedestrians {
       return
     }
     const ped = this.createPed(exit.x, Math.max(0, exit.y), exit.z, a)
+    if (reaction === 'fight') {
+      ped.state = 'fight'
+      ped.timer = 10
+      ped.free = null
+      return
+    }
     ped.state = 'flee'
     ped.timer = 12
     ped.threat = this.game.player.position.clone()
     ped.free = exit.clone().add(new Vector3(this.rng.range(-30, 30), 0, this.rng.range(-30, 30)))
+  }
+
+  /** Conducteur furieux : il rattrape le voleur à pied et le frappe, puis abandonne et s'enfuit. */
+  private fight(p: Ped, dt: number) {
+    const a = p.actor
+    const game = this.game
+    const target = game.player.actor
+    const pos = a.position
+    const dx = target.position.x - pos.x
+    const dz = target.position.z - pos.z
+    const d = Math.hypot(dx, dz)
+    // Le voleur est parti avec la voiture, loin, ou la bagarre a assez duré : il s'enfuit.
+    if (p.timer <= 0 || !game.player.alive || game.player.state !== 'foot' || d > 25) {
+      p.state = 'flee'
+      p.timer = 10
+      p.threat = target.position.clone()
+      p.free = pos.clone().add(new Vector3(-dx, 0, -dz).normalize().multiplyScalar(30))
+      return
+    }
+    a.heading = Math.atan2(dx, dz)
+    p.attackTimer = (p.attackTimer ?? 0) - dt
+    if (d > 1.2) {
+      const step = Math.min(d - 1.1, 4.8 * dt)
+      const nx = pos.x + (dx / d) * step
+      const nz = pos.z + (dz / d) * step
+      const ny = game.city.terrain.heightAt(nx, nz)
+      p.body.setNextKinematicTranslation({ x: nx, y: Math.max(ny, pos.y) + 0.9, z: nz })
+      a.anim.speed = 4.8
+      return
+    }
+    p.body.setNextKinematicTranslation(p.body.translation())
+    a.anim.speed = 0
+    // Coup de poing : l'animation suit le délai entre deux coups (armé, frappe, retour).
+    a.anim.attack = p.attackTimer > 0.5 ? Math.min(1, (0.9 - p.attackTimer) / 0.4) : 0
+    if (p.attackTimer <= 0) {
+      p.attackTimer = 0.9
+      game.combat.melee(a, WEAPONS.fists)
+    }
   }
 
   private onNoise(x: number, z: number, radius: number, source: Actor | null) {
@@ -235,6 +286,10 @@ export class Pedestrians {
         }
         p.body.setNextKinematicTranslation({ x: nx, y: ny + 0.9, z: nz })
         a.anim.dead = 0.3
+        continue
+      }
+      if (p.state === 'fight') {
+        this.fight(p, dt)
         continue
       }
       if (p.state === 'cower') {

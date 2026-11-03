@@ -44,7 +44,28 @@ export class Interactions {
       if (input.wasPressed('KeyE')) void saveGame(game) // saveGame signale lui-même ses erreurs
       return
     }
+    const entry = p.entry
+    if (entry) {
+      const pct = Math.round(p.entryProgress() * 100)
+      const label = entry.vehicle.spec.label.toLowerCase()
+      this.prompt =
+        entry.phase === 'approach'
+          ? `Tu vas vers la portière… (bouge pour annuler)`
+          : entry.phase === 'force'
+            ? `Tu forces la portière… ${pct} %`
+            : entry.phase === 'pull'
+              ? `Tu sors le conducteur… ${pct} %`
+              : `Tu montes dans ${label}… ${pct} %`
+      return
+    }
     const v = p.nearbyVehicle()
-    if (v) this.prompt = `${F} : ${v.driver ? 'voler' : 'entrer dans'} ${v.spec.label.toLowerCase()}`
+    if (v) {
+      const label = v.spec.label.toLowerCase()
+      this.prompt = v.driver
+        ? `${F} : sortir le conducteur et voler ${label}`
+        : p.isLocked(v)
+          ? `${F} : forcer la portière (${label} verrouillée)`
+          : `${F} : entrer dans ${label}`
+    }
   }
 }

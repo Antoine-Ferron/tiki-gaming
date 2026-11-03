@@ -4,6 +4,7 @@ import { clamp, damp, dampAngle } from '../core/math'
 import { Groups, Layer, groups } from '../physics/physics'
 import { playerLook } from '../procgen/character/characterModel'
 import { WATER_LEVEL } from '../world/constants'
+import { hashString, Rng } from '../core/rng'
 import { createInventory, WEAPONS, type Inventory } from '../systems/weapons'
 import { Actor } from './Actor'
 import { CharacterBody } from './CharacterBody'
@@ -11,6 +12,24 @@ import type { Vehicle } from './Vehicle'
 import type { Game } from '../game/Game'
 
 export type PlayerState = 'foot' | 'vehicle' | 'dead' | 'busted'
+
+/** Réaction d'un conducteur qu'on vient sortir de sa voiture. */
+export type DriverReaction = 'flee' | 'fight' | 'speedOff'
+
+/** Étapes de l'entrée dans un véhicule : aller à la portière, forcer ou sortir le conducteur, monter. */
+export type EntryPhase = 'approach' | 'force' | 'pull' | 'enter'
+
+/** Durées (s) des étapes de l'entrée dans un véhicule. */
+export const ENTRY_TIMES = { force: 1.5, pull: 1.2, enter: 0.9, approachMax: 3.5, speedOffDelay: 0.6 }
+
+export interface VehicleEntry {
+  vehicle: Vehicle
+  phase: EntryPhase
+  /** Temps passé dans l'étape en cours. */
+  timer: number
+  /** Réaction du conducteur, tirée au début d'un car-jacking. */
+  reaction: DriverReaction | null
+}
 
 const _v = new Vector3()
 
@@ -29,6 +48,12 @@ export class Player {
   private lastVy = 0
   private enterCooldown = 0
   private drown = 0
+  /** Entrée en cours dans un véhicule (null sinon). */
+  entry: VehicleEntry | null = null
+  /** Véhicules verrouillés ou non, tirés une fois par véhicule ; ceux déjà forcés ou conduits sont ouverts. */
+  private locks = new WeakMap<Vehicle, boolean>()
+  /** Conducteurs qui démarrent en trombe : on garde l'accélérateur enfoncé quelques secondes. */
+  private getaways: { vehicle: Vehicle; timer: number }[] = []
   /** Time since last damage (for regen). */
   calm = 0
 
@@ -65,6 +90,7 @@ export class Player {
   update(dt: number) {
     this.enterCooldown -= dt
     this.calm += dt
+    this.updateGetaways(dt)
     const a = this.actor
     if (this.godMode) a.health = a.maxHealth
     // Slow regeneration up to half health when out of combat.
@@ -130,7 +156,8 @@ export class Player {
       if (this.drown > 3) a.damage({ amount: 40 * dt, kind: 'drown' })
     } else this.drown = 0
 
-    if (!busy && input.wasPressed('KeyF') && this.enterCooldown <= 0) this.tryEnterVehicle()
+    if (this.entry) this.updateEntry(dt, busy, fx !== 0 || fz !== 0 || jump)
+    else if (!busy && input.wasPressed('KeyF') && this.enterCooldown <= 0) this.beginEnterVehicle()
   }
 
   private updateVehicle() {
@@ -176,6 +203,131 @@ export class Player {
     return best
   }
 
+  /** Le véhicule est-il verrouillé ? Tirage stable par véhicule ; vides et garés seulement. */
+  isLocked(v: Vehicle): boolean {
+    if (v.driver || v.playerDriven || v.persistent || v.isAircraft || v.spec.kind === 'bike' || v.spec.police)
+      return false
+    let locked = this.locks.get(v)
+    if (locked === undefined) {
+      const seed = hashString(`${Math.round(v.position.x)}:${Math.round(v.position.z)}:${v.spec.id}`)
+      locked = new Rng(seed).chance(0.5)
+      this.locks.set(v, locked)
+    }
+    return locked
+  }
+
+  /**
+   * Commence à monter dans le véhicule le plus proche (touche F) : le joueur va à la portière, force la
+   * serrure ou sort le conducteur, puis monte. Il reste vulnérable et peut annuler en bougeant.
+   */
+  beginEnterVehicle() {
+    const v = this.nearbyVehicle()
+    if (!v) return
+    let reaction: DriverReaction | null = null
+    if (v.driver && v.driver.faction !== 'police' && !v.isAircraft) {
+      const r = new Rng(hashString(`${v.spec.id}:${Math.round(this.game.time * 10)}`)).next()
+      reaction = r < 0.55 ? 'flee' : r < 0.8 ? 'fight' : 'speedOff'
+    }
+    this.entry = { vehicle: v, phase: 'approach', timer: 0, reaction }
+  }
+
+  /** Abandonne l'entrée en cours (le joueur bouge, le véhicule part ou est détruit). */
+  cancelEntry(reason?: string) {
+    this.entry = null
+    this.enterCooldown = 0.3
+    if (reason) this.game.events.emit('notify', { text: reason, kind: 'info' })
+  }
+
+  /** Avancement (0..1) de l'étape en cours, pour l'invite. */
+  entryProgress(): number {
+    const e = this.entry
+    if (!e || e.phase === 'approach') return 0
+    return Math.min(1, e.timer / ENTRY_TIMES[e.phase])
+  }
+
+  private doorPoint(v: Vehicle): Vector3 {
+    v.visual.root.updateMatrixWorld(true)
+    return v.visual.exit.clone().multiplyScalar(0.75).applyMatrix4(v.visual.root.matrixWorld)
+  }
+
+  private updateEntry(dt: number, busy: boolean, moving: boolean) {
+    const e = this.entry!
+    const v = e.vehicle
+    const a = this.actor
+    if (busy) return
+    if (moving || input.wasPressed('KeyF')) return this.cancelEntry()
+    if (v.destroyed || !this.game.vehicles.has(v)) return this.cancelEntry()
+    const door = this.doorPoint(v)
+    const toDoor = _v.copy(door).sub(a.position).setY(0)
+    if (toDoor.length() > 8) return this.cancelEntry()
+    e.timer += dt
+    if (e.phase === 'approach') {
+      // Le conducteur voit arriver le voleur : certains démarrent en trombe.
+      if (e.reaction === 'speedOff' && e.timer > ENTRY_TIMES.speedOffDelay) {
+        this.speedOff(v)
+        return this.cancelEntry('Le conducteur démarre en trombe !')
+      }
+      const d = toDoor.length()
+      if (d > 0.6) {
+        toDoor.divideScalar(d)
+        this.body.move(toDoor.x * 3.2, toDoor.z * 3.2, false, dt)
+        a.heading = dampAngle(a.heading, Math.atan2(toDoor.x, toDoor.z), 12, dt)
+        a.anim.speed = 3.2
+        if (e.timer > ENTRY_TIMES.approachMax) this.cancelEntry('Impossible d’atteindre la portière')
+        return
+      }
+      e.phase = v.driver ? 'pull' : this.isLocked(v) ? 'force' : 'enter'
+      e.timer = 0
+    }
+    // Face au véhicule, immobile : forcer, sortir le conducteur ou monter.
+    this.body.move(0, 0, false, dt)
+    a.anim.speed = 0
+    a.heading = dampAngle(a.heading, Math.atan2(v.position.x - a.position.x, v.position.z - a.position.z), 12, dt)
+    if (e.timer < ENTRY_TIMES[e.phase]) return
+    if (e.phase === 'force') {
+      this.breakIn(v, door)
+      e.phase = 'enter'
+      e.timer = 0
+      return
+    }
+    if (e.phase === 'pull') {
+      this.game.peds.ejectDriver(v, e.reaction === 'fight' ? 'fight' : 'flee')
+      this.finishEntry(v, true)
+      return
+    }
+    this.finishEntry(v, false)
+  }
+
+  /** Vitre brisée : bris de verre, alarme qui alerte les passants, vol signalé à la police s'il y a des témoins. */
+  private breakIn(v: Vehicle, door: Vector3) {
+    this.locks.set(v, false)
+    const glass = door.clone().setY(door.y + 1.1)
+    this.game.effects.impact(glass, new Vector3(0, 1, 0), 'spark')
+    this.game.events.emit('noise', { x: glass.x, y: glass.y, z: glass.z, radius: 40, source: this.actor })
+    this.game.events.emit('notify', { text: 'Alarme !', kind: 'info' })
+    this.game.police.crime('vehicleAttack', v.position.x, v.position.z)
+  }
+
+  /** Le conducteur garde le pied au plancher quelques secondes, puis lâche l'accélérateur. */
+  private speedOff(v: Vehicle) {
+    v.makeDynamic()
+    v.driverAI = null
+    this.getaways.push({ vehicle: v, timer: 4 })
+  }
+
+  private updateGetaways(dt: number) {
+    for (const g of this.getaways) {
+      g.timer -= dt
+      const v = g.vehicle
+      const go = g.timer > 0 && !!v.driver && v.driver !== this.actor && !v.destroyed
+      v.control.throttle = go ? 1 : 0
+      v.control.steer = 0
+      v.control.handbrake = false
+    }
+    this.getaways = this.getaways.filter((g) => g.timer > 0 && g.vehicle.driver !== this.actor)
+  }
+
+  /** Monte immédiatement dans le véhicule le plus proche (scripts, missions, tests). */
   tryEnterVehicle() {
     const v = this.nearbyVehicle()
     if (!v) return
@@ -185,6 +337,12 @@ export class Player {
       jacked = true
       this.game.peds.ejectDriver(v)
     }
+    this.finishEntry(v, jacked)
+  }
+
+  /** Installe le joueur au volant (le conducteur éventuel est déjà sorti). */
+  private finishEntry(v: Vehicle, jacked: boolean) {
+    this.entry = null
     for (const p of v.passengers) this.game.peds.ejectPassenger(v, p)
     v.passengers = []
     v.makeDynamic()
