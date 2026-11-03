@@ -1,0 +1,31 @@
+# Mises à jour automatiques des dépendances (voir CONTRIBUTING.md#dependabot).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      frontend-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: maven
+    directory: /backend
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    commit-message:
+      prefix: chore(backend)
+    groups:
+      backend-minor-patch:
+        update-types: [minor, patch]

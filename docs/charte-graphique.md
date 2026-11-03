@@ -83,6 +83,7 @@ Police système, sans téléchargement : `system-ui, -apple-system, 'Segoe UI', 
 | `button.link`            | Action secondaire présentée comme un lien         |
 | `button.big`             | Grosse action de jeu (« Jouer », « Rejouer »)     |
 | `.form` + `label` + `input` | Formulaire en colonne, `max-width: 420px`      |
+| `<Field />` (`.field-hint`, `.field-error`) | Champ avec aide et message d'erreur sous l'input (bordure `--error`) |
 | `.muted`, `.error`, `.success` | Texte secondaire, erreur, confirmation      |
 | `.notice`                | Bandeau d'information teinté d'accent             |
 | `.tags` + `.tag` (+ `.tag-solo`, `.tag-duel`, `.tag-multi`) | Étiquettes ; `<GameTags game={…} />` les génère |

@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
-import { apiPost } from '@/lib/api'
+import { Field } from '@/components/Field'
+import { apiPost, toFormErrors } from '@/lib/api'
+import { newPasswordSchema, validate, type FieldErrors } from '@/lib/validation'
 
 // Le lien de réinitialisation Supabase revient ici avec #access_token=…&type=recovery (ou #error_description=…).
 function readRecoveryHash() {
@@ -17,6 +19,7 @@ export default function UpdatePasswordPage() {
   const { user, loading, refreshSession } = useAuth()
   const [recovery] = useState(readRecoveryHash)
   const [password, setPassword] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [error, setError] = useState<string | null>(recovery.error)
   const [busy, setBusy] = useState(false)
 
@@ -25,32 +28,44 @@ export default function UpdatePasswordPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setBusy(true)
     setError(null)
+    const result = validate(newPasswordSchema, { password })
+    setFieldErrors('errors' in result ? result.errors : {})
+    if ('errors' in result) return
+    setBusy(true)
     try {
       if (recovery.token) {
-        await apiPost('/auth/password/reset', { accessToken: recovery.token, password })
+        await apiPost('/auth/password/reset', { accessToken: recovery.token, ...result.data })
         await refreshSession()
       } else {
-        await apiPost('/auth/password', { password })
+        await apiPost('/auth/password', result.data)
       }
       navigate('/profile', { replace: true })
     } catch (err) {
-      setError((err as Error).message)
+      const { fields, message } = toFormErrors(err, ['password'])
+      setFieldErrors(fields)
+      setError(message)
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <form className="card form" onSubmit={handleSubmit}>
+    <form className="card form" onSubmit={handleSubmit} noValidate>
       <h1>Nouveau mot de passe</h1>
-      <label>
-        Mot de passe
-        <input type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
-      </label>
+      <Field
+        label="Mot de passe"
+        type="password"
+        hint="8 caractères minimum"
+        autoComplete="new-password"
+        value={password}
+        error={fieldErrors.password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
       {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={busy}>Enregistrer</button>
+      <button type="submit" disabled={busy}>
+        Enregistrer
+      </button>
     </form>
   )
 }

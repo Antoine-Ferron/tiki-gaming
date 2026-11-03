@@ -39,17 +39,17 @@ public class SupabaseTokenService {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(ttl);
         JwtClaimsSet claims = JwtClaimsSet.builder()
-            .issuer(issuer)
-            .subject(user.id())
-            .audience(java.util.List.of("authenticated"))
-            .claim("role", "authenticated")
-            .claim("email", user.email())
-            .issuedAt(now)
-            .expiresAt(expiresAt)
-            .build();
-        String token = encoder
-            .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
-            .getTokenValue();
+                .issuer(issuer)
+                .subject(user.id())
+                .audience(java.util.List.of("authenticated"))
+                .claim("role", "authenticated")
+                .claim("email", user.email())
+                .issuedAt(now)
+                .expiresAt(expiresAt)
+                .build();
+        String token = encoder.encode(JwtEncoderParameters.from(
+                        JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
         return new IssuedToken(token, expiresAt);
     }
 }

@@ -96,6 +96,22 @@ accepté), sinon un compte est créé.
 Les `POST` exigent l'en-tête `X-XSRF-TOKEN` (copie du cookie `XSRF-TOKEN`), ajouté par
 `frontend/src/lib/api.ts`. Les erreurs sont renvoyées sous la forme `{ "error": "message" }`.
 
+### Swagger (OpenAPI)
+
+La documentation interactive de l'API est générée depuis le code (springdoc-openapi) :
+
+| URL (backend lancé)                     | Contenu                                    |
+|-----------------------------------------|--------------------------------------------|
+| http://localhost:8080/swagger-ui.html   | Swagger UI : endpoints, schémas, « Try it out » |
+| http://localhost:8080/v3/api-docs       | Spécification OpenAPI 3.1 (JSON)           |
+
+- Seuls les chemins `/api/**` sont documentés, regroupés par tag (`Authentification`, puis un tag par jeu).
+- « Try it out » gère le CSRF comme le front : appeler `GET /api/auth/session` une fois, et Swagger
+  recopie ensuite le cookie `XSRF-TOKEN` dans l'en-tête `X-XSRF-TOKEN`. La session (cookie `JSESSIONID`)
+  est partagée avec le front, car les cookies ne dépendent pas du port.
+- Activé par défaut ; `SWAGGER_ENABLED=false` (à mettre en production) désactive l'interface et la
+  spécification (404).
+
 ### Même origine
 
 Le front et le backend doivent être servis sur **la même origine** pour que le cookie de session soit
@@ -111,7 +127,9 @@ frontend/src/
 ├── App.tsx                  Déclaration des routes
 ├── styles.css               Tokens et composants (voir charte-graphique.md)
 ├── lib/
-│   ├── api.ts               Appels au backend (cookie de session + CSRF)
+│   ├── api.ts               Appels au backend (cookie de session + CSRF), ApiError
+│   ├── logger.ts            Logger Pino du navigateur
+│   ├── validation.ts        Schémas Zod des formulaires (messages d'erreur)
 │   ├── session.ts           Session backend + JWT, rafraîchi avant expiration
 │   ├── supabase.ts          Client Supabase unique (clé anon + JWT du backend)
 │   └── database.types.ts    Types de la base
@@ -119,7 +137,7 @@ frontend/src/
 │   ├── AuthContext.ts       useAuth() → user, profile, refreshSession, signOut…
 │   ├── AuthProvider.tsx     Lit la session du backend, charge le profil
 │   └── ProtectedRoute.tsx   ProtectedRoute / GuestOnlyRoute
-├── components/              Layout, Leaderboard, GameTags…
+├── components/              Layout, Leaderboard, GameTags, Field (champ + message d'erreur)…
 ├── pages/                   Home, Game, Login, Signup, ForgotPassword, UpdatePassword, Profile
 └── games/
     ├── types.ts             Contrat GameDefinition / GameContext  ← à lire en premier
@@ -164,7 +182,7 @@ le secret, les indices, les tentatives et le score sont calculés côté serveur
 |-----------|---------|----------------|---------------------------------------|
 | `solo`    | Solo    | 1 joueur       | Clicker, Rush Hour, Mastermind        |
 | `duel`    | Duel    | 2 joueurs      | Échecs, Bataille navale, Orapa Mine   |
-| `multi`   | Multi   | 3 joueurs et + | 7 Wonders, Yam                        |
+| `multi`   | Multi   | 3 joueurs et + | SDV Civilisation, Yam                 |
 
 La catégorie et le mode sont indépendants : un jeu `duel` contre une IA peut être en `mode: 'solo'`
 (jouable sans compte). Les exemples ci-dessus sont indicatifs : chaque équipe choisit la catégorie de son jeu.
@@ -179,15 +197,25 @@ contrainte + une entrée dans `GAME_CATEGORIES` + un token `--cat-<nom>` dans la
 backend/src/main/java/fr/tikigaming/
 ├── TikiGamingApplication.java
 ├── config/
+│   ├── ApiExceptionHandler.java       Format { error, fields } des erreurs de l'API + logs
+│   ├── OpenApiConfig.java             Informations de la documentation Swagger
 │   ├── SecurityConfig.java            OAuth2 Google, CSRF par cookie, session
 │   └── TikiProperties.java            Configuration tiki.* (application.yml)
-└── auth/
-    ├── AuthController.java            Endpoints /api/auth/*
-    ├── AuthSession.java               Utilisateur en session, redirections sûres
-    ├── GoogleLoginSuccessHandler.java Rattache le compte Google à auth.users
-    ├── SupabaseAuthClient.java        API Auth / RPC Supabase (clé service_role)
-    └── SupabaseTokenService.java      JWT au format Supabase pour la RLS
+├── auth/
+│   ├── AuthController.java            Endpoints /api/auth/*
+│   ├── AuthSession.java               Utilisateur en session, redirections sûres
+│   ├── GoogleLoginSuccessHandler.java Rattache le compte Google à auth.users
+│   ├── SupabaseAuthClient.java        API Auth / RPC Supabase (clé service_role)
+│   ├── SupabaseErrors.java            Codes d'erreur Supabase → messages en français
+│   ├── Username.java                  Contrainte @Username (+ UsernameValidator)
+│   └── SupabaseTokenService.java      JWT au format Supabase pour la RLS
+└── games/
+    └── <slug>/                        Code serveur d'un jeu, endpoints /api/games/<slug>/*
 ```
+
+Un jeu n'a un package serveur que s'il en a besoin (validation de score, multijoueur…) ; les règles
+sont dans [CONTRIBUTING.md](../CONTRIBUTING.md#packages). Formatter (Spotless), linter (Checkstyle) et
+tests passent par `mvn verify`, relancé par la CI.
 
 La configuration est lue depuis `backend/.env` (non versionné, modèle : `backend/.env.example`).
 

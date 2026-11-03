@@ -32,8 +32,11 @@ final class MastermindGame {
 
         MastermindFeedback feedback = evaluate(secret, colors);
         history.add(new MastermindGuessResult(List.copyOf(colors), feedback));
-        if (feedback.exact() == CODE_LENGTH) status = MastermindStatus.WON;
-        else if (history.size() == MAX_ATTEMPTS) status = MastermindStatus.LOST;
+        if (feedback.exact() == CODE_LENGTH) {
+            status = MastermindStatus.WON;
+        } else if (history.size() == MAX_ATTEMPTS) {
+            status = MastermindStatus.LOST;
+        }
         return snapshot();
     }
 
