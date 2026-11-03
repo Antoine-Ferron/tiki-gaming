@@ -11,10 +11,11 @@ const byUsername = new Intl.Collator('fr', { sensitivity: 'base' })
  */
 export function rankLeaderboard<T extends RankableEntry>(entries: readonly T[]): Ranked<T>[] {
   const sorted = [...entries].sort((a, b) => b.best_score - a.best_score || byUsername.compare(a.username, b.username))
-  return sorted
-    .map((entry, i) => {
-      const rank = i > 0 && sorted[i - 1].best_score === entry.best_score ? -1 : i + 1
-      return { ...entry, rank }
-    })
-    .map((entry, i, all) => (entry.rank === -1 ? { ...entry, rank: all[i - 1].rank } : entry))
+  const ranked: Ranked<T>[] = []
+  for (const [i, entry] of sorted.entries()) {
+    const previous = ranked[i - 1]
+    const rank = previous?.best_score === entry.best_score ? previous.rank : i + 1
+    ranked.push({ ...entry, rank })
+  }
+  return ranked
 }
