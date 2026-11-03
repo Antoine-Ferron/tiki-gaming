@@ -18,24 +18,15 @@ class SudokuServiceTest {
     }
 
     @Test
-    void scoreSubtractsTimeAndMistakePenalty() {
-        assertThat(service.score(Difficulty.EASY, 100, 2)).isEqualTo(1000 - 100 - 100);
-        assertThat(service.score(Difficulty.HARD, 0, 0)).isEqualTo(3000);
-    }
-
-    @Test
-    void scoreNeverDropsBelowMinimum() {
-        assertThat(service.score(Difficulty.EASY, 100_000, 50)).isEqualTo(10);
-    }
-
-    @Test
     void solvedGridIsAcceptedWithScore() {
         SudokuService.CheckResult result = service.check(game.puzzle(), game.solution(), Difficulty.EASY, 120, 1);
 
         assertThat(result.complete()).isTrue();
         assertThat(result.solved()).isTrue();
         assertThat(result.conflicts()).isEmpty();
-        assertThat(result.score()).isEqualTo(1000 - 120 - 50);
+        // 480 s gagnées sur 600 : 120 x 1 + 120 x 2 + 240 x 3 = 1080 ; une erreur : pas de bonus « sans faute », -50
+        assertThat(result.score()).isEqualTo(1000 + 1080 - 50);
+        assertThat(result.breakdown().timeBonus()).isEqualTo(1080);
     }
 
     @Test

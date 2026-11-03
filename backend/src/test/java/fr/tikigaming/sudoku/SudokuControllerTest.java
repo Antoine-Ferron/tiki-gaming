@@ -55,7 +55,8 @@ class SudokuControllerTest {
                         .content(body(game.solution(), 100, 0)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.solved").value(true))
-                .andExpect(jsonPath("$.score").value(900));
+                .andExpect(jsonPath("$.score").value(2354))
+                .andExpect(jsonPath("$.breakdown.perfectBonus").value(214));
     }
 
     @Test

@@ -8,10 +8,8 @@ import org.springframework.stereotype.Service;
 public class SudokuService {
 
     /** `complete` : toutes les cases remplies ; `solved` : complète et sans conflit. */
-    public record CheckResult(boolean complete, boolean solved, List<Integer> conflicts, int score) {}
-
-    private static final int MISTAKE_PENALTY = 50;
-    private static final int MIN_SCORE = 10;
+    public record CheckResult(
+            boolean complete, boolean solved, List<Integer> conflicts, int score, ScoreBreakdown breakdown) {}
 
     /**
      * @param puzzle grille de départ (0 = vide)
@@ -37,11 +35,9 @@ public class SudokuService {
             }
         }
         boolean solved = complete && conflicts.isEmpty();
-        return new CheckResult(complete, solved, conflicts, solved ? score(difficulty, seconds, mistakes) : 0);
-    }
-
-    public int score(Difficulty difficulty, int seconds, int mistakes) {
-        return Math.max(MIN_SCORE, difficulty.baseScore() - seconds - mistakes * MISTAKE_PENALTY);
+        ScoreBreakdown breakdown =
+                solved ? ScoreCalculator.compute(difficulty, seconds, mistakes) : ScoreBreakdown.NONE;
+        return new CheckResult(complete, solved, conflicts, breakdown.total(), breakdown);
     }
 
     private static void validateShape(int[] grid, String name) {
