@@ -281,6 +281,44 @@
   box-shadow: 0 0 0 1.5px var(--mini-gta-shadow);
 }
 
+.mini-gta-hitmarker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px;
+  opacity: 0;
+  color: var(--text);
+}
+
+.mini-gta-hitmarker::before,
+.mini-gta-hitmarker::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  margin-left: -1px;
+  background:
+    linear-gradient(currentColor, currentColor) top / 100% 35% no-repeat,
+    linear-gradient(currentColor, currentColor) bottom / 100% 35% no-repeat;
+  transform: rotate(45deg);
+}
+
+.mini-gta-hitmarker::after {
+  transform: rotate(-45deg);
+}
+
+.mini-gta-hitmarker.mini-gta-hitmarker-on {
+  opacity: 1;
+}
+
+.mini-gta-hitmarker.mini-gta-hitmarker-kill {
+  color: var(--error);
+}
+
 .mini-gta-scope {
   position: absolute;
   inset: 0;
@@ -495,6 +533,58 @@
   border: none;
   background: transparent;
   font-size: 1.25rem;
+}
+
+/* Chat et commandes */
+.mini-gta-chat {
+  position: absolute;
+  left: 1.5rem;
+  bottom: 14rem;
+  width: min(460px, calc(100% - 3rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.mini-gta-chat-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.mini-gta-chat-lines li {
+  padding: 0.125rem 0.5rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--text);
+}
+
+.mini-gta-chat-lines .mini-gta-chat-self {
+  color: var(--muted);
+}
+
+.mini-gta-chat-lines .mini-gta-chat-ok {
+  color: var(--success);
+}
+
+.mini-gta-chat-lines .mini-gta-chat-error {
+  color: var(--error);
+}
+
+.mini-gta-chat-hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.mini-gta-chat-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {

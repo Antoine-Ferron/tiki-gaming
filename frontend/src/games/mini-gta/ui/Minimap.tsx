@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { getGame } from '../game/GameRoot'
+import { getGame } from '../game/current'
 import { gpsPath, gpsTarget } from './gps'
 import { mapImage, MAP_PX, toMap } from './mapImage'
 import { MAP_SIZE } from '../world/constants'

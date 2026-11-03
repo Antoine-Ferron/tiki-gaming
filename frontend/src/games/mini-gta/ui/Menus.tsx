@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { input } from '../core/input'
-import { getGame } from '../game/GameRoot'
+import { getGame } from '../game/current'
 import { useGameStore } from '../state/gameStore'
 import { saveGame } from '../state/save'
 import { useHudStore } from '../state/hudStore'
@@ -42,6 +42,7 @@ function Controls() {
     [`${k('KeyQ')} / ${k('KeyE')}`, 'Hélico : roulis · Avion : lacet'],
     ['Ctrl', 'Hélico : descendre · Avion : gaz −'],
     [k('KeyM'), 'Carte'],
+    [`${k('KeyT')} · Entrée`, 'Chat et commandes (/aide)'],
     [`Échap · ${k('KeyP')}`, 'Pause'],
     ['F5', 'Sauvegarde rapide'],
   ]

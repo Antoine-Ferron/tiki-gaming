@@ -23,7 +23,7 @@ vi.hoisted(() => {
 
 // Le jeu en cours est remplacé par une doublure, et l'API par la fausse API aux règles du backend.
 let currentGame: unknown = null
-vi.mock('../game/GameRoot', () => ({ getGame: () => currentGame }))
+vi.mock('../game/current', () => ({ getGame: () => currentGame }))
 vi.mock('../net/api', () => import('../game/testing/fakeApi'))
 // L'image de la carte est du rendu pur (canvas).
 vi.mock('./mapImage', () => ({ mapImage: () => ({}), MAP_PX: 1024, toMap: (x: number, z: number) => ({ x, y: z }) }))

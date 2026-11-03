@@ -1,11 +1,19 @@
 import { create } from 'zustand'
 
-export type Menu = null | 'pause' | 'map' | 'shop' | 'wheel' | 'help'
+export type Menu = null | 'pause' | 'map' | 'shop' | 'wheel' | 'help' | 'chat'
 
 export interface Notification {
   id: number
   text: string
   kind: 'info' | 'success' | 'fail' | 'big'
+  at: number
+}
+
+/** Ligne du chat : message du joueur, réponse d'une commande ou erreur. */
+export interface ChatLine {
+  id: number
+  text: string
+  kind: 'self' | 'ok' | 'error'
   at: number
 }
 
@@ -19,6 +27,12 @@ interface UiState {
   loadError: string | null
   /** Quitte la partie et revient à l'écran d'accueil du jeu (branché par l'enveloppe). */
   exit: (() => void) | null
+  /** Dernières lignes du chat (affichées quelques secondes, ou toutes quand le chat est ouvert). */
+  chat: ChatLine[]
+  /** Lignes déjà saisies, rappelées avec les flèches. */
+  chatHistory: string[]
+  addChat(text: string, kind: ChatLine['kind']): void
+  rememberChat(line: string): void
   setMenu(menu: Menu): void
   notify(text: string, kind?: Notification['kind']): void
   prune(now: number): void
@@ -35,12 +49,17 @@ const initial = () => ({
   notifications: [] as Notification[],
   waypoint: null,
   loadError: null,
+  chat: [] as ChatLine[],
 })
 
 export const useUiStore = create<UiState>()((set) => ({
   ...initial(),
   exit: null,
+  chatHistory: [],
   reset: () => set(initial()),
+  addChat: (text, kind) =>
+    set((s) => ({ chat: [...s.chat.slice(-19), { id: nextId++, text, kind, at: performance.now() }] })),
+  rememberChat: (line) => set((s) => ({ chatHistory: [...s.chatHistory.filter((l) => l !== line), line].slice(-30) })),
   setMenu: (menu) => set({ menu }),
   notify: (text, kind = 'info') =>
     set((s) => ({

@@ -11,6 +11,7 @@ import { createProgressSession } from './state/session'
 import { useSettingsStore } from './state/settingsStore'
 import { useUiStore } from './state/uiStore'
 import { Hud } from './ui/Hud'
+import { Chat } from './ui/Chat'
 import { FullscreenButton } from './ui/FullscreenButton'
 import { Menus } from './ui/Menus'
 import { loadMapColors } from './ui/palette'
@@ -74,6 +75,7 @@ export default function MiniGtaPlay({ ctx, save, best, onExit }: Props) {
           {postfx && <PostFX />}
         </Canvas>
         <Hud />
+        <Chat />
         <Menus />
       </div>
       <div className="mini-gta-toolbar">

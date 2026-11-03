@@ -6,7 +6,7 @@ import { createTestGame, type TestGame } from '../game/testing/harness'
 vi.mock('../net/api', () => import('../game/testing/fakeApi'))
 
 let t: TestGame
-vi.mock('../game/GameRoot', () => ({ getGame: () => t?.game ?? null }))
+vi.mock('../game/current', () => ({ getGame: () => t?.game ?? null }))
 
 beforeAll(async () => {
   t = await createTestGame()

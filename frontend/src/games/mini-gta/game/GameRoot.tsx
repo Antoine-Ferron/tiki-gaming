@@ -11,14 +11,9 @@ import {
 import { gameLoop } from '../core/loop'
 import { input } from '../core/input'
 import { Game } from './Game'
+import { setGame } from './current'
 import { useUiStore } from '../state/uiStore'
 import { applySettings, useSettingsStore } from '../state/settingsStore'
-
-let current: Game | null = null
-/** Accessor for UI components (minimap, menus) and debugging. */
-export function getGame(): Game | null {
-  return current
-}
 
 /** Avec le post-FX, c'est l'effet ACES qui fait le tone mapping. */
 function setToneMapping(gl: WebGLRenderer, mapping: ToneMapping) {
@@ -47,7 +42,7 @@ export function GameRoot() {
       .then(() => {
         if (cancelled) return
         gameRef.current = game
-        current = game
+        setGame(game)
         // Outil de vérification en développement uniquement (absent du build de production).
         if (import.meta.env.DEV) (window as unknown as { __miniGta?: Game }).__miniGta = game
         game.events.on('notify', (n) => useUiStore.getState().notify(n.text, n.kind))
@@ -78,7 +73,7 @@ export function GameRoot() {
       unsubSettings()
       document.removeEventListener('pointerlockchange', onLock)
       gameRef.current = null
-      current = null
+      setGame(null)
       // init may still be running: dispose once it has finished.
       if (game.player) game.dispose()
     }
@@ -94,8 +89,13 @@ export function GameRoot() {
       gameLoop.timeScale = ui.menu === 'wheel' ? 0.25 : 1
       input.lockOnClick = ui.started && ui.menu === null
       if (ui.started) {
-        if (input.wasPressedThisFrame('KeyM')) ui.setMenu(ui.menu === 'map' ? null : 'map')
-        if (input.wasPressedThisFrame('KeyP')) ui.setMenu(ui.menu === 'pause' ? null : 'pause')
+        // Chat (T ou Entrée) : tant qu'il est ouvert, les touches tapées ne sont pas des raccourcis.
+        if ((input.wasPressedThisFrame('KeyT') || input.wasPressedThisFrame('Enter')) && ui.menu === null) {
+          ui.setMenu('chat')
+        }
+        const chat = useUiStore.getState().menu === 'chat'
+        if (!chat && input.wasPressedThisFrame('KeyM')) ui.setMenu(ui.menu === 'map' ? null : 'map')
+        if (!chat && input.wasPressedThisFrame('KeyP')) ui.setMenu(ui.menu === 'pause' ? null : 'pause')
         if (input.wasPressedThisFrame('Tab') && ui.menu === null && game.player.state === 'foot') ui.setMenu('wheel')
         if (ui.menu === 'wheel' && !input.isDown('Tab')) ui.setMenu(null)
       }
