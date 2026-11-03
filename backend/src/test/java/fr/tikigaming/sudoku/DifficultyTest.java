@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class DifficultyTest {
 
@@ -24,5 +26,13 @@ class DifficultyTest {
         assertThat(Difficulty.EASY.baseScore()).isEqualTo(1000);
         assertThat(Difficulty.MEDIUM.baseScore()).isEqualTo(2000);
         assertThat(Difficulty.HARD.baseScore()).isEqualTo(3000);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    void treatsBlankValueAsMissing(String blank) {
+        assertThatThrownBy(() -> Difficulty.parse(blank))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Difficulté manquante");
     }
 }
