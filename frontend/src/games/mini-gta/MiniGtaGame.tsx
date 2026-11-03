@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import type { GameProps, LeaderboardEntry } from '../types'
 import { canPlay } from './domain/device'
 import { newSave, saveSchema, type MiniGtaSave } from './domain/save'
 import './mini-gta.css'
+import { formatMoney } from './domain/format'
 
-const money = (n: number) => `${n.toLocaleString('fr-FR')} $`
+// Le moteur (Three.js, cannon-es) n'est téléchargé qu'au lancement de la partie.
+const MiniGtaPlay = lazy(() => import('./MiniGtaPlay'))
 
 function detectDevice() {
   const finePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: fine)').matches
@@ -18,14 +20,18 @@ export default function MiniGtaGame({ ctx }: GameProps) {
   const [hasSave, setHasSave] = useState(false)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [launched, setLaunched] = useState(false)
+  const [playing, setPlaying] = useState<{ best: number | null } | null>(null)
   const [playable] = useState(() => canPlay(detectDevice()))
 
-  useEffect(() => {
+  const refreshLeaderboard = useCallback(() => {
     ctx
       .getLeaderboard(10)
       .then(setLeaderboard)
       .catch((e: Error) => setError(e.message))
+  }, [ctx])
+
+  useEffect(() => {
+    refreshLeaderboard()
     ctx
       .loadSave(saveSchema)
       .then((s) => {
@@ -36,7 +42,36 @@ export default function MiniGtaGame({ ctx }: GameProps) {
         setError(e.message)
         setSave(newSave())
       })
-  }, [ctx])
+  }, [ctx, refreshLeaderboard])
+
+  async function play() {
+    setError(null)
+    // Le plein écran doit être demandé pendant le clic ; un refus n'empêche pas de jouer.
+    document.documentElement.requestFullscreen?.().catch(() => {})
+    let best: number | null = null
+    try {
+      best = (await ctx.getMyBest())?.best_score ?? null
+    } catch (e) {
+      setError((e as Error).message)
+    }
+    setPlaying({ best })
+  }
+
+  function exit(progress: MiniGtaSave) {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    setSave(progress)
+    setHasSave(true)
+    setPlaying(null)
+    refreshLeaderboard()
+  }
+
+  if (playing && save) {
+    return (
+      <Suspense fallback={<p className="muted">Chargement du moteur…</p>}>
+        <MiniGtaPlay ctx={ctx} save={save} best={playing.best} onExit={exit} />
+      </Suspense>
+    )
+  }
 
   return (
     <div className="mini-gta">
@@ -46,18 +81,18 @@ export default function MiniGtaGame({ ctx }: GameProps) {
         ) : (
           <>
             {hasSave && (
-              <dl className="mini-gta-progress">
+              <dl className="mini-gta-save">
                 <dt>Argent</dt>
-                <dd>{money(save.money)}</dd>
+                <dd>{formatMoney(save.money)}</dd>
                 <dt>Gagné au total</dt>
-                <dd>{money(save.totalEarned)}</dd>
+                <dd>{formatMoney(save.totalEarned)}</dd>
                 <dt>Missions</dt>
                 <dd>{save.completedMissions.length} / 4</dd>
               </dl>
             )}
             {playable ? (
               <>
-                <button className="big" onClick={() => setLaunched(true)}>
+                <button className="big" onClick={() => void play()}>
                   {hasSave ? 'Continuer' : 'Jouer'}
                 </button>
                 <p className="muted">Clavier et souris. Échap met le jeu en pause.</p>
@@ -65,7 +100,6 @@ export default function MiniGtaGame({ ctx }: GameProps) {
             ) : (
               <p className="notice">Ce jeu se joue au clavier et à la souris, sur ordinateur.</p>
             )}
-            {launched && <p className="notice">La ville est en cours de construction : reviens bientôt.</p>}
             {ctx.isGuest && <p className="muted">Connecte-toi pour apparaître au classement.</p>}
           </>
         )}
