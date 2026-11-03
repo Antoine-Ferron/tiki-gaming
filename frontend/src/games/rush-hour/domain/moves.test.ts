@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { parseBoard } from './board'
-import { moveRange, moveVehicle } from './moves'
+import { getLevel } from './levels'
+import { isSolved, moveRange, moveVehicle } from './moves'
 
 const E = '......'
 
@@ -121,5 +122,33 @@ describe('moveVehicle : un coup = un glissement dans son sens (R4 à R6)', () =>
 
     // Assert
     expect(next.vehicles.find((v) => v.id === 'A')).toMatchObject({ row: 2, col: 4 })
+  })
+})
+
+describe('isSolved : la voiture rouge touche la sortie (R7)', () => {
+  // Valeurs limites : contre le bord droit (N) → gagné ; une case avant (N-1) → pas encore
+  test.each([
+    { row: '....XX', solved: true },
+    { row: '...XX.', solved: false },
+  ])('voiture rouge en "$row" → gagné : $solved', ({ row, solved }) => {
+    // Arrange
+    const board = parseBoard([E, E, row, E, E, E])
+
+    // Act
+    const result = isSolved(board)
+
+    // Assert
+    expect(result).toBe(solved)
+  })
+
+  test('le niveau 1 n’est pas gagné au départ', () => {
+    // Arrange
+    const board = parseBoard(getLevel(1).map)
+
+    // Act
+    const result = isSolved(board)
+
+    // Assert
+    expect(result).toBe(false)
   })
 })
