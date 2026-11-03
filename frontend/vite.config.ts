@@ -19,15 +19,21 @@ export default defineConfig(({ mode }) => ({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/lib/database.types.ts', 'src/vite-env.d.ts', 'src/main.tsx'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/lib/database.types.ts',
+        'src/vite-env.d.ts',
+        'src/main.tsx',
+        'src/auth/testing.tsx',
+      ],
       reporter: ['text-summary', 'lcov', 'html'],
       // Seuils bloquants (CI, job frontend). Le cœur du lobby doit rester couvert ; le global, juste sous
       // l'existant, empêche les régressions : le relever quand la couverture monte, jamais le baisser.
       thresholds: {
-        lines: 40,
-        branches: 44,
-        functions: 47,
-        statements: 42,
+        lines: 78,
+        branches: 80,
+        functions: 75,
+        statements: 79,
         '{src/games/domain/**,src/games/errors.ts,src/games/scoreQueue.ts,src/games/sdk.ts,src/lib/validation.ts}': {
           lines: 95,
           branches: 95,
