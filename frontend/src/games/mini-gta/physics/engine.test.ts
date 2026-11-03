@@ -346,3 +346,275 @@ describe('contrôleur de véhicule', () => {
     expect(body.translation().x).toBeGreaterThan(0.5)
   })
 })
+
+describe('cas limites des corps', () => {
+  test('un corps fixe garde sa pose et n’a ni vitesse ni masse', () => {
+    const world = new World({ x: 0, y: -9.81, z: 0 })
+    const body = world.createRigidBody(RigidBodyDesc.fixed().setTranslation(1, 2, 3))
+
+    body.setTranslation({ x: 4, y: 5, z: 6 }, true)
+    body.setRotation(yaw(1), true)
+    body.applyImpulse({ x: 10, y: 0, z: 0 }, true)
+    body.setNextKinematicTranslation({ x: 9, y: 9, z: 9 })
+    world.step()
+
+    expect(body.translation()).toEqual({ x: 4, y: 5, z: 6 })
+    expect(body.rotation().y).toBeCloseTo(Math.sin(0.5))
+    expect(body.linvel()).toEqual({ x: 0, y: 0, z: 0 })
+    expect(body.angvel()).toEqual({ x: 0, y: 0, z: 0 })
+    expect(body.velocityAt({ x: 0, y: 0, z: 0 })).toEqual({ x: 0, y: 0, z: 0 })
+    expect(body.centerOfMass()).toEqual({ x: 4, y: 5, z: 6 })
+    expect(body.mass()).toBe(0)
+    expect(body.invMass).toBe(0)
+    expect(body.impulseDenominator({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 })).toBe(0)
+  })
+
+  test('tourner un corps dynamique garde son origine même si le centre de masse est décalé', () => {
+    const world = new World({ x: 0, y: 0, z: 0 })
+    const body = world.createRigidBody(RigidBodyDesc.dynamic().setTranslation(0, 0, 0))
+    world.createCollider(ColliderDesc.cuboid(1, 1, 1).setTranslation(0, 0, 2).setMass(1), body)
+
+    body.setRotation(yaw(Math.PI / 2), true)
+
+    expect(body.translation().x).toBeCloseTo(0)
+    expect(body.translation().z).toBeCloseTo(0)
+    expect(body.centerOfMass().x).toBeCloseTo(2)
+    expect(body.invMass).toBeCloseTo(1)
+  })
+
+  test('une grenade rapide rebondit sur un mur au lieu de le traverser (CCD)', () => {
+    const { world, ground } = flatWorld()
+    world.createCollider(ColliderDesc.cuboid(0.05, 3, 5).setTranslation(3, 3, 0), ground)
+    const body = world.createRigidBody(
+      RigidBodyDesc.dynamic().setTranslation(0, 1, 0).setLinvel(120, 0, 0).setCcdEnabled(true),
+    )
+    world.createCollider(ColliderDesc.ball(0.09).setMass(0.4).setRestitution(0.4), body)
+
+    for (let i = 0; i < 5; i++) world.step()
+
+    expect(body.translation().x).toBeLessThan(3)
+    expect(body.linvel().x).toBeLessThan(0)
+  })
+
+  test('désactiver un corps le retire des requêtes et de la simulation', () => {
+    const { world } = flatWorld()
+    const body = world.createRigidBody(RigidBodyDesc.dynamic().setTranslation(0, 5, 0))
+    world.createCollider(ColliderDesc.ball(1), body)
+
+    body.setEnabled(false)
+    world.step()
+
+    expect(down(world, 0, 0)?.timeOfImpact).toBeCloseTo(50, 2)
+    expect(body.translation().y).toBe(5)
+    body.setEnabled(true)
+    expect(down(world, 0, 0)?.timeOfImpact).toBeCloseTo(44, 2)
+  })
+
+  test('retirer un collider d’un corps mobile recalcule sa masse', () => {
+    const world = new World({ x: 0, y: 0, z: 0 })
+    const body = world.createRigidBody(RigidBodyDesc.dynamic())
+    world.createCollider(ColliderDesc.cuboid(1, 1, 1).setMass(10), body)
+    const extra = world.createCollider(ColliderDesc.cuboid(1, 1, 1).setTranslation(0, 2, 0).setMass(30), body)
+
+    world.removeCollider(extra)
+    world.removeCollider(extra)
+
+    expect(body.mass()).toBe(10)
+    expect(body.numColliders()).toBe(1)
+    expect(world.getCollider(extra.handle)).toBeUndefined()
+  })
+
+  test('un collider désactivé ne bloque plus les rayons', () => {
+    const { world, ground } = flatWorld()
+    const box = world.createCollider(ColliderDesc.cuboid(1, 1, 1).setTranslation(0, 1, 0), ground)
+
+    box.setEnabled(false)
+
+    expect(down(world, 0, 0)?.timeOfImpact).toBeCloseTo(50, 2)
+  })
+
+  test('un corps dynamique endormi se réveille à l’impulsion', () => {
+    const world = new World({ x: 0, y: 0, z: 0 })
+    const body = world.createRigidBody(RigidBodyDesc.dynamic())
+    world.createCollider(ColliderDesc.ball(0.5).setMass(1), body)
+
+    body.sleep()
+    body.applyTorqueImpulse({ x: 0, y: 1, z: 0 }, true)
+
+    expect(body.angvel().y).toBeGreaterThan(0)
+  })
+
+  test('libérer le monde retire tous les corps', () => {
+    const { world } = flatWorld()
+    world.free()
+
+    expect(down(world, 0, 0)).toBeNull()
+  })
+})
+
+describe('cas limites des requêtes', () => {
+  test.each([
+    ['boîte', ColliderDesc.cuboid(1, 1, 1)],
+    ['sphère', ColliderDesc.ball(1)],
+    ['capsule', ColliderDesc.capsule(1, 0.5)],
+  ])('rayon qui part de l’intérieur d’une %s : touche à 0 en mode plein, sort en mode creux', (_, desc) => {
+    const world = new World({ x: 0, y: 0, z: 0 })
+    const body = world.createRigidBody(RigidBodyDesc.kinematicPositionBased())
+    world.createCollider(desc, body)
+    const ray = { origin: { x: 0, y: 0, z: 0 }, dir: { x: 1, y: 0, z: 0 } }
+
+    expect(world.castRayAndGetNormal(ray, 10, true)?.timeOfImpact).toBe(0)
+    const hollow = world.castRayAndGetNormal(ray, 10, false)
+    if (hollow) expect(hollow.timeOfImpact).toBeGreaterThanOrEqual(0)
+  })
+
+  test('rayon sous le terrain : aucun impact', () => {
+    const { world } = flatWorld()
+
+    const hit = world.castRayAndGetNormal({ origin: { x: 0, y: -1, z: 0 }, dir: { x: 1, y: 0, z: 0 } }, 10, true)
+
+    expect(hit).toBeNull()
+  })
+
+  test('rayon oblique sur le terrain : impact et normale vers le haut', () => {
+    const { world } = flatWorld()
+
+    const hit = world.castRayAndGetNormal(
+      { origin: { x: 0, y: 10, z: 0 }, dir: { x: Math.SQRT1_2, y: -Math.SQRT1_2, z: 0 } },
+      50,
+      true,
+    )
+
+    expect(hit?.timeOfImpact).toBeCloseTo(10 * Math.SQRT2, 1)
+    expect(hit?.normal.y).toBeCloseTo(1)
+  })
+
+  test('la sphère de test touche une sphère, une capsule et le terrain', () => {
+    const { world } = flatWorld()
+    const body = world.createRigidBody(RigidBodyDesc.kinematicPositionBased().setTranslation(0, 5, 0))
+    const ball = world.createCollider(ColliderDesc.ball(0.5).setTranslation(2, 0, 0), body)
+    const capsule = world.createCollider(ColliderDesc.capsule(1, 0.3).setTranslation(-2, 0, 0), body)
+    const seen = (p: { x: number; y: number; z: number }, r: number) => {
+      const out: unknown[] = []
+      world.intersectionsWithShape(p, yaw(0), new Ball(r), (c) => {
+        out.push(c)
+        return true
+      })
+      return out
+    }
+
+    expect(seen({ x: 3, y: 5, z: 0 }, 0.6)).toEqual([ball])
+    expect(seen({ x: -2, y: 6.5, z: 0 }, 0.3)).toEqual([capsule])
+    expect(seen({ x: 10, y: 0.2, z: 10 }, 0.5)).toHaveLength(1)
+  })
+
+  test('le rappel de la sphère de test peut arrêter la recherche', () => {
+    const { world, ground } = flatWorld()
+    world.createCollider(ColliderDesc.cuboid(1, 1, 1).setTranslation(0, 1, 0), ground)
+    let n = 0
+
+    world.intersectionsWithShape({ x: 0, y: 0.5, z: 0 }, yaw(0), new Ball(2), () => {
+      n++
+      return false
+    })
+
+    expect(n).toBe(1)
+  })
+
+  test('les débuts et fins de contact sont signalés aux colliders qui le demandent', () => {
+    const { world, ground } = flatWorld()
+    world.createCollider(
+      ColliderDesc.cuboid(1, 1, 1).setTranslation(0, 1, 0).setActiveEvents(ActiveEvents.COLLISION_EVENTS),
+      ground,
+    )
+    const body = world.createRigidBody(RigidBodyDesc.dynamic().setTranslation(0, 3, 0))
+    world.createCollider(ColliderDesc.cuboid(0.4, 0.4, 0.4).setMass(5), body)
+    const events = new EventQueue(true)
+    const seen: boolean[] = []
+
+    for (let i = 0; i < 60; i++) world.step(events)
+    events.drainCollisionEvents((_a, _b, started) => seen.push(started))
+    body.setTranslation({ x: 0, y: 20, z: 0 }, true)
+    world.step(events)
+    events.drainCollisionEvents((_a, _b, started) => seen.push(started))
+
+    expect(seen[0]).toBe(true)
+    expect(seen.at(-1)).toBe(false)
+  })
+})
+
+describe('cas limites du contrôleur de personnage', () => {
+  function capsuleAt(world: World, x: number, feet: number, z: number) {
+    const body = world.createRigidBody(RigidBodyDesc.kinematicPositionBased().setTranslation(x, feet + 0.9, z))
+    const collider = world.createCollider(ColliderDesc.capsule(0.58, 0.32), body)
+    return { body, collider }
+  }
+
+  test('se cogne la tête sous un plafond', () => {
+    const { world, ground } = flatWorld()
+    world.createCollider(ColliderDesc.cuboid(3, 0.2, 3).setTranslation(0, 2.0, 0), ground)
+    const me = capsuleAt(world, 0, 0, 0)
+    const cc = world.createCharacterController(0.03)
+
+    cc.computeColliderMovement(me.collider, { x: 0, y: 0.5, z: 0 })
+
+    expect(cc.computedMovement().y).toBeLessThan(0.5)
+  })
+
+  test('contourne un autre personnage', () => {
+    const { world } = flatWorld()
+    const me = capsuleAt(world, 0, 0, 0)
+    capsuleAt(world, 0.7, 0, 0)
+    const cc = world.createCharacterController(0)
+
+    cc.computeColliderMovement(me.collider, { x: 0.1, y: 0, z: 0 })
+
+    expect(cc.computedMovement().x).toBeLessThan(0.1)
+  })
+
+  test('ressort d’une boîte dans laquelle il est apparu', () => {
+    const { world, ground } = flatWorld()
+    world.createCollider(ColliderDesc.cuboid(1, 2, 3).setTranslation(0, 2, 0), ground)
+    const me = capsuleAt(world, 0.2, 0, 0)
+    const cc = world.createCharacterController(0)
+
+    cc.computeColliderMovement(me.collider, { x: 0, y: 0, z: 0 })
+
+    expect(Math.abs(me.collider.position().x + cc.computedMovement().x)).toBeGreaterThan(1)
+  })
+
+  test('autre forme qu’une capsule : déplacement brut', () => {
+    const world = new World({ x: 0, y: 0, z: 0 })
+    const body = world.createRigidBody(RigidBodyDesc.kinematicPositionBased())
+    const ball = world.createCollider(ColliderDesc.ball(0.5), body)
+    const cc = world.createCharacterController(0)
+
+    cc.computeColliderMovement(ball, { x: 1, y: 2, z: 3 })
+
+    expect(cc.computedMovement()).toEqual({ x: 1, y: 2, z: 3 })
+  })
+})
+
+describe('véhicule sur un corps mobile', () => {
+  test('les roues posées sur une plateforme dynamique la poussent en retour', () => {
+    const world = new World({ x: 0, y: -9.81, z: 0 })
+    world.timestep = DT
+    const platform = world.createRigidBody(RigidBodyDesc.dynamic().setTranslation(0, 0, 0))
+    world.createCollider(ColliderDesc.cuboid(5, 0.2, 5).setMass(5000), platform)
+    const body = world.createRigidBody(RigidBodyDesc.dynamic().setTranslation(0, 0.4, 0))
+    world.createCollider(ColliderDesc.cuboid(0.9, 0.3, 2).setTranslation(0, 0.5, 0).setMass(800), body)
+    const vc = world.createVehicleController(body)
+    vc.addWheel({ x: 0.8, y: 0.4, z: 1.2 }, { x: 0, y: -1, z: 0 }, { x: -1, y: 0, z: 0 }, 0.3, 0.35)
+    vc.addWheel({ x: -0.8, y: 0.4, z: -1.2 }, { x: 0, y: -1, z: 0 }, { x: -1, y: 0, z: 0 }, 0.3, 0.35)
+    vc.setWheelSteering(0, 0.3)
+
+    vc.updateVehicle(DT, undefined, undefined, (c) => c.body !== body)
+
+    expect(vc.wheelIsInContact(0)).toBe(true)
+    expect(vc.wheelSteering(0)).toBe(0.3)
+    expect(vc.wheelSuspensionLength(0)).not.toBeNull()
+    expect(vc.wheelIsInContact(5)).toBe(false)
+    expect(vc.wheelSteering(5)).toBeNull()
+    world.removeVehicleController(vc)
+  })
+})

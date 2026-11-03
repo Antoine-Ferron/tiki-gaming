@@ -2,6 +2,7 @@ import {
   Body,
   Box,
   Broadphase,
+  type ContactEquation,
   Heightfield,
   Material,
   Quaternion,
@@ -32,6 +33,8 @@ export const RigidBodyType = { Dynamic: 0, Fixed: 1, KinematicPositionBased: 2 }
 export type RigidBodyType = (typeof RigidBodyType)[keyof typeof RigidBodyType]
 
 const ALL_GROUPS = 0xffffffff
+/** Profondeur (m) au-delà de laquelle un contact est un dégagement et ne compte pas comme un choc. */
+const DEEP_PENETRATION = 0.15
 
 /** Groupes façon Rapier : 16 bits de poids fort = appartenance, 16 bits de poids faible = filtre. */
 export function groupsInteract(a: number, b: number): boolean {
@@ -690,13 +693,12 @@ export class World {
   private nextHandle = 1
   private stamp = 1
   private activePairs = new Set<string>()
+  private before = new Map<Body, { v: Vec; w: Vec }>()
 
   constructor(gravity: Vec) {
     this.cworld = new CannonWorld({ gravity: new Vec3(gravity.x, gravity.y, gravity.z), allowSleep: true })
     this.cworld.broadphase = new GridBroadphase(this)
     ;(this.cworld.solver as unknown as { iterations: number }).iterations = 10
-    this.cworld.defaultContactMaterial.contactEquationStiffness = 1e8
-    this.cworld.defaultContactMaterial.contactEquationRelaxation = 3
   }
 
   nextStamp() {
@@ -898,6 +900,14 @@ export class World {
       b.prepareKinematic(dt)
       if (b.ccd && b.isDynamic()) this.sweep(b, dt)
     }
+    // Vitesses avant le pas : elles mesurent la violence d'un choc (voir collectEvents).
+    this.before.clear()
+    for (const b of this.movingBodies()) {
+      this.before.set(b, {
+        v: { x: b.velocity.x, y: b.velocity.y, z: b.velocity.z },
+        w: { x: b.angularVelocity.x, y: b.angularVelocity.y, z: b.angularVelocity.z },
+      })
+    }
     this.cworld.step(dt)
     for (const b of this.bodies) if (b.enabled) b.finishKinematic()
     if (events) this.collectEvents(events)
@@ -932,21 +942,34 @@ export class World {
   }
 
   private collectEvents(events: EventQueue) {
-    const pairs = new Map<string, { a: Collider; b: Collider; force: number; max: number; dir: Vec }>()
+    const dt = this.timestep
+    const pairs = new Map<
+      string,
+      { a: Collider; b: Collider; force: number; max: number; dir: Vec; closing: number; mass: number }
+    >()
     for (const eq of this.cworld.contacts) {
       const a = this.shapeOwner.get(eq.si)
       const b = this.shapeOwner.get(eq.sj)
       if (!a || !b || !(a.activeEvents | b.activeEvents)) continue
       const key = a.handle < b.handle ? `${a.handle}:${b.handle}` : `${b.handle}:${a.handle}`
-      const f = Math.abs(eq.multiplier)
+      // Interpénétration profonde (apparition dans un obstacle) : c'est un dégagement, pas un choc.
+      const f = penetration(eq) < -DEEP_PENETRATION ? 0 : Math.abs(eq.multiplier)
       let p = pairs.get(key)
-      if (!p) pairs.set(key, (p = { a, b, force: 0, max: -1, dir: { x: 0, y: 0, z: 0 } }))
+      if (!p) {
+        const inv = eq.bi.invMass + eq.bj.invMass
+        p = { a, b, force: 0, max: -1, dir: { x: 0, y: 0, z: 0 }, closing: 0, mass: inv > 0 ? 1 / inv : 0 }
+        pairs.set(key, p)
+      }
       p.force += f
+      p.closing = Math.max(p.closing, this.closingSpeed(eq))
       if (f > p.max) {
         p.max = f
         p.dir = { x: eq.ni.x, y: eq.ni.y, z: eq.ni.z }
       }
     }
+    // La force du solveur inclut la correction d'interpénétration, qui fait des pics. Comme Rapier, on ne
+    // garde que la force qui arrête la vitesse d'approche d'avant le pas, plus le poids (contact au repos).
+    for (const p of pairs.values()) p.force = Math.min(p.force, p.mass * (p.closing / dt + 2 * 9.81))
     const active = new Set<string>()
     for (const [key, p] of pairs) {
       const flags = p.a.activeEvents | p.b.activeEvents
@@ -975,6 +998,19 @@ export class World {
       }
     }
     this.activePairs = active
+  }
+
+  /** Vitesse à laquelle les deux corps d'un contact se rapprochaient avant le pas (0 s'ils s'éloignaient). */
+  private closingSpeed(eq: ContactEquation): number {
+    const at = (body: Body, r: Vec3) => {
+      const s = this.before.get(body)
+      if (!s) return { x: 0, y: 0, z: 0 }
+      const w = cross(s.w, r)
+      return { x: s.v.x + w.x, y: s.v.y + w.y, z: s.v.z + w.z }
+    }
+    const vi = at(eq.bi, eq.ri)
+    const vj = at(eq.bj, eq.rj)
+    return Math.max(0, (vi.x - vj.x) * eq.ni.x + (vi.y - vj.y) * eq.ni.y + (vi.z - vj.z) * eq.ni.z)
   }
 
   // -------------------------------------------------------------------------------------------
@@ -1136,6 +1172,16 @@ export class World {
     this.colliders.clear()
     this.shapeOwner.clear()
   }
+}
+
+/** Distance signée le long de la normale d'un contact : négative quand les formes s'interpénètrent. */
+function penetration(eq: ContactEquation): number {
+  const { bi, bj, ri, rj, ni } = eq
+  return (
+    (bj.position.x + rj.x - bi.position.x - ri.x) * ni.x +
+    (bj.position.y + rj.y - bi.position.y - ri.y) * ni.y +
+    (bj.position.z + rj.z - bi.position.z - ri.z) * ni.z
+  )
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1680,7 +1726,8 @@ export class CharacterController {
       let moved = false
       for (const c of obstacles) {
         const span = verticalSpan(c)
-        if (span.max <= feet + step + Math.max(0, desired.y) || span.min >= top + Math.max(0, desired.y)) continue
+        // Un obstacle franchissable (sous les pieds) ou au-dessus de la tête (plafond) ne bloque pas le pas.
+        if (span.max <= feet + step + Math.max(0, desired.y) || span.min >= top) continue
         const push = pushOut(c, px, pz, r)
         if (push) {
           px += push.x
