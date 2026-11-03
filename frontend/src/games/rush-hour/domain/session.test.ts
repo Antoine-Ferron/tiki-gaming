@@ -60,7 +60,7 @@ describe('GameSession : Annuler (P3)', () => {
     const session = new GameSession(MAP, new ManualClock())
     session.move('X', 1)
     const afterFirst = session.board
-    session.move('X', 1)
+    session.move('A', -1)
 
     // Act
     session.undo()
@@ -166,5 +166,60 @@ describe('GameSession : Recommencer (P4)', () => {
     // Assert
     expect(session.solved).toBe(false)
     expect(() => session.move('X', 1)).not.toThrow()
+  })
+})
+
+describe('GameSession : un même véhicule déplacé plusieurs fois de suite = un seul coup (R6)', () => {
+  test('deux glissements de suite du même véhicule comptent 1 coup', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+
+    // Act : au clavier, la voiture rouge avance case par case
+    session.move('X', 1)
+    session.move('X', 1)
+
+    // Assert
+    expect(session.moveCount).toBe(1)
+    expect(session.moves).toEqual([{ id: 'X', delta: 2 }])
+  })
+
+  test('un aller-retour du même véhicule ne compte aucun coup', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+
+    // Act
+    session.move('X', 1)
+    session.move('X', -1)
+
+    // Assert
+    expect(session.moveCount).toBe(0)
+  })
+
+  test('un autre véhicule entre les deux : 3 coups distincts', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+
+    // Act
+    session.move('X', 1)
+    session.move('A', -1)
+    session.move('X', 1)
+
+    // Assert
+    expect(session.moveCount).toBe(3)
+  })
+
+  test('Annuler annule tout le coup regroupé', () => {
+    // Arrange
+    const session = new GameSession(MAP, new ManualClock())
+    const start = session.board
+    session.move('X', 1)
+    session.move('X', 1)
+
+    // Act
+    session.undo()
+
+    // Assert
+    expect(session.board).toEqual(start)
+    expect(session.moveCount).toBe(0)
   })
 })
