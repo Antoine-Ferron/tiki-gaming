@@ -63,5 +63,19 @@ class FenTest {
         assertThat(aucun).isEqualTo(new CastlingRights(false, false, false, false));
     }
 
+    @Test
+    @DisplayName("lit la case de prise en passant : aucune (-) ou e3")
+    void litLaCaseDePriseEnPassant() {
+        // Act
+        Position sansPriseEnPassant = Fen.parse(START);
+        Position apresE4 = Fen.parse(AFTER_E4);
+
+        // Assert
+        assertThat(sansPriseEnPassant.enPassant()).isEmpty();
+        assertThat(apresE4.enPassant()).contains(Square.of("e3"));
+    }
+
+    private static final String AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+
     private static final String START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 }
