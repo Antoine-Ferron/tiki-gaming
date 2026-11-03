@@ -69,6 +69,8 @@ class OpenApiDocsTest {
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/prismine/runs/{id}/probes")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/prismine/runs/{id}/validation")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/prismine/runs/{id}/end")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/bang/tables")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/bang/tables/{code}/join")))
                     // Chaque endpoint porte le tag de son contrôleur : la plateforme ou le slug du jeu.
                     .andExpect(jsonPath(
                             "$.paths.*.*.tags[*]",
@@ -76,6 +78,7 @@ class OpenApiDocsTest {
                                     containsString("Authentification"),
                                     containsString("mastermind"),
                                     containsString("prismine")))));
+                                    containsString("bang")))));
         }
 
         @Test

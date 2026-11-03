@@ -126,7 +126,7 @@ Tous les tests Vitest doivent passer, **et** la couverture doit rester au-dessus
 | Périmètre | Lignes | Branches | Fonctions | Instructions |
 |-----------|--------|----------|-----------|--------------|
 | Cœur du lobby : `src/games/domain/**`, `errors.ts`, `scoreQueue.ts`, `sdk.ts`, `src/lib/validation.ts` | 95 % | 95 % | 95 % | 95 % |
-| Tout `src/` | 40 % | 44 % | 47 % | 42 % |
+| Tout `src/` | 78 % | 80 % | 75 % | 79 % |
 
 Le seuil global est placé juste sous la couverture actuelle : il empêche toute régression. On le relève quand la
 couverture monte, on ne le baisse jamais.
