@@ -27,6 +27,11 @@ export interface AuditNotifier {
   inactivityDetected(report: InactivityReport): void
 }
 
+/** Mélange les paquets : aléatoire en production, ordre fixe dans les tests. */
+export interface Shuffler {
+  shuffle<T>(items: readonly T[]): T[]
+}
+
 /** Heure courante, en millisecondes : remplace `Date.now()` / `new Date()` dans la logique du jeu. */
 export interface Clock {
   now(): number

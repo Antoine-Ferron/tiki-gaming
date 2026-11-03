@@ -1,4 +1,15 @@
-import type { Clock, CurrencyConverter, TreasuryRegistry } from '../ports'
+import { CARDS_BY_AGE, type Card } from '../cards'
+import type { Clock, CurrencyConverter, Shuffler, TreasuryRegistry } from '../ports'
+
+/** Carte du catalogue par son nom, pour préparer un scénario. */
+export function findCard(name: string): Card {
+  return Object.values(CARDS_BY_AGE)
+    .flat()
+    .find((c) => c.name === name)!
+}
+
+/** Stub : ne mélange rien, les cartes restent dans l'ordre du catalogue. */
+export const identityShuffler: Shuffler = { shuffle: (items) => [...items] }
 
 /** Stub : convertit toujours au même taux, quel que soit le prix réel du commerce. */
 export function fixedRate(coinsPerResource: number): CurrencyConverter {

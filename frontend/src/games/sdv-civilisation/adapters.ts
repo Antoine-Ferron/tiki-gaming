@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger'
-import type { AuditNotifier, Clock, CurrencyConverter, TreasuryRegistry } from './ports'
+import type { AuditNotifier, Clock, CurrencyConverter, Shuffler, TreasuryRegistry } from './ports'
 import type { Player } from './setup'
 
 /** Implémentations de production des contrats de ./ports. */
@@ -36,3 +36,15 @@ export const loggerAudit: AuditNotifier = {
 }
 
 export const systemClock: Clock = { now: () => Date.now() }
+
+/** Mélange de Fisher-Yates avec Math.random. */
+export const randomShuffler: Shuffler = {
+  shuffle: (items) => {
+    const copy = [...items]
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[copy[i], copy[j]] = [copy[j], copy[i]]
+    }
+    return copy
+  },
+}

@@ -16,7 +16,7 @@ export function createPlayers(names: string[]): Player[] {
 }
 
 /** Les joueurs sont assis en cercle : le premier et le dernier sont voisins. */
-export function neighbours(players: Player[], index: number): { left: Player; right: Player } {
+export function neighbours<T>(players: T[], index: number): { left: T; right: T } {
   const count = players.length
   return {
     left: players[(index - 1 + count) % count],
