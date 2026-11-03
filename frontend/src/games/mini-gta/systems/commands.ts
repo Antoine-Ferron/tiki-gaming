@@ -74,7 +74,7 @@ const summoned = new WeakMap<Game, Set<Vehicle>>()
 const ok = (message: string): CommandResult => ({ ok: true, message })
 const fail = (message: string): CommandResult => ({ ok: false, message })
 
-const vehicleNames = () => Object.keys(VEHICLE_ALIASES).sort()
+const vehicleNames = () => Object.keys(VEHICLE_ALIASES).sort((a, b) => a.localeCompare(b, 'fr'))
 
 /** Hauteur du sol réel (trottoirs compris) sous un point, ou null s'il n'y en a pas. */
 function groundAt(game: Game, x: number, z: number): number | null {
@@ -260,11 +260,11 @@ export function execute(game: Game, line: string): CommandResult {
 }
 
 const commonPrefix = (words: string[]) =>
-  words.reduce((p, w) => {
+  words.slice(1).reduce((p, w) => {
     let i = 0
     while (i < p.length && i < w.length && p[i] === w[i]) i++
     return p.slice(0, i)
-  })
+  }, words[0] ?? '')
 
 /**
  * Complétion (Tab) : nom de commande, puis argument (véhicule, lieu, météo). Renvoie le texte complété et les
