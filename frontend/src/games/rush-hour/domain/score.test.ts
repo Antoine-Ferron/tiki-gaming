@@ -40,6 +40,15 @@ describe('levelScore', () => {
     // Assert
     expect(score).toThrow('Nombre de coups impossible : 9 pour un minimum de 10')
   })
+
+  // Garde : un nombre d'indices négatif ferait dépasser 1000 points
+  test('refuse un nombre d’indices négatif', () => {
+    // Act
+    const score = () => levelScore({ moves: 10, optimal, hintsUsed: -1 })
+
+    // Assert
+    expect(score).toThrow('Nombre d’indices impossible : -1')
+  })
 })
 
 describe('totalScore', () => {
