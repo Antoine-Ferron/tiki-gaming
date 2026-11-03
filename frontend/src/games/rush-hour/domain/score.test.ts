@@ -31,6 +31,15 @@ describe('levelScore', () => {
     // Assert
     expect(score).toBe(expected)
   })
+
+  // Garde : faire mieux que le minimum est impossible sans triche (N-1 refusé ; N = 10 coups → 1000 ci-dessus)
+  test('refuse une partie jouée en moins de coups que le minimum', () => {
+    // Act
+    const score = () => levelScore({ moves: 9, optimal, hintsUsed: 0 })
+
+    // Assert
+    expect(score).toThrow('Nombre de coups impossible : 9 pour un minimum de 10')
+  })
 })
 
 describe('totalScore', () => {
