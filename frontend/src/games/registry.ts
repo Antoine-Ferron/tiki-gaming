@@ -1,6 +1,7 @@
 import type { GameDefinition } from './types'
 import clicker from './clicker'
 import prismine from './prismine'
+import mastermind from './mastermind'
 import rushHour from './rush-hour'
 import sdvCivilisation from './sdv-civilisation'
 
@@ -9,7 +10,7 @@ import sdvCivilisation from './sdv-civilisation'
  * Pour ajouter un jeu : créer src/games/<slug>/index.ts puis l'ajouter ici
  * (et insérer la ligne correspondante dans public.games via une migration).
  */
-export const games: GameDefinition[] = [clicker, rushHour, sdvCivilisation, prismine]
+export const games: GameDefinition[] = [clicker, rushHour, sdvCivilisation, mastermind, prismine]
 
 export function getGame(slug: string): GameDefinition | undefined {
   return games.find((g) => g.slug === slug)

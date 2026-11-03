@@ -79,14 +79,10 @@ public class ApiExceptionHandler {
         return error(HttpStatus.BAD_GATEWAY, AUTH_UNAVAILABLE);
     }
 
-    @ExceptionHandler(GameException.class)
-    ResponseEntity<ApiError> handleGameError(GameException e) {
-        if (e.status() >= 500) {
-            log.warn("Action de jeu impossible ({}) : {}", e.status(), e.getMessage());
-        } else {
-            log.debug("Action de jeu refusée ({}) : {}", e.status(), e.getMessage());
-        }
-        return error(HttpStatusCode.valueOf(e.status()), e.getMessage());
+    @ExceptionHandler(ApiException.class)
+    ResponseEntity<ApiError> handleApiException(ApiException e) {
+        log.debug("Requête refusée ({}) : {}", e.status().value(), e.getMessage());
+        return error(e.status(), e.getMessage());
     }
 
     @ExceptionHandler(ResourceAccessException.class)
