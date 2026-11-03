@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /** Une position d'échecs, immuable. */
-public record Position(Map<Square, Piece> pieces, Color turn, CastlingRights castling) {
+public record Position(Map<Square, Piece> pieces, Color turn, CastlingRights castling, Optional<Square> enPassant) {
 
     public Position {
         pieces = Map.copyOf(pieces);

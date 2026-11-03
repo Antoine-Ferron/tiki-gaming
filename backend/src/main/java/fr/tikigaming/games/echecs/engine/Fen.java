@@ -2,6 +2,7 @@ package fr.tikigaming.games.echecs.engine;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /** Lecture d'une position en notation FEN. */
 public final class Fen {
@@ -29,6 +30,7 @@ public final class Fen {
         String c = fields[2];
         CastlingRights castling =
                 new CastlingRights(c.contains("K"), c.contains("Q"), c.contains("k"), c.contains("q"));
-        return new Position(pieces, turn, castling);
+        Optional<Square> enPassant = fields[3].equals("-") ? Optional.empty() : Optional.of(Square.of(fields[3]));
+        return new Position(pieces, turn, castling, enPassant);
     }
 }
