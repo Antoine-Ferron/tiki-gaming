@@ -3,6 +3,7 @@ package fr.tikigaming.games.bang.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import fr.tikigaming.games.bang.model.GameState;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -49,5 +50,23 @@ class InitialDealTest {
                     .as("PV maximum de la place %s", player.seat())
                     .isEqualTo(expected);
         }
+    }
+
+    @Test
+    void handsAndRemainingDrawPilePartitionTheShuffledPhysicalDeck() {
+        GameState game = deal.deal(List.of("creator", "second", "third", "fourth"));
+
+        List<String> allCards = new ArrayList<>();
+        for (GameState.Player player : game.players()) {
+            assertThat(player.hand()).hasSize(player.health());
+            allCards.addAll(player.hand());
+        }
+        List<String> expectedOrder = new ArrayList<>(catalog.cards());
+        Collections.rotate(expectedOrder, 2);
+        assertThat(allCards).containsExactlyElementsOf(expectedOrder.subList(0, 16));
+        assertThat(game.drawPile()).containsExactlyElementsOf(expectedOrder.subList(16, 40));
+        allCards.addAll(game.drawPile());
+        assertThat(allCards).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(catalog.cards());
+        assertThat(catalog.cards().getFirst()).isEqualTo("test-card-1");
     }
 }

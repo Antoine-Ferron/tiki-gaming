@@ -33,21 +33,20 @@ public class InitialDeal {
         List<String> assignedRoles =
                 new ArrayList<>(List.of(roles.sheriff(), roles.outlaw(), roles.outlaw(), roles.renegade()));
         List<GameCatalog.CharacterCard> characters = new ArrayList<>(source.characters());
+        List<String> deck = new ArrayList<>(source.cards());
         shuffle.accept(assignedRoles);
         shuffle.accept(characters);
+        shuffle.accept(deck);
         List<GameState.Player> players = new ArrayList<>();
+        int drawn = 0;
         for (int seat = 0; seat < 4; seat++) {
             int health =
                     characters.get(seat).health() + (assignedRoles.get(seat).equals(roles.sheriff()) ? 1 : 0);
+            List<String> hand = List.copyOf(deck.subList(drawn, drawn + health));
+            drawn += health;
             players.add(new GameState.Player(
-                    accounts.get(seat),
-                    seat + 1,
-                    assignedRoles.get(seat),
-                    characters.get(seat),
-                    health,
-                    health,
-                    List.of()));
+                    accounts.get(seat), seat + 1, assignedRoles.get(seat), characters.get(seat), health, health, hand));
         }
-        return new GameState(List.copyOf(players), List.of(), 1);
+        return new GameState(List.copyOf(players), List.copyOf(deck.subList(drawn, deck.size())), 1);
     }
 }

@@ -10,7 +10,9 @@ import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -100,6 +102,23 @@ class GameStartHttpTest {
         assertThat(paul.role()).isEqualTo("Shérif");
         assertThat(paul.health()).isEqualTo(4);
         assertThat(paul.maxHealth()).isEqualTo(4);
+    }
+
+    @Test
+    void startingDealsOneCommonDeckWithoutDuplicatingCardsOrDrawingForTheFirstTurn() throws Exception {
+        String code = fullTable();
+
+        postAs(TABLES + "/" + code + "/start", sessionFor("fourth")).andExpect(status().isOk());
+
+        GameState game = tables.game(code);
+        List<String> allCards = new ArrayList<>(game.drawPile());
+        for (GameState.Player player : game.players()) {
+            assertThat(player.hand()).hasSize(player.health());
+            allCards.addAll(player.hand());
+        }
+        assertThat(game.players().get(2).hand()).hasSize(4);
+        assertThat(game.drawPile()).hasSize(24);
+        assertThat(allCards).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(new TestGameCatalog().cards());
     }
 
     private String fullTable() throws Exception {
