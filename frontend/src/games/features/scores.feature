@@ -1,32 +1,35 @@
 # language: fr
-Fonctionnalité: Enregistrement des scores
-  Pour que le classement reste juste,
-  en tant que plateforme, je refuse les scores impossibles
-  et je ne perds pas le score d'un joueur quand le réseau coupe.
+Fonctionnalité: Enregistrement d'un score
+  Pour que le classement reste crédible
+  En tant que plateforme
+  Je n'enregistre que des scores possibles, et je ne perds pas le score d'un joueur dont la connexion coupe
 
-  Plan du scénario: Bornes d'un score
-    Soit un joueur connecté sur un jeu dont le score maximal est <max>
-    Quand il termine une partie avec <score> points
+  Contexte:
+    Soit un jeu dont le score maximal est 300
+    Et un joueur connecté
+
+  Plan du scénario: Un score est accepté seulement entre 0 et le maximum du jeu
+    Quand le joueur termine une partie avec un score de <score>
     Alors le score est <résultat>
 
     Exemples:
-      | max | score | résultat |
-      | 300 | -1    | refusé   |
-      | 300 | 0     | accepté  |
-      | 300 | 299   | accepté  |
-      | 300 | 300   | accepté  |
-      | 300 | 301   | refusé   |
-      | 300 | 1.5   | refusé   |
+      | score | résultat |
+      | -1    | refusé   |
+      | 0     | accepté  |
+      | 1     | accepté  |
+      | 299   | accepté  |
+      | 300   | accepté  |
+      | 301   | refusé   |
+      | 12.5  | refusé   |
 
-  Scénario: Un invité joue sans être classé
-    Soit un invité sur un jeu dont le score maximal est 300
-    Quand il termine une partie avec 120 points
-    Alors le score n'est pas enregistré
+  Scénario: Un score refusé explique pourquoi au joueur
+    Quand le joueur termine une partie avec un score de 301
+    Alors il voit le message "Score refusé : 300 au maximum pour ce jeu."
 
-  Scénario: Une coupure réseau ne fait pas perdre le score
-    Soit un joueur connecté sur un jeu dont le score maximal est 300
-    Et le réseau est coupé
-    Quand il termine une partie avec 120 points
-    Alors il est prévenu que son score est gardé sur l'appareil
-    Quand le réseau revient et qu'il termine une partie avec 80 points
-    Alors ses scores 120 et 80 sont enregistrés
+  Scénario: Un score envoyé pendant une coupure réseau n'est pas perdu
+    Étant donné que la connexion est coupée
+    Quand le joueur termine une partie avec un score de 120
+    Alors il voit le message "Connexion perdue : ton score est gardé sur cet appareil et sera envoyé à ta prochaine partie."
+    Et aucun score n'est encore enregistré
+    Quand la connexion revient et qu'il termine une partie avec un score de 80
+    Alors les scores 120 et 80 sont enregistrés
