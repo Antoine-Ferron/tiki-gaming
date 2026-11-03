@@ -26,6 +26,9 @@ public final class Fen {
             }
         }
         Color turn = fields[1].equals("w") ? Color.WHITE : Color.BLACK;
-        return new Position(pieces, turn);
+        String c = fields[2];
+        CastlingRights castling =
+                new CastlingRights(c.contains("K"), c.contains("Q"), c.contains("k"), c.contains("q"));
+        return new Position(pieces, turn, castling);
     }
 }
