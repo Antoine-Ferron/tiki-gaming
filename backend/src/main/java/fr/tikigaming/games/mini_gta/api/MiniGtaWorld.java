@@ -31,7 +31,7 @@ public class MiniGtaWorld {
             List<Map<String, Object>> missionsJson) {}
 
     private final LongFunction<CityData> generator;
-    private final long seed;
+    private final long worldSeed;
     private Generated generated;
 
     @Autowired
@@ -41,12 +41,12 @@ public class MiniGtaWorld {
 
     MiniGtaWorld(LongFunction<CityData> generator, long seed) {
         this.generator = generator;
-        this.seed = seed;
+        this.worldSeed = seed;
     }
 
     private synchronized Generated generated() {
         if (generated == null) {
-            CityData city = generator.apply(seed);
+            CityData city = generator.apply(worldSeed);
             List<MissionDef> missions = MissionCatalog.story(city.locations());
             generated = new Generated(
                     new Navigation(city.roads().graph()), missions, Json.world(city), Json.missions(missions));

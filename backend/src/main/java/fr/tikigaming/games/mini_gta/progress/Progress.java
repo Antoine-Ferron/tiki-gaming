@@ -21,8 +21,8 @@ import java.util.List;
 public record Progress(
         @Schema(example = "1")
         @NotNull(message = "Sauvegarde d'un format inconnu.")
-        @Min(value = 1, message = Progress.VERSION)
-        @Max(value = 1, message = Progress.VERSION)
+        @Min(value = 1, message = Progress.UNKNOWN_FORMAT_MESSAGE)
+        @Max(value = 1, message = Progress.UNKNOWN_FORMAT_MESSAGE)
         Integer version,
 
         @Schema(example = "1200") @PositiveOrZero(message = "Le solde ne peut pas être négatif.")
@@ -31,7 +31,9 @@ public record Progress(
         @Schema(example = "3400") @PositiveOrZero(message = "Les gains ne peuvent pas être négatifs.")
         int totalEarned,
 
-        @Schema(example = "50") @Min(value = 0, message = Progress.ARMOR) @Max(value = 100, message = Progress.ARMOR)
+        @Schema(example = "50")
+        @Min(value = 0, message = Progress.ARMOR_RANGE_MESSAGE)
+        @Max(value = 100, message = Progress.ARMOR_RANGE_MESSAGE)
         int armor,
 
         @Valid List<@NotNull @Valid Slot> inventory,
@@ -41,8 +43,8 @@ public record Progress(
 
         @NotNull(message = "Statistiques attendues.") @Valid Stats stats) {
 
-    static final String VERSION = "Sauvegarde d'un format inconnu.";
-    static final String ARMOR = "L'armure doit être comprise entre 0 et 100.";
+    static final String UNKNOWN_FORMAT_MESSAGE = "Sauvegarde d'un format inconnu.";
+    static final String ARMOR_RANGE_MESSAGE = "L'armure doit être comprise entre 0 et 100.";
 
     /** Arme possédée : {@code clip} est le chargeur engagé, {@code ammo} la réserve. */
     public record Slot(
