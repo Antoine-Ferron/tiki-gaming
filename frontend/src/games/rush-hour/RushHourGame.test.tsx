@@ -21,11 +21,16 @@ const LEVEL_1: Board = parseBoard(getLevel(1).map)
 const SOLUTION = solve(LEVEL_1)!
 const OPTIMAL = SOLUTION.length
 
-/** Le jeu branché sur le vrai GameContext de la plateforme, avec ses fakes en mémoire (aucun réseau). */
-function renderGame() {
+/**
+ * Le jeu branché sur le vrai GameContext de la plateforme, avec ses fakes en mémoire (aucun réseau),
+ * puis ouvert sur le niveau 1 depuis l'écran de choix.
+ */
+async function renderGame() {
   const scores = new FakeScores(player)
   render(<RushHourGame ctx={createGameContext(game, player, fakeDeps({ scores }))} />)
-  return { scores, user: userEvent.setup() }
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: /^Niveau 1\b/ }))
+  return { scores, user }
 }
 
 function labelOf(id: string) {
@@ -47,9 +52,9 @@ async function playKeys(user: ReturnType<typeof userEvent.setup>, move: Move, ke
 const counter = (moves: number) => screen.getByText(`Coups : ${moves} (min. ${OPTIMAL})`)
 
 describe('RushHourGame : le niveau 1 se joue au clavier', () => {
-  test('affiche le niveau 1, tous ses véhicules et le compteur de coups', () => {
+  test('affiche le niveau 1, tous ses véhicules et le compteur de coups', async () => {
     // Act
-    renderGame()
+    await renderGame()
 
     // Assert
     expect(screen.getByRole('heading', { name: 'Niveau 1' })).toBeInTheDocument()
@@ -59,7 +64,7 @@ describe('RushHourGame : le niveau 1 se joue au clavier', () => {
 
   test('une flèche dans le sens du véhicule le déplace et compte un coup', async () => {
     // Arrange
-    const { user } = renderGame()
+    const { user } = await renderGame()
     const first = SOLUTION[0]
 
     // Act : une seule case dans le sens du premier coup de la solution
@@ -71,7 +76,7 @@ describe('RushHourGame : le niveau 1 se joue au clavier', () => {
 
   test('une flèche dans l’autre axe ne fait rien', async () => {
     // Arrange
-    const { user } = renderGame()
+    const { user } = await renderGame()
 
     // Act : la voiture rouge est horizontale
     await playKeys(user, { id: 'X', delta: 0 }, '{ArrowUp}')
@@ -82,7 +87,7 @@ describe('RushHourGame : le niveau 1 se joue au clavier', () => {
 
   test('Annuler est désactivé sans coup, puis annule le dernier coup', async () => {
     // Arrange
-    const { user } = renderGame()
+    const { user } = await renderGame()
     expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled()
     await playKeys(user, SOLUTION[0])
 
@@ -95,7 +100,7 @@ describe('RushHourGame : le niveau 1 se joue au clavier', () => {
 
   test('Recommencer remet le compteur à zéro', async () => {
     // Arrange
-    const { user } = renderGame()
+    const { user } = await renderGame()
     await playKeys(user, SOLUTION[0])
 
     // Act
@@ -107,7 +112,7 @@ describe('RushHourGame : le niveau 1 se joue au clavier', () => {
 
   test('jouer la solution la plus courte gagne avec 1000 points, envoyés au classement', async () => {
     // Arrange
-    const { user, scores } = renderGame()
+    const { user, scores } = await renderGame()
 
     // Act
     for (const move of SOLUTION) await playKeys(user, move)
@@ -115,5 +120,73 @@ describe('RushHourGame : le niveau 1 se joue au clavier', () => {
     // Assert
     expect(await screen.findByText(`Bravo ! 1000 points en ${OPTIMAL} coups`)).toBeInTheDocument()
     expect(scores.rows.map((r) => r.score)).toEqual([1000])
+  })
+})
+
+/** Ouvre le jeu sur l'écran de choix, avec une progression déjà sauvegardée (records par niveau). */
+async function renderPicker(best: Record<number, number> = {}) {
+  const scores = new FakeScores(player)
+  const deps = fakeDeps({ scores })
+  deps.saves.data.set('rush-hour', { version: 1, best })
+  render(<RushHourGame ctx={createGameContext(game, player, deps)} />)
+  await screen.findByRole('heading', { name: 'Niveaux' })
+  return { user: userEvent.setup() }
+}
+
+const levelButton = (id: number) => screen.getByRole('button', { name: new RegExp(`^Niveau ${id}\\b`) })
+
+describe('RushHourGame : choix des niveaux et progression (N3, N4, N5, S3)', () => {
+  test('au départ, seul le niveau 1 est ouvert', async () => {
+    // Act
+    await renderPicker()
+
+    // Assert
+    expect(levelButton(1)).toBeEnabled()
+    expect(levelButton(2)).toBeDisabled()
+    expect(levelButton(20)).toBeDisabled()
+  })
+
+  test('un niveau terminé ouvre le suivant et affiche son record', async () => {
+    // Act
+    await renderPicker({ 1: 800 })
+
+    // Assert
+    expect(levelButton(1)).toHaveAccessibleName(/800 points/)
+    expect(levelButton(2)).toBeEnabled()
+    expect(levelButton(3)).toBeDisabled()
+  })
+
+  test('affiche le score total, somme des records', async () => {
+    // Act
+    await renderPicker({ 1: 800, 2: 950 })
+
+    // Assert
+    expect(screen.getByText('Score total : 1750 points')).toBeInTheDocument()
+  })
+
+  test('choisir un niveau ouvert lance la partie, et on peut revenir aux niveaux', async () => {
+    // Arrange
+    const { user } = await renderPicker({ 1: 800 })
+
+    // Act
+    await user.click(levelButton(2))
+
+    // Assert
+    expect(screen.getByRole('heading', { name: 'Niveau 2' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '← Niveaux' }))
+    expect(screen.getByRole('heading', { name: 'Niveaux' })).toBeInTheDocument()
+  })
+
+  test('après une victoire, « Niveau suivant » lance le niveau 2', async () => {
+    // Arrange
+    const { user } = await renderPicker()
+    await user.click(levelButton(1))
+    for (const move of SOLUTION) await playKeys(user, move)
+
+    // Act
+    await user.click(await screen.findByRole('button', { name: 'Niveau suivant' }))
+
+    // Assert
+    expect(screen.getByRole('heading', { name: 'Niveau 2' })).toBeInTheDocument()
   })
 })
