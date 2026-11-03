@@ -132,6 +132,38 @@ class PrivateTablesHttpTest {
                 .andExpect(jsonPath("$.playerCount").value(4));
     }
 
+    @Test
+    void visitorsCannotCreateATableEvenWithAValidCsrfToken() throws Exception {
+        postAs(TABLES, new MockHttpSession())
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Non connecté"));
+    }
+
+    @Test
+    void visitorsCannotJoinATableEvenWithAValidCsrfToken() throws Exception {
+        String code = createTable("creator");
+
+        postAs(TABLES + "/" + code + "/join", new MockHttpSession())
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Non connecté"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join"})
+    void connectedPlayersMustSendACsrfToken(String path) throws Exception {
+        mvc.perform(post(path).session(sessionFor("player"))).andExpect(status().isForbidden());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join"})
+    void connectedPlayersCannotUseAMismatchingCsrfToken(String path) throws Exception {
+        mvc.perform(post(path)
+                        .session(sessionFor("player"))
+                        .cookie(new Cookie("XSRF-TOKEN", "expected-token"))
+                        .header("X-XSRF-TOKEN", "wrong-token"))
+                .andExpect(status().isForbidden());
+    }
+
     private MvcResult joinAtTheSameTime(String code, String accountId, CyclicBarrier start) throws Exception {
         start.await(5, TimeUnit.SECONDS);
         return postAs(TABLES + "/" + code + "/join", sessionFor(accountId)).andReturn();

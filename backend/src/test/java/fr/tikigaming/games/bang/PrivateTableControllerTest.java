@@ -1,10 +1,13 @@
 package fr.tikigaming.games.bang;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import fr.tikigaming.auth.AuthException;
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import org.junit.jupiter.api.Test;
@@ -42,5 +45,21 @@ class PrivateTableControllerTest {
 
         verify(tables).join("A1B2C3D4E5F6", "second-account");
         assertThat(response).isEqualTo(seat);
+    }
+
+    @Test
+    void anAnonymousCreationNeverReachesTheTables() {
+        assertThatThrownBy(() -> controller.create(new MockHttpServletRequest()))
+                .isInstanceOfSatisfying(
+                        AuthException.class, error -> assertThat(error.status()).isEqualTo(401));
+        verifyNoInteractions(tables);
+    }
+
+    @Test
+    void anAnonymousJoinNeverReachesTheTables() {
+        assertThatThrownBy(() -> controller.join("UNKNOWN", new MockHttpServletRequest()))
+                .isInstanceOfSatisfying(
+                        AuthException.class, error -> assertThat(error.status()).isEqualTo(401));
+        verifyNoInteractions(tables);
     }
 }

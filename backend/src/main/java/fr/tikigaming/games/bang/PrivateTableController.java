@@ -1,6 +1,8 @@
 package fr.tikigaming.games.bang;
 
+import fr.tikigaming.auth.AuthException;
 import fr.tikigaming.auth.AuthSession;
+import fr.tikigaming.auth.AuthUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,8 +33,7 @@ public class PrivateTableController {
     @ApiResponse(responseCode = "401", description = "Non connecté")
     @ApiResponse(responseCode = "403", description = "Jeton CSRF absent ou invalide")
     ResponseEntity<TableSeat> create(HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(tables.create(AuthSession.currentUser(request).id()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(tables.create(connectedAccountId(request)));
     }
 
     @PostMapping("/{code}/join")
@@ -43,6 +44,12 @@ public class PrivateTableController {
     @ApiResponse(responseCode = "404", description = "Code de table inconnu")
     @ApiResponse(responseCode = "409", description = "Les quatre places sont déjà occupées par d'autres comptes")
     TableSeat join(@PathVariable String code, HttpServletRequest request) {
-        return tables.join(code, AuthSession.currentUser(request).id());
+        return tables.join(code, connectedAccountId(request));
+    }
+
+    private static String connectedAccountId(HttpServletRequest request) {
+        AuthUser user = AuthSession.currentUser(request);
+        if (user == null) throw new AuthException(401, "Non connecté");
+        return user.id();
     }
 }
