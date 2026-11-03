@@ -20,6 +20,7 @@ const { games } = await vi.hoisted(async () => {
     title: `Jeu ${slug}`,
     description: '',
     category: 'solo',
+    theme: 'action',
     mode,
     component: lazy(async () => ({ default: FakeGame })),
   })
