@@ -83,6 +83,7 @@ Police système, sans téléchargement : `system-ui, -apple-system, 'Segoe UI', 
 | `button.link`            | Action secondaire présentée comme un lien         |
 | `button.big`             | Grosse action de jeu (« Jouer », « Rejouer »)     |
 | `.form` + `label` + `input` | Formulaire en colonne, `max-width: 420px`      |
+| `<Field />` (`.field-hint`, `.field-error`) | Champ avec aide et message d'erreur sous l'input (bordure `--error`) |
 | `.muted`, `.error`, `.success` | Texte secondaire, erreur, confirmation      |
 | `.notice`                | Bandeau d'information teinté d'accent             |
 | `.tags` + `.tag` (+ `.tag-solo`, `.tag-duel`, `.tag-multi`) | Étiquettes ; `<GameTags game={…} />` les génère |
@@ -93,7 +94,7 @@ Police système, sans téléchargement : `system-ui, -apple-system, 'Segoe UI', 
 
 | État      | Règle                                                                     |
 |-----------|---------------------------------------------------------------------------|
-| Survol    | Bordure `--accent` sur les cartes cliquables ; soulignement sur les liens |
+| Survol    | Bordure `--accent` sur les cartes cliquables ; soulignement sur les liens (toujours souligné dans un paragraphe, WCAG 1.4.1) |
 | Focus     | `outline: 2px solid var(--accent)`, décalé de 1px. **Ne jamais supprimer le focus** |
 | Désactivé | `opacity: 0.6`, curseur normal                                            |
 | Chargement | Texte `.muted` (« Chargement… ») ; libellé du bouton changé (« Connexion… ») |

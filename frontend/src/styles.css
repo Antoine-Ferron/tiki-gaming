@@ -38,6 +38,12 @@ a {
 a:hover {
   text-decoration: underline;
 }
+/* WCAG 1.4.1 : dans un texte, un lien ne se distingue pas que par sa couleur. */
+p a,
+.notice a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
 h1,
 h2 {
   margin: 0 0 0.5rem;
@@ -159,6 +165,16 @@ input:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+input[aria-invalid='true'] {
+  border-color: var(--error);
+}
+.field-error {
+  color: var(--error);
+}
+.field-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
 
 .hero {
   margin-bottom: 1.5rem;
@@ -250,6 +266,9 @@ button.big {
   border-radius: 8px;
   padding: 0.6rem 0.9rem;
   margin: 0 0 1rem;
+}
+.game-crash h2 {
+  margin-top: 0;
 }
 .tags {
   display: flex;

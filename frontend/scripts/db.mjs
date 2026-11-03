@@ -5,10 +5,9 @@
 //   npm run db:migrate            # applique les migrations de supabase/migrations non encore appliquées
 // Lit SUPABASE_PROJECT_REF / SUPABASE_DB_PASSWORD (+ SUPABASE_DB_HOST optionnel) depuis .env.
 import 'dotenv/config'
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 import pg from 'pg'
+import { applyMigrations } from './migrations.mjs'
 
 const ref = process.env.SUPABASE_PROJECT_REF
 const password = process.env.SUPABASE_DB_PASSWORD
@@ -44,40 +43,7 @@ async function connect() {
 }
 
 async function migrate(client) {
-  // Même table de suivi que la CLI Supabase, pour rester compatible avec `supabase db push`.
-  await client.query(`
-    create schema if not exists supabase_migrations;
-    create table if not exists supabase_migrations.schema_migrations (
-      version text primary key, statements text[], name text
-    );`)
-  const { rows } = await client.query('select version from supabase_migrations.schema_migrations')
-  const applied = new Set(rows.map((r) => r.version))
-  const dir = fileURLToPath(new URL('../../supabase/migrations', import.meta.url))
-  const files = readdirSync(dir)
-    .filter((f) => f.endsWith('.sql'))
-    .sort()
-  let count = 0
-  for (const file of files) {
-    const [version, ...rest] = file.replace(/\.sql$/, '').split('_')
-    if (applied.has(version)) continue
-    const sql = readFileSync(join(dir, file), 'utf8')
-    console.log(`→ ${file}`)
-    await client.query('begin')
-    try {
-      await client.query(sql)
-      await client.query(
-        'insert into supabase_migrations.schema_migrations (version, name, statements) values ($1, $2, $3)',
-        [version, rest.join('_'), [sql]],
-      )
-      await client.query('commit')
-      count++
-    } catch (e) {
-      await client.query('rollback')
-      throw e
-    }
-  }
-  // Recharge le cache de schéma de l'API REST (PostgREST).
-  await client.query(`notify pgrst, 'reload schema'`)
+  const count = await applyMigrations(client, { log: console.log })
   console.log(count ? `${count} migration(s) appliquée(s).` : 'Base à jour.')
 }
 

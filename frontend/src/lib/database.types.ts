@@ -11,9 +11,9 @@ export type Database = {
         Relationships: []
       }
       games: {
-        Row: { slug: string; title: string; description: string | null; category: string; is_active: boolean; created_at: string }
-        Insert: { slug: string; title: string; description?: string | null; category: string; is_active?: boolean; created_at?: string }
-        Update: { slug?: string; title?: string; description?: string | null; category?: string; is_active?: boolean; created_at?: string }
+        Row: { slug: string; title: string; description: string | null; category: string; is_active: boolean; max_score: number | null; created_at: string }
+        Insert: { slug: string; title: string; description?: string | null; category: string; is_active?: boolean; max_score?: number | null; created_at?: string }
+        Update: { slug?: string; title?: string; description?: string | null; category?: string; is_active?: boolean; max_score?: number | null; created_at?: string }
         Relationships: []
       }
       scores: {
