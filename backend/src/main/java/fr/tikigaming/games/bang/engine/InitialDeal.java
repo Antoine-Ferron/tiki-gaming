@@ -1,7 +1,10 @@
 package fr.tikigaming.games.bang.engine;
 
+import fr.tikigaming.games.bang.cards.BangCharacter;
+import fr.tikigaming.games.bang.cards.Role;
+import fr.tikigaming.games.bang.cards.RoleCard;
+import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
-import fr.tikigaming.games.bang.model.StartingCharacter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -29,27 +32,31 @@ public class InitialDeal {
     public GameState deal(List<String> accounts) {
         GameCatalog source = catalog.orElseThrow(() -> new PrivateTableException(
                 HttpStatus.SERVICE_UNAVAILABLE, "La composition de la pioche BANG! n'est pas encore disponible."));
-        GameCatalog.Roles roles = source.roles();
-        List<String> assignedRoles =
-                new ArrayList<>(List.of(roles.sheriff(), roles.outlaw(), roles.outlaw(), roles.renegade()));
-        List<StartingCharacter> characters = new ArrayList<>(source.characters());
-        List<String> deck = new ArrayList<>(source.cards());
+        List<Role> assignedRoles = new ArrayList<>(List.of(Role.SHERIFF, Role.OUTLAW, Role.OUTLAW, Role.RENEGADE));
+        List<BangCharacter> characters = new ArrayList<>(List.of(BangCharacter.values()));
+        List<CardInstance> deck = new ArrayList<>(source.cards());
         shuffle.accept(assignedRoles);
         shuffle.accept(characters);
         shuffle.accept(deck);
         List<GameState.Player> players = new ArrayList<>();
         int drawn = 0;
         for (int seat = 0; seat < 4; seat++) {
-            int health =
-                    characters.get(seat).health() + (assignedRoles.get(seat).equals(roles.sheriff()) ? 1 : 0);
-            List<String> hand = List.copyOf(deck.subList(drawn, drawn + health));
+            Role role = assignedRoles.get(seat);
+            int health = characters.get(seat).lifePoints() + (role == Role.SHERIFF ? 1 : 0);
+            List<CardInstance> hand = List.copyOf(deck.subList(drawn, drawn + health));
             drawn += health;
             players.add(new GameState.Player(
-                    accounts.get(seat), seat + 1, assignedRoles.get(seat), characters.get(seat), health, health, hand));
+                    accounts.get(seat),
+                    seat + 1,
+                    new RoleCard(role, role == Role.SHERIFF),
+                    characters.get(seat),
+                    health,
+                    health,
+                    hand));
         }
         return new GameState(
                 List.copyOf(players),
                 List.copyOf(deck.subList(drawn, deck.size())),
-                assignedRoles.indexOf(roles.sheriff()) + 1);
+                assignedRoles.indexOf(Role.SHERIFF) + 1);
     }
 }

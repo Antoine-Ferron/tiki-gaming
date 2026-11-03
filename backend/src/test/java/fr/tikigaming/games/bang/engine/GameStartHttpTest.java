@@ -9,6 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
+import fr.tikigaming.games.bang.cards.BangCharacter;
+import fr.tikigaming.games.bang.cards.Role;
+import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
 import java.time.Duration;
@@ -89,7 +92,9 @@ class GameStartHttpTest {
         @Bean
         @Primary
         InitialDeal orderedDeal(GameCatalog catalog) {
-            return new InitialDeal(Optional.of(catalog), list -> Collections.rotate(list, 2));
+            return new InitialDeal(Optional.of(catalog), list -> {
+                if (!(list.getFirst() instanceof BangCharacter)) Collections.rotate(list, 2);
+            });
         }
     }
 
@@ -103,12 +108,15 @@ class GameStartHttpTest {
 
         GameState game = tables.game(code);
         assertThat(game.players())
-                .extracting(GameState.Player::role)
-                .containsExactlyInAnyOrder("Shérif", "Hors-la-loi", "Hors-la-loi", "Renégat");
+                .extracting(player -> player.roleCard().role())
+                .containsExactlyInAnyOrder(Role.SHERIFF, Role.OUTLAW, Role.OUTLAW, Role.RENEGADE);
         assertThat(game.players())
-                .extracting(player -> player.character().id())
+                .extracting(GameState.Player::character)
                 .doesNotHaveDuplicates()
                 .hasSize(4);
+        assertThat(game.players())
+                .allSatisfy(player -> assertThat(player.roleCard().faceUp())
+                        .isEqualTo(player.roleCard().role() == Role.SHERIFF));
     }
 
     @Test
@@ -118,13 +126,13 @@ class GameStartHttpTest {
         postAs(TABLES + "/" + code + "/start", sessionFor("second")).andExpect(status().isOk());
 
         for (GameState.Player player : tables.game(code).players()) {
-            int expected = player.character().health() + (player.role().equals("Shérif") ? 1 : 0);
+            int expected = player.character().lifePoints() + (player.roleCard().role() == Role.SHERIFF ? 1 : 0);
             assertThat(player.health()).isEqualTo(expected);
             assertThat(player.maxHealth()).isEqualTo(expected);
         }
         GameState.Player paul = tables.game(code).players().get(2);
-        assertThat(paul.character().id()).isEqualTo("Paul Regret");
-        assertThat(paul.role()).isEqualTo("Shérif");
+        assertThat(paul.character()).isEqualTo(BangCharacter.PAUL_REGRET);
+        assertThat(paul.roleCard().role()).isEqualTo(Role.SHERIFF);
         assertThat(paul.health()).isEqualTo(4);
         assertThat(paul.maxHealth()).isEqualTo(4);
     }
@@ -136,14 +144,15 @@ class GameStartHttpTest {
         postAs(TABLES + "/" + code + "/start", sessionFor("fourth")).andExpect(status().isOk());
 
         GameState game = tables.game(code);
-        List<String> allCards = new ArrayList<>(game.drawPile());
+        List<CardInstance> allCards = new ArrayList<>(game.drawPile());
         for (GameState.Player player : game.players()) {
             assertThat(player.hand()).hasSize(player.health());
             allCards.addAll(player.hand());
         }
         assertThat(game.players().get(2).hand()).hasSize(4);
         assertThat(game.drawPile()).hasSize(24);
-        assertThat(allCards).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(new TestGameCatalog().cards());
+        assertThat(allCards).extracting(CardInstance::id).doesNotHaveDuplicates();
+        assertThat(allCards).containsExactlyInAnyOrderElementsOf(new TestGameCatalog().cards());
     }
 
     @Test
@@ -154,8 +163,8 @@ class GameStartHttpTest {
 
         GameState game = tables.game(code);
         GameState.Player paul = game.players().get(2);
-        assertThat(paul.character().id()).isEqualTo("Paul Regret");
-        assertThat(paul.role()).isEqualTo("Shérif");
+        assertThat(paul.character()).isEqualTo(BangCharacter.PAUL_REGRET);
+        assertThat(paul.roleCard().role()).isEqualTo(Role.SHERIFF);
         assertThat(paul.health()).isEqualTo(4);
         assertThat(paul.maxHealth()).isEqualTo(4);
         assertThat(paul.hand()).hasSize(4);

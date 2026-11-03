@@ -9,6 +9,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import fr.tikigaming.games.bang.cards.CardType;
+import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.GameState;
 import java.util.ArrayList;
@@ -69,7 +71,7 @@ class GameStartServiceTest {
     @Test
     void repeatedRequestsKeepTheFirstDistributionWithoutCallingTheDealerAgain() {
         String code = tableWith(4);
-        GameState first = new GameState(List.of(), List.of("remaining-card"), 3);
+        GameState first = new GameState(List.of(), List.of(new CardInstance("remaining-card", CardType.BANG)), 3);
         GameState unwanted = new GameState(List.of(), List.of(), 1);
         when(deal.deal(anyList())).thenReturn(first, unwanted);
 
@@ -82,7 +84,9 @@ class GameStartServiceTest {
     @Test
     void simultaneousRequestsObtainOneAndTheSameDistribution() throws Exception {
         String code = tableWith(4);
-        when(deal.deal(anyList())).thenAnswer(invocation -> new GameState(List.of(), List.of("remaining-card"), 3));
+        when(deal.deal(anyList()))
+                .thenAnswer(invocation ->
+                        new GameState(List.of(), List.of(new CardInstance("remaining-card", CardType.BANG)), 3));
         int contenders = 8;
         CyclicBarrier start = new CyclicBarrier(contenders);
         List<Future<GameStarted>> requests = new ArrayList<>();

@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
+import fr.tikigaming.games.bang.cards.Role;
+import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
 import java.util.ArrayList;
@@ -59,7 +61,7 @@ class GameStartWiringHttpTest {
     }
 
     @Test
-    void acceptanceUsesTheRealComponentsAndShuffleWithOnlyTheUnavailableCatalogueReplaced() throws Exception {
+    void acceptanceUsesProductionCardsAndShuffleWithOnlyTheDeckCompositionReplaced() throws Exception {
         MockHttpSession session = sessionFor("player-4");
         Cookie csrf = mvc.perform(get("/api/auth/session").session(session))
                 .andExpect(status().isOk())
@@ -91,23 +93,25 @@ class GameStartWiringHttpTest {
 
         GameState game = tables.game(code);
         assertThat(game.players())
-                .extracting(GameState.Player::role)
-                .containsExactlyInAnyOrder("Shérif", "Hors-la-loi", "Hors-la-loi", "Renégat");
+                .extracting(player -> player.roleCard().role())
+                .containsExactlyInAnyOrder(Role.SHERIFF, Role.OUTLAW, Role.OUTLAW, Role.RENEGADE);
         assertThat(game.players())
-                .extracting(player -> player.character().id())
+                .extracting(GameState.Player::character)
                 .doesNotHaveDuplicates()
                 .hasSize(4);
-        assertThat(game.players().get(game.currentSeat() - 1).role()).isEqualTo("Shérif");
-        List<String> allCards = new ArrayList<>(game.drawPile());
+        assertThat(game.players().get(game.currentSeat() - 1).roleCard().role()).isEqualTo(Role.SHERIFF);
+        List<CardInstance> allCards = new ArrayList<>(game.drawPile());
         for (GameState.Player player : game.players()) {
-            int expectedHealth = player.character().health() + (player.role().equals("Shérif") ? 1 : 0);
+            int expectedHealth =
+                    player.character().lifePoints() + (player.roleCard().role() == Role.SHERIFF ? 1 : 0);
             assertThat(player.health()).isEqualTo(expectedHealth);
             assertThat(player.maxHealth()).isEqualTo(expectedHealth);
             assertThat(player.hand()).hasSize(expectedHealth);
             allCards.addAll(player.hand());
         }
         assertThat(game.drawPile()).hasSize(24);
-        assertThat(allCards).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(new TestGameCatalog().cards());
+        assertThat(allCards).extracting(CardInstance::id).doesNotHaveDuplicates();
+        assertThat(allCards).containsExactlyInAnyOrderElementsOf(new TestGameCatalog().cards());
         response.andExpect(content()
                 .json(
                         "{\"code\":\"" + code + "\",\"currentSeat\":" + game.currentSeat() + "}",
