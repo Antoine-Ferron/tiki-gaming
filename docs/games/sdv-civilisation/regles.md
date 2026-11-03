@@ -199,7 +199,7 @@ Cocher une ligne quand la règle est implémentée **et** testée.
 
 ### Tour de jeu
 
-- [x] Temps de tour : en cours, bientôt fini, expiré, sur une horloge injectée (`turnTimer.ts`)
+- [x] Temps de tour : en cours, bientôt fini, expiré, sur une horloge injectée (front `turnTimer.ts`, back `TurnTimer.java`)
 - [ ] Défausse automatique à l'expiration du tour
 - [ ] Choix simultané des cartes et passage des mains selon l'âge
 - [ ] Défausser une carte pour 3 pièces
@@ -207,9 +207,9 @@ Cocher une ligne quand la règle est implémentée **et** testée.
 
 ### Économie
 
-- [x] Trésor : crédit, débit, transfert, jamais négatif (`treasury.ts`)
-- [x] Audit anti-triche au franchissement du seuil critique de 30 pièces (`treasury.ts`)
-- [x] Achat de ressources à un voisin au prix standard de 2 pièces (`trade.ts`, `adapters.ts`)
+- [x] Trésor : crédit, débit, transfert, jamais négatif (front `treasury.ts`, back `Treasury.java`)
+- [x] Audit anti-triche au franchissement du seuil critique de 30 pièces (front `treasury.ts`, back `Treasury.java`)
+- [x] Achat de ressources à un voisin au prix standard de 2 pièces (front `trade.ts`, back `Trade.java`)
 - [ ] Vérifier que le vendeur est un voisin et produit la ressource
 - [ ] Prix réduit à 1 pièce (cartes jaunes)
 
@@ -235,8 +235,12 @@ Cocher une ligne quand la règle est implémentée **et** testée.
 
 ### Architecture testable
 
-La logique du jeu ne dépend que d'interfaces pures, sans I/O (`ports.ts`). Les implémentations de
-production sont dans `adapters.ts`, les doublures de test dans `testing/fakes.ts`.
+La logique du jeu ne dépend que d'interfaces pures, sans I/O. Les mêmes contrats existent des deux
+côtés, chacun avec ses implémentations de production et ses doublures de test.
+
+#### Front (Vitest)
+
+Contrats dans `ports.ts`, production dans `adapters.ts`, doublures dans `testing/fakes.ts`.
 
 | Contrat             | Rôle                                   | Production                   | Doublure de test                         |
 | ------------------- | -------------------------------------- | ---------------------------- | ---------------------------------------- |
@@ -244,6 +248,17 @@ production sont dans `adapters.ts`, les doublures de test dans `testing/fakes.ts
 | `TreasuryRegistry`  | Registre des pièces de chaque joueur   | `playersTreasury` (`Player`) | Fake `FakeTreasuryRegistry` (en mémoire) |
 | `AuditNotifier`     | Journal d'audit anti-triche            | `loggerAudit` (Pino)         | Mock `vi.fn()` (appel vérifié)           |
 | `Clock`             | Heure courante, en millisecondes       | `systemClock` (`Date.now()`) | Fake `FakeClock` (avancée à la main)     |
+
+#### Back (JUnit 5)
+
+Package `fr.tikigaming.games.sdv_civilisation` ; doublures dans le même package, sous `src/test/java`.
+
+| Contrat             | Production                                 | Doublure de test                             |
+| ------------------- | ------------------------------------------ | -------------------------------------------- |
+| `CurrencyConverter` | `StandardTrade` (2 pièces)                 | Stub `FixedRateConverter` (taux figé)        |
+| `TreasuryRegistry`  | à venir (persistance de la partie)         | Fake `InMemoryTreasuryRegistry` (en mémoire) |
+| `AuditNotifier`     | `LogAuditNotifier` (SLF4J)                 | Mock Mockito (`verify(audit, times(1))`)     |
+| `Clock`             | `SystemClock` (`System.currentTimeMillis`) | Fake `FakeClock` (avancée à la main)         |
 
 ## Tests
 
