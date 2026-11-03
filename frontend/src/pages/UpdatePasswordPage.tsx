@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
 import { Field } from '@/components/Field'
 import { apiPost, toFormErrors } from '@/lib/api'
-import { newPasswordSchema, validate, type FieldErrors } from '@/lib/validation'
+import { newPasswordSchema, validate, type FieldErrors, PASSWORD_HINT } from '@/lib/validation'
 
 // Le lien de réinitialisation Supabase revient ici avec #access_token=…&type=recovery (ou #error_description=…).
 function readRecoveryHash() {
@@ -56,7 +56,7 @@ export default function UpdatePasswordPage() {
       <Field
         label="Mot de passe"
         type="password"
-        hint="8 caractères minimum"
+        hint={PASSWORD_HINT}
         autoComplete="new-password"
         value={password}
         error={fieldErrors.password}
