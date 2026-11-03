@@ -1,5 +1,6 @@
 import { type Board, type Move, parseBoard } from './board'
 import { isSolved, moveVehicle } from './moves'
+import { solve } from './solver'
 import { type Clock, Stopwatch } from './stopwatch'
 
 /** Une partie sur un plateau : plateau courant, coups joués et chrono. Aucune I/O, l'horloge est injectée. */
@@ -8,6 +9,7 @@ export class GameSession {
   private readonly initial: Board
   private current: Board
   private stopwatch: Stopwatch
+  private hints = 0
 
   constructor(
     map: string[],
@@ -28,6 +30,11 @@ export class GameSession {
 
   get moveCount(): number {
     return this.history.length
+  }
+
+  /** Nombre d'indices demandés (chacun coûte des points au score). */
+  get hintsUsed(): number {
+    return this.hints
   }
 
   get solved(): boolean {
@@ -69,6 +76,15 @@ export class GameSession {
   reset(): void {
     this.current = this.initial
     this.history = []
+    this.hints = 0
     this.stopwatch = new Stopwatch(this.clock)
+  }
+
+  /** Prochain coup de la solution la plus courte depuis la position actuelle, compté comme indice. */
+  hint(): Move | null {
+    if (this.solved) return null
+    const next = solve(this.current)?.[0] ?? null
+    if (next) this.hints++
+    return next
   }
 }
