@@ -35,4 +35,40 @@ public final class Fen {
         int fullmoveNumber = Integer.parseInt(fields[5]);
         return new Position(pieces, turn, castling, enPassant, halfmoveClock, fullmoveNumber);
     }
+
+    public static String toFen(Position position) {
+        StringBuilder fen = new StringBuilder();
+        for (int rank = 7; rank >= 0; rank--) {
+            int empty = 0;
+            for (int file = 0; file < 8; file++) {
+                Optional<Piece> piece = position.pieceAt(new Square(file, rank));
+                if (piece.isEmpty()) {
+                    empty++;
+                } else {
+                    if (empty > 0) {
+                        fen.append(empty);
+                        empty = 0;
+                    }
+                    fen.append(piece.get().toFen());
+                }
+            }
+            if (empty > 0) {
+                fen.append(empty);
+            }
+            if (rank > 0) {
+                fen.append('/');
+            }
+        }
+        fen.append(position.turn() == Color.WHITE ? " w " : " b ");
+        CastlingRights c = position.castling();
+        String castling = (c.whiteKingside() ? "K" : "")
+                + (c.whiteQueenside() ? "Q" : "")
+                + (c.blackKingside() ? "k" : "")
+                + (c.blackQueenside() ? "q" : "");
+        fen.append(castling.isEmpty() ? "-" : castling);
+        fen.append(' ').append(position.enPassant().map(Square::toString).orElse("-"));
+        fen.append(' ').append(position.halfmoveClock());
+        fen.append(' ').append(position.fullmoveNumber());
+        return fen.toString();
+    }
 }
