@@ -30,6 +30,18 @@ class PrivateTableServiceTest {
     }
 
     @Test
+    void aCreatorCanCreateOnlyOnePrivateTable() {
+        TableSeat original = tables.create("creator");
+
+        assertThatThrownBy(() -> tables.create("creator"))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(tables.join(original.code(), "creator")).isEqualTo(original);
+        assertThat(tables.create("another-creator").code()).isNotEqualTo(original.code());
+    }
+
+    @Test
     void threeDistinctAccountsTakeTheRemainingSeats() {
         String code = tables.create("creator").code();
 
@@ -64,7 +76,8 @@ class PrivateTableServiceTest {
         int contenders = 8;
         try (var executor = Executors.newFixedThreadPool(contenders)) {
             for (int round = 0; round < 100; round++) {
-                String code = tables.create("creator").code();
+                String creator = "creator-" + round;
+                String code = tables.create(creator).code();
                 tables.join(code, "second");
                 tables.join(code, "third");
                 CountDownLatch ready = new CountDownLatch(contenders);
@@ -96,7 +109,7 @@ class PrivateTableServiceTest {
                     if (seat != null) accepted.add(seat);
                 }
                 assertThat(accepted).as("round %s", round).containsExactly(new TableSeat(code, 4, 4));
-                assertThat(tables.join(code, "creator")).isEqualTo(new TableSeat(code, 1, 4));
+                assertThat(tables.join(code, creator)).isEqualTo(new TableSeat(code, 1, 4));
             }
         }
     }

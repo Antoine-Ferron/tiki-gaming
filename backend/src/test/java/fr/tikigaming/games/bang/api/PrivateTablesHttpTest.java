@@ -13,6 +13,7 @@ import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.games.bang.model.TableSeat;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +46,8 @@ class PrivateTablesHttpTest {
 
     private static final String TABLES = "/api/games/bang/tables";
 
+    private final String accountPrefix = UUID.randomUUID().toString();
+
     @Autowired
     private MockMvc mvc;
 
@@ -56,6 +59,22 @@ class PrivateTablesHttpTest {
         postAs(TABLES, sessionFor("creator"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.code", not(emptyOrNullString())))
+                .andExpect(jsonPath("$.seat").value(1))
+                .andExpect(jsonPath("$.playerCount").value(1));
+    }
+
+    @Test
+    void aCreatorCannotAllocateAnotherTableEvenWithANewSession() throws Exception {
+        MockHttpSession originalSession = sessionFor("creator");
+        String code = createTable(originalSession);
+
+        for (MockHttpSession session : List.of(originalSession, sessionFor("creator"))) {
+            postAs(TABLES, session)
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error").value("Tu as déjà créé une table privée."));
+        }
+        postAs(TABLES + "/" + code + "/join", sessionFor("creator"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.seat").value(1))
                 .andExpect(jsonPath("$.playerCount").value(1));
     }
@@ -228,9 +247,9 @@ class PrivateTablesHttpTest {
         return post(path).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
     }
 
-    private static MockHttpSession sessionFor(String accountId) {
+    private MockHttpSession sessionFor(String accountId) {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        AuthSession.signIn(request, new AuthUser(accountId, accountId + "@example.com"));
+        AuthSession.signIn(request, new AuthUser(accountPrefix + ":" + accountId, accountId + "@example.com"));
         return (MockHttpSession) request.getSession();
     }
 }

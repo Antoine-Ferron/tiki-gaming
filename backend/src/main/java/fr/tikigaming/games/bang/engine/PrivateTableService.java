@@ -17,6 +17,9 @@ public class PrivateTableService {
     private final Map<String, List<String>> tables = new HashMap<>();
 
     public synchronized TableSeat create(String accountId) {
+        if (tables.values().stream().anyMatch(players -> players.getFirst().equals(accountId))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tu as déjà créé une table privée.");
+        }
         String code;
         do {
             code = UUID.randomUUID()

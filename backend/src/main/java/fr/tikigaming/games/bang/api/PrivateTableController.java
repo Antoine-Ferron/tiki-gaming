@@ -37,8 +37,15 @@ public class PrivateTableController {
     }
 
     @PostMapping
-    @Operation(summary = "Créer une table privée", description = "Le compte connecté occupe la première place.")
+    @Operation(
+            summary = "Créer une table privée",
+            description = "Le compte connecté occupe la première place. "
+                    + "Chaque compte peut créer une seule table pendant cette exécution du serveur.")
     @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
+    @ApiResponse(
+            responseCode = "409",
+            description = "Ce compte a déjà créé une table privée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "401",
             description = "Non connecté",
