@@ -1,4 +1,21 @@
 import { useEffect, useRef } from 'react'
+import { GameIcon, type IconKey } from './GameIcon'
+
+// Légende des icônes affichées sur les cartes, chez les voisins et dans la cité.
+const LEGEND: [IconKey[], string][] = [
+  [['wood', 'stone', 'clay', 'ore'], 'Ressources naturelles : bois, pierre, argile, minerai'],
+  [['glass', 'papyrus', 'textile'], 'Produits manufacturés : verre, papyrus, textile'],
+  [['coin'], 'Pièces : ton trésor (1 point par tranche de 3 en fin de partie)'],
+  [['laurel'], 'Points de victoire'],
+  [['shield'], 'Bouclier : puissance militaire, comparée à chaque voisin en fin d’âge'],
+  [['tablet', 'gear', 'compass'], 'Science : tablette, roue, compas'],
+  [['chain'], 'Chaîne : la carte est gratuite si tu as déjà le bâtiment indiqué'],
+  [['wonder'], 'Merveille : ton plateau et ses étapes'],
+  [
+    ['mountain', 'factory', 'column', 'shield', 'book', 'scales', 'crown'],
+    'Catégorie de carte : ressource, manufacture, civil, militaire, science, commerce, guilde',
+  ],
+]
 
 /** Règles de la version contre IA, expliquées pas à pas. Se ferme avec le bouton ou la touche Échap. */
 export function RulesDialog({ onClose }: { onClose: () => void }) {
@@ -23,6 +40,27 @@ export function RulesDialog({ onClose }: { onClose: () => void }) {
           Tu développes ta cité pendant <strong>3 âges de 6 tours</strong>. À la fin, celui qui a le plus de{' '}
           <strong>points de victoire</strong> gagne. Tu commences avec 3 pièces et un plateau merveille qui produit une
           ressource.
+        </p>
+
+        <h3>Les icônes</h3>
+        <dl className="sdv-civilisation-legend">
+          {LEGEND.map(([icons, meaning]) => (
+            <div key={meaning}>
+              <dt aria-hidden="true">
+                {icons.map((k) => (
+                  <GameIcon key={k} k={k} size={20} />
+                ))}
+              </dt>
+              <dd>{meaning}</dd>
+            </div>
+          ))}
+        </dl>
+        <p>
+          Sur une carte : le <strong>bandeau</strong> donne sa catégorie (couleur + symbole), le <strong>centre</strong>{' '}
+          son effet (2 bois = produit 2 bois par tour ; 5 + laurier = 5 points), le <strong>bas</strong> son coût. Les
+          ressources en <strong>trait plein</strong> sont les tiennes ; en <strong>pointillés</strong>, celles qu’un
+          voisin te vend 2 pièces. Ta <strong>cité</strong>, en face de toi, montre ta merveille, ce que tu produis, ton
+          trésor, tes duels, ta science et tes bâtiments.
         </p>
 
         <h3>Un tour, en 3 temps</h3>

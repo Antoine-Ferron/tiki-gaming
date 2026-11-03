@@ -1,42 +1,38 @@
+/*
+ * SDV Civilisation : voir docs/games/sdv-civilisation/regles.md et la maquette de l'interface.
+ * Codes visuels : orange = à toi / à faire ; trait plein = produit, acquis ; pointillés = chez un voisin,
+ * achetable ou à venir ; doré = or et étapes de merveille bâties.
+ */
 .sdv-civilisation {
   --sdv-civilisation-felt: #1f4d3a;
   --sdv-civilisation-wood: #6b4226;
-  --sdv-civilisation-gold: #f5c542;
-  --sdv-civilisation-card: #3a2a6b;
-  /* Couleurs des types de cartes (bandeau et pastilles, décoratives : le type est aussi écrit). */
-  --sdv-civilisation-brown: #a0703c;
-  --sdv-civilisation-grey: #9aa3b5;
-  --sdv-civilisation-blue: #4f8cff;
-  --sdv-civilisation-red: #e5534b;
-  --sdv-civilisation-green: #3fb27f;
-  --sdv-civilisation-yellow: #f5c542;
-  --sdv-civilisation-purple: #a678e6;
-  /* Hauteur disponible pour la table : la fenêtre moins l'en-tête de la page, la main et les actions. */
-  --sdv-civilisation-table-height: max(13rem, 100vh - 42rem);
+  --sdv-civilisation-gold: #f2c14e;
+  --sdv-civilisation-points: #9ad7ff;
+  --sdv-civilisation-shield: #ef7a70;
+  --sdv-civilisation-science: #4fc08d;
+  --sdv-civilisation-zone: #171933;
+  --sdv-civilisation-stone: #3b3746;
+  --sdv-civilisation-back: #3a2a6b;
+  --sdv-civilisation-win: #4ade80;
+  --sdv-civilisation-lose: #ff8f86;
 
   /* Plateau : déborde de la colonne de la page pour occuper la largeur de la fenêtre. */
   position: relative;
   left: 50%;
   width: min(100vw - 2rem, 1500px);
   transform: translateX(-50%);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 20rem;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 1.1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background:
-    radial-gradient(
-      ellipse at 40% 40%,
-      color-mix(in srgb, var(--sdv-civilisation-felt) 35%, transparent),
-      transparent 70%
-    ),
-    var(--surface);
+  background: var(--bg);
+  font-size: 0.9rem;
 }
 
 .sdv-civilisation:fullscreen {
-  --sdv-civilisation-table-height: max(15rem, 100vh - 17rem);
-
   left: 0;
   width: 100%;
   height: 100%;
@@ -44,38 +40,136 @@
   border: none;
   border-radius: 0;
   overflow: auto;
-  align-content: center;
 }
 
-.sdv-civilisation-main {
-  min-width: 0;
+.sdv-civilisation h2,
+.sdv-civilisation h3 {
+  margin: 0;
 }
 
-/* Barre latérale : merveille, journal et classement, qui défilent seuls sans faire défiler la page. */
-.sdv-civilisation-side {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-height: calc(var(--sdv-civilisation-table-height) + 15rem);
-  min-height: 0;
+.sdv-civilisation-muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
-.sdv-civilisation-side > section {
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  background: var(--bg);
+.sdv-civilisation-gain {
+  color: var(--sdv-civilisation-win);
 }
 
-.sdv-civilisation-side h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.95rem;
+.sdv-civilisation-loss {
+  color: var(--sdv-civilisation-lose);
 }
 
+/* Icônes : une couleur par sens, la même partout. */
+.sdv-civilisation-icon {
+  flex: none;
+  vertical-align: -0.2em;
+}
+.sdv-civilisation-icon-wood,
+.sdv-civilisation-icon-mountain {
+  color: #c8955a;
+}
+.sdv-civilisation-icon-stone {
+  color: #b4bccb;
+}
+.sdv-civilisation-icon-clay {
+  color: #e07a4f;
+}
+.sdv-civilisation-icon-ore {
+  color: #8fa3c9;
+}
+.sdv-civilisation-icon-glass {
+  color: #5cc8ff;
+}
+.sdv-civilisation-icon-papyrus {
+  color: #e5d3a1;
+}
+.sdv-civilisation-icon-textile,
+.sdv-civilisation-icon-crown {
+  color: #c7a6ff;
+}
+.sdv-civilisation-icon-coin,
+.sdv-civilisation-icon-wonder,
+.sdv-civilisation-icon-scales {
+  color: var(--sdv-civilisation-gold);
+}
+.sdv-civilisation-icon-laurel,
+.sdv-civilisation-icon-column {
+  color: var(--sdv-civilisation-points);
+}
+.sdv-civilisation-icon-shield {
+  color: var(--sdv-civilisation-shield);
+}
+.sdv-civilisation-icon-gear,
+.sdv-civilisation-icon-compass,
+.sdv-civilisation-icon-tablet,
+.sdv-civilisation-icon-book {
+  color: var(--sdv-civilisation-science);
+}
+.sdv-civilisation-icon-factory,
+.sdv-civilisation-icon-chain {
+  color: #c9c8e8;
+}
+
+.sdv-civilisation-icon-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.sdv-civilisation-icon-row > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.sdv-civilisation-icon-row b {
+  font-variant-numeric: tabular-nums;
+}
+
+.sdv-civilisation-free {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* Catégories de cartes : couleur de bandeau et teinte de fond. */
+.sdv-civilisation-card-brown {
+  --band: #c8955a;
+  --tint: #3a2a1c;
+}
+.sdv-civilisation-card-grey {
+  --band: #a3acbf;
+  --tint: #2c3140;
+}
+.sdv-civilisation-card-blue {
+  --band: #6f9ef0;
+  --tint: #1d2f4d;
+}
+.sdv-civilisation-card-red {
+  --band: #ef7a70;
+  --tint: #3d1e1e;
+}
+.sdv-civilisation-card-yellow {
+  --band: #e8c04e;
+  --tint: #3a3214;
+}
+.sdv-civilisation-card-green {
+  --band: #4fc08d;
+  --tint: #173a2b;
+}
+.sdv-civilisation-card-purple {
+  --band: #a97ae6;
+  --tint: #2e2142;
+}
+
+/* Barre du haut */
 .sdv-civilisation-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .sdv-civilisation-status {
@@ -88,6 +182,41 @@
   color: var(--text);
 }
 
+.sdv-civilisation-age {
+  margin-right: 0.4rem;
+  font-family: Cinzel, Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--sdv-civilisation-gold);
+}
+
+.sdv-civilisation-direction {
+  margin: 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.sdv-civilisation-direction strong {
+  color: var(--text);
+}
+
+.sdv-civilisation-banner {
+  flex: 1 1 20rem;
+  margin: 0;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  text-align: center;
+}
+
+.sdv-civilisation-banner strong {
+  color: var(--accent);
+}
+
 .sdv-civilisation-tools {
   display: flex;
   gap: 0.5rem;
@@ -96,8 +225,8 @@
 button.sdv-civilisation-icon-button {
   display: grid;
   place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
   border-radius: 8px;
   border: 2px solid var(--muted);
@@ -110,274 +239,618 @@ button.sdv-civilisation-icon-button:hover {
   color: var(--accent);
 }
 
-/* Table ovale : tapis au centre, sièges posés sur le bord ; sa taille suit la hauteur de la fenêtre. */
-.sdv-civilisation-table {
-  position: relative;
-  width: min(100%, var(--sdv-civilisation-table-height) * 16 / 9);
-  aspect-ratio: 16 / 9;
-  margin: 0.25rem auto 3.25rem;
-  container-type: inline-size;
-}
-
-.sdv-civilisation-felt {
-  position: absolute;
-  inset: 16% 20%;
-  border-radius: 50%;
-  border: clamp(0.5rem, 1.5vw, 1rem) solid var(--sdv-civilisation-wood);
-  background: radial-gradient(
-    ellipse,
-    color-mix(in srgb, var(--sdv-civilisation-felt) 75%, var(--text)) 0%,
-    var(--sdv-civilisation-felt) 70%
-  );
-  box-shadow:
-    0 1rem 2.5rem color-mix(in srgb, var(--bg) 70%, transparent),
-    inset 0 0 2rem color-mix(in srgb, var(--bg) 60%, transparent);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  text-align: center;
-}
-
-.sdv-civilisation-felt p {
-  margin: 0;
-}
-
-.sdv-civilisation-age {
-  font-size: clamp(1rem, 4.5cqw, 2.5rem);
-  font-weight: 800;
-}
-
-.sdv-civilisation-decks {
-  display: flex;
-  gap: clamp(0.25rem, 1vw, 0.6rem);
-}
-
-.sdv-civilisation-deck {
+/* Rangée de la table : voisin de gauche, centre, voisin de droite. */
+.sdv-civilisation-tablerow {
   display: grid;
-  place-items: center;
-  width: clamp(1.1rem, 3.4cqw, 2.6rem);
-  aspect-ratio: 5 / 7;
-  border-radius: 4px;
-  border: 2px solid var(--muted);
-  background: var(--sdv-civilisation-card);
-  font-size: clamp(0.6rem, 1.4cqw, 1rem);
-  font-weight: 700;
-  opacity: 0.6;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 0.75rem;
 }
 
-.sdv-civilisation-deck-current {
-  border-color: var(--accent);
-  opacity: 1;
-  box-shadow: 0 0 0.75rem color-mix(in srgb, var(--accent) 45%, transparent);
-}
-
-.sdv-civilisation-direction {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-  white-space: nowrap;
-}
-
-.sdv-civilisation-direction span {
-  color: var(--accent);
-}
-
-/* Sièges : mini-plateaux de joueur, positionnés autour de la table par le composant (left / top). */
-.sdv-civilisation-seats {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.sdv-civilisation-seat {
-  position: absolute;
-  transform: translate(-50%, -50%);
+.sdv-civilisation-neighbour {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  width: clamp(6rem, 19cqw, 10.5rem);
-  padding: 0.4rem 0.5rem;
-  border-radius: 10px;
-  border: 2px solid var(--muted);
-  background: color-mix(in srgb, var(--surface) 92%, var(--text));
-  box-shadow: 0 0.5rem 1.25rem color-mix(in srgb, var(--bg) 60%, transparent);
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--sdv-civilisation-zone);
 }
 
-.sdv-civilisation-seat-me {
-  border-color: var(--accent);
-  box-shadow: 0 0 1.25rem color-mix(in srgb, var(--accent) 35%, transparent);
-}
-
-.sdv-civilisation-seat-head {
+.sdv-civilisation-neighbour-head {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
+  gap: 0.6rem;
+}
+
+.sdv-civilisation-neighbour-head > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
 }
 
 .sdv-civilisation-avatar {
-  flex: none;
   display: grid;
   place-items: center;
-  width: clamp(1.5rem, 4.2cqw, 2.4rem);
-  aspect-ratio: 1;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
   border-radius: 50%;
   border: 2px solid var(--muted);
-  background: var(--bg);
-  font-size: clamp(0.65rem, 1.5cqw, 1rem);
-  font-weight: 800;
-}
-
-.sdv-civilisation-seat-me .sdv-civilisation-avatar {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.sdv-civilisation-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: clamp(0.75rem, 1.8cqw, 1rem);
   font-weight: 700;
+  font-size: 0.8rem;
 }
 
-.sdv-civilisation-stats {
+.sdv-civilisation-ready {
+  margin-left: auto;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--sdv-civilisation-win) 55%, transparent);
+  color: var(--sdv-civilisation-win);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.sdv-civilisation-neighbour-wonder {
   display: flex;
-  justify-content: space-between;
-  font-size: clamp(0.7rem, 1.5cqw, 0.9rem);
+  align-items: center;
+  gap: 0.4rem;
+  color: #c9c8e8;
+  font-size: 0.85rem;
+}
+
+.sdv-civilisation-pips {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.sdv-civilisation-pips span {
+  width: 1.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--sdv-civilisation-gold);
+}
+
+.sdv-civilisation-pips .sdv-civilisation-pip-built {
+  background: var(--sdv-civilisation-gold);
+}
+
+.sdv-civilisation-neighbour-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+  margin: 0;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.sdv-civilisation-stats > span {
+.sdv-civilisation-neighbour-stats > span {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
 }
 
-.sdv-civilisation-coin {
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 50%;
-  background: var(--sdv-civilisation-gold);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--sdv-civilisation-gold) 60%, var(--bg));
+.sdv-civilisation-duel-win {
+  color: var(--sdv-civilisation-win);
 }
 
+.sdv-civilisation-duel-lose {
+  color: var(--sdv-civilisation-lose);
+}
+
+.sdv-civilisation-duel-tie {
+  color: var(--muted);
+}
+
+/* Production : trait plein pour la sienne, pointillés pour celle d'un voisin. */
+.sdv-civilisation-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.sdv-civilisation-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.sdv-civilisation-tokens-own .sdv-civilisation-token {
+  border: 1.5px solid #c9c8e8;
+  background: #2a2d4f;
+}
+
+.sdv-civilisation-tokens-buy .sdv-civilisation-token {
+  border: 1.5px dashed var(--muted);
+  background: var(--bg);
+}
+
+/* Bâtiments construits, rangés par couleur */
 .sdv-civilisation-built {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.2rem;
-  min-height: 0.6rem;
+  align-content: flex-start;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.sdv-civilisation-chip {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 2px;
-  background: var(--sdv-civilisation-band, var(--muted));
-}
-
-/* Main du joueur : cartes face visible en éventail. */
-.sdv-civilisation-hand {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 17rem;
+.sdv-civilisation-tile {
+  display: inline-flex;
   align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem 0.15rem 0.3rem;
+  border-radius: 6px;
+  border-left: 4px solid var(--band);
+  background: var(--tint);
+  font-size: 0.8rem;
+}
+
+/* Centre de la table */
+.sdv-civilisation-center {
+  display: grid;
+  place-items: center;
+  min-height: 13rem;
+  border-radius: 12px;
+  background: #13152b;
+}
+
+.sdv-civilisation-felt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: calc(100% - 1.5rem);
+  height: calc(100% - 1.5rem);
+  box-sizing: border-box;
+  padding: 0.75rem;
+  border-radius: 50%;
+  border: 0.7rem solid var(--sdv-civilisation-wood);
+  background: var(--sdv-civilisation-felt);
+}
+
+.sdv-civilisation-felt-age {
+  font-family: Cinzel, Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.sdv-civilisation-decks {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.sdv-civilisation-deck {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  aspect-ratio: 5 / 7;
+  border-radius: 5px;
+  border: 2px solid #5f617f;
+  background: #262842;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.sdv-civilisation-deck-current {
+  border-color: var(--accent);
+  background: var(--sdv-civilisation-back);
+  color: var(--text);
+}
+
+.sdv-civilisation-deck-back {
+  border-color: var(--muted);
+  background: #2a2440;
+}
+
+.sdv-civilisation-discard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.sdv-civilisation-slots {
+  display: flex;
   gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sdv-civilisation-slots li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: #d8d7f0;
+}
+
+.sdv-civilisation-slot-back,
+.sdv-civilisation-slot-mine {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  aspect-ratio: 5 / 7;
+  border-radius: 6px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sdv-civilisation-slot-back {
+  border: 2px solid var(--muted);
+  background: var(--sdv-civilisation-back);
+}
+
+.sdv-civilisation-slot-mine {
+  border: 2px dashed var(--accent);
+}
+
+/* Cité du joueur, en face de lui */
+.sdv-civilisation-city {
+  display: grid;
+  grid-template-columns: 19rem 14rem 15rem 13rem minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+}
+
+.sdv-civilisation-city h2 {
+  font-family: Cinzel, Georgia, serif;
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+
+.sdv-civilisation-city-wonder,
+.sdv-civilisation-city-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.sdv-civilisation-city-block h3 {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.sdv-civilisation-wonder-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid #5f5a7f;
+  background: var(--sdv-civilisation-stone);
+}
+
+.sdv-civilisation-wonder-head > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.sdv-civilisation-wonder-head strong {
+  font-family: Cinzel, Georgia, serif;
+}
+
+.sdv-civilisation-wonder-art {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: none;
+  border-radius: 6px;
+  background: #4a4458;
+}
+
+.sdv-civilisation-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sdv-civilisation-stages li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.sdv-civilisation-stage-label {
+  width: 4.5rem;
+  flex: none;
+}
+
+.sdv-civilisation-stage-slot {
+  width: 1.1rem;
+  aspect-ratio: 5 / 7;
+  flex: none;
+  border-radius: 3px;
+}
+
+.sdv-civilisation-stage-built {
+  border: 1px solid var(--sdv-civilisation-gold);
+  background: #3a3214;
+  font-weight: 600;
+}
+
+.sdv-civilisation-stage-built .sdv-civilisation-stage-slot {
+  border: 1.5px solid var(--muted);
+  background: var(--sdv-civilisation-back);
+}
+
+.sdv-civilisation-stage-next {
+  border: 2px solid var(--accent);
+}
+
+.sdv-civilisation-stage-next .sdv-civilisation-stage-slot {
+  border: 1.5px dashed var(--accent);
+}
+
+.sdv-civilisation-stage-later {
+  border: 1px dashed #5f617f;
+  color: var(--muted);
+}
+
+.sdv-civilisation-stage-later .sdv-civilisation-stage-slot {
+  border: 1.5px dashed #5f617f;
+}
+
+.sdv-civilisation-treasury,
+.sdv-civilisation-shields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.sdv-civilisation-treasury strong,
+.sdv-civilisation-shields strong {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sdv-civilisation-treasury strong {
+  color: var(--sdv-civilisation-gold);
+}
+
+.sdv-civilisation-treasury span:last-child {
+  font-size: 0.8rem;
+}
+
+.sdv-civilisation-duels,
+.sdv-civilisation-medals,
+.sdv-civilisation-science {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sdv-civilisation-duels {
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.sdv-civilisation-duels li {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  font-size: 0.85rem;
+}
+
+.sdv-civilisation-duels li strong {
+  margin-left: auto;
+}
+
+.sdv-civilisation-medals {
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.sdv-civilisation-medals li {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
+.sdv-civilisation-science {
+  gap: 0.4rem;
+}
+
+.sdv-civilisation-science li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  width: 3.6rem;
+  padding: 0.35rem 0;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--sdv-civilisation-science) 50%, transparent);
+  font-size: 0.75rem;
+}
+
+.sdv-civilisation-science strong {
+  font-size: 1rem;
+}
+
+/* Main, actions et journal */
+.sdv-civilisation-play {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 21rem 18rem;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.sdv-civilisation-hand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 .sdv-civilisation-cards {
   display: flex;
-  justify-content: center;
-  padding-top: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-top: 0.6rem;
 }
 
 button.sdv-civilisation-card {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 0.25rem;
-  width: clamp(4rem, 5.6vw, 5.75rem);
-  aspect-ratio: 5 / 7;
-  margin: 0 -0.15rem;
-  padding: 0.4rem;
-  border-radius: 8px;
-  border: 2px solid var(--muted);
-  border-top: 0.6rem solid var(--sdv-civilisation-band, var(--muted));
-  background: color-mix(in srgb, var(--surface) 85%, var(--text));
+  width: 6.3rem;
+  aspect-ratio: 5 / 7.4;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 2px solid var(--band);
+  background: var(--tint);
   color: var(--text);
-  font-size: clamp(0.7rem, 0.9vw, 0.8rem);
+  font-size: 0.75rem;
   font-weight: 400;
   text-align: left;
-  box-shadow: 0 0.4rem 0.8rem color-mix(in srgb, var(--bg) 60%, transparent);
-  transform: rotate(calc(var(--sdv-civilisation-offset) * 2deg))
-    translateY(calc(abs(var(--sdv-civilisation-offset)) * 0.25rem));
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--bg) 70%, transparent);
   transition: transform 200ms ease;
 }
 
 button.sdv-civilisation-card:hover,
 button.sdv-civilisation-card[aria-pressed='true'] {
-  transform: rotate(calc(var(--sdv-civilisation-offset) * 2deg)) translateY(-0.9rem);
-  border-color: var(--accent);
+  transform: translateY(-0.6rem);
+}
+
+button.sdv-civilisation-card[aria-pressed='true'] {
+  border: 3px solid var(--accent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+button.sdv-civilisation-status-blocked:not([aria-pressed='true']) {
+  opacity: 0.6;
+}
+
+.sdv-civilisation-card-band {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.4rem;
+  background: var(--band);
+  color: #15120d;
+}
+
+.sdv-civilisation-card-band .sdv-civilisation-icon {
+  color: #15120d;
 }
 
 .sdv-civilisation-card-name {
+  overflow: hidden;
+  font-family: Cinzel, Georgia, serif;
   font-weight: 700;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sdv-civilisation-card-age {
+  margin-left: auto;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.sdv-civilisation-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  text-align: center;
+}
+
+.sdv-civilisation-card-body b {
+  font-size: 1.05rem;
+}
+
+.sdv-civilisation-card-effect {
+  color: #d8d7f0;
+  font-size: 0.7rem;
   line-height: 1.2;
 }
 
-.sdv-civilisation-card-cost {
-  color: var(--muted);
-}
-
-/* Type de carte : couleur du bandeau (main) et de la pastille (cartes construites). */
-.sdv-civilisation-card-brown {
-  --sdv-civilisation-band: var(--sdv-civilisation-brown);
-}
-.sdv-civilisation-card-grey {
-  --sdv-civilisation-band: var(--sdv-civilisation-grey);
-}
-.sdv-civilisation-card-blue {
-  --sdv-civilisation-band: var(--sdv-civilisation-blue);
-}
-.sdv-civilisation-card-red {
-  --sdv-civilisation-band: var(--sdv-civilisation-red);
-}
-.sdv-civilisation-card-green {
-  --sdv-civilisation-band: var(--sdv-civilisation-green);
-}
-.sdv-civilisation-card-yellow {
-  --sdv-civilisation-band: var(--sdv-civilisation-yellow);
-}
-.sdv-civilisation-card-purple {
-  --sdv-civilisation-band: var(--sdv-civilisation-purple);
-}
-
 .sdv-civilisation-card-chain {
-  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0 0.4rem 0.2rem;
+  font-size: 0.65rem;
+  color: #c9c8e8;
+}
+
+.sdv-civilisation-card-cost {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.5rem;
+  padding: 0 0.4rem;
+  background: #0b0c18;
+}
+
+.sdv-civilisation-card-cost > span:first-child {
+  font-size: 0.65rem;
   color: var(--muted);
 }
 
-/* Avancement de la merveille sur chaque siège */
-.sdv-civilisation-seat-wonder {
-  display: flex;
-  gap: 0.2rem;
+.sdv-civilisation-card-status {
+  padding: 0.2rem 0.4rem;
+  border-top: 1px solid var(--border);
+  background: #0b0c18;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
-.sdv-civilisation-seat-wonder span {
-  flex: 1;
-  height: 0.4rem;
-  border-radius: 999px;
-  border: 1px solid var(--muted);
+.sdv-civilisation-status-free .sdv-civilisation-card-status {
+  color: var(--sdv-civilisation-win);
 }
 
-.sdv-civilisation-seat-wonder .sdv-civilisation-pip-built {
-  border-color: var(--sdv-civilisation-gold);
-  background: var(--sdv-civilisation-gold);
+.sdv-civilisation-status-cost .sdv-civilisation-card-status,
+.sdv-civilisation-status-trade .sdv-civilisation-card-status {
+  color: var(--sdv-civilisation-gold);
+}
+
+.sdv-civilisation-status-blocked .sdv-civilisation-card-status {
+  color: var(--sdv-civilisation-lose);
 }
 
 .sdv-civilisation-actions {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.4rem;
 }
 
@@ -385,8 +858,8 @@ button.sdv-civilisation-action {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.15rem;
-  padding: 0.5rem 0.75rem;
+  gap: 0.1rem;
+  padding: 0.35rem 0.75rem;
   border-radius: 8px;
   border: 2px solid var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, var(--bg));
@@ -403,47 +876,48 @@ button.sdv-civilisation-action:disabled {
   background: var(--bg);
 }
 
-.sdv-civilisation-actions-hint {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
 .sdv-civilisation-action-title {
   font-weight: 700;
 }
 
 .sdv-civilisation-action-detail {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 400;
   color: var(--muted);
 }
 
-/* Journal de la partie, dans la barre latérale */
+/* Journal de la partie */
 .sdv-civilisation-log {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 8rem;
+  max-height: 12rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #0b0c18;
+}
+
+.sdv-civilisation-log h3 {
+  font-size: 0.9rem;
 }
 
 .sdv-civilisation-log-turns {
   flex: 1;
-  margin: 0;
-  padding: 0 0.25rem 0 0;
+  margin: 0.3rem 0 0;
+  padding: 0;
   list-style: none;
   overflow-y: auto;
 }
 
 .sdv-civilisation-log-turns > li + li {
-  margin-top: 0.6rem;
-  padding-top: 0.6rem;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
   border-top: 1px solid var(--border);
 }
 
 .sdv-civilisation-log-title {
-  margin: 0 0 0.25rem;
-  font-size: 0.8rem;
+  margin: 0 0 0.15rem;
+  font-size: 0.72rem;
   color: var(--muted);
 }
 
@@ -451,8 +925,8 @@ button.sdv-civilisation-action:disabled {
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 0.9rem;
-  line-height: 1.8;
+  font-size: 0.82rem;
+  line-height: 1.7;
 }
 
 .sdv-civilisation-log li.sdv-civilisation-me .sdv-civilisation-log-who {
@@ -461,305 +935,120 @@ button.sdv-civilisation-action:disabled {
 }
 
 .sdv-civilisation-log-card {
-  padding: 0.05rem 0.45rem;
+  padding: 0.05rem 0.4rem;
   border-radius: 999px;
-  border-left: 0.35rem solid var(--sdv-civilisation-band, var(--muted));
-  background: var(--surface);
+  border-left: 0.3rem solid var(--band, var(--muted));
+  background: var(--tint, var(--surface));
   font-weight: 600;
   white-space: nowrap;
 }
 
 .sdv-civilisation-log-coins {
-  color: var(--error);
-  font-variant-numeric: tabular-nums;
+  color: var(--sdv-civilisation-lose);
   white-space: nowrap;
 }
 
 .sdv-civilisation-log-coins.sdv-civilisation-gain {
-  color: var(--success);
+  color: var(--sdv-civilisation-win);
 }
 
 .sdv-civilisation-log-conflicts {
-  margin: 0.25rem 0 0;
-  font-size: 0.85rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
 }
 
-/* Merveille du joueur */
-.sdv-civilisation-wonder-panel p {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
+/* Début et fin de partie */
+.sdv-civilisation-start,
+.sdv-civilisation-end {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  gap: 1rem;
+  align-items: start;
 }
 
-.sdv-civilisation-wonder-panel ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.9rem;
-  line-height: 1.8;
-}
-
-.sdv-civilisation-wonder-panel li > span:first-child {
-  display: inline-grid;
-  place-items: center;
-  width: 1.3rem;
-  height: 1.3rem;
-  margin-right: 0.25rem;
-  border-radius: 50%;
-  border: 1px solid var(--muted);
-  font-size: 0.75rem;
-}
-
-.sdv-civilisation-stage-built > span:first-child {
-  background: var(--sdv-civilisation-gold);
-  border-color: var(--sdv-civilisation-gold);
-  color: var(--accent-text);
-}
-
-.sdv-civilisation-stage-later {
-  color: var(--muted);
-}
-
-.sdv-civilisation-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+.sdv-civilisation-end {
+  grid-column: 1 / 3;
 }
 
 .sdv-civilisation-ranking {
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  background: var(--sdv-civilisation-zone);
+}
+
+.sdv-civilisation-ranking h3 {
+  margin-bottom: 0.4rem;
   font-size: 0.9rem;
 }
 
-/* Fin de partie */
+.sdv-civilisation-picker h2 {
+  font-family: Cinzel, Georgia, serif;
+  font-size: 1.4rem;
+}
+
+.sdv-civilisation-picker-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.9rem;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sdv-civilisation-picker-list > li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  border-radius: 12px;
+  border: 2px solid #8a7a52;
+  background: var(--sdv-civilisation-stone);
+}
+
+.sdv-civilisation-picker-list > li:hover {
+  border-color: var(--accent);
+}
+
+.sdv-civilisation-picker-list h3 {
+  font-family: Cinzel, Georgia, serif;
+}
+
+.sdv-civilisation-picker-list p {
+  margin: 0;
+}
+
+.sdv-civilisation-picker-list ol {
+  flex: 1;
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.9;
+}
+
 .sdv-civilisation-results {
-  margin: 0 auto 1rem;
-  max-width: 720px;
   text-align: center;
 }
 
 .sdv-civilisation-winner {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--accent);
 }
 
 .sdv-civilisation-scores {
   width: 100%;
-  margin: 1rem 0;
+  margin: 0.75rem 0;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
 
 .sdv-civilisation-scores th,
 .sdv-civilisation-scores td {
-  padding: 0.4rem;
+  padding: 0.35rem;
   border-bottom: 1px solid var(--border);
 }
 
 .sdv-civilisation-scores .sdv-civilisation-me {
   color: var(--accent);
-}
-
-@media (max-width: 960px) {
-  .sdv-civilisation {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .sdv-civilisation-side {
-    max-height: none;
-  }
-
-  .sdv-civilisation-log-turns {
-    max-height: 20rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .sdv-civilisation {
-    padding: 0.75rem;
-  }
-
-  .sdv-civilisation-hand {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .sdv-civilisation-toolbar {
-    flex-wrap: wrap;
-  }
-
-  .sdv-civilisation-banner {
-    order: 3;
-    flex-basis: 100%;
-  }
-
-  .sdv-civilisation-table {
-    aspect-ratio: 1;
-    margin-bottom: 3rem;
-  }
-
-  .sdv-civilisation-felt {
-    inset: 22% 14%;
-  }
-
-  /* Trop serré pour poser les cartes sur le tapis : le journal du dernier tour les montre juste en dessous. */
-  .sdv-civilisation-table .sdv-civilisation-played,
-  .sdv-civilisation-seat .sdv-civilisation-turn-badge:not(.sdv-civilisation-turn-badge-me) {
-    display: none;
-  }
-
-  .sdv-civilisation-card .sdv-civilisation-card-status {
-    overflow-wrap: anywhere;
-  }
-
-  /* Main sur plusieurs lignes, sans éventail, pour tenir dans la largeur. */
-  .sdv-civilisation-cards {
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  button.sdv-civilisation-card,
-  button.sdv-civilisation-card:hover,
-  button.sdv-civilisation-card[aria-pressed='true'] {
-    margin: 0;
-    transform: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sdv-civilisation-card {
-    transition: none;
-  }
-}
-
-/* Ce que le joueur peut faire : bandeau, badges de tour et statut des cartes. */
-.sdv-civilisation-banner {
-  flex: 1;
-  margin: 0;
-  padding: 0.35rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  text-align: center;
-}
-
-.sdv-civilisation-turn-badge {
-  margin-left: auto;
-  padding: 0.05rem 0.45rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  white-space: nowrap;
-  color: var(--success);
-  border: 1px solid color-mix(in srgb, var(--success) 60%, transparent);
-}
-
-.sdv-civilisation-turn-badge-me {
-  color: var(--accent-text);
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.sdv-civilisation-card-icon {
-  align-self: center;
-  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
-  line-height: 1;
-  color: var(--sdv-civilisation-band, var(--muted));
-}
-
-.sdv-civilisation-card-effect {
-  font-weight: 600;
-}
-
-.sdv-civilisation-card-status {
-  padding: 0.1rem 0.3rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  line-height: 1.2;
-  background: var(--bg);
-}
-
-.sdv-civilisation-status-free .sdv-civilisation-card-status {
-  color: var(--success);
-}
-
-.sdv-civilisation-status-trade .sdv-civilisation-card-status,
-.sdv-civilisation-status-cost .sdv-civilisation-card-status {
-  color: var(--sdv-civilisation-gold);
-}
-
-.sdv-civilisation-status-blocked .sdv-civilisation-card-status {
-  color: var(--error);
-}
-
-button.sdv-civilisation-status-blocked:not([aria-pressed='true']) {
-  opacity: 0.6;
-}
-
-/* Cartes posées sur le tapis au dernier tour, et pile de défausse. */
-.sdv-civilisation-played {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  width: clamp(2.2rem, 6.2cqw, 4rem);
-  aspect-ratio: 5 / 7;
-  padding: 0.2rem;
-  border-radius: 6px;
-  border: 2px solid var(--muted);
-  border-top: 0.4rem solid var(--sdv-civilisation-band, var(--muted));
-  background: var(--surface);
-  font-size: clamp(0.55rem, 1.1cqw, 0.75rem);
-  font-weight: 700;
-  text-align: center;
-  line-height: 1.1;
-  transform: translate(-50%, -50%);
-  animation: sdv-civilisation-place 300ms ease-out;
-}
-
-.sdv-civilisation-played-back {
-  color: var(--muted);
-  font-weight: 400;
-  background:
-    repeating-linear-gradient(
-      45deg,
-      transparent 0 5px,
-      color-mix(in srgb, var(--sdv-civilisation-gold) 25%, transparent) 5px 7px
-    ),
-    var(--sdv-civilisation-card);
-}
-
-@keyframes sdv-civilisation-place {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 10%) scale(0.6) rotate(-8deg);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
-}
-
-.sdv-civilisation-discard {
-  position: absolute;
-  left: 50%;
-  top: 26%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
-  color: var(--text);
-}
-
-.sdv-civilisation-discard-stack {
-  width: 1.2rem;
-  aspect-ratio: 5 / 7;
-  border-radius: 3px;
-  border: 1px solid var(--muted);
-  background: var(--sdv-civilisation-card);
-  box-shadow:
-    2px -2px 0 var(--sdv-civilisation-card),
-    4px -4px 0 color-mix(in srgb, var(--sdv-civilisation-card) 70%, var(--muted));
 }
 
 /* Fenêtre des règles */
@@ -770,11 +1059,11 @@ button.sdv-civilisation-status-blocked:not([aria-pressed='true']) {
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: color-mix(in srgb, var(--bg) 75%, transparent);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
 }
 
 .sdv-civilisation-dialog {
-  width: min(100%, 560px);
+  width: min(100%, 600px);
   max-height: 85vh;
   overflow: auto;
   padding: 1.25rem 1.5rem;
@@ -785,7 +1074,6 @@ button.sdv-civilisation-status-blocked:not([aria-pressed='true']) {
 
 .sdv-civilisation-dialog h3 {
   margin: 1rem 0 0.25rem;
-  font-size: 1rem;
   color: var(--accent);
 }
 
@@ -799,16 +1087,64 @@ button.sdv-civilisation-status-blocked:not([aria-pressed='true']) {
   margin-top: 1.25rem;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sdv-civilisation-played {
-    animation: none;
+.sdv-civilisation-legend {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 0.5rem;
+}
+
+.sdv-civilisation-legend div {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.sdv-civilisation-legend dt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.sdv-civilisation-legend dd {
+  margin: 0;
+}
+
+@media (max-width: 1180px) {
+  .sdv-civilisation-city {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sdv-civilisation-play {
+    grid-template-columns: minmax(0, 1fr) 19rem;
+  }
+
+  .sdv-civilisation-play .sdv-civilisation-log {
+    grid-column: 1 / -1;
   }
 }
 
-/* Petite table : les cartes posées se rapprochent du centre et rétrécissent pour ne pas toucher les sièges. */
-@container (max-width: 640px) {
-  .sdv-civilisation-played {
-    width: 2rem;
-    font-size: 0.5rem;
+@media (max-width: 760px) {
+  .sdv-civilisation {
+    padding: 0.75rem;
+  }
+
+  .sdv-civilisation-tablerow,
+  .sdv-civilisation-city,
+  .sdv-civilisation-play,
+  .sdv-civilisation-start,
+  .sdv-civilisation-end {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sdv-civilisation-center {
+    order: -1;
+    min-height: 12rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.sdv-civilisation-card {
+    transition: none;
   }
 }

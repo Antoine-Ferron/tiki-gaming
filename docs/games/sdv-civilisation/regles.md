@@ -176,7 +176,8 @@ l'égalité persiste, les joueurs concernés partagent la victoire.
 Version jouable : le joueur affronte 2 IA. Les règles ci-dessus s'appliquent ; le catalogue, les
 plateaux merveille et les chaînes sont des créations du jeu (pas la transcription d'un jeu existant).
 
-- **Mise en place** : 3 pièces et un plateau merveille par joueur, tiré au hasard (`wonders.ts`). Le
+- **Mise en place** : 3 pièces et un plateau merveille par joueur : le joueur choisit le sien, les IA
+  reçoivent les autres au hasard (`wonders.ts`). Le
   plateau produit une ressource dès le départ et a 3 étapes à bâtir dans l'ordre.
 - **Catalogue** (`cards.ts`) : 7 cartes par âge, chacune en un exemplaire par joueur. Chaque joueur
   reçoit 7 cartes tirées au hasard dans le paquet de l'âge.
@@ -293,7 +294,11 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 - [x] Repères visuels : à qui de jouer, cartes constructibles / achat aux voisins / impossibles, cartes jouées posées sur la table (animées), pile de défausse, journal du dernier tour et des conflits
 - [x] Règles du jeu à l'écran et plein écran (`RulesDialog.tsx`)
 - [x] Plateau de merveille à l'écran : avancement sur chaque siège, détail dans la barre latérale (`WonderPanel.tsx`)
-- [x] Journal de la partie dans une barre latérale, plateau dimensionné pour tenir dans l'écran
+- [x] Choix de la merveille avant la partie ; les IA reçoivent les autres plateaux (`WonderPicker.tsx`)
+- [x] Interface d'après la maquette : voisins à gauche et à droite (production achetable en pointillés, bâtiments,
+      duel en cours), centre de la table (paquets, défausse, cartes du tour face cachée), cité du joueur (merveille,
+      production, trésor, duels par voisin, science, bâtiments par couleur), main, trois actions et journal
+- [x] Icônes vectorielles du jeu, expliquées dans les règles (`GameIcon.tsx`)
 
 ### Architecture testable
 

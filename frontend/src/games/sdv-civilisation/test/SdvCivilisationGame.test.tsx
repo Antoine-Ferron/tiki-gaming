@@ -11,27 +11,34 @@ import { identityShuffler } from './fakes'
 
 afterEach(cleanup)
 
-// Fake : scores en mémoire. Stub : le mélangeur garde l'ordre du catalogue (main de départ connue).
-function setup() {
+const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
+const status = () => document.querySelector('.sdv-civilisation-status')!.textContent
+const city = () => screen.getByRole('region', { name: /^Ta cité/ })
+
+// Fake : scores en mémoire. Stub : le mélangeur garde l'ordre (main de départ connue, IA 1 verre, IA 2 bois).
+function renderBoard() {
   const alice = { id: 'p1', username: 'alice' }
   const ctx = createGameContext(sdvCivilisation, alice, fakeDeps({ scores: new FakeScores(alice) }))
   render(<SdvCivilisationBoard ctx={ctx} shuffler={identityShuffler} />)
   return ctx
 }
 
-const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
-const status = () => document.querySelector('.sdv-civilisation-status')!.textContent
+function setup() {
+  const ctx = renderBoard()
+  click('Choisir Temple d’Ysar')
+  return ctx
+}
 
 describe('SdvCivilisationGame', () => {
-  it('assoit le joueur autour de la table avec deux IA et lui montre sa main', () => {
+  it('fait choisir la merveille, puis montre les adversaires, la cité du joueur et sa main', () => {
     setup()
 
-    const seats = within(screen.getByRole('list', { name: 'Table de jeu' })).getAllByRole('listitem')
-    expect(seats.map((seat) => seat.getAttribute('aria-label'))).toEqual([
-      'alice (toi), 3 pièces, voisin de gauche IA 2, voisin de droite IA 1',
-      'IA 1, 3 pièces, voisin de gauche alice, voisin de droite IA 2',
-      'IA 2, 3 pièces, voisin de gauche IA 1, voisin de droite alice',
-    ])
+    // Le voisin de gauche (IA 2) vend du bois, celui de droite (IA 1) du verre.
+    const left = screen.getByRole('region', { name: 'Voisin de gauche : IA 2' })
+    const right = screen.getByRole('region', { name: 'Voisin de droite : IA 1' })
+    expect(within(left).getByRole('img', { name: 'Produit 1 bois' })).toBeTruthy()
+    expect(within(right).getByRole('img', { name: 'Produit 1 verre' })).toBeTruthy()
+    expect(within(city()).getByRole('img', { name: 'Produit 1 minerai' })).toBeTruthy()
     expect(screen.getAllByRole('button', { pressed: false })).toHaveLength(7)
   })
 
@@ -47,15 +54,18 @@ describe('SdvCivilisationGame', () => {
     expect(build.textContent).toContain('Il te manque des ressources.')
   })
 
-  it('construit la carte choisie pendant que les IA jouent', () => {
+  it('construit la carte choisie, en achetant au voisin, pendant que les IA jouent', () => {
     setup()
 
-    click(/^Chantier/)
-    click(/^Construire Chantier/)
+    click(/^Atelier/)
+    click(/^Construire Atelier/)
 
     const turn = within(screen.getByRole('list', { name: 'Âge I, tour 1' })).getAllByRole('listitem')
     expect(turn).toHaveLength(3)
-    expect(turn[0].textContent).toBe('Tu as construit Chantier')
+    expect(turn[0].textContent).toBe('Tu as construit Atelier −2 pièces')
+    expect(within(city()).getByRole('list', { name: 'Tes cartes construites' }).textContent).toContain('Atelier')
+    expect(within(city()).getByRole('listitem', { name: 'roue : 1' })).toBeTruthy()
+    expect(within(city()).getByText(/[-−]2 ce tour/)).toBeTruthy()
     expect(status()).toBe('Âge I · Tour 2 / 6')
   })
 
@@ -65,7 +75,7 @@ describe('SdvCivilisationGame', () => {
     click(/^Bains/)
     click(/^Bâtir l’étape 1 de ta merveille/)
 
-    expect(screen.getByText('(bâtie)')).toBeTruthy()
+    expect(within(city()).getByRole('listitem', { name: /^Étape 1 \(bâtie\)/ })).toBeTruthy()
     expect(within(screen.getByRole('list', { name: 'Âge I, tour 1' })).getAllByRole('listitem')[0].textContent).toBe(
       'Tu as bâti une étape de merveille avec Bains',
     )
@@ -88,6 +98,7 @@ describe('SdvCivilisationGame', () => {
     playToTheEnd()
     expect(await screen.findByText('Envoi impossible.')).toBeTruthy()
     click('Rejouer')
+    click('Choisir Phare de Sélène')
     expect(status()).toBe('Âge I · Tour 1 / 6')
     playToTheEnd()
 
@@ -95,20 +106,21 @@ describe('SdvCivilisationGame', () => {
     expect(submitScore).toHaveBeenCalledTimes(2)
   })
 
-  it('affiche les règles et les referme avec Échap ou le bouton', () => {
-    setup()
+  it('affiche les règles, avant comme pendant la partie, et les referme avec Échap ou le bouton', () => {
+    renderBoard()
 
     click('Règles du jeu')
     fireEvent.keyDown(document, { key: 'Enter' })
     expect(screen.getByRole('dialog', { name: 'Règles du jeu' })).toBeTruthy()
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
+    click('Choisir Temple d’Ysar')
     click('Règles du jeu')
     click('Fermer')
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('chargé depuis le catalogue, assoit l’invité sous le nom « Toi » et affiche une erreur de classement', async () => {
+  it('chargé depuis le catalogue, laisse l’invité choisir sa merveille et affiche une erreur de classement', async () => {
     const scores = new FakeScores()
     scores.leaderboard = () => Promise.reject(new GameError('network', 'Classement indisponible.'))
     const Game = sdvCivilisation.component
@@ -119,7 +131,8 @@ describe('SdvCivilisationGame', () => {
     )
 
     expect(await screen.findByText('Classement indisponible.')).toBeTruthy()
-    expect(screen.getByText('Toi')).toBeTruthy()
+    click('Choisir Jardins de Mirah')
+    expect(city().textContent).toContain('Jardins de Mirah')
   })
 
   it('entre et sort du plein écran', () => {

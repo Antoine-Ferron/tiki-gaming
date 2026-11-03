@@ -1,52 +1,50 @@
-import type { CSSProperties } from 'react'
 import type { Card } from './cards'
-import { costText, effectIcon, effectText, type CardStatus } from './cardText'
-import type { Action } from './game'
+import { CATEGORIES, costIcons, costText, effectIcons, effectText, type CardStatus } from './cardText'
+import { CostIcons, GameIcon, IconRow } from './GameIcon'
+
+const AGES = ['I', 'II', 'III']
 
 interface Props {
   card: Card
   status: CardStatus
   selected: boolean
-  offset: number
   onSelect: () => void
 }
 
-/** Carte de la main, face visible : effet en grand, coût, chaîne, et ce que la construction coûterait. */
-export function CardFace({ card, status, selected, offset, onSelect }: Props) {
+/**
+ * Carte de la main, verticale (5:7) : bandeau de catégorie (couleur + symbole), effet en grand au centre, chaîne,
+ * coût sur fond sombre, puis ce que la construction coûterait au joueur.
+ */
+export function CardFace({ card, status, selected, onSelect }: Props) {
+  const category = CATEGORIES[card.color]
   const chain = card.chainFrom ? ` Gratuite si tu as ${card.chainFrom}.` : ''
   return (
     <button
       type="button"
       className={`sdv-civilisation-card sdv-civilisation-card-${card.color} sdv-civilisation-status-${status.kind}`}
-      style={{ '--sdv-civilisation-offset': offset } as CSSProperties}
       aria-pressed={selected}
-      aria-label={`${card.name} : ${effectText(card)}, coût ${costText(card.cost)}.${chain} ${status.label}`}
+      aria-label={`${card.name} (${category.label}) : ${effectText(card)}, coût ${costText(card.cost)}.${chain} ${status.label}`}
       onClick={onSelect}
     >
-      <span className="sdv-civilisation-card-name">{card.name}</span>
-      <span className="sdv-civilisation-card-icon" aria-hidden="true">
-        {effectIcon(card)}
+      <span className="sdv-civilisation-card-band">
+        <GameIcon k={category.icon} size={14} />
+        <span className="sdv-civilisation-card-name">{card.name}</span>
+        <span className="sdv-civilisation-card-age">{AGES[card.age - 1]}</span>
       </span>
-      <span className="sdv-civilisation-card-effect">{effectText(card)}</span>
-      <span className="sdv-civilisation-card-cost">Coût : {costText(card.cost)}</span>
-      {card.chainFrom && <span className="sdv-civilisation-card-chain">⛓ si {card.chainFrom}</span>}
+      <span className="sdv-civilisation-card-body">
+        <IconRow items={effectIcons(card)} size={26} />
+        <span className="sdv-civilisation-card-effect">{effectText(card)}</span>
+      </span>
+      {card.chainFrom && (
+        <span className="sdv-civilisation-card-chain" aria-hidden="true">
+          <GameIcon k="chain" size={12} /> si {card.chainFrom}
+        </span>
+      )}
+      <span className="sdv-civilisation-card-cost" aria-hidden="true">
+        <span>Coût</span>
+        <CostIcons resources={costIcons(card.cost)} coins={card.cost.coins} size={15} />
+      </span>
       <span className="sdv-civilisation-card-status">{status.label}</span>
     </button>
-  )
-}
-
-const HIDDEN: Record<Exclude<Action['type'], 'build'>, string> = { wonder: 'Merveille', discard: 'Défaussée' }
-
-/** Carte posée sur la table devant son joueur : construite (face visible), ou face cachée (merveille, défausse). */
-export function PlayedCard({ card, action, style }: { card: Card; action: Action['type']; style: CSSProperties }) {
-  const built = action === 'build'
-  return (
-    <span
-      className={`sdv-civilisation-played${built ? ` sdv-civilisation-card-${card.color}` : ' sdv-civilisation-played-back'}`}
-      style={style}
-      aria-hidden="true"
-    >
-      {built ? card.name : HIDDEN[action]}
-    </span>
   )
 }

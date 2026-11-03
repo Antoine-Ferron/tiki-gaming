@@ -1,6 +1,7 @@
 import type { Card, CardColor, Cost, ScienceSymbol } from './cards'
 import { nextStage, type Payment, type PlayerState, type Refusal } from './game'
 import type { Resource } from './ports'
+import type { IconKey } from './GameIcon'
 import type { WonderStage } from './wonders'
 
 /** Textes affichés au joueur : coûts, effets et statuts, en français. */
@@ -55,19 +56,51 @@ export function stageText(stage: WonderStage): string {
   return `+${stage.coins} pièces`
 }
 
-const ICONS: Record<CardColor, string> = {
-  brown: '⚒',
-  grey: '⚒',
-  blue: '★',
-  red: '⚔',
-  green: '⚗',
-  yellow: '◉',
-  purple: '♛',
+/** Une icône, avec un nombre affiché devant (points, pièces) quand il y en a un. */
+export type IconAmount = { k: IconKey; n?: number }
+
+/** Catégorie de carte : se lit deux fois, par la couleur et par ce symbole. */
+export const CATEGORIES: Record<CardColor, { label: string; icon: IconKey }> = {
+  brown: { label: 'Ressource naturelle', icon: 'mountain' },
+  grey: { label: 'Produit manufacturé', icon: 'factory' },
+  blue: { label: 'Bâtiment civil', icon: 'column' },
+  red: { label: 'Militaire', icon: 'shield' },
+  green: { label: 'Science', icon: 'book' },
+  yellow: { label: 'Commerce', icon: 'scales' },
+  purple: { label: 'Guilde', icon: 'crown' },
 }
 
-/** Symbole de l'effet, affiché en grand sur la carte (décoratif : l'effet est aussi écrit). */
-export function effectIcon(card: Card): string {
-  return ICONS[card.color]
+export const SCIENCE_NAMES = SYMBOLS
+
+const repeat = (k: IconKey, n: number): IconAmount[] => Array.from({ length: n }, () => ({ k }))
+
+/** Ressources d'un coût, une icône par unité (les pièces sont affichées à part). */
+export function costIcons(cost: Cost): IconKey[] {
+  return cost.resources ?? []
+}
+
+/** Effet d'une carte en icônes, affiché en grand au centre de la carte. */
+export function effectIcons(card: Card): IconAmount[] {
+  if (card.produces) return card.produces.map((k) => ({ k }))
+  if (card.points) return [{ k: 'laurel', n: card.points }]
+  if (card.shields) return repeat('shield', card.shields)
+  if (card.science) return [{ k: card.science }]
+  if (card.guild) return [{ k: 'laurel', n: 1 }, ...card.guild.map((c) => ({ k: CATEGORIES[c].icon }))]
+  return [{ k: 'coin', n: card.coins }]
+}
+
+/** Gain d'une étape de merveille en icônes. */
+export function stageIcons(stage: WonderStage): IconAmount[] {
+  if (stage.points) return [{ k: 'laurel', n: stage.points }]
+  if (stage.shields) return repeat('shield', stage.shields)
+  return [{ k: 'coin', n: stage.coins }]
+}
+
+/** Duel militaire contre un voisin, avec les boucliers actuels de chacun. */
+export function duel(mine: number, theirs: number): { kind: 'win' | 'lose' | 'tie'; label: string } {
+  if (mine > theirs) return { kind: 'win', label: 'Victoire' }
+  if (mine < theirs) return { kind: 'lose', label: 'Défaite' }
+  return { kind: 'tie', label: 'Égalité' }
 }
 
 export type CardStatus = { kind: 'free' | 'cost' | 'trade' | 'blocked'; label: string }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fillWithBots } from '../bots'
-import { cardStatus, paymentText, stageText, wonderAction } from '../cardText'
+import { cardStatus, duel, paymentText, stageText, wonderAction } from '../cardText'
 import { createGame, wonderPayment } from '../game'
 import { fixedRate, identityShuffler } from './fakes'
 
@@ -10,6 +10,10 @@ describe('textes affichés', () => {
 
     expect(cardStatus(chained).label).toBe('Gratuit par chaîne')
     expect(paymentText(chained, 'IA 2', 'IA 1')).toBe('Gratuit grâce à la chaîne.')
+  })
+
+  it('compare les boucliers voisin par voisin', () => {
+    expect([duel(3, 2), duel(3, 4), duel(2, 2)].map((d) => d.label)).toEqual(['Victoire', 'Défaite', 'Égalité'])
   })
 
   it('décrit chaque effet d’étape de merveille', () => {
