@@ -85,6 +85,7 @@ class GameStartHttpTest {
         }
 
         @Bean
+        @Primary
         GameCatalog catalog() {
             return new TestGameCatalog();
         }
