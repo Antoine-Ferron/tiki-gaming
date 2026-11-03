@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import type { GameProps, LeaderboardEntry } from '../types'
 import { fillWithBots } from './bots'
@@ -7,8 +7,10 @@ import './sdv-civilisation.css'
 
 const AGES = ['I', 'II', 'III']
 const HAND_SIZE = 7
-// Distance des sièges au centre de la table, en % de sa taille.
-const SEAT_RADIUS = 44
+const WONDER_STAGES = 3
+// Rayons de l'ellipse sur laquelle sont posés les sièges, en % de la table.
+const SEAT_RADIUS_X = 41
+const SEAT_RADIUS_Y = 39
 
 /**
  * Place le siège `index` autour de la table : le joueur 0 en bas, les suivants dans le sens inverse des
@@ -17,8 +19,8 @@ const SEAT_RADIUS = 44
 function seatPosition(index: number, count: number): CSSProperties {
   const angle = -Math.PI / 2 + (index * 2 * Math.PI) / count
   return {
-    left: `${50 + SEAT_RADIUS * Math.cos(angle)}%`,
-    top: `${50 - SEAT_RADIUS * Math.sin(angle)}%`,
+    left: `${50 + SEAT_RADIUS_X * Math.cos(angle)}%`,
+    top: `${50 - SEAT_RADIUS_Y * Math.sin(angle)}%`,
   }
 }
 
@@ -28,6 +30,24 @@ function seatLabel(seat: Player, isMe: boolean, left: Player, right: Player): st
   return `${name}, ${coins}, voisin de gauche ${left.name}, voisin de droite ${right.name}`
 }
 
+/** Bascule le plateau en plein écran (API Fullscreen du navigateur). */
+function useFullscreen(ref: RefObject<HTMLElement | null>) {
+  const [active, setActive] = useState(false)
+
+  useEffect(() => {
+    const onChange = () => setActive(document.fullscreenElement === ref.current)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [ref])
+
+  const toggle = () => {
+    if (document.fullscreenElement) void document.exitFullscreen()
+    else void ref.current?.requestFullscreen()
+  }
+
+  return { active, supported: Boolean(document.fullscreenEnabled), toggle }
+}
+
 /**
  * Premier écran : la table de jeu, sans partie jouable pour l'instant.
  * Le joueur connecté est assis avec des IA, en attendant le multijoueur.
@@ -35,6 +55,8 @@ function seatLabel(seat: Player, isMe: boolean, left: Player, right: Player): st
 export default function SdvCivilisationGame({ ctx }: GameProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [error, setError] = useState<string | null>(null)
+  const boardRef = useRef<HTMLDivElement>(null)
+  const fullscreen = useFullscreen(boardRef)
 
   useEffect(() => {
     ctx
@@ -47,11 +69,21 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
 
   return (
     <div className="sdv-civilisation">
-      <div className="card sdv-civilisation-board">
+      <div ref={boardRef} className="sdv-civilisation-board">
+        <div className="sdv-civilisation-toolbar">
+          <p className="sdv-civilisation-status">
+            Tour <strong>1</strong> / 6
+          </p>
+          {fullscreen.supported && (
+            <button type="button" className="small" onClick={fullscreen.toggle}>
+              {fullscreen.active ? 'Quitter le plein écran' : 'Plein écran'}
+            </button>
+          )}
+        </div>
+
         <div className="sdv-civilisation-table">
           <div className="sdv-civilisation-felt">
             <p className="sdv-civilisation-age">Âge I</p>
-            <p className="sdv-civilisation-turn">Tour 1 / 6</p>
             <div className="sdv-civilisation-decks" aria-hidden="true">
               {AGES.map((age, index) => (
                 <span
@@ -78,16 +110,24 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
                   style={seatPosition(index, players.length)}
                   aria-label={seatLabel(seat, isMe, left, right)}
                 >
-                  <span className="sdv-civilisation-avatar" aria-hidden="true">
-                    {seat.isBot ? 'IA' : seat.name.charAt(0).toUpperCase()}
-                  </span>
-                  <span className="sdv-civilisation-name" aria-hidden="true">
-                    {isMe ? 'Toi' : seat.name}
-                  </span>
-                  <span className="sdv-civilisation-coins" aria-hidden="true">
-                    <span className="sdv-civilisation-coin" />
-                    {seat.coins}
-                  </span>
+                  <div className="sdv-civilisation-seat-head" aria-hidden="true">
+                    <span className="sdv-civilisation-avatar">
+                      {seat.isBot ? 'IA' : seat.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="sdv-civilisation-name">{isMe ? 'Toi' : seat.name}</span>
+                  </div>
+                  <div className="sdv-civilisation-stats" aria-hidden="true">
+                    <span title="Pièces">
+                      <span className="sdv-civilisation-coin" />
+                      {seat.coins}
+                    </span>
+                    <span title="Boucliers">⚔ 0</span>
+                  </div>
+                  <div className="sdv-civilisation-wonder" aria-hidden="true" title="Étapes de merveille">
+                    {Array.from({ length: WONDER_STAGES }, (_, i) => (
+                      <span key={i} className="sdv-civilisation-stage" />
+                    ))}
+                  </div>
                 </li>
               )
             })}
@@ -95,10 +135,16 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
         </div>
 
         <div className="sdv-civilisation-hand">
-          <p className="muted">Ta main · {HAND_SIZE} cartes</p>
+          <p className="sdv-civilisation-hand-title">Ta main · {HAND_SIZE} cartes</p>
           <div className="sdv-civilisation-cards">
             {Array.from({ length: HAND_SIZE }, (_, i) => (
-              <span key={i} className="sdv-civilisation-card" role="img" aria-label="Carte face cachée" />
+              <span
+                key={i}
+                className="sdv-civilisation-card"
+                role="img"
+                aria-label="Carte face cachée"
+                style={{ '--sdv-civilisation-offset': i - (HAND_SIZE - 1) / 2 } as CSSProperties}
+              />
             ))}
           </div>
         </div>
@@ -108,6 +154,7 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
         </p>
         {error && <p className="error">{error}</p>}
       </div>
+
       <div className="card">
         <h2>Classement</h2>
         <Leaderboard entries={leaderboard} currentUserId={ctx.player?.id} />
