@@ -22,6 +22,11 @@ public final class TurnTimer {
         return new TurnTimer(clock, duration);
     }
 
+    /** Heure limite officielle du tour, envoyée aux joueurs pour leur compte à rebours. */
+    public long deadline() {
+        return deadline;
+    }
+
     public long remainingMillis() {
         return Math.max(0, deadline - clock.now());
     }

@@ -68,6 +68,15 @@ class TurnTimerTest {
     }
 
     @Test
+    void exposesTheDeadlineSentToPlayers() {
+        FakeClock clock = new FakeClock(START);
+
+        TurnTimer turn = TurnTimer.start(clock);
+
+        assertThat(turn.deadline()).isEqualTo(START + 60_000);
+    }
+
+    @Test
     void acceptsACustomDuration() {
         FakeClock clock = new FakeClock(START);
         TurnTimer turn = TurnTimer.start(clock, 20_000);
