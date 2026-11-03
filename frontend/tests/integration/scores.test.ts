@@ -49,9 +49,19 @@ describeDb('scores (RLS et contraintes)', () => {
     await expect(as(db, alice, () => insertScore(1, 'inconnu'))).rejects.toMatchObject({ code: '42501' })
   })
 
-  test('un jeu dont le serveur classe les scores (Prismine) refuse ceux envoyés par un joueur', async () => {
+  test('un jeu dont le serveur classe les scores (Prismine) refuse ceux des joueurs et les doublons', async () => {
     await expect(as(db, alice, () => insertScore(150, 'prismine'))).rejects.toMatchObject({ code: '42501' })
     expect(await scoresOf(alice)).toEqual([])
+
+    // Le backend (hors RLS) classe une fois par expédition : une nouvelle tentative est refusée en doublon.
+    const insertRun = () =>
+      db.query(
+        `insert into public.scores (game_slug, score, user_id, metadata) values ('prismine', 150, $1, '{"runId": "r1"}')`,
+        [alice],
+      )
+    await insertRun()
+    await expect(insertRun()).rejects.toMatchObject({ code: '23505' })
+    expect(await scoresOf(alice)).toEqual([150])
   })
 
   // Valeurs limites basses : -1 refusé, 0 accepté

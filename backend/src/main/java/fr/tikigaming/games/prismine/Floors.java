@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.IntPredicate;
 import java.util.stream.IntStream;
 
 /** Génération des étages : un étage est entièrement défini par sa profondeur et sa graine. */
@@ -49,7 +50,27 @@ public final class Floors {
         for (int attempt = 1; attempt < MAX_ATTEMPTS && !allPiecesReachable(grid, spec.size()); attempt++) {
             grid = randomGrid(spec, random);
         }
+        if (!allPiecesReachable(grid, spec.size())) {
+            // Tirages épuisés (très rare) : on retire les pièces hors de portée plutôt que de les laisser cachées.
+            // Aucun faisceau ne les touchait, donc les trajets ne changent pas ; le décompte annoncé suit la grille.
+            grid = withoutUnreachablePieces(grid, spec.size());
+            spec = new Spec(
+                    spec.size(), count(grid, c -> c != '.' && c != '#'), count(grid, c -> c == '#'), spec.colors());
+        }
         return new Floor(depth, seed, spec, grid);
+    }
+
+    private static int count(String grid, IntPredicate piece) {
+        return (int) grid.chars().filter(piece).count();
+    }
+
+    private static String withoutUnreachablePieces(String grid, int size) {
+        Set<Integer> touched = touchedCells(grid, size);
+        char[] cells = grid.toCharArray();
+        for (int cell = 0; cell < cells.length; cell++) {
+            if (!touched.contains(cell)) cells[cell] = '.';
+        }
+        return new String(cells);
     }
 
     private static String randomGrid(Spec spec, Mulberry32 random) {
@@ -68,6 +89,15 @@ public final class Floors {
     }
 
     private static boolean allPiecesReachable(String grid, int size) {
+        Set<Integer> touched = touchedCells(grid, size);
+        for (int cell = 0; cell < grid.length(); cell++) {
+            if (grid.charAt(cell) != '.' && !touched.contains(cell)) return false;
+        }
+        return true;
+    }
+
+    /** Cases touchées par au moins un faisceau, depuis l'une des entrées. */
+    private static Set<Integer> touchedCells(String grid, int size) {
         Set<Integer> touched = new HashSet<>();
         for (int entry = 0; entry < Engine.entryCount(size); entry++) {
             for (int[] cell : Engine.path(grid, size, entry)) {
@@ -76,10 +106,7 @@ public final class Floors {
                 }
             }
         }
-        for (int cell = 0; cell < grid.length(); cell++) {
-            if (grid.charAt(cell) != '.' && !touched.contains(cell)) return false;
-        }
-        return true;
+        return touched;
     }
 
     /** Générateur pseudo-aléatoire déterministe, identique à mulberry32 du front : même graine, même suite. */

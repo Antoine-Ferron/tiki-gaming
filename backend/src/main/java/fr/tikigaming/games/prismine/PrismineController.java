@@ -114,9 +114,11 @@ public class PrismineController {
     static final String GUEST_RUN = "prismine.guest-run";
 
     private final PrismineService service;
+    private final StartLimiter limiter;
 
-    public PrismineController(PrismineService service) {
+    public PrismineController(PrismineService service, StartLimiter limiter) {
         this.service = service;
+        this.limiter = limiter;
     }
 
     @PostMapping
@@ -126,13 +128,19 @@ public class PrismineController {
             description = "Étage 1, lampe pleine. Une seule expédition en cours par compte, ou par session pour "
                     + "un invité : la précédente est abandonnée.")
     @ApiResponse(responseCode = "201", description = "Expédition créée")
+    @ApiResponse(responseCode = "429", description = "Trop d'expéditions commencées depuis cette adresse")
     RunView start(HttpServletRequest request) {
+        limiter.acquire(request.getRemoteAddr());
         String userId = userId(request);
-        if (userId != null) return view(service.start(userId));
-        HttpSession session = request.getSession(true);
-        UUID previous = session.getAttribute(GUEST_RUN) instanceof UUID id ? id : null;
-        Run run = service.start(null, previous);
-        session.setAttribute(GUEST_RUN, run.id());
+        HttpSession session = request.getSession(userId == null);
+        // Expédition commencée en invité dans cette session, éventuellement avant une connexion : abandonnée aussi.
+        UUID previous = session != null && session.getAttribute(GUEST_RUN) instanceof UUID id ? id : null;
+        Run run = service.start(userId, previous);
+        if (userId == null) {
+            session.setAttribute(GUEST_RUN, run.id());
+        } else if (session != null) {
+            session.removeAttribute(GUEST_RUN);
+        }
         return view(run);
     }
 
@@ -217,7 +225,9 @@ public class PrismineController {
     }
 
     private static RunView view(Run run) {
-        Floors.Spec spec = run.spec();
+        Floors.Floor floor = PrismineService.floorOf(run);
+        // Spécification de l'étage réellement généré : son décompte de pièces fait foi.
+        Floors.Spec spec = floor.spec();
         return new RunView(
                 run.id(),
                 run.depth(),
@@ -230,7 +240,7 @@ public class PrismineController {
                 run.floorErrors(),
                 run.totalProbes(),
                 run.totalErrors(),
-                probeViews(Expedition.results(run.probes(), PrismineService.floorOf(run))));
+                probeViews(Expedition.results(run.probes(), floor)));
     }
 
     private static FloorView floorView(Floors.Floor floor, List<Run.Probe> probes) {

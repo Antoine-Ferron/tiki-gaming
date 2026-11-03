@@ -7,8 +7,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -97,19 +97,31 @@ final class TestDoubles {
         }
     }
 
-    /** Faux registre des scores : garde les scores enregistrés pour que le test les relise. */
+    /**
+     * Faux registre des scores : garde les scores enregistrés pour que le test les relise. Comme l'index unique de la
+     * base, un second score pour la même expédition est ignoré. {@link #failNext()} simule une panne de Supabase.
+     */
     static final class InMemoryScoreRegistry implements ScoreRegistry {
         record Recorded(String userId, long score, Map<String, Object> metadata) {}
 
-        private final List<Recorded> recorded = new ArrayList<>();
+        private final Map<UUID, Recorded> recorded = new LinkedHashMap<>();
+        private boolean failNext;
 
         @Override
-        public void record(String userId, long score, Map<String, Object> metadata) {
-            recorded.add(new Recorded(userId, score, metadata));
+        public void record(UUID runId, String userId, long score, Map<String, Object> metadata) {
+            if (failNext) {
+                failNext = false;
+                throw new ApiException(HttpStatus.BAD_GATEWAY, "Supabase en panne");
+            }
+            recorded.putIfAbsent(runId, new Recorded(userId, score, metadata));
+        }
+
+        void failNext() {
+            failNext = true;
         }
 
         List<Recorded> recorded() {
-            return recorded;
+            return List.copyOf(recorded.values());
         }
     }
 

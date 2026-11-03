@@ -57,7 +57,7 @@ public final class Expedition {
     }
 
     public static Run start(UUID id, String userId, long seed, Instant now) {
-        return new Run(id, userId, 1, seed, START_OIL, 0, 0, List.of(), 0, 0, now, now, false, 0);
+        return new Run(id, userId, 1, seed, START_OIL, 0, 0, List.of(), 0, 0, now, now, false, false, 0);
     }
 
     public static List<ProbeResult> results(List<Run.Probe> probes, Floors.Floor floor) {
@@ -89,21 +89,11 @@ public final class Expedition {
         if (run.oil() < PROBE_COST) throw new ApiException(HttpStatus.CONFLICT, LAMP_EMPTY);
         List<Run.Probe> probes = new ArrayList<>(run.probes());
         probes.add(new Run.Probe(entry, false));
-        return new Run(
-                run.id(),
-                run.userId(),
-                run.depth(),
-                run.seed(),
-                run.oil() - PROBE_COST,
-                run.score(),
-                run.floorErrors(),
-                probes,
-                run.totalProbes() + 1,
-                run.totalErrors(),
-                run.startedAt(),
-                run.floorStartedAt(),
-                run.audited(),
-                run.version());
+        return run.toBuilder()
+                .oil(run.oil() - PROBE_COST)
+                .probes(probes)
+                .totalProbes(run.totalProbes() + 1)
+                .build();
     }
 
     /**
@@ -134,47 +124,35 @@ public final class Expedition {
         if (differing.isEmpty()) {
             boolean perfect = run.floorErrors() == 0;
             int points = floorPoints(run.depth(), perfect);
-            Run next = new Run(
-                    run.id(),
-                    run.userId(),
-                    run.depth() + 1,
-                    nextSeed,
-                    run.oil() + FLOOR_REFILL,
-                    run.score() + points,
-                    0,
-                    List.of(),
-                    run.totalProbes(),
-                    run.totalErrors(),
-                    run.startedAt(),
-                    now,
-                    run.audited(),
-                    run.version());
+            Run next = run.toBuilder()
+                    .depth(run.depth() + 1)
+                    .seed(nextSeed)
+                    .oil(run.oil() + FLOOR_REFILL)
+                    .score(run.score() + points)
+                    .floorErrors(0)
+                    .probes(List.of())
+                    .floorStartedAt(now)
+                    .build();
             return new Verdict.Cleared(points, perfect, floor, run.probes(), next);
         }
 
-        Run charged = withError(run, run.probes(), 0);
-        if (run.oil() < ERROR_COST) return new Verdict.LampOut(floor, charged, false);
+        if (run.oil() < ERROR_COST) {
+            // L'expédition se termine : son état est figé avec cette dernière erreur (over), une seule fois.
+            Run ended = run.toBuilder()
+                    .totalErrors(run.totalErrors() + 1)
+                    .over(true)
+                    .build();
+            return new Verdict.LampOut(floor, ended, false);
+        }
         int entry = differing.get((int) Long.remainderUnsigned(randomness, differing.size()));
         List<Run.Probe> probes = new ArrayList<>(run.probes());
         probes.add(new Run.Probe(entry, true));
-        return new Verdict.Wrong(entry, withError(run, probes, ERROR_COST));
-    }
-
-    private static Run withError(Run run, List<Run.Probe> probes, int cost) {
-        return new Run(
-                run.id(),
-                run.userId(),
-                run.depth(),
-                run.seed(),
-                run.oil() - cost,
-                run.score(),
-                run.floorErrors() + (cost > 0 ? 1 : 0),
-                probes,
-                run.totalProbes(),
-                run.totalErrors() + 1,
-                run.startedAt(),
-                run.floorStartedAt(),
-                run.audited(),
-                run.version());
+        Run charged = run.toBuilder()
+                .oil(run.oil() - ERROR_COST)
+                .floorErrors(run.floorErrors() + 1)
+                .probes(probes)
+                .totalErrors(run.totalErrors() + 1)
+                .build();
+        return new Verdict.Wrong(entry, charged);
     }
 }

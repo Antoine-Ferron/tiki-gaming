@@ -22,7 +22,11 @@ class FloorsTest {
     @Test
     void generatesDeterministicSolvableFloorsWithReversibleBeams() {
         for (Floors.Floor floor : SAMPLES) {
-            Floors.Spec spec = Floors.spec(floor.depth());
+            // Décompte annoncé = celui de l'étage généré (identique au palier, sauf pièces hors de portée retirées).
+            Floors.Spec spec = floor.spec();
+            assertThat(spec.prisms() + spec.obsidians())
+                    .isLessThanOrEqualTo(Floors.spec(floor.depth()).prisms()
+                            + Floors.spec(floor.depth()).obsidians());
             int size = spec.size();
             // Même profondeur et même graine : même étage, avec les pièces prévues.
             assertThat(Floors.generate(floor.depth(), floor.seed())).isEqualTo(floor);

@@ -48,7 +48,7 @@ class PrismineControllerTest {
                 mock(AuditNotifier.class),
                 new StubSeedSource(SEED, 7),
                 clock);
-        mvc = MockMvcBuilders.standaloneSetup(new PrismineController(service))
+        mvc = MockMvcBuilders.standaloneSetup(new PrismineController(service, new StartLimiter(clock)))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .defaultResponseCharacterEncoding(StandardCharsets.UTF_8)
                 .build();
@@ -107,7 +107,7 @@ class PrismineControllerTest {
     }
 
     @Test
-    void refusesAnUnreadableMapAndHidesTheRunFromAnotherPlayer() throws Exception {
+    void refusesAnUnreadableMapAnotherPlayersRunAndTooManyStarts() throws Exception {
         String id = start();
         postJson(BASE + "/" + id + "/validation", "{\"guess\": \"//\"}")
                 .andExpect(status().isBadRequest())
@@ -116,5 +116,13 @@ class PrismineControllerTest {
         MockHttpSession other = new MockHttpSession();
         other.setAttribute("tiki.user", new AuthUser("joueur-2", "autre@example.com"));
         mvc.perform(get(BASE + "/" + id).session(other)).andExpect(status().isNotFound());
+
+        // Limite de démarrages par adresse : la suivante est refusée (429), puis acceptée une fois la fenêtre passée.
+        for (int n = 1; n < StartLimiter.MAX_STARTS; n++) start();
+        postJson(BASE, "{}")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error").value(StartLimiter.TOO_MANY));
+        clock.advance(StartLimiter.WINDOW);
+        start();
     }
 }

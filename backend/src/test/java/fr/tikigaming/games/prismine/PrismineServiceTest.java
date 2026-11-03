@@ -72,6 +72,10 @@ class PrismineServiceTest {
         assertThat(runs.find(service.start(null, guest.id()).id())).isPresent();
         assertThat(runs.find(guest.id())).isEmpty();
         assertThat(runs.find(next.id())).isPresent();
+        // Expédition commencée en invité puis connexion dans la même session : elle est abandonnée aussi.
+        Run beforeLogin = service.start(null);
+        service.start(PLAYER, beforeLogin.id());
+        assertThat(runs.find(beforeLogin.id())).isEmpty();
     }
 
     @Test
@@ -91,6 +95,22 @@ class PrismineServiceTest {
         clear(guest, null);
         assertThat(service.finish(guest.id(), null).recorded()).isFalse();
         assertThat(scores.recorded()).hasSize(1);
+
+        // Lampe éteinte puis panne au classement : l'expédition est figée avec sa dernière erreur, une seule fois ;
+        // la nouvelle tentative (fin d'expédition) ne recompte rien et classe le score une seule fois.
+        Run unlucky = service.start(PLAYER);
+        clock.advance(Duration.ofSeconds(30));
+        Run depth2 = clear(unlucky, PLAYER).next();
+        runs.update(depth2.withOil(0).nextVersion());
+        scores.failNext();
+        String empty = Engine.emptyGrid(PrismineService.floorOf(depth2).spec().size());
+        assertThatThrownBy(() -> service.validate(unlucky.id(), PLAYER, empty)).isInstanceOf(ApiException.class);
+        assertThat(runs.find(unlucky.id()).orElseThrow())
+                .extracting(Run::over, Run::totalErrors)
+                .containsExactly(true, 1);
+        assertThatThrownBy(() -> service.validate(unlucky.id(), PLAYER, empty)).hasMessage(PrismineService.RUN_OVER);
+        assertThat(service.finish(unlucky.id(), PLAYER).run().totalErrors()).isEqualTo(1);
+        assertThat(scores.recorded()).hasSize(2);
     }
 
     @Test

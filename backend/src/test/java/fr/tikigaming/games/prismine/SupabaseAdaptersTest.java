@@ -7,6 +7,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import fr.tikigaming.config.ApiException;
@@ -86,8 +87,10 @@ class SupabaseAdaptersTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(content()
                         .json("{\"user_id\": \"joueur-1\", \"game_slug\": \"prismine\", \"score\": 150,"
-                                + " \"metadata\": {\"depth\": 2}}"))
+                                + " \"metadata\": {\"depth\": 2, \"runId\": \"" + ID + "\"}}"))
                 .andRespond(withSuccess());
+        // Score déjà classé (index unique sur metadata.runId) : PostgREST répond 409, ce n'est pas une erreur.
+        server.expect(requestTo(URL + "/rest/v1/scores")).andRespond(withStatus(HttpStatus.CONFLICT));
         server.expect(requestTo(URL + "/rest/v1/scores")).andRespond(withServerError());
 
         // Expédition : écrite, relue depuis son état JSON, mise à jour, puis supprimée (par id, par joueur, par purge).
@@ -103,9 +106,10 @@ class SupabaseAdaptersTest {
         runs.deleteByUser("joueur-1");
         runs.deleteInactiveSince(Instant.parse("2026-11-02T10:00:00Z"));
         assertThat(runs.find(ID)).isEmpty();
-        // Score : inséré au nom du joueur ; une panne de Supabase devient une 502 lisible par le joueur.
-        scores.record("joueur-1", 150, Map.of("depth", 2));
-        assertThatThrownBy(() -> scores.record("joueur-1", 150, Map.of()))
+        // Score : inséré au nom du joueur, une seule fois par expédition ; une panne devient une 502 lisible.
+        scores.record(ID, "joueur-1", 150, Map.of("depth", 2));
+        scores.record(ID, "joueur-1", 150, Map.of("depth", 2));
+        assertThatThrownBy(() -> scores.record(ID, "joueur-1", 150, Map.of()))
                 .isInstanceOf(ApiException.class)
                 .hasMessage("Le serveur de Prismine rencontre un problème. Réessaie plus tard.")
                 .extracting("status")

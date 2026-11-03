@@ -79,7 +79,9 @@ class ExpeditionTest {
         assertThat(((Verdict.Cleared) validate(wrong.next(), ONE_PRISM.grid())).points())
                 .isEqualTo(100);
 
-        // Plus assez d'huile pour payer l'erreur : la lampe s'éteint.
-        assertThat(validate(newRun().withOil(Expedition.ERROR_COST - 1), empty)).isInstanceOf(Verdict.LampOut.class);
+        // Plus assez d'huile pour payer l'erreur : la lampe s'éteint, l'expédition est figée avec cette erreur.
+        Verdict.LampOut out = (Verdict.LampOut) validate(newRun().withOil(Expedition.ERROR_COST - 1), empty);
+        assertThat(out.run().over()).isTrue();
+        assertThat(out.run().totalErrors()).isEqualTo(1);
     }
 }
