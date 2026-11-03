@@ -1,0 +1,90 @@
+.sudoku {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.sudoku-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+.sudoku-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.sudoku-stats {
+  display: flex;
+  gap: 1.5rem;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.sudoku-grid {
+  --sudoku-line: var(--muted);
+  --sudoku-fixed: var(--text);
+  --sudoku-user: var(--accent);
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  width: min(100%, 420px);
+  aspect-ratio: 1;
+  border: 2px solid var(--sudoku-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sudoku-cell {
+  font: inherit;
+  font-size: clamp(1rem, 5vw, 1.5rem);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--sudoku-user);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.sudoku-cell:nth-child(3n):not(:nth-child(9n)) {
+  border-right: 2px solid var(--sudoku-line);
+}
+.sudoku-cell:nth-child(n + 19):nth-child(-n + 27),
+.sudoku-cell:nth-child(n + 46):nth-child(-n + 54) {
+  border-bottom: 2px solid var(--sudoku-line);
+}
+.sudoku-cell:nth-child(9n) {
+  border-right: 0;
+}
+.sudoku-cell:nth-child(n + 73) {
+  border-bottom: 0;
+}
+.sudoku-cell.sudoku-fixed {
+  font-weight: 700;
+  color: var(--sudoku-fixed);
+  cursor: default;
+}
+.sudoku-cell.sudoku-related {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.sudoku-cell.sudoku-selected {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface));
+}
+.sudoku-cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  position: relative;
+}
+
+.sudoku-pad {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  width: min(100%, 420px);
+}
+.sudoku-pad button {
+  padding: 0.6rem 0;
+}
