@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import * as z from 'zod/mini'
 import { Leaderboard } from '@/components/Leaderboard'
 import type { GameProps, LeaderboardEntry } from '../types'
 
@@ -9,7 +10,8 @@ import type { GameProps, LeaderboardEntry } from '../types'
  */
 const DURATION_MS = 10_000
 
-type Save = { totalClicks: number }
+// Schéma de la sauvegarde : une sauvegarde corrompue ou d'un ancien format est ignorée (loadSave renvoie null).
+const saveSchema = z.object({ totalClicks: z.number().check(z.int(), z.nonnegative()) })
 type Phase = 'idle' | 'playing' | 'over'
 
 export default function ClickerGame({ ctx }: GameProps) {
@@ -31,7 +33,7 @@ export default function ClickerGame({ ctx }: GameProps) {
   useEffect(() => {
     refreshLeaderboard()
     ctx
-      .loadSave<Save>()
+      .loadSave(saveSchema)
       .then((s) => setTotalClicks(s?.totalClicks ?? 0))
       .catch((e) => setError(e.message))
   }, [ctx, refreshLeaderboard])
@@ -39,12 +41,18 @@ export default function ClickerGame({ ctx }: GameProps) {
   const finish = useCallback(async () => {
     setPhase('over')
     const score = clicksRef.current
+    // Les erreurs du SDK (GameError) ont un message destiné au joueur. Un échec d'envoi du score
+    // n'empêche pas la sauvegarde, et inversement.
     try {
       await ctx.submitScore(score, { durationMs: DURATION_MS })
-      const newTotal = totalClicks + score
-      setTotalClicks(newTotal)
-      await ctx.save({ totalClicks: newTotal })
       refreshLeaderboard()
+    } catch (e) {
+      setError((e as Error).message)
+    }
+    const newTotal = totalClicks + score
+    setTotalClicks(newTotal)
+    try {
+      await ctx.save({ totalClicks: newTotal })
     } catch (e) {
       setError((e as Error).message)
     }
