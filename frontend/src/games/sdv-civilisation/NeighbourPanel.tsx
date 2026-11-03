@@ -1,7 +1,7 @@
 import type { CardColor } from './cards'
 import { CATEGORIES, duel } from './cardText'
 import { ProductionTokens } from './CityBoard'
-import { shields, type PlayerState } from './game'
+import { shields, type PlayerState, type TurnEvent } from './game'
 import { GameIcon } from './GameIcon'
 import type { Resource } from './ports'
 
@@ -16,13 +16,50 @@ interface Props {
   /** Ressources que le joueur lui achèterait avec la carte choisie. */
   bought: Resource[]
   onOpen: () => void
+  /** Pièces gagnées ou perdues au dernier tour, affichées une fois par tour (`stamp`). */
+  delta: number
+  stamp: string
+  /** Pendant la révélation du tour : la carte qu'il vient de jouer, et ce que tu lui paies pour commercer. */
+  reveal?: { event: TurnEvent; paid: number }
+}
+
+/** Révélation de la carte jouée par une IA : le nom n'est visible que pour un bâtiment (sinon face cachée). */
+function Reveal({ name, event, paid }: { name: string; event: TurnEvent; paid: number }) {
+  const { card, action } = event
+  return (
+    <div className="sdv-civilisation-reveal">
+      {action === 'build' ? (
+        <span className={`sdv-civilisation-reveal-card sdv-civilisation-card-${card.color}`}>
+          <GameIcon k={CATEGORIES[card.color].icon} size={18} />
+          <span>
+            <strong>
+              {name} construit {card.name}
+            </strong>
+            <span>{CATEGORIES[card.color].label}</span>
+          </span>
+        </span>
+      ) : (
+        <span className="sdv-civilisation-reveal-card sdv-civilisation-reveal-hidden">
+          <GameIcon k={action === 'wonder' ? 'wonder' : 'coin'} size={18} />
+          <strong>
+            {name} {action === 'wonder' ? 'bâtit une étape de sa merveille' : 'défausse une carte : +3 pièces'}
+          </strong>
+        </span>
+      )}
+      {paid > 0 && (
+        <span className="sdv-civilisation-reveal-trade">
+          <GameIcon k="coin" size={16} /> Tu lui paies {paid} pièces
+        </span>
+      )}
+    </div>
+  )
 }
 
 /**
  * Zone B : un voisin, en fiche compacte de son côté de la table. L'essentiel est visible (or, boucliers et duel,
  * merveille, ce qu'il te vend, nombre de bâtiments par couleur) ; le détail de sa cité s'ouvre à la demande.
  */
-export function NeighbourPanel({ player, side, myShields, ready, bought, onOpen }: Props) {
+export function NeighbourPanel({ player, side, myShields, ready, bought, onOpen, delta, stamp, reveal }: Props) {
   const label = side === 'left' ? 'Voisin de gauche' : 'Voisin de droite'
   const theirs = shields(player)
   const result = duel(myShields, theirs)
@@ -48,14 +85,28 @@ export function NeighbourPanel({ player, side, myShields, ready, bought, onOpen 
         <span className="sdv-civilisation-neighbour-numbers">
           <span title="Pièces">
             <GameIcon k="coin" size={22} />
-            {player.coins}
+            <span key={player.coins} className="sdv-civilisation-pop">
+              {player.coins}
+            </span>
+            {delta !== 0 && (
+              <span
+                key={stamp}
+                className={`sdv-civilisation-delta ${delta > 0 ? 'sdv-civilisation-gain' : 'sdv-civilisation-loss'}`}
+              >
+                {delta > 0 ? `+${delta}` : `−${-delta}`}
+              </span>
+            )}
           </span>
           <span title="Boucliers">
             <GameIcon k="shield" size={22} />
-            {theirs}
+            <span key={theirs} className="sdv-civilisation-pop">
+              {theirs}
+            </span>
           </span>
         </span>
       </div>
+
+      {reveal && <Reveal name={player.name} {...reveal} />}
 
       <div className="sdv-civilisation-neighbour-body">
         <div>

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { Card } from './cards'
 import { CATEGORIES, costIcons, costText, effectIcons, effectText, type CardStatus } from './cardText'
 import { CostIcons, GameIcon, IconRow } from './GameIcon'
@@ -9,19 +10,25 @@ interface Props {
   status: CardStatus
   selected: boolean
   onSelect: () => void
+  /** Animation en cours (arrivée, envol vers la cité…) et ses variables CSS. */
+  motion?: string
+  style?: CSSProperties
+  disabled?: boolean
 }
 
 /**
  * Carte de la main, verticale (5:7) : bandeau de catégorie (couleur + symbole), effet en grand au centre, chaîne,
  * coût sur fond sombre, puis ce que la construction coûterait au joueur.
  */
-export function CardFace({ card, status, selected, onSelect }: Props) {
+export function CardFace({ card, status, selected, onSelect, motion, style, disabled }: Props) {
   const category = CATEGORIES[card.color]
   const chain = card.chainFrom ? ` Gratuite si tu as ${card.chainFrom}.` : ''
   return (
     <button
       type="button"
-      className={`sdv-civilisation-card sdv-civilisation-card-${card.color} sdv-civilisation-status-${status.kind}`}
+      className={`sdv-civilisation-card sdv-civilisation-card-${card.color} sdv-civilisation-status-${status.kind}${motion ? ` ${motion}` : ''}`}
+      style={style}
+      disabled={disabled}
       aria-pressed={selected}
       aria-label={`${card.name} (${category.label}) : ${effectText(card)}, coût ${costText(card.cost)}.${chain} ${status.label}`}
       onClick={onSelect}

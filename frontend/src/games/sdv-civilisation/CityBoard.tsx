@@ -44,7 +44,8 @@ export function ProductionTokens(props: { player: PlayerState; variant: 'own' | 
     >
       {produced.map(([resource, n]) => (
         <span
-          key={resource}
+          // La clé change avec la quantité : un nouveau compte rejoue l'animation de production.
+          key={`${resource}-${n}`}
           className={`sdv-civilisation-token${highlight.includes(resource) ? ' sdv-civilisation-token-used' : ''}`}
           title={RESOURCES[resource]}
         >
@@ -138,12 +139,14 @@ interface CityProps {
   left: PlayerState
   right: PlayerState
   lastCoins: number
+  /** Identifiant du tour affiché : les gains et pertes du tour réapparaissent à chaque nouveau tour. */
+  stamp: string
   /** Détail du coût de la carte choisie, pour mettre en évidence les ressources utilisées et manquantes. */
   needs: ResourceNeed[]
 }
 
 /** Barre de ressources du joueur : production, or, armée et science, regroupés au même endroit. */
-function ResourceBar({ player, left, right, lastCoins, needs }: CityProps) {
+function ResourceBar({ player, left, right, lastCoins, stamp, needs }: CityProps) {
   const mine = shields(player)
   const missing = needs.filter((need) => need.missing > 0)
   const symbols = player.built.map((card) => card.science)
@@ -173,9 +176,12 @@ function ResourceBar({ player, left, right, lastCoins, needs }: CityProps) {
         <span className="sdv-civilisation-bar-label">Trésor</span>
         <span className="sdv-civilisation-bar-row sdv-civilisation-big">
           <GameIcon k="coin" size={28} />
-          <strong>{player.coins}</strong>
+          <strong key={player.coins} className="sdv-civilisation-pop">
+            {player.coins}
+          </strong>
           {lastCoins !== 0 && (
             <span
+              key={stamp}
               className={`sdv-civilisation-delta ${lastCoins > 0 ? 'sdv-civilisation-gain' : 'sdv-civilisation-loss'}`}
             >
               {signed(lastCoins)}
@@ -189,7 +195,9 @@ function ResourceBar({ player, left, right, lastCoins, needs }: CityProps) {
         <span className="sdv-civilisation-bar-row">
           <span className="sdv-civilisation-big">
             <GameIcon k="shield" size={28} />
-            <strong>{mine}</strong>
+            <strong key={mine} className="sdv-civilisation-pop">
+              {mine}
+            </strong>
           </span>
           <ul aria-label="Duels" className="sdv-civilisation-duels">
             {[left, right].map((other) => {

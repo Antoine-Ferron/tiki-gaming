@@ -22,7 +22,7 @@ const journal = (turn: string) => {
 function renderBoard() {
   const alice = { id: 'p1', username: 'alice' }
   const ctx = createGameContext(sdvCivilisation, alice, fakeDeps({ scores: new FakeScores(alice) }))
-  render(<SdvCivilisationBoard ctx={ctx} shuffler={identityShuffler} />)
+  render(<SdvCivilisationBoard ctx={ctx} shuffler={identityShuffler} tempo="off" />)
   return ctx
 }
 

@@ -1272,9 +1272,452 @@ button.sdv-civilisation-action-discard {
   }
 }
 
+/* ─── Animations : chaque durée suit le tempo choisi (--sdv-civilisation-tempo : 1 normal, 0.45 rapide) ─── */
+.sdv-civilisation-neighbour,
+.sdv-civilisation-handzone {
+  position: relative;
+}
+
+/* Retour immédiat des boutons d'action. */
+.sdv-civilisation-action,
+.sdv-civilisation-secondary {
+  transition:
+    transform 120ms ease,
+    box-shadow 160ms ease;
+}
+
+.sdv-civilisation-action:not(:disabled):active,
+.sdv-civilisation-secondary:active {
+  transform: scale(0.97);
+}
+
+/* Sélection : la carte se soulève, grandit un peu et s'entoure d'une lueur ; les autres restent visibles. */
+button.sdv-civilisation-card {
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+button.sdv-civilisation-card[aria-pressed='true'] {
+  transform: translateY(-0.7rem) scale(1.04);
+}
+
+/* Pendant la résolution du tour, la main n'est pas jouable mais reste lisible. */
+button.sdv-civilisation-card:disabled {
+  opacity: 1;
+}
+
+/* Les actions de la carte choisie apparaissent l'une après l'autre. */
+.sdv-civilisation-detail > * {
+  animation: sdv-civilisation-rise calc(260ms * var(--sdv-civilisation-tempo, 1)) ease-out backwards;
+}
+
+.sdv-civilisation-detail > :nth-child(2) {
+  animation-delay: calc(50ms * var(--sdv-civilisation-tempo, 1));
+}
+
+.sdv-civilisation-detail > :nth-child(3) {
+  animation-delay: calc(100ms * var(--sdv-civilisation-tempo, 1));
+}
+
+.sdv-civilisation-detail > :nth-child(4) {
+  animation-delay: calc(150ms * var(--sdv-civilisation-tempo, 1));
+}
+
+/* Nouvelle main : les cartes entrent depuis le voisin qui la passe (ou depuis le paquet), une à une. */
+.sdv-civilisation-cards {
+  --from-x: 0;
+  --from-y: -3rem;
+}
+
+.sdv-civilisation-from-right {
+  --from-x: 14rem;
+  --from-y: 0;
+}
+
+.sdv-civilisation-from-left {
+  --from-x: -14rem;
+  --from-y: 0;
+}
+
+button.sdv-civilisation-card-arrive {
+  animation: sdv-civilisation-arrive calc(650ms * var(--sdv-civilisation-tempo, 1)) cubic-bezier(0.2, 0.8, 0.3, 1)
+    backwards;
+  animation-delay: calc(var(--i) * 60ms * var(--sdv-civilisation-tempo, 1));
+}
+
+@keyframes sdv-civilisation-arrive {
+  from {
+    opacity: 0;
+    transform: translate(var(--from-x), var(--from-y)) scale(0.92);
+  }
+}
+
+/* La carte jouée quitte la main et rejoint sa destination (bâtiments, merveille ou défausse). */
+button.sdv-civilisation-card-fly {
+  z-index: 3;
+  animation: sdv-civilisation-fly calc(750ms * var(--sdv-civilisation-tempo, 1)) cubic-bezier(0.5, 0, 0.3, 1) forwards;
+}
+
+@keyframes sdv-civilisation-fly {
+  20% {
+    opacity: 1;
+    transform: translateY(-1.2rem) scale(1.06);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
+  }
+}
+
+/* Les cartes restantes partent ensemble dans le sens du passage. */
+.sdv-civilisation-pass-left {
+  --leave-x: -12rem;
+}
+
+.sdv-civilisation-pass-right {
+  --leave-x: 12rem;
+}
+
+button.sdv-civilisation-card-leave {
+  animation: sdv-civilisation-leave calc(550ms * var(--sdv-civilisation-tempo, 1)) ease-in forwards;
+}
+
+@keyframes sdv-civilisation-leave {
+  to {
+    opacity: 0;
+    transform: translateX(var(--leave-x)) scale(0.9);
+  }
+}
+
+/* Entre deux mains : une flèche indique le sens du passage. */
+.sdv-civilisation-passing {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: var(--sdv-civilisation-soft);
+  font-family: Cinzel, Georgia, serif;
+  font-size: 1.4rem;
+  animation: sdv-civilisation-drift calc(900ms * var(--sdv-civilisation-tempo, 1)) ease-in-out infinite alternate;
+}
+
+.sdv-civilisation-passing-left {
+  --drift: -1.5rem;
+}
+
+.sdv-civilisation-passing-right {
+  --drift: 1.5rem;
+}
+
+@keyframes sdv-civilisation-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--drift));
+  }
+}
+
+/* « Main reçue de… » : visible quelques secondes, puis s'efface. */
+.sdv-civilisation-arrival {
+  margin-left: 0.85rem;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--sdv-civilisation-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  animation: sdv-civilisation-badge calc(3200ms * var(--sdv-civilisation-tempo, 1)) ease forwards;
+}
+
+@keyframes sdv-civilisation-badge {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+/* Révélation de la carte jouée par une IA, au-dessus de sa fiche ; le voisin de droite suit avec un léger décalage. */
+.sdv-civilisation-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  border: 2px solid var(--accent);
+  background: var(--sdv-civilisation-zone);
+  box-shadow: 0 10px 24px color-mix(in srgb, #000 50%, transparent);
+  animation: sdv-civilisation-reveal calc(420ms * var(--sdv-civilisation-tempo, 1)) cubic-bezier(0.2, 0.8, 0.3, 1)
+    backwards;
+}
+
+.sdv-civilisation-neighbour-right .sdv-civilisation-reveal {
+  animation-delay: calc(350ms * var(--sdv-civilisation-tempo, 1));
+}
+
+@keyframes sdv-civilisation-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-0.75rem) scale(0.95);
+  }
+}
+
+.sdv-civilisation-reveal-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border-left: 6px solid var(--band, #6f7194);
+  background: var(--tint, var(--sdv-civilisation-back));
+  font-size: 1.1rem;
+}
+
+.sdv-civilisation-reveal-card > span {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+}
+
+.sdv-civilisation-reveal-card strong {
+  font-size: 1.05rem;
+}
+
+.sdv-civilisation-reveal-trade {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--sdv-civilisation-gold);
+  font-weight: 600;
+}
+
+/* Un nombre qui change rebondit brièvement ; les gains et pertes du tour montent puis se posent. */
+.sdv-civilisation-pop {
+  display: inline-block;
+  animation: sdv-civilisation-pop calc(380ms * var(--sdv-civilisation-tempo, 1)) ease-out;
+}
+
+@keyframes sdv-civilisation-pop {
+  40% {
+    transform: scale(1.3);
+    color: var(--sdv-civilisation-gold);
+  }
+}
+
+.sdv-civilisation-delta {
+  display: inline-block;
+  animation: sdv-civilisation-float calc(700ms * var(--sdv-civilisation-tempo, 1)) ease-out backwards;
+}
+
+@keyframes sdv-civilisation-float {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem);
+  }
+}
+
+/* Production : un jeton nouveau ou dont le nombre change s'illumine (la production n'est jamais consommée). */
+.sdv-civilisation-city .sdv-civilisation-token,
+.sdv-civilisation-color-count {
+  animation: sdv-civilisation-glow calc(900ms * var(--sdv-civilisation-tempo, 1)) ease-out;
+}
+
+@keyframes sdv-civilisation-glow {
+  from {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--sdv-civilisation-gold) 70%, transparent);
+  }
+}
+
+/* Un bâtiment construit rejoint sa colonne. */
+.sdv-civilisation-city .sdv-civilisation-building {
+  animation: sdv-civilisation-build calc(700ms * var(--sdv-civilisation-tempo, 1)) cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+@keyframes sdv-civilisation-build {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem) scale(0.9);
+    box-shadow: 0 0 0 3px var(--sdv-civilisation-gold);
+  }
+  60% {
+    opacity: 1;
+    box-shadow: 0 0 0 3px var(--sdv-civilisation-gold);
+  }
+}
+
+/* Une étape de merveille bâtie s'illumine. */
+.sdv-civilisation-city .sdv-civilisation-stage-built {
+  animation: sdv-civilisation-stage calc(1000ms * var(--sdv-civilisation-tempo, 1)) ease-out;
+}
+
+@keyframes sdv-civilisation-stage {
+  0% {
+    transform: scale(0.94);
+    box-shadow: 0 0 0 0 var(--sdv-civilisation-gold);
+  }
+  40% {
+    transform: scale(1.05);
+    box-shadow: 0 0 22px 6px color-mix(in srgb, var(--sdv-civilisation-gold) 60%, transparent);
+  }
+}
+
+/* Cartes jouées au dernier tour, révélées l'une après l'autre au centre. */
+.sdv-civilisation-revealed li {
+  animation: sdv-civilisation-rise calc(300ms * var(--sdv-civilisation-tempo, 1)) ease-out backwards;
+  animation-delay: calc(var(--i) * 120ms * var(--sdv-civilisation-tempo, 1));
+}
+
+@keyframes sdv-civilisation-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.4rem);
+  }
+}
+
+/* Annonces de fin d'âge : un duel après l'autre, puis le nouvel âge. */
+.sdv-civilisation-stage {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 30rem;
+  padding: 1.25rem 2rem;
+  border-radius: 16px;
+  border: 2px solid var(--sdv-civilisation-gold);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  box-shadow: 0 20px 60px color-mix(in srgb, #000 60%, transparent);
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  animation: sdv-civilisation-announce calc(380ms * var(--sdv-civilisation-tempo, 1)) cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.sdv-civilisation-stage ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sdv-civilisation-stage li {
+  animation: sdv-civilisation-rise calc(350ms * var(--sdv-civilisation-tempo, 1)) ease-out;
+}
+
+.sdv-civilisation-stage-kicker {
+  color: var(--sdv-civilisation-soft);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sdv-civilisation-stage-age strong {
+  font-family: Cinzel, Georgia, serif;
+  font-size: 3rem;
+  color: var(--sdv-civilisation-gold);
+}
+
+@keyframes sdv-civilisation-announce {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+
+/* Fin de partie : les résultats apparaissent en douceur. */
+.sdv-civilisation-end {
+  animation: sdv-civilisation-rise calc(500ms * var(--sdv-civilisation-tempo, 1)) ease-out;
+}
+
+.sdv-civilisation-tempo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--sdv-civilisation-soft);
+  font-size: 0.9rem;
+}
+
+.sdv-civilisation-tempo select {
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--sdv-civilisation-line);
+  background: var(--sdv-civilisation-zone);
+  color: var(--sdv-civilisation-text);
+  font: inherit;
+}
+
+/* Animations désactivées : l'état final s'affiche directement. */
+.sdv-civilisation[data-tempo='off'] *,
+.sdv-civilisation[data-tempo='off'] *::before {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Moins de mouvement demandé : les déplacements deviennent de simples fondus, le feedback reste. */
 @media (prefers-reduced-motion: reduce) {
   button.sdv-civilisation-card,
-  .sdv-civilisation-token {
+  .sdv-civilisation-token,
+  .sdv-civilisation-action,
+  .sdv-civilisation-secondary {
     transition: none;
+  }
+
+  button.sdv-civilisation-card[aria-pressed='true'] {
+    transform: translateY(-0.5rem);
+  }
+
+  button.sdv-civilisation-card-arrive,
+  .sdv-civilisation-reveal,
+  .sdv-civilisation-delta,
+  .sdv-civilisation-city .sdv-civilisation-building,
+  .sdv-civilisation-revealed li,
+  .sdv-civilisation-detail > *,
+  .sdv-civilisation-stage li,
+  .sdv-civilisation-end {
+    animation-name: sdv-civilisation-fade;
+  }
+
+  button.sdv-civilisation-card-fly,
+  button.sdv-civilisation-card-leave {
+    animation-name: sdv-civilisation-fade-out;
+  }
+
+  .sdv-civilisation-stage {
+    animation-name: none;
+  }
+
+  .sdv-civilisation-pop,
+  .sdv-civilisation-passing,
+  .sdv-civilisation-city .sdv-civilisation-stage-built {
+    animation: none;
+  }
+
+  @keyframes sdv-civilisation-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes sdv-civilisation-fade-out {
+    to {
+      opacity: 0;
+    }
   }
 }
