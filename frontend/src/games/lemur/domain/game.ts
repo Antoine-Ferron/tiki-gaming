@@ -11,6 +11,8 @@ export const GRAVITY = 1800
 export const JUMP_SPEED = 900
 /** Vitesse latérale quand le joueur dirige le maki (5 px par image). */
 export const RUN_SPEED = 300
+/** Largeur du maki (EF-1.6). */
+export const MAKI_SIZE = 30
 export const BRANCH_WIDTH = 70
 export const BRANCH_HEIGHT = 12
 
