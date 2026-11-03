@@ -6,12 +6,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import fr.tikigaming.games.bang.model.TableSeat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -65,12 +69,23 @@ class PrivateTableServiceTest {
         }
     }
 
-    @Test
-    void refusesAnUnknownTableCode() {
-        assertThatThrownBy(() -> tables.join("UNKNOWN", "player"))
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"UNKNOWN", "  "})
+    void refusesAnUnknownTableCode(String code) {
+        assertThatThrownBy(() -> tables.join(code, "player"))
                 .isInstanceOfSatisfying(
                         ResponseStatusException.class,
                         error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    void joiningNormalizesTheCodeAndReturnsItsCanonicalValue() {
+        String code = tables.create("creator").code();
+        String entered = " \t" + code.toLowerCase(Locale.ROOT) + "  ";
+
+        assertThat(tables.join(entered, "second")).isEqualTo(new TableSeat(code, 2, 2));
+        assertThat(tables.join(entered, "second")).isEqualTo(new TableSeat(code, 2, 2));
     }
 
     @Test

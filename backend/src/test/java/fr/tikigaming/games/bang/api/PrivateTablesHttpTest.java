@@ -13,6 +13,7 @@ import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.games.bang.model.TableSeat;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
@@ -89,6 +90,21 @@ class PrivateTablesHttpTest {
                     .andExpect(jsonPath("$.code").value(code))
                     .andExpect(jsonPath("$.seat").value(seat))
                     .andExpect(jsonPath("$.playerCount").value(seat));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"%s", "  %s  "})
+    void sharedCodesIgnoreLetterCaseAndOuterSpaces(String format) throws Exception {
+        String code = createTable("creator");
+        String enteredCode = format.formatted(code.toLowerCase(Locale.ROOT));
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            postAs(TABLES + "/{code}/join", sessionFor("second"), enteredCode)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(code))
+                    .andExpect(jsonPath("$.seat").value(2))
+                    .andExpect(jsonPath("$.playerCount").value(2));
         }
     }
 
@@ -239,17 +255,18 @@ class PrivateTablesHttpTest {
         return json.readTree(body).get("code").asString();
     }
 
-    private ResultActions postAs(String path, MockHttpSession session) throws Exception {
-        return mvc.perform(preparePost(path, session));
+    private ResultActions postAs(String path, MockHttpSession session, Object... uriVariables) throws Exception {
+        return mvc.perform(preparePost(path, session, uriVariables));
     }
 
-    private MockHttpServletRequestBuilder preparePost(String path, MockHttpSession session) throws Exception {
+    private MockHttpServletRequestBuilder preparePost(String path, MockHttpSession session, Object... uriVariables)
+            throws Exception {
         Cookie csrf = mvc.perform(get("/api/auth/session").session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getCookie("XSRF-TOKEN");
-        return post(path).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
+        return post(path, uriVariables).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
     }
 
     private MockHttpSession sessionFor(String accountId) {

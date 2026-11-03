@@ -70,7 +70,8 @@ public class PrivateTableController {
     @Operation(
             summary = "Rejoindre une table privée",
             description = "Le code partagé donne une place libre. Un compte déjà assis retrouve sa place, "
-                    + "même à table pleine et avec une nouvelle session HTTP.")
+                    + "même à table pleine et avec une nouvelle session HTTP. "
+                    + "La casse et les espaces autour du code sont ignorés.")
     @ApiResponse(responseCode = "200", description = "Code et place du compte connecté")
     @ApiResponse(
             responseCode = "401",

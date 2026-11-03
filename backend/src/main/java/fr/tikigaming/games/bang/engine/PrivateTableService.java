@@ -39,6 +39,9 @@ public class PrivateTableService {
     }
 
     public synchronized TableSeat join(String code, String accountId) {
+        if (code != null) {
+            code = code.trim().toUpperCase(Locale.ROOT);
+        }
         List<String> players = tables.get(code);
         if (players == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
         int existingSeat = players.indexOf(accountId);
