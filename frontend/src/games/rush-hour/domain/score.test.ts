@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { levelScore } from './score'
+import { levelScore, totalScore } from './score'
 
 describe('levelScore', () => {
   // Niveau dont le minimum est de 10 coups
@@ -30,5 +30,23 @@ describe('levelScore', () => {
 
     // Assert
     expect(score).toBe(expected)
+  })
+})
+
+describe('totalScore', () => {
+  test('additionne les records de tous les niveaux', () => {
+    // Act
+    const total = totalScore({ 1: 1000, 2: 850 })
+
+    // Assert
+    expect(total).toBe(1850)
+  })
+
+  test('vaut 0 sans niveau terminé', () => {
+    // Act
+    const total = totalScore({})
+
+    // Assert
+    expect(total).toBe(0)
   })
 })
