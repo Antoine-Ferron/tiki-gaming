@@ -4,6 +4,7 @@ import { Vector3 } from 'three'
 import { newSave } from '../domain/save'
 import { useGameStore } from '../state/gameStore'
 import type { Vehicle } from '../entities/Vehicle'
+import { ColliderDesc, RigidBodyDesc } from '../physics/engine'
 import { createTestGame, type TestGame } from './testing/harness'
 
 vi.mock('../net/api', () => import('./testing/fakeApi'))
@@ -149,6 +150,20 @@ describe('véhicules', () => {
     t.simulate(1)
 
     expect(car.destroyed).toBe(false)
+  })
+
+  test('un véhicule qui apparaît sous une surface (dalle, tremplin) est posé dessus', () => {
+    // Piste dégagée (x = −600) : aucun bâtiment du fixture.
+    const body = game.physics.world.createRigidBody(RigidBodyDesc.fixed())
+    game.physics.world.createCollider(ColliderDesc.cuboid(4, 0.6, 4).setTranslation(-600, 0.6, -900), body)
+
+    const car = game.spawnVehicle('sport', -600, 0.3, -900, 0, 'dynamic')
+    t.simulate(1)
+
+    expect(car.position.y).toBeGreaterThan(1.0)
+    expect(car.destroyed).toBe(false)
+    game.removeVehicle(car)
+    game.physics.removeBody(body)
   })
 
   test('un véhicule tombé à l’eau se détruit', () => {

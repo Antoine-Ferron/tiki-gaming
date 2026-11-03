@@ -2,7 +2,10 @@ import { Group, type PerspectiveCamera, type Scene, SpotLight, Vector3, type Web
 import { EventBus, type GameEvents } from '../core/events'
 import { input } from '../core/input'
 import { CameraController } from '../camera/CameraController'
-import { Physics } from '../physics/physics'
+import { groups, Layer, Physics } from '../physics/physics'
+
+/** Surfaces sur lesquelles un véhicule peut apparaître (pas les props : un arbre n'est pas un sol). */
+const SPAWN_GROUND = groups(0xffff, Layer.Static | Layer.Curb)
 import { buildStaticWorld } from '../physics/staticWorld'
 import { Effects } from '../render/Effects'
 import { Environment } from '../render/Environment'
@@ -173,6 +176,13 @@ export class Game {
     mode: 'kinematic' | 'dynamic',
     color?: string,
   ) {
+    // Un véhicule physique naît sur la surface réelle (dalle, tremplin, parking) et non dedans : posé au-dessus
+    // du premier sol trouvé un peu plus haut que le point demandé.
+    if (mode === 'dynamic') {
+      const ground = this.physics.raycast(x, y + 2.5, z, 0, -1, 0, 5, SPAWN_GROUND)
+      // Un rayon qui part de l'intérieur d'un obstacle (distance nulle) ne dit rien du sol.
+      if (ground && ground.distance > 0) y = Math.max(y, ground.y + 0.15)
+    }
     const v = new Vehicle(this, specId, x, y, z, heading, mode, color)
     this.vehicles.add(v)
     return v
