@@ -126,8 +126,7 @@ public class PrivateTableController {
             description = "Les cartes de mise en place ne sont pas encore disponibles",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     GameStarted start(@PathVariable String code, HttpServletRequest request) {
-        return new GameStarted(
-                code, tables.start(code, connectedAccountId(request)).currentSeat());
+        return tables.start(code, connectedAccountId(request));
     }
 
     private static String connectedAccountId(HttpServletRequest request) {

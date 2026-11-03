@@ -12,9 +12,7 @@ import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.games.bang.engine.PrivateTableService;
 import fr.tikigaming.games.bang.model.GameStarted;
-import fr.tikigaming.games.bang.model.GameState;
 import fr.tikigaming.games.bang.model.TableSeat;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,7 +54,7 @@ class PrivateTableControllerTest {
     void startingPassesTheCodeAndTheConnectedAccountIdToTheTables() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         AuthSession.signIn(request, new AuthUser("third-account", "joueur@example.com"));
-        when(tables.start("A1B2C3D4E5F6", "third-account")).thenReturn(new GameState(List.of(), List.of(), 3));
+        when(tables.start("A1B2C3D4E5F6", "third-account")).thenReturn(new GameStarted("A1B2C3D4E5F6", 3));
 
         GameStarted response = controller.start("A1B2C3D4E5F6", request);
 

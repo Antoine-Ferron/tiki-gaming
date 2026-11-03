@@ -1,5 +1,6 @@
 package fr.tikigaming.games.bang.engine;
 
+import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.GameState;
 import fr.tikigaming.games.bang.model.TableSeat;
 import java.time.Clock;
@@ -79,7 +80,7 @@ public class PrivateTableService {
         return new TableSeat(code, players.size(), players.size());
     }
 
-    public synchronized GameState start(String code, String accountId) {
+    public synchronized GameStarted start(String code, String accountId) {
         Table table = tables.get(code);
         if (table == null) throw new PrivateTableException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
         List<String> players = table.players;
@@ -91,10 +92,10 @@ public class PrivateTableService {
             throw new PrivateTableException(HttpStatus.CONFLICT, "Il faut quatre joueurs pour démarrer la partie.");
         }
         GameState existing = games.get(code);
-        if (existing != null) return existing;
+        if (existing != null) return new GameStarted(code, existing.currentSeat());
         GameState game = initialDeal.deal(List.copyOf(players));
         games.put(code, game);
-        return game;
+        return new GameStarted(code, game.currentSeat());
     }
 
     synchronized GameState game(String code) {

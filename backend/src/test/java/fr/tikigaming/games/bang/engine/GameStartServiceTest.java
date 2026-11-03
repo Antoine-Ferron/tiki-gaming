@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.GameState;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +32,7 @@ class GameStartServiceTest {
         GameState game = new GameState(List.of(), List.of(), 3);
         when(deal.deal(List.of("player-1", "player-2", "player-3", "player-4"))).thenReturn(game);
 
-        assertThat(tables.start(code, "player-3")).isSameAs(game);
+        assertThat(tables.start(code, "player-3")).isEqualTo(new GameStarted(code, 3));
 
         assertThat(tables.game(code)).isSameAs(game);
         verify(deal).deal(List.of("player-1", "player-2", "player-3", "player-4"));
@@ -72,8 +73,8 @@ class GameStartServiceTest {
         GameState unwanted = new GameState(List.of(), List.of(), 1);
         when(deal.deal(anyList())).thenReturn(first, unwanted);
 
-        assertThat(tables.start(code, "player-2")).isSameAs(first);
-        assertThat(tables.start(code, "player-4")).isSameAs(first);
+        assertThat(tables.start(code, "player-2")).isEqualTo(new GameStarted(code, 3));
+        assertThat(tables.start(code, "player-4")).isEqualTo(new GameStarted(code, 3));
         assertThat(tables.game(code)).isSameAs(first);
         verify(deal).deal(List.of("player-1", "player-2", "player-3", "player-4"));
     }
@@ -84,7 +85,7 @@ class GameStartServiceTest {
         when(deal.deal(anyList())).thenAnswer(invocation -> new GameState(List.of(), List.of("remaining-card"), 3));
         int contenders = 8;
         CyclicBarrier start = new CyclicBarrier(contenders);
-        List<Future<GameState>> requests = new ArrayList<>();
+        List<Future<GameStarted>> requests = new ArrayList<>();
 
         try (var executor = Executors.newFixedThreadPool(contenders)) {
             for (int request = 0; request < contenders; request++) {
@@ -94,11 +95,11 @@ class GameStartServiceTest {
                     return tables.start(code, account);
                 }));
             }
-            GameState first = requests.getFirst().get(5, TimeUnit.SECONDS);
-            for (Future<GameState> request : requests) {
-                assertThat(request.get(5, TimeUnit.SECONDS)).isSameAs(first);
+            GameStarted first = requests.getFirst().get(5, TimeUnit.SECONDS);
+            for (Future<GameStarted> request : requests) {
+                assertThat(request.get(5, TimeUnit.SECONDS)).isEqualTo(first);
             }
-            assertThat(tables.game(code)).isSameAs(first);
+            assertThat(tables.game(code).currentSeat()).isEqualTo(first.currentSeat());
         }
         verify(deal).deal(List.of("player-1", "player-2", "player-3", "player-4"));
     }
