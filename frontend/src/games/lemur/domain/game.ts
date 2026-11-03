@@ -28,23 +28,41 @@ export type GameState = {
 
 /** Avance la partie d'une image. */
 export function step(state: GameState, input: Input): GameState {
-  const { maki } = state
+  const steered = steer(state.maki, input)
+  const fallen = applyGravity(steered)
+  const landing = findLanding(state.branches, steered, fallen)
+  const maki = landing ? bounceOn(fallen, landing) : fallen
+  return { ...state, maki }
+}
+
+/** EF-1.4, EF-1.5 : le joueur dirige le maki ; sortir d'un côté fait réapparaître de l'autre. */
+function steer(maki: Maki, input: Input): Maki {
   const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0)
-  const x = (((maki.x + direction * RUN_SPEED * STEP_S) % WORLD_WIDTH) + WORLD_WIDTH) % WORLD_WIDTH
+  return { ...maki, x: wrap(maki.x + direction * RUN_SPEED * STEP_S) }
+}
 
-  let vy = maki.vy - GRAVITY * STEP_S
-  let y = maki.y + vy * STEP_S
-  if (vy < 0) {
-    for (const branch of state.branches) {
-      const top = branch.y + BRANCH_HEIGHT
-      const above = x >= branch.x && x <= branch.x + BRANCH_WIDTH
-      if (above && maki.y >= top && y <= top) {
-        y = top
-        vy = JUMP_SPEED
-        break
-      }
-    }
-  }
+function wrap(x: number): number {
+  return ((x % WORLD_WIDTH) + WORLD_WIDTH) % WORLD_WIDTH
+}
 
-  return { ...state, maki: { x, y, vy } }
+function applyGravity(maki: Maki): Maki {
+  const vy = maki.vy - GRAVITY * STEP_S
+  return { ...maki, vy, y: maki.y + vy * STEP_S }
+}
+
+function topOf(branch: Branch): number {
+  return branch.y + BRANCH_HEIGHT
+}
+
+/** EF-1.2, EF-1.3 : la branche dont le maki a franchi le dessus en descendant pendant l'image, s'il y en a une. */
+function findLanding(branches: Branch[], before: Maki, after: Maki): Branch | undefined {
+  if (after.vy >= 0) return undefined
+  return branches.find(
+    (b) => after.x >= b.x && after.x <= b.x + BRANCH_WIDTH && before.y >= topOf(b) && after.y <= topOf(b),
+  )
+}
+
+/** Le maki se pose sur la branche et repart à la vitesse d'un saut normal. */
+function bounceOn(maki: Maki, branch: Branch): Maki {
+  return { ...maki, y: topOf(branch), vy: JUMP_SPEED }
 }
