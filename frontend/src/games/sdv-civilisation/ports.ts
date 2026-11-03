@@ -1,6 +1,7 @@
 /**
- * Contrats du jeu : interfaces pures, sans I/O, dont dépend la logique.
+ * Contrats du jeu côté front : interfaces pures, sans I/O, dont dépend la logique d'affichage.
  * Implémentations de production dans ./adapters, doublures de test dans ./test/fakes.
+ * Le serveur fait autorité (trésor, commerce, temps de tour) : le front ne fait que prévisualiser.
  */
 
 export type Resource = 'wood' | 'stone' | 'clay' | 'ore' | 'glass' | 'papyrus' | 'textile'
@@ -10,21 +11,20 @@ export interface CurrencyConverter {
   toCoins(resource: Resource, quantity: number): number
 }
 
-/** Registre des pièces de chaque joueur. */
+/** Pièces des joueurs de la table, telles que connues par le client. */
 export interface TreasuryRegistry {
   balanceOf(player: string): number
   setBalance(player: string, coins: number): void
 }
 
-export interface TreasuryAlert {
+export interface InactivityReport {
   player: string
-  balance: number
-  threshold: number
+  deadline: number
 }
 
-/** Journal d'audit anti-triche. */
+/** Journal d'audit : signale un joueur qui laisse expirer son tour. */
 export interface AuditNotifier {
-  treasuryThresholdCrossed(alert: TreasuryAlert): void
+  inactivityDetected(report: InactivityReport): void
 }
 
 /** Heure courante, en millisecondes : remplace `Date.now()` / `new Date()` dans la logique du jeu. */

@@ -30,8 +30,8 @@ export function playersTreasury(players: Player[]): TreasuryRegistry {
 
 /** Journal d'audit : signalement dans les logs du navigateur, sans appel réseau. */
 export const loggerAudit: AuditNotifier = {
-  treasuryThresholdCrossed: (alert) => {
-    logger.warn({ alert }, 'Trésor au-dessus du seuil critique')
+  inactivityDetected: (report) => {
+    logger.warn({ report }, 'Tour expiré sans carte jouée')
   },
 }
 
