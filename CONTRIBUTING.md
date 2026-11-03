@@ -104,6 +104,7 @@ serveur (Google OAuth, `SUPABASE_JWT_SECRET`, clé `service_role`) vont uniqueme
 | `npm run build`        | Vérification des types + build de production                          |
 | `npm test`             | Tests unitaires et de composants (Vitest), fichiers `*.test.ts(x)` à côté du code testé |
 | `npm run test:mutation`| **Mutation testing** (Stryker) du cœur de la plateforme ; échoue sous 75 % (rapport : `reports/mutation/`) |
+| `npm run test:e2e`     | **E2E** (Playwright, Chromium) : parcours du lobby et audit d'accessibilité axe ; `npx playwright install chromium` la première fois |
 | `npm run test:integration` | **Tests d'intégration** (Testcontainers, Docker requis) : migrations, RLS et catalogue sur une vraie base |
 
 Lancer `npm run format` avant chaque commit : la CI refuse un code non formaté. Comme pour le backend,
@@ -133,6 +134,12 @@ c'est le formatter qui tranche les questions de style.
   (`authenticated` + JWT) ou d'un visiteur (`anon`, `userId` à `null`) : c'est la RLS réelle qui est testée.
   **Toute nouvelle table ou politique RLS arrive avec ses tests d'intégration.** Sans Docker, ces tests sont
   ignorés en local (la CI, elle, échoue).
+- **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
+  écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
+  le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+- **E2E** (`e2e/`) : peu de tests, réservés aux parcours vitaux (accueil → jeu → partie, panne, redirection)
+  et à l'audit axe. Backend et Supabase sont simulés (`e2e/fixtures.ts`) ; le temps est contrôlé avec
+  `page.clock` (pas d'attente réelle de 10 s). Aucune violation WCAG sérieuse ou critique n'est tolérée.
 - Mutation testing : un mutant survivant se tue par un test. S'il est équivalent (journalisation…), on le
   désactive sur la ligne avec sa justification : `// Stryker disable next-line all: journalisation seule`.
 
@@ -214,6 +221,7 @@ fr.tikigaming
 | `integration`       | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
 | `mutation-frontend` | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
 | `mutation-backend`  | Pitest (seuil 75 %), rapport en artefact |
+| `e2e`               | `npm run test:e2e` : Playwright + audit WCAG 2.1 AA (axe), rapport en artefact en cas d'échec |
 | `security`          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
 
 `.github/workflows/codeql.yml` lance en plus l'analyse de sécurité **CodeQL** (TypeScript et Java) sur
