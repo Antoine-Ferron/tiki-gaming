@@ -1,5 +1,6 @@
 package fr.tikigaming.games.prismine;
 
+import fr.tikigaming.games.GameException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -46,23 +47,52 @@ final class TestDoubles {
         }
     }
 
-    /** Faux registre des expéditions en cours, en mémoire à la place de la table Supabase. */
+    /**
+     * Faux registre des expéditions en cours, en mémoire à la place de la table Supabase, avec les mêmes règles :
+     * mise à jour refusée sur une version périmée, date de dernière écriture lue sur l'horloge du test.
+     */
     static final class InMemoryRunRepository implements RunRepository {
-        private final Map<UUID, Run> runs = new ConcurrentHashMap<>();
+        private record Row(Run run, Instant updatedAt) {}
+
+        private final Map<UUID, Row> rows = new ConcurrentHashMap<>();
+        private final Clock clock;
+
+        InMemoryRunRepository(Clock clock) {
+            this.clock = clock;
+        }
 
         @Override
-        public void save(Run run) {
-            runs.put(run.id(), run);
+        public void insert(Run run) {
+            rows.put(run.id(), new Row(run, clock.instant()));
+        }
+
+        @Override
+        public void update(Run run) {
+            Row stored = rows.get(run.id());
+            if (stored == null || stored.run().version() != run.version() - 1) {
+                throw new GameException(409, CONFLICT);
+            }
+            rows.put(run.id(), new Row(run, clock.instant()));
         }
 
         @Override
         public Optional<Run> find(UUID id) {
-            return Optional.ofNullable(runs.get(id));
+            return Optional.ofNullable(rows.get(id)).map(Row::run);
         }
 
         @Override
         public void delete(UUID id) {
-            runs.remove(id);
+            rows.remove(id);
+        }
+
+        @Override
+        public void deleteByUser(String userId) {
+            rows.values().removeIf(row -> userId.equals(row.run().userId()));
+        }
+
+        @Override
+        public void deleteInactiveSince(Instant cutoff) {
+            rows.values().removeIf(row -> row.updatedAt().isBefore(cutoff));
         }
     }
 

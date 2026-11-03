@@ -56,7 +56,7 @@ public final class Expedition {
     }
 
     public static Run start(UUID id, String userId, long seed, Instant now) {
-        return new Run(id, userId, 1, seed, START_OIL, 0, 0, List.of(), 0, 0, now, now, false);
+        return new Run(id, userId, 1, seed, START_OIL, 0, 0, List.of(), 0, 0, now, now, false, 0);
     }
 
     public static List<ProbeResult> results(List<Run.Probe> probes, Floors.Floor floor) {
@@ -97,7 +97,8 @@ public final class Expedition {
                 run.totalErrors(),
                 run.startedAt(),
                 run.floorStartedAt(),
-                run.audited());
+                run.audited(),
+                run.version());
     }
 
     /**
@@ -141,7 +142,8 @@ public final class Expedition {
                     run.totalErrors(),
                     run.startedAt(),
                     now,
-                    run.audited());
+                    run.audited(),
+                    run.version());
             return new Verdict.Cleared(points, perfect, floor, run.probes(), next);
         }
 
@@ -167,6 +169,7 @@ public final class Expedition {
                 run.totalErrors() + 1,
                 run.startedAt(),
                 run.floorStartedAt(),
-                run.audited());
+                run.audited(),
+                run.version());
     }
 }

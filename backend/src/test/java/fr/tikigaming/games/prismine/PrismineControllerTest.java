@@ -43,7 +43,11 @@ class PrismineControllerTest {
     @BeforeEach
     void setUp() {
         PrismineService service = new PrismineService(
-                new InMemoryRunRepository(), scores, mock(AuditNotifier.class), new StubSeedSource(SEED, 7), clock);
+                new InMemoryRunRepository(clock),
+                scores,
+                mock(AuditNotifier.class),
+                new StubSeedSource(SEED, 7),
+                clock);
         mvc = MockMvcBuilders.standaloneSetup(new PrismineController(service))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .defaultResponseCharacterEncoding(StandardCharsets.UTF_8)
@@ -69,7 +73,7 @@ class PrismineControllerTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return new ObjectMapper().readTree(body).get("id").asText();
+        return new ObjectMapper().readTree(body).get("id").asString();
     }
 
     @Test

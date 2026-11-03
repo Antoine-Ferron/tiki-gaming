@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -109,6 +110,9 @@ public class PrismineController {
 
     record EndView(FloorView floor, RunView run, boolean recorded) {}
 
+    /** Attribut de session : expédition en cours d'un invité, abandonnée s'il en commence une autre. */
+    static final String GUEST_RUN = "prismine.guest-run";
+
     private final PrismineService service;
 
     public PrismineController(PrismineService service) {
@@ -117,10 +121,19 @@ public class PrismineController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Commencer une expédition", description = "Étage 1, lampe pleine.")
+    @Operation(
+            summary = "Commencer une expédition",
+            description = "Étage 1, lampe pleine. Une seule expédition en cours par compte, ou par session pour "
+                    + "un invité : la précédente est abandonnée.")
     @ApiResponse(responseCode = "201", description = "Expédition créée")
     RunView start(HttpServletRequest request) {
-        return view(service.start(userId(request)));
+        String userId = userId(request);
+        if (userId != null) return view(service.start(userId));
+        HttpSession session = request.getSession(true);
+        UUID previous = session.getAttribute(GUEST_RUN) instanceof UUID id ? id : null;
+        Run run = service.start(null, previous);
+        session.setAttribute(GUEST_RUN, run.id());
+        return view(run);
     }
 
     @GetMapping("/{id}")

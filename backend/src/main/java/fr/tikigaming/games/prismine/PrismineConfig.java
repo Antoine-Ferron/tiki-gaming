@@ -3,9 +3,11 @@ package fr.tikigaming.games.prismine;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
-/** Branche le service sur les implémentations de production de ses contrats. */
+/** Branche le service sur les implémentations de production de ses contrats ; active la purge planifiée. */
 @Configuration
+@EnableScheduling
 class PrismineConfig {
 
     @Bean

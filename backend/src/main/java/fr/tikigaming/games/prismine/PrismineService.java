@@ -17,6 +17,9 @@ public class PrismineService {
 
     static final String RUN_NOT_FOUND = "Cette expédition n'existe plus : commences-en une nouvelle.";
 
+    /** Une expédition sans aucune action pendant ce délai est abandonnée : la purge la supprime. */
+    public static final Duration INACTIVE_RUN_TTL = Duration.ofHours(24);
+
     /** Fin d'expédition : dernier étage (carte dévoilée), état final, et score classé ou non. */
     public record Ending(Floors.Floor floor, Run run, boolean recorded) {}
 
@@ -41,8 +44,23 @@ public class PrismineService {
     }
 
     public Run start(String userId) {
+        return start(userId, null);
+    }
+
+    /**
+     * Commence une expédition. Une seule expédition en cours à la fois : celles du joueur connecté, ou celle de la
+     * session d'un invité ({@code previousGuestRun}), sont abandonnées.
+     */
+    public Run start(String userId, UUID previousGuestRun) {
+        if (userId != null) {
+            runs.deleteByUser(userId);
+        } else if (previousGuestRun != null) {
+            runs.find(previousGuestRun)
+                    .filter(previous -> previous.userId() == null)
+                    .ifPresent(previous -> runs.delete(previous.id()));
+        }
         Run run = Expedition.start(UUID.randomUUID(), userId, seeds.nextSeed(), clock.instant());
-        runs.save(run);
+        runs.insert(run);
         return run;
     }
 
@@ -52,9 +70,14 @@ public class PrismineService {
 
     public Run probe(UUID id, String userId, int entry) {
         Run run = load(id, userId);
-        Run next = Expedition.fire(run, floorOf(run), entry);
-        runs.save(next);
+        Run next = Expedition.fire(run, floorOf(run), entry).nextVersion();
+        runs.update(next);
         return next;
+    }
+
+    /** Supprime les expéditions abandonnées (aucune action depuis {@link #INACTIVE_RUN_TTL}). */
+    public void purgeInactiveRuns() {
+        runs.deleteInactiveSince(clock.instant().minus(INACTIVE_RUN_TTL));
     }
 
     public Verdict validate(UUID id, String userId, String guess) {
@@ -66,12 +89,14 @@ public class PrismineService {
         return switch (verdict) {
             case Verdict.Contradiction contradiction -> contradiction;
             case Verdict.Wrong wrong -> {
-                runs.save(wrong.next());
-                yield wrong;
+                Run next = wrong.next().nextVersion();
+                runs.update(next);
+                yield new Verdict.Wrong(wrong.entry(), next);
             }
             case Verdict.Cleared cleared -> {
-                Run next = auditPace(run, cleared.next(), Duration.between(run.floorStartedAt(), now));
-                runs.save(next);
+                Run next = auditPace(run, cleared.next(), Duration.between(run.floorStartedAt(), now))
+                        .nextVersion();
+                runs.update(next);
                 yield new Verdict.Cleared(cleared.points(), cleared.perfect(), cleared.floor(), cleared.probes(), next);
             }
             case Verdict.LampOut lampOut -> new Verdict.LampOut(lampOut.floor(), lampOut.run(), end(lampOut.run()));
@@ -93,6 +118,9 @@ public class PrismineService {
 
     /** Classe le score (joueur connecté, au moins un étage réussi) puis oublie l'expédition. */
     private boolean end(Run run) {
+        // Réserve l'expédition avant de classer : une fin envoyée deux fois en parallèle échoue en 409 au lieu
+        // d'enregistrer le score deux fois.
+        runs.update(run.nextVersion());
         boolean ranked = run.userId() != null && run.score() > 0;
         if (ranked) {
             long seconds = Duration.between(run.startedAt(), clock.instant()).toSeconds();

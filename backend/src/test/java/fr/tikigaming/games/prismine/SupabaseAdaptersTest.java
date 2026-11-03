@@ -54,18 +54,32 @@ class SupabaseAdaptersTest {
     @Test
     void storesRunsAndScoresInSupabaseAndReportsItsFailures() throws Exception {
         Run run = Expedition.start(ID, "joueur-1", 42, Instant.parse("2026-11-03T10:00:00Z"));
+        String json = mapper.writeValueAsString(run);
         server.expect(requestTo(URL + "/rest/v1/prismine_runs"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("apikey", "service"))
                 .andExpect(header("Authorization", "Bearer service"))
-                .andExpect(header("Prefer", "resolution=merge-duplicates"))
-                .andExpect(content().json("{\"id\": \"" + ID + "\", \"user_id\": \"joueur-1\"}"))
+                .andExpect(content().json("{\"id\": \"" + ID + "\", \"user_id\": \"joueur-1\", \"version\": 0}"))
                 .andRespond(withSuccess());
         server.expect(requestTo(ROW + "&select=state"))
                 .andExpect(method(HttpMethod.GET))
-                .andRespond(withSuccess(
-                        "[{\"state\": " + mapper.writeValueAsString(run) + "}]", MediaType.APPLICATION_JSON));
+                .andRespond(withSuccess("[{\"state\": " + json + "}]", MediaType.APPLICATION_JSON));
+        // Mise à jour conditionnelle : acceptée sur la version attendue, refusée (409) si une autre requête est passée.
+        server.expect(requestTo(ROW + "&version=eq.0"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andExpect(header("Prefer", "return=representation"))
+                .andExpect(content().json("{\"version\": 1}"))
+                .andRespond(withSuccess("[{\"version\": 1}]", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(ROW + "&version=eq.0"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
         server.expect(requestTo(ROW)).andExpect(method(HttpMethod.DELETE)).andRespond(withSuccess());
+        server.expect(requestTo(URL + "/rest/v1/prismine_runs?user_id=eq.joueur-1"))
+                .andExpect(method(HttpMethod.DELETE))
+                .andRespond(withSuccess());
+        server.expect(requestTo(URL + "/rest/v1/prismine_runs?updated_at=lt.2026-11-02T10:00:00Z"))
+                .andExpect(method(HttpMethod.DELETE))
+                .andRespond(withSuccess());
         server.expect(requestTo(ROW + "&select=state")).andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
         server.expect(requestTo(URL + "/rest/v1/scores"))
                 .andExpect(method(HttpMethod.POST))
@@ -75,10 +89,18 @@ class SupabaseAdaptersTest {
                 .andRespond(withSuccess());
         server.expect(requestTo(URL + "/rest/v1/scores")).andRespond(withServerError());
 
-        // Expédition : écrite (upsert), relue depuis son état JSON, puis supprimée.
-        runs.save(run);
+        // Expédition : écrite, relue depuis son état JSON, mise à jour, puis supprimée (par id, par joueur, par purge).
+        runs.insert(run);
         assertThat(runs.find(ID)).contains(run);
+        runs.update(run.nextVersion());
+        assertThatThrownBy(() -> runs.update(run.nextVersion()))
+                .isInstanceOf(GameException.class)
+                .hasMessage(RunRepository.CONFLICT)
+                .extracting("status")
+                .isEqualTo(409);
         runs.delete(ID);
+        runs.deleteByUser("joueur-1");
+        runs.deleteInactiveSince(Instant.parse("2026-11-02T10:00:00Z"));
         assertThat(runs.find(ID)).isEmpty();
         // Score : inséré au nom du joueur ; une panne de Supabase devient une 502 lisible par le joueur.
         scores.record("joueur-1", 150, Map.of("depth", 2));

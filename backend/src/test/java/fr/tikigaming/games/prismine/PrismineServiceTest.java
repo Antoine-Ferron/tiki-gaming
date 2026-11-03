@@ -1,6 +1,7 @@
 package fr.tikigaming.games.prismine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import fr.tikigaming.games.GameException;
 import fr.tikigaming.games.prismine.Expedition.Verdict;
 import fr.tikigaming.games.prismine.TestDoubles.InMemoryRunRepository;
 import fr.tikigaming.games.prismine.TestDoubles.InMemoryScoreRegistry;
@@ -34,7 +36,7 @@ class PrismineServiceTest {
     private static final String PLAYER = "joueur-1";
 
     private final MutableClock clock = new MutableClock(T0);
-    private final InMemoryRunRepository runs = new InMemoryRunRepository();
+    private final InMemoryRunRepository runs = new InMemoryRunRepository(clock);
     private final InMemoryScoreRegistry scores = new InMemoryScoreRegistry();
     private final AuditNotifier audit = mock(AuditNotifier.class);
     private final PrismineService service =
@@ -47,7 +49,7 @@ class PrismineServiceTest {
     }
 
     @Test
-    void stubbedSeedsAndInMemoryRegistryDriveTheRun() {
+    void stubbedSeedsAndInMemoryRegistryKeepOneSafeLiveRunPerPlayer() {
         Run run = service.start(PLAYER);
         assertThat(run.seed()).isEqualTo(42);
         assertThat(runs.find(run.id())).contains(run);
@@ -55,6 +57,20 @@ class PrismineServiceTest {
         clock.advance(Duration.ofMinutes(1));
         assertThat(clear(run, PLAYER).next().seed()).isEqualTo(7);
         assertThat(runs.find(run.id()).orElseThrow().depth()).isEqualTo(2);
+
+        // Une écriture faite sur une version déjà remplacée (requête concurrente) est refusée.
+        assertThatThrownBy(() -> runs.update(run.nextVersion()))
+                .isInstanceOf(GameException.class)
+                .extracting("status")
+                .isEqualTo(409);
+
+        // Une seule expédition en cours : par compte, ou par session d'invité.
+        Run next = service.start(PLAYER);
+        assertThat(runs.find(run.id())).isEmpty();
+        Run guest = service.start(null);
+        assertThat(runs.find(service.start(null, guest.id()).id())).isPresent();
+        assertThat(runs.find(guest.id())).isEmpty();
+        assertThat(runs.find(next.id())).isPresent();
     }
 
     @Test
@@ -94,7 +110,7 @@ class PrismineServiceTest {
     }
 
     @Test
-    void auditThresholdIsCrossedOneMillisecondBelowFiveSecondsWithoutSleeping() {
+    void clockDrivesTheAuditThresholdAndTheRunPurgeWithoutSleeping() {
         Run atThreshold = service.start(PLAYER);
         clock.advance(Expedition.MIN_FLOOR_DURATION);
         clear(atThreshold, PLAYER);
@@ -104,5 +120,13 @@ class PrismineServiceTest {
         clock.advance(Expedition.MIN_FLOOR_DURATION.minusMillis(1));
         clear(below, PLAYER);
         verify(audit).floorTooFast(below.id(), PLAYER, 1, Duration.ofMillis(4999));
+
+        // Purge : une expédition inactive depuis exactement 24 h est gardée, 1 ms de plus et elle est supprimée.
+        clock.advance(PrismineService.INACTIVE_RUN_TTL);
+        service.purgeInactiveRuns();
+        assertThat(runs.find(below.id())).isPresent();
+        clock.advance(Duration.ofMillis(1));
+        service.purgeInactiveRuns();
+        assertThat(runs.find(below.id())).isEmpty();
     }
 }
