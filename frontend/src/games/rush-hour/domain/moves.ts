@@ -24,6 +24,21 @@ export function moveRange(board: Board, id: string): MoveRange {
   return { min, max }
 }
 
+/** Fait glisser un véhicule de `delta` cases (un coup). Renvoie un nouveau plateau : l'original ne change pas. */
+export function moveVehicle(board: Board, id: string, delta: number): Board {
+  if (delta === 0) throw new Error('Déplacement nul')
+  const { min, max } = moveRange(board, id)
+  if (delta < min || delta > max) throw new Error(`Déplacement impossible : ${id} de ${delta}`)
+
+  return {
+    vehicles: board.vehicles.map((v) => {
+      if (v.id !== id) return v
+      const { row, col } = cellAt(v, delta)
+      return { ...v, row, col }
+    }),
+  }
+}
+
 /** Case située à `offset` cases de l'avant-gauche (ou du haut) du véhicule, dans son sens. */
 function cellAt(v: Vehicle, offset: number) {
   return v.orientation === 'H' ? { row: v.row, col: v.col + offset } : { row: v.row + offset, col: v.col }
