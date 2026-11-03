@@ -47,11 +47,11 @@ class OpenApiDocsTest {
         MockMvc mvc;
 
         @Test
-        void exposesEveryAuthEndpointWithASummary() throws Exception {
+        void exposesEveryEndpointWithASummary() throws Exception {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.info.title").value("Tiki Gaming API"))
-                    .andExpect(jsonPath("$.paths", aMapWithSize(12)))
+                    .andExpect(jsonPath("$.paths", aMapWithSize(18)))
                     .andExpect(jsonPath("$.paths['/api/auth/session'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/google'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/login'].post.summary", not(emptyOrNullString())))
@@ -64,10 +64,23 @@ class OpenApiDocsTest {
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}/guesses")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}/restart")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/bang/tables")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/bang/tables/{code}/join")))
                     // Chaque endpoint porte le tag de son contrôleur : la plateforme ou le slug du jeu.
                     .andExpect(jsonPath(
                             "$.paths.*.*.tags[*]",
-                            everyItem(anyOf(containsString("Authentification"), containsString("mastermind")))));
+                            everyItem(anyOf(
+                                    containsString("Authentification"),
+                                    containsString("mastermind"),
+                                    containsString("bang"),
+                                    containsString("sudoku")))))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/{gameId}'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/sudoku/{gameId}/moves'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.tags[*]", hasItem("sudoku")))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.tags[*]", hasItem("sudoku")));
         }
 
         @Test
