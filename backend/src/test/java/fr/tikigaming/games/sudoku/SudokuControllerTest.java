@@ -35,7 +35,7 @@ class SudokuControllerTest {
     }
 
     @Test
-    void puzzleRejectsUnknownDifficulty() {
+    void createRejectsUnknownDifficulty() {
         assertThatThrownBy(() -> puzzle("extreme")).isInstanceOf(SudokuBadRequestException.class);
     }
 
@@ -124,17 +124,17 @@ class SudokuControllerTest {
     @Test
     void moveRejectsUnknownGameId() {
         assertThatThrownBy(() -> controller.move("inconnu", new SudokuController.MoveRequest(0, 1)))
-                .isInstanceOf(SudokuBadRequestException.class)
-                .hasMessage("Partie inconnue ou expirée");
+                .isInstanceOf(SudokuNotFoundException.class)
+                .hasMessage("Partie introuvable ou expirée");
     }
 
     @Test
     void checkRejectsUnknownAndMissingGameId() {
         assertThatThrownBy(() -> controller.check(new SudokuController.CheckRequest("inconnu")))
-                .isInstanceOf(SudokuBadRequestException.class)
-                .hasMessage("Partie inconnue ou expirée");
+                .isInstanceOf(SudokuNotFoundException.class)
+                .hasMessage("Partie introuvable ou expirée");
         assertThatThrownBy(() -> controller.check(new SudokuController.CheckRequest(null)))
-                .isInstanceOf(SudokuBadRequestException.class);
+                .isInstanceOf(SudokuNotFoundException.class);
     }
 
     @Test
@@ -144,7 +144,7 @@ class SudokuControllerTest {
         SudokuController.CheckRequest body = new SudokuController.CheckRequest(game.gameId());
         controller.check(body);
 
-        assertThatThrownBy(() -> controller.check(body)).isInstanceOf(SudokuBadRequestException.class);
+        assertThatThrownBy(() -> controller.check(body)).isInstanceOf(SudokuNotFoundException.class);
     }
 
     @Test
@@ -190,7 +190,7 @@ class SudokuControllerTest {
 
     @Test
     void stateRejectsUnknownGameId() {
-        assertThatThrownBy(() -> controller.state("inconnu")).isInstanceOf(SudokuBadRequestException.class);
+        assertThatThrownBy(() -> controller.state("inconnu")).isInstanceOf(SudokuNotFoundException.class);
     }
 
     @Test

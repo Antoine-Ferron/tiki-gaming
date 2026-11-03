@@ -57,7 +57,7 @@ class GameStoreTest {
         assertThat(store.find(game.id())).isSameAs(game);
 
         clock.advance(Duration.ofSeconds(1));
-        assertThatThrownBy(() -> store.find(game.id())).isInstanceOf(SudokuBadRequestException.class);
+        assertThatThrownBy(() -> store.find(game.id())).isInstanceOf(SudokuNotFoundException.class);
     }
 
     @Test
@@ -66,13 +66,13 @@ class GameStoreTest {
 
         store.finish(game.id());
 
-        assertThatThrownBy(() -> store.find(game.id())).isInstanceOf(SudokuBadRequestException.class);
+        assertThatThrownBy(() -> store.find(game.id())).isInstanceOf(SudokuNotFoundException.class);
     }
 
     @Test
     void unknownOrNullIdIsRejected() {
-        assertThatThrownBy(() -> store.find("x")).isInstanceOf(SudokuBadRequestException.class);
-        assertThatThrownBy(() -> store.find(null)).isInstanceOf(SudokuBadRequestException.class);
+        assertThatThrownBy(() -> store.find("x")).isInstanceOf(SudokuNotFoundException.class);
+        assertThatThrownBy(() -> store.find(null)).isInstanceOf(SudokuNotFoundException.class);
     }
 
     @Test
@@ -83,7 +83,7 @@ class GameStoreTest {
 
         GameStore.Game newest = store.start("a", Difficulty.EASY, grids);
 
-        assertThatThrownBy(() -> store.find(oldest.id())).isInstanceOf(SudokuBadRequestException.class);
+        assertThatThrownBy(() -> store.find(oldest.id())).isInstanceOf(SudokuNotFoundException.class);
         assertThat(store.find(newest.id())).isSameAs(newest);
         assertThat(store.find(other.id())).isSameAs(other);
     }
@@ -104,7 +104,7 @@ class GameStoreTest {
 
         GameStore.Game newest = store.start("nouveau", Difficulty.EASY, grids);
 
-        assertThatThrownBy(() -> store.find(oldest.id())).isInstanceOf(SudokuBadRequestException.class);
+        assertThatThrownBy(() -> store.find(oldest.id())).isInstanceOf(SudokuNotFoundException.class);
         assertThat(store.find(newest.id())).isSameAs(newest);
     }
 
@@ -118,6 +118,6 @@ class GameStoreTest {
         store.start("nouveau", Difficulty.EASY, grids);
 
         assertThat(store.find(live.id())).isSameAs(live);
-        assertThatThrownBy(() -> store.find(old.id())).isInstanceOf(SudokuBadRequestException.class);
+        assertThatThrownBy(() -> store.find(old.id())).isInstanceOf(SudokuNotFoundException.class);
     }
 }

@@ -43,9 +43,6 @@ let mistakesOnServer: number
 const fakeServer = () => {
   mistakesOnServer = 0
   vi.mocked(apiGet).mockImplementation(async (path: string) => {
-    if (path.startsWith('/games/sudoku/puzzle')) {
-      return { gameId: 'g1', difficulty: new URL(path, 'http://x').searchParams.get('difficulty'), puzzle: PUZZLE }
-    }
     if (path === '/games/sudoku/g1') {
       return {
         gameId: 'g1',
@@ -56,7 +53,7 @@ const fakeServer = () => {
         seconds: 42,
       }
     }
-    throw new ApiError(400, 'Partie inconnue ou expirée')
+    throw new ApiError(404, 'Partie introuvable ou expirée')
   })
   vi.mocked(apiPost).mockImplementation(async (path: string, body?: unknown) => {
     if (path === '/games/sudoku/g1/moves') {
@@ -64,6 +61,9 @@ const fakeServer = () => {
       const correct = SOLUTION[cell] === value
       if (!correct) mistakesOnServer++
       return { correct, mistakes: mistakesOnServer, complete: correct }
+    }
+    if (path.startsWith('/games/sudoku?')) {
+      return { gameId: 'g1', difficulty: new URL(path, 'http://x').searchParams.get('difficulty'), puzzle: PUZZLE }
     }
     if (path === '/games/sudoku/check') return { solved: true, score: SERVER_SCORE }
     throw new Error(`appel inattendu : ${path}`)
@@ -157,7 +157,7 @@ describe('partie', () => {
 
     await startEasy()
 
-    expect(apiGet).toHaveBeenCalledWith('/games/sudoku/puzzle?difficulty=easy')
+    expect(apiPost).toHaveBeenCalledWith('/games/sudoku?difficulty=easy')
   })
 
   test('affiche la grille et un chrono qui avance sans attente réelle', async () => {
@@ -185,14 +185,14 @@ describe('partie', () => {
     expect(screen.getByRole('button', { name: EMPTY_CELL })).toBeTruthy()
   })
 
-  test('ne modifie pas un indice de départ et n’appelle pas le serveur', async () => {
+  test('ne modifie pas un indice de départ et n’envoie aucune saisie', async () => {
     await setup()
     await startEasy()
 
     fireEvent.click(screen.getByRole('button', { name: /^Ligne 1, colonne 1, 5$/ }))
     await pad(9)
 
-    expect(apiPost).not.toHaveBeenCalled()
+    expect(apiPost).not.toHaveBeenCalledWith(expect.stringContaining('/moves'), expect.anything())
     expect(screen.getByText('Erreurs : 0')).toBeTruthy()
   })
 
@@ -219,7 +219,7 @@ describe('partie', () => {
     fireEvent.keyDown(screen.getByRole('grid', { name: 'Grille de sudoku' }), { key: '5' })
     await flush()
 
-    expect(apiPost).not.toHaveBeenCalled()
+    expect(apiPost).not.toHaveBeenCalledWith(expect.stringContaining('/moves'), expect.anything())
   })
 
   test('ne sauvegarde que l’identifiant de la partie, jamais la solution', async () => {
@@ -231,7 +231,7 @@ describe('partie', () => {
   })
 
   test('affiche l’erreur quand le serveur est injoignable au départ', async () => {
-    vi.mocked(apiGet).mockRejectedValue(new ApiError(0, 'Le serveur est injoignable.'))
+    vi.mocked(apiPost).mockRejectedValue(new ApiError(0, 'Le serveur est injoignable.'))
     await setup()
 
     await startEasy()
@@ -261,7 +261,7 @@ describe('partie', () => {
     // Arrange
     const deps = fakeDeps()
     await deps.saves.save('sudoku', { gameId: 'périmée' })
-    vi.mocked(apiGet).mockRejectedValue(new ApiError(400, 'Partie inconnue ou expirée'))
+    vi.mocked(apiGet).mockRejectedValue(new ApiError(404, 'Partie introuvable ou expirée'))
     render(<SudokuGame ctx={createGameContext({ slug: 'sudoku' }, player, deps)} />)
     await flush()
 
@@ -370,7 +370,7 @@ describe('fin de partie', () => {
     // Arrange
     await setup()
     await startEasy()
-    vi.mocked(apiPost).mockRejectedValueOnce(new ApiError(400, 'Partie inconnue ou expirée'))
+    vi.mocked(apiPost).mockRejectedValueOnce(new ApiError(404, 'Partie introuvable ou expirée'))
     selectEmptyCell()
 
     // Act

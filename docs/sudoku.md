@@ -30,7 +30,7 @@ Le jeu est aussi ajouté dans `frontend/src/games/registry.ts`.
 ### Fonctionnement
 
 - **Difficultés** : facile (40 indices), moyen (32), difficile (26).
-- **Partie** : `GET /api/games/sudoku/puzzle` crée la partie sur le serveur et renvoie `gameId` et la grille. Le
+- **Partie** : `POST /api/games/sudoku` crée la partie sur le serveur et renvoie `gameId` et la grille. Le
   front ne génère ni ne garde de solution.
 - **Saisie** : clic sur une case puis chiffre au clavier (1 à 9), ou pavé à l'écran. Les flèches déplacent la
   sélection. Les indices de départ sont verrouillés. Chaque chiffre part sur `POST …/{gameId}/moves` : s'il est
@@ -77,7 +77,7 @@ client ne décide ni de la grille, ni de la difficulté, ni du temps.
 | `SudokuGenerator`  | Génère une grille à solution unique ; accepte un `Random` à graine fixe pour les tests |
 | `ScoreCalculator`  | Règles métier du score (fonction pure)                                            |
 | `ScoreBreakdown`   | Détail du score : base, bonus de temps, bonus sans faute, pénalité, total         |
-| `SudokuBadRequestException` | Requête refusée : hérite de `config/ApiException`, renvoyée en 400 `{ error }` par `ApiExceptionHandler` |
+| `SudokuBadRequestException`, `SudokuNotFoundException` | Héritent de `config/ApiException` (400 et 404), renvoyées en `{ error }` par `ApiExceptionHandler`, comme Mastermind |
 | `GameStore`        | Parties en cours : grille, solution, saisies, erreurs et chrono (`GameTimer` + `Clock`) gardés côté serveur ; expiration 2 h, id clos dès la résolution ; 5 parties ouvertes par client et 10 000 au total, la plus ancienne est retirée au-delà |
 | `SudokuService`    | Vérifie une partie (forme des grilles, indices intacts, conflits) et calcule le score |
 | `SudokuController` | Les endpoints REST, documentés dans OpenAPI (tag « sudoku »)                      |
@@ -89,12 +89,12 @@ client ne décide ni de la grille, ni de la difficulté, ni du temps.
 
 | Méthode | Chemin                                  | Rôle                                                          |
 |---------|-----------------------------------------|---------------------------------------------------------------|
-| `GET`   | `/api/games/sudoku/puzzle?difficulty=easy`    | Nouvelle grille (`easy`, `medium`, `hard`). **La solution n'est jamais renvoyée.** |
+| `POST`  | `/api/games/sudoku?difficulty=easy`     | Crée une partie (`easy`, `medium`, `hard`), 201. **La solution n'est jamais renvoyée.** |
 | `GET`   | `/api/games/sudoku/{gameId}`            | État d'une partie en cours (sans la solution), pour la reprise |
 | `POST`  | `/api/games/sudoku/{gameId}/moves`            | Saisit un chiffre ; le serveur compte les erreurs             |
 | `POST`  | `/api/games/sudoku/check`                     | Vérifie la partie et calcule le score                         |
 
-`GET /api/games/sudoku/puzzle` renvoie :
+`POST /api/games/sudoku` renvoie :
 
 ```json
 { "gameId": "3f2a…", "difficulty": "medium", "puzzle": [0, 3, 0, 0, 7, "… 81 valeurs, 0 = case vide"] }
@@ -109,12 +109,13 @@ juste entre dans la grille du serveur, une saisie fausse n'y entre pas et coûte
 essai). Un indice de départ ou un chiffre hors 1 à 9 donne un 400.
 
 `POST /api/games/sudoku/check` reçoit seulement `{ "gameId": "3f2a…" }`. Grille du joueur, difficulté, temps (de
-`GET /puzzle` à l'appel, sur l'horloge du serveur) et erreurs sont ceux que le serveur a lui-même enregistrés :
+`POST /api/games/sudoku` à l'appel, sur l'horloge du serveur) et erreurs sont ceux que le serveur a lui-même enregistrés :
 le client ne fournit aucun chiffre du score. Une partie résolue est close, son `gameId` ne rapporte qu'un score.
 Sans toutes les saisies faites par `/moves`, la grille reste incomplète et le score vaut 0.
 
 et renvoie `complete`, `solved`, `conflicts` (indices des cases en doublon), `score` et `breakdown`.
-Une entrée invalide (`gameId` inconnu, expiré ou déjà résolu, case ou chiffre invalide, difficulté inconnue) donne un **400** avec
+Une entrée invalide (case ou chiffre invalide, difficulté inconnue) donne un **400**, un `gameId` inconnu, expiré ou
+déjà résolu un **404**, avec
 `{ "error": "…" }`.
 
 Avec le backend lancé, la documentation interactive est sur `/swagger-ui/index.html`.
@@ -271,6 +272,6 @@ le plafond de `ScoreCalculator` en difficile (partie parfaite en 0 s). Les deux 
   `/check` n'enregistre rien. Un joueur connecté peut donc insérer un score jusqu'au plafond (6864) sans jouer.
   Pour y remédier, le backend doit écrire le score à la résolution et l'insertion client doit être bloquée pour
   ce jeu (comme Prismine) : changement de plateforme, hors de ce package.
-- **Création de partie** : `GET /puzzle` est public et la génération coûte du CPU ; seul le nombre de parties
+- **Création de partie** : `POST /api/games/sudoku` est public et la génération coûte du CPU ; seul le nombre de parties
   gardées est borné (5 par adresse, 10 000 au total), pas le débit d'appels.
 - **Parties en mémoire** : perdues au redémarrage, non partagées entre plusieurs instances du backend.

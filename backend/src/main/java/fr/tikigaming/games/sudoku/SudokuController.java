@@ -7,12 +7,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Objects;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -87,13 +89,14 @@ public class SudokuController {
     }
 
     /** Nouvelle grille. La solution n'est jamais renvoyée au client. */
-    @GetMapping("/puzzle")
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     @Operation(
-            summary = "Générer une grille",
+            summary = "Créer une partie",
             description =
                     "Renvoie une grille à solution unique (0 = case vide) et l'id de la partie, gardée côté serveur"
                             + " avec son heure de début. La solution n'est jamais renvoyée.")
-    @ApiResponse(responseCode = "200", description = "Grille de 81 cases")
+    @ApiResponse(responseCode = "201", description = "Partie créée : id et grille de 81 cases")
     @ApiResponse(responseCode = "400", description = "Difficulté inconnue")
     PuzzleResponse puzzle(
             HttpServletRequest request,
@@ -111,7 +114,7 @@ public class SudokuController {
             description = "État d'une partie en cours : grille de départ, grille du joueur, erreurs et temps écoulé."
                     + " La solution n'est jamais renvoyée.")
     @ApiResponse(responseCode = "200", description = "État de la partie")
-    @ApiResponse(responseCode = "400", description = "Partie inconnue, expirée ou déjà résolue")
+    @ApiResponse(responseCode = "404", description = "Partie introuvable, expirée ou déjà résolue")
     GameState state(@PathVariable String gameId) {
         GameStore.Game game = games.find(gameId);
         return new GameState(
@@ -129,7 +132,8 @@ public class SudokuController {
             description = "Le serveur compare la saisie à la solution : une saisie fausse coûte une erreur et n'entre"
                     + " pas dans la grille. Les erreurs du score viennent d'ici, jamais du client.")
     @ApiResponse(responseCode = "200", description = "Saisie correcte ou non, erreurs cumulées, grille complète")
-    @ApiResponse(responseCode = "400", description = "Partie inconnue ou expirée, case ou chiffre invalide")
+    @ApiResponse(responseCode = "400", description = "Case ou chiffre invalide")
+    @ApiResponse(responseCode = "404", description = "Partie introuvable ou expirée")
     GameStore.MoveResult move(@PathVariable String gameId, @RequestBody MoveRequest body) {
         return games.find(gameId).play(body.cell(), body.value());
     }
@@ -142,7 +146,7 @@ public class SudokuController {
                             + " et calcule le score. Grille, difficulté et temps sont ceux du serveur ; une partie résolue"
                             + " est close.")
     @ApiResponse(responseCode = "200", description = "Résultat de la vérification")
-    @ApiResponse(responseCode = "400", description = "Partie inconnue, expirée ou déjà résolue")
+    @ApiResponse(responseCode = "404", description = "Partie introuvable, expirée ou déjà résolue")
     SudokuService.CheckResult check(@RequestBody CheckRequest body) {
         GameStore.Game game = games.find(body.gameId());
         SudokuService.CheckResult result =

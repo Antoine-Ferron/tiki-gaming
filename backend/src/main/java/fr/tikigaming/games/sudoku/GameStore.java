@@ -136,12 +136,12 @@ public class GameStore {
         return game;
     }
 
-    /** @throws SudokuBadRequestException si l'id est inconnu, déjà résolu, retiré ou expiré */
+    /** @throws SudokuNotFoundException si l'id est inconnu, déjà résolu, retiré ou expiré */
     public synchronized Game find(String id) {
         Game game = id == null ? null : games.get(id);
         if (game == null || game.isExpired()) {
             games.remove(id);
-            throw new SudokuBadRequestException("Partie inconnue ou expirée");
+            throw new SudokuNotFoundException("Partie introuvable ou expirée");
         }
         return game;
     }

@@ -74,12 +74,12 @@ class OpenApiDocsTest {
                                     containsString("mastermind"),
                                     containsString("bang"),
                                     containsString("sudoku")))))
-                    .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/{gameId}'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath(
                             "$.paths['/api/games/sudoku/{gameId}/moves'].post.summary", not(emptyOrNullString())))
-                    .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.tags[*]", hasItem("sudoku")))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku'].post.tags[*]", hasItem("sudoku")))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.tags[*]", hasItem("sudoku")));
         }
 

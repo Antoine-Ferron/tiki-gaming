@@ -82,7 +82,7 @@ export default function SudokuGame({ ctx }: GameProps) {
 
   async function start(level: Difficulty) {
     try {
-      const game = await apiGet<PuzzleResponse>(`/games/sudoku/puzzle?difficulty=${level}`)
+      const game = await apiPost<PuzzleResponse>(`/games/sudoku?difficulty=${level}`)
       await ctx.save({ gameId: game.gameId } satisfies Save)
       setHasSave(true)
       open({ ...game, values: game.puzzle, mistakes: 0, seconds: 0 })
@@ -98,7 +98,7 @@ export default function SudokuGame({ ctx }: GameProps) {
       try {
         open(await apiGet<GameState>(`/games/sudoku/${s.gameId}`))
       } catch (e) {
-        if (!(e instanceof ApiError) || e.status !== 400) throw e
+        if (!(e instanceof ApiError) || e.status !== 404) throw e
         // Partie inconnue du serveur (expirée ou serveur redémarré) : la sauvegarde ne sert plus.
         await ctx.clearSave()
         setHasSave(false)
