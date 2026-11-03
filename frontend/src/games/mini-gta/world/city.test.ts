@@ -93,6 +93,13 @@ describe('cityFromDto', () => {
     expect(city.locations.spawn.heading).toBe(3)
   })
 
+  it('lit les tremplins, et un monde plus ancien sans tremplin en donne une liste vide', () => {
+    const ramp = { x: 10, y: 0.15, z: 20, rot: 1, length: 8, width: 4, height: 1.4, kind: 'dirt', chunk: 0 }
+
+    expect(cityFromDto({ ...tinyWorld(), ramps: [ramp] }).ramps).toEqual([ramp])
+    expect(cityFromDto(tinyWorld()).ramps).toEqual([])
+  })
+
   it('refuse une grille de hauteurs de mauvaise taille', () => {
     const w = tinyWorld()
     w.terrain.heights = encode(new Float32Array(10))

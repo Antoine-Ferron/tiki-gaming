@@ -14,6 +14,7 @@ import fr.tikigaming.games.mini_gta.world.Locations;
 import fr.tikigaming.games.mini_gta.world.ParkingSpot;
 import fr.tikigaming.games.mini_gta.world.Polyline;
 import fr.tikigaming.games.mini_gta.world.Prop;
+import fr.tikigaming.games.mini_gta.world.Ramp;
 import fr.tikigaming.games.mini_gta.world.Rect;
 import fr.tikigaming.games.mini_gta.world.RoadEdge;
 import fr.tikigaming.games.mini_gta.world.RoadNetwork;
@@ -84,6 +85,7 @@ public final class Json {
                 "containers", c.containers().stream().map(Json::container).toList(),
                 "cranes", c.cranes().stream().map(Json::location).toList(),
                 "parking", c.parking().stream().map(Json::parking).toList(),
+                "ramps", c.ramps().stream().map(Json::ramp).toList(),
                 "sidewalk", c.sidewalk().stream().map(Json::sidewalk).toList(),
                 "locations", locations(c.locations()));
     }
@@ -183,6 +185,28 @@ public final class Json {
                 b.gj());
     }
 
+    private static Map<String, Object> ramp(Ramp r) {
+        return obj(
+                "x",
+                r.x(),
+                "y",
+                r.y(),
+                "z",
+                r.z(),
+                "rot",
+                r.rot(),
+                "length",
+                r.length(),
+                "width",
+                r.width(),
+                "height",
+                r.height(),
+                "kind",
+                camel(r.kind()),
+                "chunk",
+                r.chunk());
+    }
+
     private static Map<String, Object> building(Building b) {
         return obj(
                 "id",
@@ -212,7 +236,7 @@ public final class Json {
                 "special",
                 b.special == null ? null : camel(b.special),
                 "hollow",
-                b.doorSide == null ? null : obj("doorSide", b.doorSide),
+                b.doorSide == null ? null : obj("doorSide", b.doorSide, "floorHeight", b.floorHeight),
                 "lot",
                 rect(b.lot),
                 "chunk",

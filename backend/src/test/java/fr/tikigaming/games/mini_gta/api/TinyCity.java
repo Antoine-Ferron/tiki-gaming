@@ -86,6 +86,7 @@ final class TinyCity {
                 List.of(),
                 List.of(),
                 List.of(s),
-                locations);
+                locations,
+                List.of());
     }
 }

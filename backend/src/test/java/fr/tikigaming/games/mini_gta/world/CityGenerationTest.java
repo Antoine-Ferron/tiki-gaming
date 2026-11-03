@@ -146,7 +146,12 @@ class CityGenerationTest {
             boolean enterable = b.special == SpecialKind.SAFEHOUSE
                     || b.special == SpecialKind.GUNSHOP
                     || b.special == SpecialKind.WAREHOUSE;
-            assertEquals(enterable, b.doorSide != null, "bâtiment " + b.id);
+            if (b.special != null) {
+                assertEquals(enterable, b.doorSide != null, "bâtiment " + b.id);
+            } else if (b.doorSide != null) {
+                // Un bâtiment ordinaire avec une porte n'a que son rez-de-chaussée accessible.
+                assertNotNull(b.floorHeight, "bâtiment " + b.id);
+            }
         }
     }
 

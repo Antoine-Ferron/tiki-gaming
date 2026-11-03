@@ -143,6 +143,9 @@ public final class CityGenerator {
         generateNatureProps();
         generateSidewalks();
         Locations locations = locations(specials);
+        // Tirages propres, après tout le reste : la ville existante ne change pas.
+        generateEntrances(rng.fork("entrances"));
+        List<Ramp> ramps = generateRamps(rng.fork("ramps"));
 
         return new CityData(
                 seed,
@@ -155,7 +158,8 @@ public final class CityGenerator {
                 List.copyOf(cranes),
                 List.copyOf(parking),
                 List.copyOf(sidewalk),
-                locations);
+                locations,
+                List.copyOf(ramps));
     }
 
     // --- Îlots -------------------------------------------------------------------------------
@@ -538,6 +542,150 @@ public final class CityGenerator {
         double push = Math.max(0, room - (doorSide % 2 == 0 ? best.hd : best.hw) - 1);
         best.x += SIDES[doorSide][0] * push;
         best.z += SIDES[doorSide][1] * push;
+    }
+
+    // --- Rez-de-chaussée accessibles -------------------------------------------------------------
+
+    /** Part des bâtiments ordinaires de la ville dont le rez-de-chaussée est accessible. */
+    static final double ENTRANCE_CHANCE = 0.22;
+
+    /** Hauteur d'un rez-de-chaussée accessible (m). */
+    static final double GROUND_FLOOR = 3.4;
+
+    /**
+     * Ouvre le rez-de-chaussée d'une partie des maisons et immeubles : porte sur la façade la plus proche du bord
+     * d'îlot (la rue), étages pleins au-dessus.
+     */
+    private void generateEntrances(Rng e) {
+        for (Building b : buildings) {
+            boolean candidate = b.special == null
+                    && b.rot == 0
+                    && b.lot != null
+                    && b.doorSide == null
+                    && b.hw >= 3.5
+                    && b.hd >= 3.5
+                    && b.hw <= 16
+                    && b.hd <= 16
+                    && b.h >= GROUND_FLOOR;
+            if (!candidate || !e.chance(ENTRANCE_CHANCE)) continue;
+            Block block = blockOf(b);
+            if (block == null || block.park()) continue;
+            double[] gap = {
+                b.z - b.hd - block.z0(), block.x1() - (b.x + b.hw), block.z1() - (b.z + b.hd), b.x - b.hw - block.x0()
+            };
+            int side = indexOfMin(gap);
+            if (gap[side] > 14) continue;
+            b.doorSide = side;
+            b.floorHeight = b.h - GROUND_FLOOR < 1 ? b.h : GROUND_FLOOR;
+        }
+    }
+
+    // --- Tremplins -----------------------------------------------------------------------------
+
+    /** Marge (m) entre un tremplin et le bord d'une route empruntée par le trafic. */
+    static final double RAMP_ROAD_MARGIN = 3;
+
+    private List<Ramp> generateRamps(Rng q) {
+        List<Ramp> out = new ArrayList<>();
+        for (Block bl : blocks) {
+            if (bl.park() && q.chance(0.7)) {
+                placeRamp(q, out, bl.x0() + 9, bl.x1() - 9, bl.z0() + 9, bl.z1() - 9, RampKind.DIRT, null);
+            } else if (bl.district() == District.PORT && q.chance(0.6)) {
+                placeRamp(q, out, bl.x0() + 6, bl.x1() - 6, bl.z0() + 6, bl.z1() - 6, RampKind.CONCRETE, null);
+            } else if ((bl.district() == District.SUBURB || bl.district() == District.COMMERCIAL) && q.chance(0.15)) {
+                placeRamp(q, out, bl.x0() + 6, bl.x1() - 6, bl.z0() + 6, bl.z1() - 6, RampKind.PLANKS, null);
+            }
+        }
+        // Collines : bosses de terre en bord de route, dans l'axe de la route.
+        for (Polyline line : roads.hillLines()) {
+            List<Polyline.Point> pts = line.points();
+            for (int k = 3; k < pts.size() - 1; k += 5) {
+                if (!q.chance(0.55)) continue;
+                Polyline.Point a = pts.get(k - 1);
+                Polyline.Point b = pts.get(k);
+                double dx = b.x() - a.x();
+                double dz = b.z() - a.z();
+                double len = Math.hypot(dx, dz);
+                if (len < 1e-6) continue;
+                double side = q.chance(0.5) ? 1 : -1;
+                double off = line.width() / 2 + 12;
+                double x = b.x() + (-dz / len) * side * off;
+                double z = b.z() + (dx / len) * side * off;
+                placeRamp(q, out, x - 2, x + 2, z - 2, z + 2, RampKind.DIRT, Math.atan2(dx, dz));
+            }
+        }
+        return out;
+    }
+
+    /** Essaie de poser un tremplin dans la zone donnée, sur un emplacement dégagé ; ne fait rien sinon. */
+    private void placeRamp(
+            Rng q, List<Ramp> out, double x0, double x1, double z0, double z1, RampKind kind, Double heading) {
+        if (x1 <= x0 || z1 <= z0) return;
+        double length = switch (kind) {
+            case DIRT -> q.range(7, 10);
+            case CONCRETE -> q.range(9, 12);
+            case PLANKS -> q.range(5, 7);
+        };
+        double width = switch (kind) {
+            case DIRT -> q.range(3.6, 5);
+            case CONCRETE -> q.range(4.5, 6);
+            case PLANKS -> q.range(3, 3.6);
+        };
+        double height = switch (kind) {
+            case DIRT -> q.range(1, 1.7);
+            case CONCRETE -> q.range(1.3, 2);
+            case PLANKS -> q.range(0.9, 1.3);
+        };
+        for (int attempt = 0; attempt < 25; attempt++) {
+            double x = q.range(x0, x1);
+            double z = q.range(z0, z1);
+            double rot = heading != null ? heading + (q.chance(0.5) ? 0 : Math.PI) : q.nextInt(0, 4) * Math.PI / 2;
+            double radius = Math.hypot(length, width) / 2;
+            if (!rampSpotFree(x, z, radius, out)) continue;
+            double lo = Double.POSITIVE_INFINITY;
+            double hi = Double.NEGATIVE_INFINITY;
+            for (int sx = -1; sx <= 1; sx += 2) {
+                for (int sz = -1; sz <= 1; sz += 2) {
+                    double h = terrain.heightAt(x + sx * radius * 0.7, z + sz * radius * 0.7);
+                    lo = Math.min(lo, h);
+                    hi = Math.max(hi, h);
+                }
+            }
+            if (hi - lo > 0.8) continue;
+            double y = terrain.heightAt(x, z) + (blockAt(x, z) != null ? SLAB_HEIGHT : 0);
+            out.add(new Ramp(x, y, z, rot, length, width, height, kind, chunkIndexOf(x, z)));
+            return;
+        }
+    }
+
+    /** Emplacement hors des routes, des bâtiments, des conteneurs, du mobilier, de l'eau et des autres tremplins. */
+    private boolean rampSpotFree(double x, double z, double radius, List<Ramp> placed) {
+        double limit = WorldConstants.MAP_HALF - 30;
+        if (Math.abs(x) > limit || Math.abs(z) > limit) return false;
+        if (x - WorldConstants.shoreX(z) < 12) return false;
+        if (Math.abs(x - Airfield.RUNWAY_X) < 60) return false;
+        for (RoadEdge e : g.edges) {
+            RoadNode a = g.nodes.get(e.a());
+            RoadNode b = g.nodes.get(e.b());
+            double d = MathUtil.pointSegment(x, z, a.x, a.z, b.x, b.z).d();
+            if (d < e.width() / 2 + RAMP_ROAD_MARGIN + radius) return false;
+        }
+        for (Building b : buildings) {
+            double reach = b.rot == 0 ? 0 : Math.max(b.hw, b.hd);
+            if (Math.abs(b.x - x) < b.hw + reach + radius + 2 && Math.abs(b.z - z) < b.hd + reach + radius + 2) {
+                return false;
+            }
+        }
+        for (Container c : containers) {
+            if (Math.hypot(c.x() - x, c.z() - z) < radius + 7) return false;
+        }
+        for (Prop p : props) {
+            if (Math.hypot(p.x - x, p.z - z) < radius + 1) return false;
+        }
+        for (Ramp r2 : placed) {
+            if (Math.hypot(r2.x() - x, r2.z() - z) < radius + Math.hypot(r2.length(), r2.width()) / 2 + 6) return false;
+        }
+        return true;
     }
 
     // --- Mobilier ----------------------------------------------------------------------------

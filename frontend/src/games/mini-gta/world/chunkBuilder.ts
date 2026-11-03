@@ -2,6 +2,7 @@ import { BufferGeometry } from 'three'
 import { Rng } from '../core/rng'
 import { GeoBuilder, type V3 } from '../render/GeoBuilder'
 import { FacadeStyle, type Building, type CityData } from './city'
+import { addRampGeometry } from './ramps'
 import {
   AIRFIELD,
   CHUNK_SIZE,
@@ -284,6 +285,10 @@ export function buildChunk(city: CityData, index: number, roadQuads: Map<number,
     if (b.chunk !== index) continue
     addBuilding(bb, ib, b, rng, streetSide(city, b))
   }
+  // --- Tremplins (même maillage que les bâtiments : un seul draw call par chunk)
+  for (const r of city.ramps) {
+    if (r.chunk === index) addRampGeometry(bb, r, (((r.x * 0.37 + r.z * 0.11) % 1) + 1) % 1)
+  }
 
   return {
     terrain: tb.build(),
@@ -319,7 +324,11 @@ const SIDE_OUT: [number, number][] = [
   [-1, 0],
 ]
 
-function addBuilding(bb: GeoBuilder, ib: GeoBuilder, b: Building, rng: Rng, side: number) {
+/**
+ * @param facadeBase hauteur de base de la trame des fenêtres quand `b` est la partie haute d'un bâtiment dont le
+ *   rez-de-chaussée est accessible : ni socle ni détails de rue (ils sont sur le rez-de-chaussée).
+ */
+function addBuilding(bb: GeoBuilder, ib: GeoBuilder, b: Building, rng: Rng, side: number, facadeBase?: number) {
   const seed = (b.id * 0.618) % 1
   const color = b.color
   // Facade UV: u along the wall (meters), v height above the base.
@@ -346,11 +355,17 @@ function addBuilding(bb: GeoBuilder, ib: GeoBuilder, b: Building, rng: Rng, side
 
   if (b.hollow) {
     addHollow(bb, ib, b, seed)
+    const fh = b.hollow.floorHeight
+    if (fh === undefined) return
+    // Rez-de-chaussée accessible : les étages pleins au-dessus, sur la même trame de fenêtres.
+    if (fh < b.h) addBuilding(bb, ib, { ...b, hollow: undefined, y0: b.y0 + fh, h: b.h - fh }, rng, side, b.y0)
+    else if (b.roof === 'gable') addGableRoof(bb, b, rng, seed)
     return
   }
 
+  const base = facadeBase ?? b.y0
   const hy = b.h / 2
-  bb.box(b.x, b.y0 + hy, b.z, b.hw, hy, b.hd, b.rot, colorFor, facadeAttrs(b.style, b.y0, b.hw, b.hd), [3])
+  bb.box(b.x, b.y0 + hy, b.z, b.hw, hy, b.hd, b.rot, colorFor, facadeAttrs(b.style, base, b.hw, b.hd), [3])
   if (b.tier) {
     const t = b.tier
     bb.box(
@@ -362,7 +377,7 @@ function addBuilding(bb: GeoBuilder, ib: GeoBuilder, b: Building, rng: Rng, side
       t.hd,
       b.rot,
       colorFor,
-      facadeAttrs(b.style, b.y0, t.hw, t.hd),
+      facadeAttrs(b.style, base, t.hw, t.hd),
       [3],
     )
   }
@@ -374,7 +389,7 @@ function addBuilding(bb: GeoBuilder, ib: GeoBuilder, b: Building, rng: Rng, side
   const cityBuilding = b.rot === 0
 
   // Plinth and cornice (classic facades)
-  if (!isHouse && !isGlass && b.style !== FacadeStyle.Warehouse) {
+  if (!isHouse && !isGlass && b.style !== FacadeStyle.Warehouse && facadeBase === undefined) {
     bb.box(b.x, b.y0 + 0.35, b.z, b.hw + 0.08, 0.35, b.hd + 0.08, b.rot, stone, plain(-2), [3])
     bb.box(b.x, b.y0 + b.h - 0.22, b.z, b.hw + 0.28, 0.22, b.hd + 0.28, b.rot, trimLight, plain(-2), [3])
     bb.box(b.x, b.y0 + b.h - 0.55, b.z, b.hw + 0.12, 0.1, b.hd + 0.12, b.rot, trimLight, plain(-2), [3])
@@ -417,6 +432,10 @@ function addBuilding(bb: GeoBuilder, ib: GeoBuilder, b: Building, rng: Rng, side
   }
 
   if (!cityBuilding) {
+    if (b.roof === 'gable') addGableRoof(bb, b, rng, seed)
+    return
+  }
+  if (facadeBase !== undefined) {
     if (b.roof === 'gable') addGableRoof(bb, b, rng, seed)
     return
   }
@@ -560,13 +579,21 @@ function addGableRoof(bb: GeoBuilder, b: Building, rng: Rng, seed: number) {
   }
 }
 
-/** Wall boxes of a hollow building (shared with the collider builder). */
+/** Largeur (m) de la porte d'un rez-de-chaussée accessible : assez pour un piéton, trop étroite pour une voiture. */
+export const ENTRANCE_DOOR = 1.5
+
+/**
+ * Murs d'un bâtiment creux (partagés avec les colliders) : les quatre façades, la porte, et pour un
+ * rez-de-chaussée profond une cloison intérieure percée d'un passage.
+ */
 export function hollowWalls(b: Building) {
   const t = 0.3
-  const door = 2.6
-  const doorH = 2.8
+  const enterable = b.hollow!.floorHeight !== undefined
+  const door = enterable ? ENTRANCE_DOOR : 2.6
+  const doorH = enterable ? 2.3 : 2.8
+  const h = Math.min(b.hollow!.floorHeight ?? b.h, b.h)
   const walls: { x: number; y: number; z: number; hx: number; hy: number; hz: number }[] = []
-  const hy = b.h / 2
+  const hy = h / 2
   const y = b.y0 + hy
   const side = b.hollow!.doorSide
   const sides = [
@@ -593,7 +620,7 @@ export function hollowWalls(b: Building) {
         hz: s.alongX ? s.hz : seg,
       })
     }
-    const lintel = (b.h - doorH) / 2
+    const lintel = (h - doorH) / 2
     walls.push({
       x: s.x,
       y: b.y0 + doorH + lintel,
@@ -603,7 +630,31 @@ export function hollowWalls(b: Building) {
       hz: s.alongX ? s.hz : door / 2,
     })
   })
-  const roof = { x: b.x, y: b.y0 + b.h + 0.15, z: b.z, hx: b.hw, hy: 0.15, hz: b.hd }
+  // Cloison intérieure, parallèle à la façade de la porte, percée d'un passage décalé sur le côté.
+  const depth = side % 2 === 0 ? b.hd * 2 : b.hw * 2
+  const span = side % 2 === 0 ? b.hw * 2 : b.hd * 2
+  if (enterable && depth > 9 && span > 6) {
+    const [ox, oz] = SIDE_OUT[side]
+    const d = depth / 2 - depth * 0.55 // distance du centre à la cloison, côté porte
+    const cx = b.x + ox * d
+    const cz = b.z + oz * d
+    const gap = 1.2
+    const gapAt = span * 0.3 // passage à 30 % d'un bout
+    const pieces: [number, number][] = [
+      [-span / 2, -span / 2 + gapAt - gap / 2],
+      [-span / 2 + gapAt + gap / 2, span / 2],
+    ]
+    for (const [a0, a1] of pieces) {
+      const mid = (a0 + a1) / 2
+      const len = (a1 - a0) / 2
+      walls.push(
+        side % 2 === 0
+          ? { x: cx + mid, y, z: cz, hx: len, hy, hz: 0.1 }
+          : { x: cx, y, z: cz + mid, hx: 0.1, hy, hz: len },
+      )
+    }
+  }
+  const roof = { x: b.x, y: b.y0 + h + 0.15, z: b.z, hx: b.hw, hy: 0.15, hz: b.hd }
   return { walls, roof }
 }
 
@@ -631,7 +682,8 @@ function addHollow(bb: GeoBuilder, ib: GeoBuilder, b: Building, seed: number) {
     [0, 1, 0],
     floorCol,
   )
-  const cy = b.y0 + b.h - 0.01
+  const groundH = Math.min(b.hollow!.floorHeight ?? b.h, b.h)
+  const cy = b.y0 + groundH - 0.01
   ib.quad(
     [b.x - b.hw, cy, b.z - b.hd],
     [b.x + b.hw, cy, b.z - b.hd],
@@ -652,6 +704,32 @@ function addHollow(bb: GeoBuilder, ib: GeoBuilder, b: Building, seed: number) {
     furn(b.hw - 1.2, b.hd - 1, 1, 0.45, 0.6, [0.35, 0.25, 0.18]) // table
     furn(b.hw - 0.5, -b.hd + 2, 0.4, 1, 1.2, [0.3, 0.3, 0.3]) // shelf
     furn(0, -b.hd + 0.6, 1.2, 0.45, 0.4, [0.5, 0.15, 0.12]) // sofa
+  } else if (b.special === undefined) {
+    // Rez-de-chaussée ordinaire : quelques meubles, loin de la porte et de la cloison.
+    const r = new Rng(b.id * 7919 + 13)
+    const [ox, oz] = SIDE_OUT[b.hollow!.doorSide]
+    const back = (side: number) => (side % 2 === 0 ? b.hd : b.hw) - 0.9
+    const span = (b.hollow!.doorSide % 2 === 0 ? b.hw : b.hd) - 1.2
+    const along = (a: number, d: number): [number, number] =>
+      b.hollow!.doorSide % 2 === 0 ? [a, -oz * d] : [-ox * d, a]
+    const wood: V3 = r.pick<V3>([
+      [0.4, 0.28, 0.18],
+      [0.3, 0.22, 0.15],
+      [0.55, 0.42, 0.3],
+    ])
+    const fabric: V3 = r.pick<V3>([
+      [0.25, 0.32, 0.45],
+      [0.45, 0.2, 0.18],
+      [0.35, 0.38, 0.3],
+    ])
+    const [sx, sz] = along(r.range(-span * 0.4, span * 0.4), back(b.hollow!.doorSide))
+    furn(sx, sz, b.hollow!.doorSide % 2 === 0 ? 1.1 : 0.45, 0.42, b.hollow!.doorSide % 2 === 0 ? 0.45 : 1.1, fabric) // canapé
+    const [tx, tz] = along(r.range(-span * 0.5, span * 0.5), back(b.hollow!.doorSide) - 2)
+    furn(tx, tz, 0.55, 0.38, 0.55, wood) // table basse
+    const [kx, kz] = along(span * (r.chance(0.5) ? 0.8 : -0.8), back(b.hollow!.doorSide) - 0.4)
+    furn(kx, kz, 0.35, 0.95, 0.35, wood) // étagère
+    const [cx2, cz2] = along(-span * 0.75, 1.2)
+    furn(cx2, cz2, 0.45, 0.48, 0.45, [0.82, 0.82, 0.8]) // comptoir
   } else if (b.special === 'warehouse') {
     for (let k = 0; k < 8; k++) {
       const dx = ((k % 4) - 1.5) * 6
@@ -665,7 +743,18 @@ function addHollow(bb: GeoBuilder, ib: GeoBuilder, b: Building, seed: number) {
 export function buildingColliderBoxes(b: Building) {
   if (b.hollow) {
     const { walls, roof } = hollowWalls(b)
-    return [...walls, roof].map((w) => ({ ...w, rot: 0 }))
+    const boxes = [...walls, roof].map((w) => ({ ...w, rot: 0 }))
+    const fh = b.hollow.floorHeight
+    // Rez-de-chaussée accessible : étages pleins au-dessus (et toit à pignon).
+    if (fh !== undefined) {
+      const upper = fh < b.h ? { ...b, hollow: undefined, y0: b.y0 + fh, h: b.h - fh } : null
+      if (upper) boxes.push(...buildingColliderBoxes(upper))
+      else if (b.roof === 'gable') {
+        const roofH = Math.min(b.hw, b.hd) * 0.7
+        boxes.push({ x: b.x, y: b.y0 + b.h + roofH / 4, z: b.z, hx: b.hw * 0.8, hy: roofH / 4, hz: b.hd * 0.8, rot: 0 })
+      }
+    }
+    return boxes
   }
   const boxes = [{ x: b.x, y: b.y0 + b.h / 2, z: b.z, hx: b.hw, hy: b.h / 2, hz: b.hd, rot: b.rot }]
   if (b.tier)

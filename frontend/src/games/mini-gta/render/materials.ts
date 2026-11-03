@@ -421,7 +421,14 @@ export const foliageMaterial = patch(std({ vertexColors: true, roughness: 0.9, f
   key: 'foliage',
   color: 'diffuseColor.rgb *= 0.85 + 0.3 * vnoise(vWorldPos.xz * 0.05 + vWorldPos.y);',
 })
-export const interiorMaterial = std({ vertexColors: true, roughness: 0.85, side: DoubleSide })
+/**
+ * Intérieurs : éclairage simple sans lumière dynamique (une par bâtiment serait trop coûteuse) : les surfaces
+ * émettent une part de leur couleur, un peu plus la nuit, comme sous des plafonniers allumés.
+ */
+export const interiorMaterial = patch(std({ vertexColors: true, roughness: 0.85, side: DoubleSide }), {
+  key: 'interior',
+  emissive: 'totalEmissiveRadiance += diffuseColor.rgb * (0.18 + uNight * 0.25);',
+})
 
 /** Emissive lamp heads, brightness driven by uNight. */
 export const lampHeadMaterial = patch(

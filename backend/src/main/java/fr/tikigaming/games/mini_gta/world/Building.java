@@ -23,6 +23,11 @@ public final class Building {
     public SpecialKind special;
     /** Bâtiments creux (intérieur et porte). Côté de la porte : 0 = -z, 1 = +x, 2 = +z, 3 = -x. */
     public Integer doorSide;
+    /**
+     * Hauteur du rez-de-chaussée creux d'un bâtiment ordinaire où l'on peut entrer (null : tout le bâtiment est
+     * creux, cas des bâtiments spéciaux). Les étages au-dessus restent pleins.
+     */
+    public Double floorHeight;
     /** Parcelle du bâtiment (bâtiments de la ville uniquement). */
     public Rect lot;
 

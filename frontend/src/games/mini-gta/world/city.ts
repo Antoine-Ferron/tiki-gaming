@@ -46,8 +46,11 @@ export interface Building {
   /** Optional upper tier (setback tower). */
   tier?: { hw: number; hd: number; h: number }
   special?: SpecialKind
-  /** Hollow buildings get an interior and a door. Door side: 0=-z,1=+x,2=+z,3=-x */
-  hollow?: { doorSide: number }
+  /**
+   * Bâtiment où l'on peut entrer : porte côté 0=-z, 1=+x, 2=+z, 3=-x. Sans `floorHeight`, tout le bâtiment est
+   * creux (bâtiments spéciaux) ; avec, seul le rez-de-chaussée l'est et les étages restent pleins.
+   */
+  hollow?: { doorSide: number; floorHeight?: number }
   /** Lot the building stands on (city buildings only). */
   lot?: Rect
   chunk: number
@@ -94,6 +97,22 @@ export interface SidewalkNode {
   links: number[]
 }
 
+export type RampKind = 'dirt' | 'concrete' | 'planks'
+
+/** Tremplin : coin qui monte de 0 à `height` sur `length`, dans la direction du cap `rot`. */
+export interface Ramp {
+  x: number
+  /** Hauteur du sol sous le tremplin. */
+  y: number
+  z: number
+  rot: number
+  length: number
+  width: number
+  height: number
+  kind: RampKind
+  chunk: number
+}
+
 export interface Location {
   x: number
   y: number
@@ -112,6 +131,7 @@ export interface CityData {
   cranes: Location[]
   parking: ParkingSpot[]
   sidewalk: SidewalkNode[]
+  ramps: Ramp[]
   locations: {
     spawn: Location
     safehouseDoor: Location
@@ -143,6 +163,8 @@ export function cityFromDto(dto: unknown): CityData {
   const { nodes, edges, ...network } = d.roads
   return {
     ...d,
+    // Champ ajouté après coup : un monde plus ancien n'a pas de tremplins.
+    ramps: d.ramps ?? [],
     terrain: new Terrain(decodeFloat32(d.terrain.heights), d.terrain.n),
     roads: { ...network, graph: RoadGraph.from(nodes, edges) },
   }

@@ -13,4 +13,5 @@ public record CityData(
         List<Location> cranes,
         List<ParkingSpot> parking,
         List<SidewalkNode> sidewalk,
-        Locations locations) {}
+        Locations locations,
+        List<Ramp> ramps) {}

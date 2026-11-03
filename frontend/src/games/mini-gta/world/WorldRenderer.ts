@@ -122,7 +122,7 @@ export class WorldRenderer {
       this.lampLights.push(l)
       this.group.add(l)
     }
-    for (const b of city.buildings.filter((b) => b.hollow)) {
+    for (const b of city.buildings.filter((b) => b.hollow && b.special)) {
       const l = new PointLight(0xfff0dd, 0, b.hw * 3, 1.5)
       l.position.set(b.x, b.y0 + b.h - 0.6, b.z)
       this.interiorLights.push(l)
@@ -353,7 +353,7 @@ export class WorldRenderer {
       l.position.set(lamp.p.x + off.x, lamp.p.y + 6.6, lamp.p.z + off.z)
       l.intensity = night * 22
     })
-    const hollow = this.city.buildings.filter((b) => b.hollow)
+    const hollow = this.city.buildings.filter((b) => b.hollow && b.special)
     this.interiorLights.forEach((l, i) => {
       const b = hollow[i]
       l.intensity = Math.hypot(b.x - playerPos.x, b.z - playerPos.z) < 40 ? 7 : 0

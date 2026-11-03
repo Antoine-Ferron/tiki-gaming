@@ -1,5 +1,6 @@
 import type { CityData } from '../world/city'
 import { buildingColliderBoxes } from '../world/chunkBuilder'
+import { rampColliders } from '../world/ramps'
 import { MAP_HALF, RING, SLAB_HEIGHT, TERRAIN_CELLS, TERRAIN_RES, shoreX } from '../world/constants'
 import { ColliderDesc, Groups, type Physics, RigidBodyDesc } from './physics'
 
@@ -35,6 +36,16 @@ export function buildStaticWorld(physics: Physics, city: CityData) {
     curb((bl.x0 + bl.x1) / 2, SLAB_HEIGHT - hy, (bl.z0 + bl.z1) / 2, (bl.x1 - bl.x0) / 2, hy, (bl.z1 - bl.z0) / 2)
   }
   for (const c of city.containers) cuboid(c.x, c.y, c.z, 1.25, 1.3, 6, c.rot)
+  // Tremplins : dalle inclinée (roues et caisse y montent) et dos vertical.
+  for (const r of city.ramps) {
+    for (const c of rampColliders(r)) {
+      add(
+        ColliderDesc.cuboid(c.half.x, c.half.y, c.half.z)
+          .setTranslation(...c.center)
+          .setRotation(c.rotation),
+      )
+    }
+  }
   for (const crane of city.cranes) {
     for (const dx of [-5, 5]) for (const dz of [-5, 5]) cuboid(crane.x + dx, 14, crane.z + dz, 0.5, 14, 0.5)
   }
