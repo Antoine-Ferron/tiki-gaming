@@ -5,10 +5,19 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MastermindGame from './MastermindGame'
 import type { GameContext } from '../types'
-import { apiPost } from '@/lib/api'
+import { ApiError, apiGet, apiPost } from '@/lib/api'
 
-vi.mock('@/lib/api', () => ({ apiPost: vi.fn() }))
-afterEach(cleanup)
+vi.mock('@/lib/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/api')>()),
+  apiGet: vi.fn(),
+  apiPost: vi.fn(),
+}))
+afterEach(() => {
+  cleanup()
+  sessionStorage.clear()
+  vi.mocked(apiGet).mockReset()
+  vi.mocked(apiPost).mockReset()
+})
 
 const initialGame = {
   id: 'game-1',
@@ -105,5 +114,42 @@ describe('MastermindGame', () => {
       'data-tooltip',
       expect.stringContaining('Score = 11'),
     )
+  })
+
+  it('resumes the game of the tab instead of creating a new one', async () => {
+    sessionStorage.setItem('mastermind:game-id', 'game-1')
+    vi.mocked(apiGet).mockResolvedValue({ ...initialGame, attemptsUsed: 3, attemptsRemaining: 7 })
+    render(<MastermindGame ctx={createContext()} />)
+
+    expect(await screen.findByText('7 tentatives restantes')).toBeInTheDocument()
+    expect(apiGet).toHaveBeenCalledWith('/games/mastermind/game-1')
+    expect(apiPost).not.toHaveBeenCalled()
+  })
+
+  it('creates a new game when the stored one no longer exists', async () => {
+    sessionStorage.setItem('mastermind:game-id', 'expired')
+    vi.mocked(apiGet).mockRejectedValue(new ApiError(404, 'Partie introuvable.'))
+    mockApi()
+    render(<MastermindGame ctx={createContext()} />)
+
+    expect(await screen.findByText('10 tentatives restantes')).toBeInTheDocument()
+    expect(apiPost).toHaveBeenCalledWith('/games/mastermind')
+    expect(sessionStorage.getItem('mastermind:game-id')).toBe('game-1')
+  })
+
+  it('replaces a game purged by the server instead of blocking the player', async () => {
+    vi.mocked(apiPost).mockImplementation(async (path) => {
+      if (path === '/games/mastermind') return initialGame
+      throw new ApiError(404, 'Partie introuvable.')
+    })
+    const user = userEvent.setup()
+    render(<MastermindGame ctx={createContext()} />)
+    await screen.findByText('10 tentatives restantes')
+
+    await user.click(screen.getByRole('button', { name: 'Nouvelle partie' }))
+
+    expect(await screen.findByText('Ta partie avait expiré : une nouvelle partie a été créée.')).toBeInTheDocument()
+    expect(vi.mocked(apiPost).mock.calls.filter(([path]) => path === '/games/mastermind')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Valider la combinaison' })).toBeInTheDocument()
   })
 })

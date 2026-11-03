@@ -3,6 +3,7 @@ package fr.tikigaming.games.mastermind;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -29,9 +30,10 @@ public class MastermindController {
     @PostMapping
     @Operation(summary = "Créer une partie")
     @ApiResponse(responseCode = "201", description = "Partie créée")
-    @ApiResponse(responseCode = "429", description = "Trop de parties actives")
-    ResponseEntity<MastermindGameSnapshot> create() {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create());
+    @ApiResponse(responseCode = "429", description = "Trop de parties actives, au total ou pour ce client")
+    ResponseEntity<MastermindGameSnapshot> create(HttpServletRequest request) {
+        // Derrière le proxy, l'adresse du joueur vient de X-Forwarded-For (server.forward-headers-strategy).
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request.getRemoteAddr()));
     }
 
     @GetMapping("/{id}")
