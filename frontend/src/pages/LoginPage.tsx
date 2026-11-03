@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
+import { CursorSwarm } from '@/components/CursorSwarm'
 import { Field } from '@/components/Field'
 import { apiPost, toFormErrors } from '@/lib/api'
 import { loginSchema, validate, type FieldErrors } from '@/lib/validation'
@@ -48,35 +49,38 @@ export default function LoginPage() {
   }
 
   return (
-    <form className="card form" onSubmit={handleSubmit} noValidate>
-      <h1>Connexion</h1>
-      <button type="button" onClick={handleGoogleLogin} disabled={busy}>
-        Se connecter avec Google
-      </button>
-      <p className="muted">ou</p>
-      <Field
-        label="Email"
-        type="email"
-        autoComplete="email"
-        value={email}
-        error={fieldErrors.email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <Field
-        label="Mot de passe"
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        error={fieldErrors.password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={busy}>
-        {busy ? 'Connexion…' : 'Se connecter'}
-      </button>
-      <p className="muted">
-        <Link to="/forgot-password">Mot de passe oublié ?</Link> · <Link to="/signup">Créer un compte</Link>
-      </p>
-    </form>
+    <div className="auth-page">
+      <CursorSwarm />
+      <form className="card form" onSubmit={handleSubmit} noValidate>
+        <h1>Connexion</h1>
+        <button type="button" className="secondary" onClick={handleGoogleLogin} disabled={busy}>
+          Se connecter avec Google
+        </button>
+        <p className="divider">ou</p>
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          error={fieldErrors.email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Field
+          label="Mot de passe"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          error={fieldErrors.password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        {error && <p className="error">{error}</p>}
+        <button type="submit" disabled={busy}>
+          {busy ? 'Connexion…' : 'Se connecter'}
+        </button>
+        <p className="muted">
+          <Link to="/forgot-password">Mot de passe oublié ?</Link> · <Link to="/signup">Créer un compte</Link>
+        </p>
+      </form>
+    </div>
   )
 }
