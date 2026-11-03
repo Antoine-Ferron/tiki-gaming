@@ -226,6 +226,8 @@ export class Collider {
   aabb = { minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 }
   cells: number[] = []
   stamp = 0
+  /** Dernier pas où un corps mobile était proche (colliders fixes chargés dans cannon-es à la demande). */
+  lastUsed = -1
   private readonly world = { x: 0, y: 0, z: 0 }
   private worldRot: Rot = { ...IDENTITY }
 
@@ -651,7 +653,9 @@ class GridBroadphase extends Broadphase {
           stamp,
           (c) => {
             const s = c.staticBody
-            if (s && c.enabled && this.needBroadphaseCollision(a, s)) this.doBoundingBoxBroadphase(a, s, p1, p2)
+            if (s && c.enabled && this.owner.isLoaded(c) && this.needBroadphaseCollision(a, s)) {
+              this.doBoundingBoxBroadphase(a, s, p1, p2)
+            }
           },
         )
         for (const t of this.owner.terrainBodies)
@@ -692,6 +696,9 @@ export class World {
   private materials = new Map<string, Material>()
   private nextHandle = 1
   private stamp = 1
+  /** Colliders fixes présents dans cannon-es : seulement ceux proches d'un corps mobile. */
+  private activeStatics = new Set<Collider>()
+  private steps = 0
   private activePairs = new Set<string>()
   private before = new Map<Body, { v: Vec; w: Vec }>()
 
@@ -752,10 +759,10 @@ export class World {
       sb.position.set(pos.x, pos.y, pos.z)
       sb.quaternion.set(rot.x, rot.y, rot.z, rot.w)
       for (const { shape, offset, orientation } of shapes) sb.addShape(shape, offset, orientation)
-      this.cworld.addBody(sb)
       sb.updateAABB()
       c.staticBody = sb
       if (c.geometry.kind === 'heightfield') {
+        this.cworld.addBody(sb)
         this.heightfields.push(c)
         this.terrainBodies.push(sb)
       } else {
@@ -868,7 +875,7 @@ export class World {
     const body = c.body
     body.colliders.splice(body.colliders.indexOf(c), 1)
     if (c.staticBody) {
-      this.cworld.removeBody(c.staticBody)
+      if (this.activeStatics.delete(c) || c.geometry.kind === 'heightfield') this.cworld.removeBody(c.staticBody)
       this.grid.remove(c)
       const i = this.heightfields.indexOf(c)
       if (i >= 0) {
@@ -908,9 +915,52 @@ export class World {
         w: { x: b.angularVelocity.x, y: b.angularVelocity.y, z: b.angularVelocity.z },
       })
     }
+    this.loadNearbyStatics(dt)
     this.cworld.step(dt)
     for (const b of this.bodies) if (b.enabled) b.finishKinematic()
     if (events) this.collectEvents(events)
+  }
+
+  isLoaded(c: Collider) {
+    return this.activeStatics.has(c)
+  }
+
+  /**
+   * cannon-es parcourt tous ses corps à chaque pas : y garder les milliers de boîtes de la ville coûterait
+   * plus cher que toute la simulation. On n'y charge que les colliders fixes proches d'un corps dynamique,
+   * et on décharge ceux qui ne servent plus depuis une seconde.
+   */
+  private loadNearbyStatics(dt: number) {
+    const step = ++this.steps
+    for (const body of this.bodies) {
+      const b = body.cbody
+      if (!b || !body.enabled || !body.isDynamic() || !body.colliders.length) continue
+      if (b.aabbNeedsUpdate) b.updateAABB()
+      const m = Math.hypot(b.velocity.x, b.velocity.y, b.velocity.z) * dt * 2 + 0.5
+      const box = b.aabb
+      this.grid.forEachIn(
+        box.lowerBound.x - m,
+        box.lowerBound.z - m,
+        box.upperBound.x + m,
+        box.upperBound.z + m,
+        this.nextStamp(),
+        (c) => {
+          if (!c.staticBody || !c.valid) return
+          c.lastUsed = step
+          if (!this.activeStatics.has(c)) {
+            this.activeStatics.add(c)
+            this.cworld.addBody(c.staticBody)
+          }
+        },
+      )
+    }
+    if (step % 30 !== 0) return
+    for (const c of this.activeStatics) {
+      if (step - c.lastUsed > 60) {
+        this.activeStatics.delete(c)
+        this.cworld.removeBody(c.staticBody!)
+      }
+    }
   }
 
   /** CCD minimal pour les petits corps rapides (grenades) : rebond sur le premier obstacle rencontré. */
