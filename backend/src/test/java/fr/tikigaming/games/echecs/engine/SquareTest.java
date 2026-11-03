@@ -20,4 +20,18 @@ class SquareTest {
         assertThat(square.file()).isEqualTo(0);
         assertThat(square.rank()).isEqualTo(0);
     }
+
+    @Test
+    @DisplayName("la case h8 est en colonne 7 et rangée 7")
+    void laCaseH8EstEnColonne7EtRangee7() {
+        // Arrange
+        String notation = "h8";
+
+        // Act
+        Square square = Square.of(notation);
+
+        // Assert
+        assertThat(square.file()).isEqualTo(7);
+        assertThat(square.rank()).isEqualTo(7);
+    }
 }
