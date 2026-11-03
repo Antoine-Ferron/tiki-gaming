@@ -151,7 +151,7 @@ Une seule commande Maven enchaîne, dans l'ordre :
 1. **Checkstyle** : imports inutiles, nommage, erreurs probables (`backend/checkstyle.xml`) ;
 2. **compilation** du code et des tests (Java 21, Spring Boot 4.1) ;
 3. **tests** JUnit 5, y compris ceux qui démarrent l'application complète (Swagger) ;
-4. **couverture JaCoCo** : au moins 95 % des lignes et 85 % des branches sur tout le backend, et 95 % (lignes et
+4. **couverture JaCoCo** : au moins 52 % des lignes et 64 % des branches sur tout le backend, et 95 % (lignes et
    branches) sur le cœur métier (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`) ;
 5. **Spotless** : le code doit être formaté (palantir-java-format). Pour corriger : `mvn spotless:apply`.
 

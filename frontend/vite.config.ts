@@ -19,7 +19,13 @@ export default defineConfig(({ mode }) => ({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/lib/database.types.ts', 'src/vite-env.d.ts', 'src/main.tsx'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/lib/database.types.ts',
+        'src/vite-env.d.ts',
+        'src/main.tsx',
+        'src/auth/testing.tsx',
+      ],
       reporter: ['text-summary', 'lcov', 'html'],
       // Seuils bloquants (CI, job frontend). Le cœur du lobby doit rester couvert ; le global, juste sous
       // l'existant, empêche les régressions : le relever quand la couverture monte, jamais le baisser.
