@@ -1,5 +1,6 @@
 package fr.tikigaming.games.bang;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,6 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import jakarta.servlet.http.Cookie;
+import java.util.List;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,6 +22,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.ObjectMapper;
 
@@ -68,6 +74,38 @@ class PrivateTablesHttpTest {
         postAs(TABLES + "/UNKNOWN/join", sessionFor("player"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Code de table inconnu."));
+    }
+
+    @Test
+    void theLastSeatIsGrantedOnceEvenWithTwoSimultaneousRequests() throws Exception {
+        String code = createTable("creator");
+        postAs(TABLES + "/" + code + "/join", sessionFor("second")).andExpect(status().isOk());
+        postAs(TABLES + "/" + code + "/join", sessionFor("third")).andExpect(status().isOk());
+        CyclicBarrier start = new CyclicBarrier(2);
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> joinAtTheSameTime(code, "challenger-a", start));
+            var second = executor.submit(() -> joinAtTheSameTime(code, "challenger-b", start));
+            MvcResult firstResult = first.get(5, TimeUnit.SECONDS);
+            MvcResult secondResult = second.get(5, TimeUnit.SECONDS);
+
+            assertThat(List.of(
+                            firstResult.getResponse().getStatus(),
+                            secondResult.getResponse().getStatus()))
+                    .containsExactlyInAnyOrder(200, 409);
+            MvcResult accepted = firstResult.getResponse().getStatus() == 200 ? firstResult : secondResult;
+            assertThat(json.readValue(accepted.getResponse().getContentAsString(), TableSeat.class))
+                    .isEqualTo(new TableSeat(code, 4, 4));
+        }
+
+        postAs(TABLES + "/" + code + "/join", sessionFor("latecomer"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Cette table est pleine."));
+    }
+
+    private MvcResult joinAtTheSameTime(String code, String accountId, CyclicBarrier start) throws Exception {
+        start.await(5, TimeUnit.SECONDS);
+        return postAs(TABLES + "/" + code + "/join", sessionFor(accountId)).andReturn();
     }
 
     private String createTable(String accountId) throws Exception {

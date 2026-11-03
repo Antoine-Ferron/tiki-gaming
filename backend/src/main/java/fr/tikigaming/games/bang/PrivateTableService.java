@@ -28,9 +28,10 @@ public class PrivateTableService {
         return new TableSeat(code, 1, 1);
     }
 
-    public TableSeat join(String code, String accountId) {
+    public synchronized TableSeat join(String code, String accountId) {
         List<String> players = tables.get(code);
         if (players == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
+        if (players.size() >= 4) throw new ResponseStatusException(HttpStatus.CONFLICT, "Cette table est pleine.");
         players.add(accountId);
         return new TableSeat(code, players.size(), players.size());
     }

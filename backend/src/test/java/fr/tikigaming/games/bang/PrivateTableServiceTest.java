@@ -37,4 +37,17 @@ class PrivateTableServiceTest {
                         ResponseStatusException.class,
                         error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }
+
+    @Test
+    void refusesAFifthAccountAtAFullTable() {
+        String code = tables.create("creator").code();
+        for (int seat = 2; seat <= 4; seat++) {
+            tables.join(code, "player-" + seat);
+        }
+
+        assertThatThrownBy(() -> tables.join(code, "fifth-account"))
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+    }
 }
