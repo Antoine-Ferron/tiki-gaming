@@ -8,4 +8,10 @@ public record Piece(Color color, PieceType type) {
         Color color = Character.isUpperCase(letter) ? Color.WHITE : Color.BLACK;
         return new Piece(color, PieceType.fromFen(letter));
     }
+
+    /** Écrit la pièce avec sa lettre FEN : majuscule pour les Blancs, minuscule pour les Noirs. */
+    public char toFen() {
+        char letter = type.fenLetter();
+        return color == Color.WHITE ? Character.toUpperCase(letter) : letter;
+    }
 }

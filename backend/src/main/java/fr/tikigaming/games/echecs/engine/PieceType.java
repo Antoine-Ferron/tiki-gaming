@@ -15,6 +15,10 @@ public enum PieceType {
         this.fenLetter = fenLetter;
     }
 
+    char fenLetter() {
+        return fenLetter;
+    }
+
     /** Retrouve le type d'après sa lettre FEN, en majuscule ou en minuscule. */
     static PieceType fromFen(char letter) {
         char lower = Character.toLowerCase(letter);
