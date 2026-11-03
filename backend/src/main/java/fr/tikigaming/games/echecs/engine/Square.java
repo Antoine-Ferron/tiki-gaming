@@ -7,6 +7,9 @@ public record Square(int file, int rank) {
     private static final int BOARD_SIZE = 8;
 
     public static Square of(String notation) {
+        if (notation == null || notation.length() != 2) {
+            throw new IllegalArgumentException("Notation de case invalide : " + notation);
+        }
         int file = notation.charAt(0) - FIRST_FILE;
         int rank = notation.charAt(1) - FIRST_RANK;
         if (file < 0 || file >= BOARD_SIZE || rank < 0 || rank >= BOARD_SIZE) {
