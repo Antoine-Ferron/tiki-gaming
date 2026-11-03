@@ -1,15 +1,15 @@
 package fr.tikigaming.auth;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.tikigaming.config.TikiProperties;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** Appels à l'API Auth (GoTrue) et PostgREST de Supabase, côté serveur uniquement. */
 @Component
@@ -124,7 +124,7 @@ public class SupabaseAuthClient {
                 .body(Map.of("p_email", email))
                 .retrieve()
                 .body(JsonNode.class);
-        return id == null || id.isNull() ? null : id.asText();
+        return id == null || id.isNull() ? null : id.asString();
     }
 
     private void anon(HttpHeaders h) {
@@ -137,7 +137,7 @@ public class SupabaseAuthClient {
     }
 
     private static AuthUser toUser(JsonNode user) {
-        return new AuthUser(user.get("id").asText(), user.path("email").asText(null));
+        return new AuthUser(user.get("id").asString(), user.path("email").asString(null));
     }
 
     private static String errorMessage(ObjectMapper mapper, java.io.InputStream body) {
@@ -146,15 +146,15 @@ public class SupabaseAuthClient {
             if (json == null) return SupabaseErrors.DEFAULT_MESSAGE;
             // Selon la version de GoTrue, le code est dans error_code, ou dans code (sinon code = statut HTTP).
             String code = json.hasNonNull("error_code")
-                    ? json.get("error_code").asText()
-                    : json.path("code").isTextual() ? json.get("code").asText() : null;
+                    ? json.get("error_code").asString()
+                    : json.path("code").isString() ? json.get("code").asString() : null;
             for (String field : List.of("msg", "error_description", "message", "error")) {
                 if (json.hasNonNull(field)) {
-                    return SupabaseErrors.message(code, json.get(field).asText());
+                    return SupabaseErrors.message(code, json.get(field).asString());
                 }
             }
             return SupabaseErrors.message(code, null);
-        } catch (IOException ignored) {
+        } catch (JacksonException ignored) {
             // corps non JSON : message générique
             return SupabaseErrors.DEFAULT_MESSAGE;
         }
