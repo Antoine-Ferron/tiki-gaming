@@ -165,6 +165,118 @@ describe('véhicules', () => {
   })
 })
 
+describe('conduite', () => {
+  /** Point d'une rue proche du départ, son axe et l'îlot le plus proche. */
+  function street() {
+    const s = game.city.locations.spawn
+    const g = game.city.roads.graph
+    const e = game.nav.nearestEdge(s.x, s.z)!.edge
+    return { a: g.nodes[e.a], d: g.direction(e, 1) }
+  }
+  function nearestBlock() {
+    const s = game.city.locations.spawn
+    const dist = (b: { x0: number; x1: number; z0: number; z1: number }) =>
+      Math.hypot((b.x0 + b.x1) / 2 - s.x, (b.z0 + b.z1) / 2 - s.z)
+    return game.city.blocks.slice().sort((p, q) => dist(p) - dist(q))[1]
+  }
+  /** Monte dans un véhicule neuf posé à (x, z), orienté selon `heading`, lancé à `v0` m/s. */
+  function launch(id: string, x: number, z: number, heading: number, v0 = 0) {
+    if (game.player.state === 'vehicle') game.player.exitVehicle(true)
+    if (previous) game.removeVehicle(previous)
+    const v = game.spawnVehicle(id, x, 0.3, z, heading, 'dynamic')
+    t.simulate(0.3)
+    game.player.respawnAt(x + 3 * Math.cos(heading), 0.3, z - 3 * Math.sin(heading))
+    t.simulate(0.1)
+    game.player.tryEnterVehicle()
+    v.body.setLinvel({ x: Math.sin(heading) * v0, y: 0, z: Math.cos(heading) * v0 }, true)
+    previous = v
+    return v
+  }
+
+  test('la berline passe de 0 à 80 km/h en moins de 4,5 s', () => {
+    const { a, d } = street()
+    const car = launch('sedan', a.x + d.x * 5, a.z + d.z * 5, Math.atan2(d.x, d.z))
+
+    t.key('KeyW', true)
+    const reached = t.until(() => car.speed * 3.6 >= 80, 4.5)
+    t.key('KeyW', false)
+
+    expect(reached).toBe(true)
+  })
+
+  test.each([
+    ['de face, à l’arrêt contre la bordure', 0, 0],
+    ['en biais à 20°', 0.35, 5],
+    ['en biais à 45°', 0.8, 5],
+  ])('monte sur le trottoir %s sans être bloquée', (_, angle, v0) => {
+    const b = nearestBlock()
+    const z = (b.z0 + b.z1) / 2
+    const car = launch('sedan', b.x0 - 3 - 3 * Math.cos(angle), z, Math.PI / 2 - angle, v0)
+    const y0 = car.position.y
+
+    t.key('KeyW', true)
+    t.until(() => car.position.x > b.x0 + 4, 3)
+    t.key('KeyW', false)
+
+    expect(car.position.x).toBeGreaterThan(b.x0 + 4)
+    // Sur la dalle, 15 cm plus haut que la chaussée.
+    expect(car.position.y - y0).toBeGreaterThan(0.08)
+  })
+
+  test('longe la bordure sans heurter d’obstacle invisible', () => {
+    const b = nearestBlock()
+    const car = launch('sedan', b.x0 - 1.6, b.z0 + 5, 0, 10)
+    let slowest = Infinity
+
+    t.key('KeyW', true)
+    for (let i = 0; i < 30; i++) {
+      t.simulate(0.1)
+      slowest = Math.min(slowest, car.speed)
+    }
+    t.key('KeyW', false)
+
+    expect(slowest).toBeGreaterThan(8)
+  })
+
+  test.each(['sedan', 'sport', 'suv', 'taxi', 'police', 'van'])(
+    'au volant d’un %s, la tête reste sous le toit',
+    (id) => {
+      const { a, d } = street()
+      const car = launch(id, a.x + d.x * 8, a.z + d.z * 8, Math.atan2(d.x, d.z))
+      t.simulate(0.5)
+      for (let k = 0; k < 30; k++) game.render(1, 1 / 30)
+
+      game.player.actor.rig.object.updateMatrixWorld(true)
+      const head = game.player.actor.rig.bones.head.getWorldPosition(new Vector3())
+      const roof = car.visual.root.position.y + car.spec.belt + car.spec.cabin.height
+      // L'os de la tête est à la base du crâne : le haut de la tête est ~25 cm plus haut.
+      expect(head.y + 0.25).toBeLessThan(roof)
+    },
+  )
+
+  afterAll(() => {
+    // Les scénarios suivants partent à pied, sans voiture lancée à proximité.
+    if (game.player.state === 'vehicle') game.player.exitVehicle(true)
+    if (previous) game.removeVehicle(previous)
+    previous = null
+  })
+
+  test('une voiture lancée écrase un policier sans s’arrêter net', () => {
+    const { a, d } = street()
+    const at = new Vector3(a.x + d.x * 40, 0, a.z + d.z * 40)
+    const cop = game.debugSpawnActor(at.x, at.z, 0, 7, true)
+    game.police.adoptOfficer(cop, at)
+    const car = launch('sedan', a.x + d.x * 15, a.z + d.z * 15, Math.atan2(d.x, d.z), 18)
+
+    t.key('KeyW', true)
+    t.until(() => cop.dead, 3)
+    t.key('KeyW', false)
+
+    expect(cop.dead).toBe(true)
+    expect(car.speed).toBeGreaterThan(5)
+  })
+})
+
 describe('joueur', () => {
   test('voler une voiture du trafic éjecte son conducteur', () => {
     if (game.player.state === 'vehicle') game.player.exitVehicle(true)
@@ -179,8 +291,9 @@ describe('joueur', () => {
     expect(victim.driver).toBe(game.player.actor)
   })
 
-  test('le joueur sort par la touche F', () => {
-    t.simulate(2)
+  test('le joueur sort par la touche F, une fois le véhicule ralenti', () => {
+    // On ne sort pas d'un véhicule lancé à plus de 8 m/s : frein à main d'abord.
+    t.hold('Space', 3)
     t.press('KeyF')
     t.simulate(1)
 
