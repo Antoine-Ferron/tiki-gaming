@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import { apiPost } from '@/lib/api'
 import type { GameProps, LeaderboardEntry } from '../types'
+import './mastermind.css'
 
 const COLORS = [
   { id: 'red', label: 'Rouge' },
