@@ -1,10 +1,12 @@
 package fr.tikigaming.sudoku;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class ScoreCalculatorTest {
 
@@ -71,5 +73,55 @@ class ScoreCalculatorTest {
     void budgetsGrowWithDifficulty() {
         assertThat(Difficulty.EASY.timeBudgetSeconds()).isLessThan(Difficulty.MEDIUM.timeBudgetSeconds());
         assertThat(Difficulty.MEDIUM.timeBudgetSeconds()).isLessThan(Difficulty.HARD.timeBudgetSeconds());
+    }
+
+    @Test
+    void maxScoreIsAPerfectGameInZeroSeconds() {
+        assertThat(ScoreCalculator.maxScore(Difficulty.EASY))
+                .isEqualTo(ScoreCalculator.compute(Difficulty.EASY, 0, 0).total());
+        assertThat(ScoreCalculator.maxScore(Difficulty.EASY)).isEqualTo(2684); // (1000 + 1440) + 10 %
+    }
+
+    @ParameterizedTest
+    @EnumSource(Difficulty.class)
+    void totalStaysWithinBoundsForAnyValidInput(Difficulty difficulty) {
+        int[] secondsSamples = {0, 1, 59, 60, 300, 599, 600, 601, 5_000, Integer.MAX_VALUE};
+        int[] mistakesSamples = {0, 1, 2, 10, 1_000, Integer.MAX_VALUE};
+        for (int seconds : secondsSamples) {
+            for (int mistakes : mistakesSamples) {
+                ScoreBreakdown r = ScoreCalculator.compute(difficulty, seconds, mistakes);
+                assertThat(r.total()).isBetween(ScoreCalculator.MIN_SCORE, ScoreCalculator.maxScore(difficulty));
+                assertThat(r.timeBonus()).isNotNegative();
+                assertThat(r.perfectBonus()).isNotNegative();
+                assertThat(r.mistakePenalty()).isNotNegative();
+            }
+        }
+    }
+
+    @Test
+    void hugeMistakeCountDoesNotOverflow() {
+        ScoreBreakdown r = ScoreCalculator.compute(Difficulty.HARD, 10, Integer.MAX_VALUE);
+
+        assertThat(r.total()).isEqualTo(ScoreCalculator.MIN_SCORE);
+        assertThat(r.mistakePenalty()).isPositive();
+    }
+
+    @Test
+    void rejectsNegativeInputs() {
+        assertThatThrownBy(() -> ScoreCalculator.compute(Difficulty.EASY, -1, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ScoreCalculator.compute(Difficulty.EASY, 0, -1))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Difficulty.class)
+    void isDeterministicAndPure(Difficulty difficulty) {
+        ScoreBreakdown first = ScoreCalculator.compute(difficulty, 420, 1);
+
+        for (int i = 0; i < 100; i++) {
+            assertThat(ScoreCalculator.compute(difficulty, 420, 1)).isEqualTo(first);
+        }
+        assertThat(ScoreCalculator.timeBonus(200)).isEqualTo(ScoreCalculator.timeBonus(200));
     }
 }

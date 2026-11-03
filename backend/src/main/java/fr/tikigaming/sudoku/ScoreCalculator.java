@@ -14,7 +14,8 @@ package fr.tikigaming.sudoku;
  *   <li><b>Pénalité</b> : 50 points par erreur.
  * </ol>
  *
- * Le total ne descend jamais sous {@value #MIN_SCORE}.
+ * Invariants : le total reste dans [{@value #MIN_SCORE}, {@link #maxScore(Difficulty)}] pour toute entrée valide ;
+ * {@code compute} est pure (même entrées, même résultat, aucun état ni aléa) ; des entrées négatives sont refusées.
  */
 public final class ScoreCalculator {
 
@@ -31,13 +32,28 @@ public final class ScoreCalculator {
 
     private ScoreCalculator() {}
 
+    /**
+     * @throws IllegalArgumentException si `seconds` ou `mistakes` est négatif
+     */
     public static ScoreBreakdown compute(Difficulty difficulty, int seconds, int mistakes) {
+        if (seconds < 0 || mistakes < 0) {
+            throw new IllegalArgumentException("Temps et erreurs doivent être positifs");
+        }
         int base = difficulty.baseScore();
         int timeBonus = timeBonus(difficulty.timeBudgetSeconds() - seconds);
         int perfectBonus = mistakes == 0 ? (base + timeBonus) * PERFECT_BONUS_PERCENT / 100 : 0;
-        int penalty = mistakes * MISTAKE_PENALTY;
-        int total = Math.max(MIN_SCORE, base + timeBonus + perfectBonus - penalty);
-        return new ScoreBreakdown(base, timeBonus, perfectBonus, penalty, total);
+        // long : un nombre d'erreurs énorme ne doit pas déborder
+        long penalty = (long) mistakes * MISTAKE_PENALTY;
+        long raw = (long) base + timeBonus + perfectBonus - penalty;
+        int total = (int) Math.max(MIN_SCORE, Math.min(raw, maxScore(difficulty)));
+        return new ScoreBreakdown(base, timeBonus, perfectBonus, (int) Math.min(penalty, Integer.MAX_VALUE), total);
+    }
+
+    /** Plafond : partie parfaite en 0 s. Aucun score ne peut le dépasser. */
+    public static int maxScore(Difficulty difficulty) {
+        int base = difficulty.baseScore();
+        int timeBonus = timeBonus(difficulty.timeBudgetSeconds());
+        return base + timeBonus + (base + timeBonus) * PERFECT_BONUS_PERCENT / 100;
     }
 
     /** Bonus pour `savedSeconds` secondes gagnées (négatif ou sous le seuil d'activation : 0). */
