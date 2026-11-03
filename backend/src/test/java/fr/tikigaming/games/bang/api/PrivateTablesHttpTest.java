@@ -186,8 +186,9 @@ class PrivateTablesHttpTest {
         for (String path : List.of(TABLES, TABLES + "/{code}/join")) {
             docs.andExpect(jsonPath("$.paths['" + path + "'].post.responses['401'].content.*.schema['$ref']")
                             .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")))
-                    .andExpect(jsonPath("$.paths['" + path + "'].post.responses['403'].content")
-                            .doesNotExist());
+                    .andExpect(jsonPath("$.paths['" + path
+                                    + "'].post.responses['403'].content['application/json'].schema['$ref']")
+                            .value("#/components/schemas/CsrfErrorResponse"));
         }
         for (int error : List.of(404, 409)) {
             docs.andExpect(jsonPath("$.paths['" + TABLES + "/{code}/join'].post.responses['" + error

@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,6 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
         description = "Tables privées BANG! à quatre places, conservées en mémoire pendant cette exécution.")
 public class PrivateTableController {
 
+    /** Corps JSON du serveur embarqué après un refus CSRF avec Accept: application/json. */
+    record CsrfErrorResponse(Instant timestamp, int status, String error, String path) {}
+
     private final PrivateTableService tables;
 
     public PrivateTableController(PrivateTableService tables) {
@@ -39,7 +43,13 @@ public class PrivateTableController {
             responseCode = "401",
             description = "Non connecté",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
-    @ApiResponse(responseCode = "403", description = "Jeton CSRF absent ou invalide", content = @Content)
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF absent ou invalide",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = CsrfErrorResponse.class)))
     ResponseEntity<TableSeat> create(HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(tables.create(connectedAccountId(request)));
     }
@@ -54,7 +64,13 @@ public class PrivateTableController {
             responseCode = "401",
             description = "Non connecté",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
-    @ApiResponse(responseCode = "403", description = "Jeton CSRF absent ou invalide", content = @Content)
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF absent ou invalide",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = CsrfErrorResponse.class)))
     @ApiResponse(
             responseCode = "404",
             description = "Code de table inconnu",
