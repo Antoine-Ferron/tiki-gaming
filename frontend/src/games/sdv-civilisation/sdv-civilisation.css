@@ -3,6 +3,13 @@
   --sdv-civilisation-wood: #6b4226;
   --sdv-civilisation-gold: #f5c542;
   --sdv-civilisation-card: #3a2a6b;
+  /* Couleurs des types de cartes (bandeau et pastilles, décoratives : le type est aussi écrit). */
+  --sdv-civilisation-brown: #a0703c;
+  --sdv-civilisation-grey: #9aa3b5;
+  --sdv-civilisation-blue: #4f8cff;
+  --sdv-civilisation-red: #e5534b;
+  --sdv-civilisation-green: #3fb27f;
+  --sdv-civilisation-yellow: #f5c542;
 
   display: grid;
   /* Colonne bornée à la page : sinon elle s'élargit au plateau et le centrage ci-dessous s'annule. */
@@ -212,22 +219,23 @@
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--sdv-civilisation-gold) 60%, var(--bg));
 }
 
-.sdv-civilisation-wonder {
+.sdv-civilisation-built {
   display: flex;
-  gap: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  min-height: 0.6rem;
 }
 
-.sdv-civilisation-stage {
-  flex: 1;
-  height: 0.5rem;
-  border-radius: 999px;
-  border: 1px solid var(--muted);
-  background: var(--bg);
+.sdv-civilisation-chip {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
+  background: var(--sdv-civilisation-band, var(--muted));
 }
 
-/* Main du joueur : cartes face cachée en éventail. */
+/* Main du joueur : cartes face visible en éventail. */
 .sdv-civilisation-hand {
-  margin: 0 0 1.5rem;
+  margin: 0 0 1rem;
   text-align: center;
 }
 
@@ -242,30 +250,116 @@
   padding-top: 1rem;
 }
 
-.sdv-civilisation-card {
-  --sdv-civilisation-card-width: clamp(2.6rem, 9vw, 5rem);
-
-  width: var(--sdv-civilisation-card-width);
+button.sdv-civilisation-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.25rem;
+  width: clamp(4.25rem, 12vw, 7rem);
   aspect-ratio: 5 / 7;
-  margin: 0 calc(var(--sdv-civilisation-card-width) * -0.12);
+  margin: 0 -0.15rem;
+  padding: 0.4rem;
   border-radius: 8px;
   border: 2px solid var(--muted);
-  background:
-    repeating-linear-gradient(
-      45deg,
-      transparent 0 6px,
-      color-mix(in srgb, var(--sdv-civilisation-gold) 25%, transparent) 6px 8px
-    ),
-    var(--sdv-civilisation-card);
+  border-top: 0.6rem solid var(--sdv-civilisation-band, var(--muted));
+  background: color-mix(in srgb, var(--surface) 85%, var(--text));
+  color: var(--text);
+  font-size: clamp(0.75rem, 1.3vw, 0.85rem);
+  font-weight: 400;
+  text-align: left;
   box-shadow: 0 0.4rem 0.8rem color-mix(in srgb, var(--bg) 60%, transparent);
-  transform: rotate(calc(var(--sdv-civilisation-offset) * 4deg))
-    translateY(calc(abs(var(--sdv-civilisation-offset)) * 0.3rem));
+  transform: rotate(calc(var(--sdv-civilisation-offset) * 2deg))
+    translateY(calc(abs(var(--sdv-civilisation-offset)) * 0.25rem));
   transition: transform 200ms ease;
 }
 
-.sdv-civilisation-card:hover {
-  transform: rotate(calc(var(--sdv-civilisation-offset) * 4deg)) translateY(-0.75rem);
+button.sdv-civilisation-card:hover,
+button.sdv-civilisation-card[aria-pressed='true'] {
+  transform: rotate(calc(var(--sdv-civilisation-offset) * 2deg)) translateY(-0.9rem);
   border-color: var(--accent);
+}
+
+.sdv-civilisation-card-name {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.sdv-civilisation-card-cost {
+  color: var(--muted);
+}
+
+/* Type de carte : couleur du bandeau (main) et de la pastille (cartes construites). */
+.sdv-civilisation-card-brown {
+  --sdv-civilisation-band: var(--sdv-civilisation-brown);
+}
+.sdv-civilisation-card-grey {
+  --sdv-civilisation-band: var(--sdv-civilisation-grey);
+}
+.sdv-civilisation-card-blue {
+  --sdv-civilisation-band: var(--sdv-civilisation-blue);
+}
+.sdv-civilisation-card-red {
+  --sdv-civilisation-band: var(--sdv-civilisation-red);
+}
+.sdv-civilisation-card-green {
+  --sdv-civilisation-band: var(--sdv-civilisation-green);
+}
+.sdv-civilisation-card-yellow {
+  --sdv-civilisation-band: var(--sdv-civilisation-yellow);
+}
+
+.sdv-civilisation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+  margin-top: 1.25rem;
+}
+
+.sdv-civilisation-actions .error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.sdv-civilisation-log {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  list-style: none;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Fin de partie */
+.sdv-civilisation-results {
+  margin: 0 auto 1rem;
+  max-width: 720px;
+  text-align: center;
+}
+
+.sdv-civilisation-winner {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.sdv-civilisation-scores {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.sdv-civilisation-scores th,
+.sdv-civilisation-scores td {
+  padding: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sdv-civilisation-scores .sdv-civilisation-me {
+  color: var(--accent);
 }
 
 @media (max-width: 640px) {
@@ -280,6 +374,19 @@
 
   .sdv-civilisation-felt {
     inset: 22% 14%;
+  }
+
+  /* Main sur plusieurs lignes, sans éventail, pour tenir dans la largeur. */
+  .sdv-civilisation-cards {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  button.sdv-civilisation-card,
+  button.sdv-civilisation-card:hover,
+  button.sdv-civilisation-card[aria-pressed='true'] {
+    margin: 0;
+    transform: none;
   }
 }
 

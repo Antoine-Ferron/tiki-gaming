@@ -1,16 +1,22 @@
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
-import type { GameProps, LeaderboardEntry } from '../types'
+import type { GameContext, GameProps, LeaderboardEntry } from '../types'
+import { randomShuffler, standardTrade } from './adapters'
+import { chooseAction } from './ai'
 import { fillWithBots } from './bots'
-import { neighbours, type Player } from './setup'
+import { CardFace } from './CardFace'
+import { createGame, payment, playTurn, shields, TURNS_PER_AGE, type Action, type PlayerState } from './game'
+import type { Shuffler } from './ports'
+import { Results } from './Results'
+import { ranking } from './score'
+import { neighbours } from './setup'
 import './sdv-civilisation.css'
 
 const AGES = ['I', 'II', 'III']
-const HAND_SIZE = 7
-const WONDER_STAGES = 3
 // Rayons de l'ellipse sur laquelle sont posés les sièges, en % de la table.
 const SEAT_RADIUS_X = 41
 const SEAT_RADIUS_Y = 39
+const ME = 0
 
 /**
  * Place le siège `index` autour de la table : le joueur 0 en bas, les suivants dans le sens inverse des
@@ -24,7 +30,7 @@ function seatPosition(index: number, count: number): CSSProperties {
   }
 }
 
-function seatLabel(seat: Player, isMe: boolean, left: Player, right: Player): string {
+function seatLabel(seat: PlayerState, isMe: boolean, left: PlayerState, right: PlayerState): string {
   const name = isMe ? `${seat.name} (toi)` : seat.name
   const coins = `${seat.coins} pièce${seat.coins > 1 ? 's' : ''}`
   return `${name}, ${coins}, voisin de gauche ${left.name}, voisin de droite ${right.name}`
@@ -49,10 +55,15 @@ function useFullscreen(ref: RefObject<HTMLElement | null>) {
 }
 
 /**
- * Premier écran : la table de jeu, sans partie jouable pour l'instant.
- * Le joueur connecté est assis avec des IA, en attendant le multijoueur.
+ * Partie contre deux IA. Le mélangeur est injectable : aléatoire en production, ordre fixe dans les tests.
+ * Voir docs/games/sdv-civilisation/regles.md#version-contre-ia
  */
-export default function SdvCivilisationGame({ ctx }: GameProps) {
+export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuffler: Shuffler }) {
+  const me = ctx.player?.username ?? 'Toi'
+  const newGame = () => createGame(fillWithBots([me]), shuffler)
+  const [game, setGame] = useState(newGame)
+  // Position de la carte choisie dans la main (une main peut contenir deux exemplaires de la même carte).
+  const [selected, setSelected] = useState<number | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [error, setError] = useState<string | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
@@ -65,14 +76,38 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
       .catch((e) => setError(e.message))
   }, [ctx])
 
-  const players = fillWithBots([ctx.player?.username ?? 'Toi'])
+  // Fin de partie : le score du joueur est envoyé une fois, puis le classement est rafraîchi.
+  useEffect(() => {
+    if (!game.over) return
+    const mine = ranking(game.players).find((row) => row.name === me)!
+    ctx
+      .submitScore(mine.score.total, { ...mine.score })
+      .then(() => ctx.getLeaderboard(10))
+      .then(setLeaderboard)
+      .catch((e) => setError(e.message))
+  }, [ctx, game, me])
+
+  const hand = game.hands[ME]
+  const selectedCard = selected === null ? undefined : hand[selected]
+  const cost = selectedCard && payment(game, ME, selectedCard, standardTrade)
+
+  function play(action: Action) {
+    const actions = game.players.map((_, i) => (i === ME ? action : chooseAction(game, i, standardTrade)))
+    setGame(playTurn(game, actions, standardTrade, shuffler))
+    setSelected(null)
+  }
+
+  function replay() {
+    setGame(newGame())
+    setError(null)
+  }
 
   return (
     <div className="sdv-civilisation">
       <div ref={boardRef} className="sdv-civilisation-board">
         <div className="sdv-civilisation-toolbar">
           <p className="sdv-civilisation-status">
-            Tour <strong>1</strong> / 6
+            Âge <strong>{AGES[game.age - 1]}</strong> · Tour <strong>{game.turn}</strong> / {TURNS_PER_AGE}
           </p>
           {fullscreen.supported && (
             <button type="button" className="small" onClick={fullscreen.toggle}>
@@ -83,31 +118,32 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
 
         <div className="sdv-civilisation-table">
           <div className="sdv-civilisation-felt">
-            <p className="sdv-civilisation-age">Âge I</p>
+            <p className="sdv-civilisation-age">Âge {AGES[game.age - 1]}</p>
             <div className="sdv-civilisation-decks" aria-hidden="true">
               {AGES.map((age, index) => (
                 <span
                   key={age}
-                  className={`sdv-civilisation-deck${index === 0 ? ' sdv-civilisation-deck-current' : ''}`}
+                  className={`sdv-civilisation-deck${index === game.age - 1 ? ' sdv-civilisation-deck-current' : ''}`}
                 >
                   {age}
                 </span>
               ))}
             </div>
             <p className="sdv-civilisation-direction">
-              <span aria-hidden="true">↻</span> Passage à gauche
+              <span aria-hidden="true">{game.age === 2 ? '↺' : '↻'}</span> Passage à{' '}
+              {game.age === 2 ? 'droite' : 'gauche'}
             </p>
           </div>
 
           <ul className="sdv-civilisation-seats" aria-label="Table de jeu">
-            {players.map((seat, index) => {
-              const { left, right } = neighbours(players, index)
-              const isMe = index === 0
+            {game.players.map((seat, index) => {
+              const { left, right } = neighbours(game.players, index)
+              const isMe = index === ME
               return (
                 <li
                   key={seat.name}
                   className={`sdv-civilisation-seat${isMe ? ' sdv-civilisation-seat-me' : ''}`}
-                  style={seatPosition(index, players.length)}
+                  style={seatPosition(index, game.players.length)}
                   aria-label={seatLabel(seat, isMe, left, right)}
                 >
                   <div className="sdv-civilisation-seat-head" aria-hidden="true">
@@ -121,11 +157,12 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
                       <span className="sdv-civilisation-coin" />
                       {seat.coins}
                     </span>
-                    <span title="Boucliers">⚔ 0</span>
+                    <span title="Boucliers">⚔ {shields(seat)}</span>
+                    <span title="Jetons militaires">★ {seat.military}</span>
                   </div>
-                  <div className="sdv-civilisation-wonder" aria-hidden="true" title="Étapes de merveille">
-                    {Array.from({ length: WONDER_STAGES }, (_, i) => (
-                      <span key={i} className="sdv-civilisation-stage" />
+                  <div className="sdv-civilisation-built" aria-hidden="true" title="Cartes construites">
+                    {seat.built.map((card, i) => (
+                      <span key={i} className={`sdv-civilisation-chip sdv-civilisation-card-${card.color}`} />
                     ))}
                   </div>
                 </li>
@@ -134,24 +171,52 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
           </ul>
         </div>
 
-        <div className="sdv-civilisation-hand">
-          <p className="sdv-civilisation-hand-title">Ta main · {HAND_SIZE} cartes</p>
-          <div className="sdv-civilisation-cards">
-            {Array.from({ length: HAND_SIZE }, (_, i) => (
-              <span
-                key={i}
-                className="sdv-civilisation-card"
-                role="img"
-                aria-label="Carte face cachée"
-                style={{ '--sdv-civilisation-offset': i - (HAND_SIZE - 1) / 2 } as CSSProperties}
-              />
-            ))}
+        {game.over ? (
+          <Results ranked={ranking(game.players)} me={me} isGuest={ctx.isGuest} onReplay={replay} />
+        ) : (
+          <div className="sdv-civilisation-hand">
+            <p className="sdv-civilisation-hand-title">Ta main · choisis une carte</p>
+            <div className="sdv-civilisation-cards">
+              {hand.map((card, i) => (
+                <CardFace
+                  key={`${i}-${card.name}`}
+                  card={card}
+                  selected={i === selected}
+                  offset={i - (hand.length - 1) / 2}
+                  onSelect={() => setSelected(i)}
+                />
+              ))}
+            </div>
+            {selectedCard && cost && (
+              <div className="sdv-civilisation-actions">
+                <button
+                  type="button"
+                  disabled={!cost.ok}
+                  onClick={() => play({ type: 'build', card: selectedCard.name })}
+                >
+                  Construire {selectedCard.name}
+                  {cost.ok && cost.coins > 0 ? ` (${cost.coins} pièce${cost.coins > 1 ? 's' : ''})` : ''}
+                </button>
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => play({ type: 'discard', card: selectedCard.name })}
+                >
+                  Défausser (+3 pièces)
+                </button>
+                {!cost.ok && <p className="error">{cost.reason}</p>}
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
-        <p className="notice">
-          En attendant le multijoueur, les places libres sont prises par des IA. La partie n’est pas encore jouable.
-        </p>
+        {game.log.length > 0 && (
+          <ul className="sdv-civilisation-log" aria-label="Dernier tour">
+            {game.log.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        )}
         {error && <p className="error">{error}</p>}
       </div>
 
@@ -161,4 +226,8 @@ export default function SdvCivilisationGame({ ctx }: GameProps) {
       </div>
     </div>
   )
+}
+
+export default function SdvCivilisationGame({ ctx }: GameProps) {
+  return <SdvCivilisationBoard ctx={ctx} shuffler={randomShuffler} />
 }
