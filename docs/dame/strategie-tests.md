@@ -1,6 +1,6 @@
 # Stratégie de tests — dames internationales
 
-Stratégie prévue pour les étapes successives : voir le [backlog](backlog.md) et les [décisions d’architecture](architecture.md). Les deux premiers tests de US-01 (dimensions et cases vides) sont GREEN ; leurs résultats RED puis GREEN sont consignés dans le [journal TDD](journal-tdd.md).
+Stratégie prévue pour les étapes successives : voir le [backlog](backlog.md) et les [décisions d’architecture](architecture.md). À la demande du 3 novembre, les tests unitaires des douze US sont maintenant écrits avant le moteur : 220 cas, dont 191 RED et 29 verts. Les trois premiers comportements GREEN sont conservés. Voir l'[index des tests métier](tests-metier.md) et le [journal TDD](journal-tdd.md).
 
 ## Niveaux et outils
 
@@ -84,6 +84,8 @@ Tests paramétrés pour directions et coordonnées ; sélectionner des représen
 
 ## Cycles RED / GREEN / REFACTOR
 
+Le 3 novembre, l'utilisateur a choisi une phase RED globale : tous les scénarios métier du backlog sont préparés avant leur logique. Ce fonctionnement diffère des petits cycles initialement prévus ci-dessous. La suite ne constitue pas un moteur achevé ni une validation de toutes les US. Pour la prochaine phase GREEN, traiter les classes dans l'ordre de l'index, sans désactiver les scénarios plus avancés. Les API et E2E restent planifiés tant que le contrat d'intégration n'existe pas.
+
 1. Lire l’US et sélectionner un seul comportement observable.
 2. Écrire un test minimal dans `backend/src/test/java/fr/tikigaming/games/dame/`. Ajouter uniquement les signatures nécessaires pour observer un échec comportemental explicite.
 3. Exécuter le test ciblé, conserver commande et échec attendu. Un problème de dépendances ou d’environnement n’est pas une preuve RED métier.
@@ -112,7 +114,7 @@ npm test
 npm run build
 ```
 
-`BoardTest` contient les deux premiers tests de US-01, actuellement GREEN. Maven 3.9.11 est disponible avec Java 21 (installation détaillée dans le journal). Aucun wrapper Maven ni script E2E présent ; les tests unitaires frontend utilisent Vitest. Aucun credential Supabase nécessaire pour les tests unitaires métier.
+La suite métier comprend 13 classes de tests JUnit 5 et un constructeur de fixtures commun `DameTestSupport`. Les tests paramétrés portent le total à 220 cas ; les statuts par classe figurent dans l'index. Maven 3.9.11 est disponible avec Java 21. Aucun wrapper Maven ni script E2E présent ; les tests unitaires frontend utilisent Vitest. Aucun credential Supabase nécessaire pour les tests unitaires métier.
 
 La CI utilise Node 24 pour le frontend et Java 21 pour le backend. `verify` lance Checkstyle, la compilation, les tests et Spotless ; pendant RED, il s'arrête à l'échec du test. Exécuter `spotless:check` séparément permet de confirmer le format même dans cet état. Ne pas désactiver le test pour obtenir une CI verte. Pour formater, utiliser `npm run format` côté frontend (ou Prettier ciblé sur les fichiers modifiés) et `mvn spotless:apply` côté backend.
 

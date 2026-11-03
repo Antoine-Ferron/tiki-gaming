@@ -102,3 +102,67 @@ Les étapes RED précédentes sont conservées dans ce journal ; aucun historiqu
 Les commits utilisent le nom du profil GitHub connecté et son adresse privée `noreply`, sans modifier la configuration Git globale. Les réglages `.vscode/` restent locaux. Aucun push ni PR ; migration non appliquée.
 
 Prochaine étape : écrire un nouveau test RED sur les cases jouables, après vérification de la spécification liée à #18, puis poursuivre le cycle TDD. Ce comportement n'est pas développé dans ces commits.
+
+## 3 novembre 2026 — troisième test : 50 cases jouables, RED
+
+Reprise sur `game/dame/implementation`, après les deux commits locaux `e0ff406` et `ad0f31c`. Avant tout changement, `mvn -f backend/pom.xml verify` confirme encore **20 tests réussis**, Checkstyle et Spotless verts. Les réglages `.vscode/` restent intacts.
+
+Spécification retenue : US-01 du backlog et demande initiale de l'utilisateur, damier de 100 cases dont 50 jouables. La convention interne proposée reste une somme ligne + colonne impaire pour les cases jouables. Ce cycle teste uniquement leur nombre ; la répartition précise et les coins auront leurs scénarios ensuite.
+
+Un seul test ajouté : `BoardTest.hasFiftyPlayableSquares`.
+
+- **Arrange** : créer un plateau neuf.
+- **Act** : parcourir ses 100 coordonnées et compter les réponses `true` de `isPlayable(row, column)`.
+- **Assert** : attendre exactement 50 cases jouables.
+
+`Board.isPlayable(int row, int column)` retourne provisoirement `false` afin de compiler et constater un échec comportemental, sans implémenter la parité. Les dimensions et `isEmpty` restent inchangées.
+
+```bash
+mvn -f backend/pom.xml -Dtest=BoardTest test
+```
+
+Résultat ciblé : **3 tests, 1 échec, 0 erreur** ; les deux premiers tests restent verts. Échec attendu :
+
+```text
+[nombre de cases jouables]
+expected: 50
+ but was: 0
+```
+
+Après formatage, `spotless:check` et Checkstyle passent. Suite complète `mvn -f backend/pom.xml verify` : **21 tests, 1 échec, 0 erreur**, seul `hasFiftyPlayableSquares` est RED. La phase de tests arrête donc `verify` avant la fin, comme attendu. Aucun fichier frontend, dépendance ou configuration partagée modifié ; aucun nouveau commit ni push.
+
+Prochaine étape pour l'utilisateur : implémenter uniquement `isPlayable` pour passer ce test GREEN, puis exécuter le test ciblé et `verify`. Les tests de répartition, coins et limites viendront après ; aucun pion ni déplacement introduit.
+
+## 3 novembre 2026 — troisième test GREEN
+
+À la demande de l'utilisateur, `isPlayable(row, column)` est complétée par `return (row + column) % 2 == 1;`. Pour les coordonnées valides 0–9, une somme impaire identifie les cases jouables. Exemple : (0, 0) est non jouable et (0, 1) est jouable. Les autres méthodes restent inchangées.
+
+- Test ciblé `mvn -f backend/pom.xml -Dtest=BoardTest test` : **3 tests réussis**, aucun échec ni erreur.
+- Suite complète `mvn -f backend/pom.xml verify` : **21 tests réussis**, Checkstyle sans violation, Spotless vert, `BUILD SUCCESS`.
+- `git diff --check` : réussi. Aucun nouveau test, commit ou push dans cette étape GREEN ; aucun changement frontend ou dépendance.
+
+US-01 reste en cours : le troisième test vérifie le nombre de cases jouables, mais la répartition exacte, les coins et les coordonnées hors plateau attendent leurs scénarios dédiés. La validation des bornes n'est pas implémentée par ce cycle.
+
+## 3 novembre 2026 — suite de spécification US-01 à US-12, RED global
+
+L'utilisateur demande maintenant tous les tests avant l'implémentation de la logique. La méthode change donc de petits cycles vers une phase RED globale, puis un GREEN à réaliser progressivement. Cette demande remplace la limitation précédente à un seul test par étape. Aucun nouveau commit ni push autorisé dans ce travail.
+
+Avant la préparation, `mvn -f backend/pom.xml verify` confirme **21 tests réussis**, Checkstyle et Spotless verts. Les trois comportements Dames précédents sont conservés.
+
+La suite est répartie en 13 classes de tests couvrant US-01 à US-12, avec des fixtures de positions explicites et des cas paramétrés. Une relecture indépendante des positions a vérifié les captures obligatoires, les branches majoritaires, les obstacles des dames et les promotions différées. Le placement initial attendu est une table littérale de 40 pièces commune au placement et au reset. Les sources et le détail des scénarios figurent dans l'[index des tests métier](tests-metier.md).
+
+Pour compiler ces tests sans moteur, les types de données du domaine sont préparés : Position, Piece, Player, Move, GameStatus, Game et GameRules. Board copie une table immuable de pièces fournie par les fixtures et ses observations lisent ces données ; `isEmpty` n'est plus une constante. Aucun placement initial, déplacement, capture, promotion, victoire ou reset n'est calculé. Les commandes manquantes sont des stubs explicites ; les assertions des tests rendent leurs échecs lisibles.
+
+Vérifications effectuées :
+
+- `mvn -f backend/pom.xml -DskipTests test-compile` : **BUILD SUCCESS**, tous les tests compilent.
+- `mvn -f backend/pom.xml spotless:apply` : formatage appliqué aux seuls nouveaux fichiers de tests concernés.
+- `mvn -f backend/pom.xml spotless:check verify` : Spotless vert, **0 violation Checkstyle**, puis RED attendu aux tests.
+- Domaine Dames : **220 cas**, **191 échecs**, **29 réussites**, **0 erreur**, **0 ignoré**.
+- Backend complet : **238 cas**, **191 échecs**, **47 réussites**, **0 erreur**, **0 ignoré**. Les **18 tests collectifs** restent verts.
+- Rapports Surefire générés dans `backend/target/surefire-reports/`. Aucun test désactivé, aucun `fail()` artificiel ni Mockito dans les tests du domaine.
+- Aucun changement de pom.xml, dépendance, frontend, authentification, configuration ou migration. Les réglages locaux `.vscode/` restent intacts.
+
+Les règles de nulle et le traitement d'une fixture artificielle avec un pion déjà posé sur sa rangée de promotion restent à spécifier, sans comportement arbitraire imposé par les tests. Les tests d'intégration API et E2E React restent planifiés après définition de leurs contrats.
+
+Prochaine phase : prendre les classes dans l'ordre US-01 à US-12, implémenter le minimum nécessaire, puis vérifier la progression du nombre d'échecs jusqu'à la suite verte. Les prochains développements ne doivent ni désactiver les scénarios avancés ni affaiblir les assertions pour masquer RED.

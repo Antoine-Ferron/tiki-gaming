@@ -2,7 +2,7 @@
 
 Ces US sont des sous-tâches documentaires : aucune issue GitHub créée. Les règles ci-dessous constituent la spécification proposée à confirmer pour les détails internationaux. Coordonnées et orientation sont des conventions internes proposées.
 
-Avancement : les deux premiers tests de US-01 (dimensions et 100 cases vides) sont GREEN. US-01 reste en cours : cases jouables et coordonnées hors limites à couvrir. Voir le [journal TDD](journal-tdd.md).
+Avancement : à la demande de l'utilisateur, la suite unitaire de spécification US-01 à US-12 est écrite avant l'implémentation du moteur. Elle comporte 220 cas, dont 191 RED et 29 déjà verts ; aucune US n'est terminée. Les trois comportements précédemment GREEN sont conservés. Voir l'[index des tests métier](tests-metier.md) et le [journal TDD](journal-tdd.md).
 
 ## Definition of Done commune
 
