@@ -68,6 +68,10 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 - Pendant les **10 dernières secondes**, le tour est signalé comme **bientôt fini**.
 - À **60 secondes pile**, le tour est **expiré** : la carte choisie (ou la première de la main) est
   défaussée automatiquement et le joueur gagne 3 pièces.
+- Le **serveur** fixe l'heure limite officielle du tour et l'envoie aux joueurs ; chaque client affiche
+  son compte à rebours à partir de cette heure limite.
+- Un joueur qui laisse expirer son tour sans jouer est signalé **une seule fois** au journal d'audit
+  (inactivité).
 
 ## Trésor
 
@@ -98,6 +102,8 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 - Prix standard : **2 pièces par ressource**. Le voisin touche les pièces et **ne peut pas refuser**.
 - On achète au moins **1 ressource** ; si l'acheteur ne peut pas payer, l'achat est refusé et aucun
   trésor ne change.
+- Avant d'acheter, le joueur voit un **devis** : le prix et s'il peut le payer. Le devis ne débite rien,
+  c'est le serveur qui valide l'achat.
 - On ne peut acheter qu'une ressource que le voisin **produit** (cartes marron, grises et merveille).
 - Acheter ne prive pas le voisin de sa ressource : elle sert seulement à payer le coût de construction.
 - Les ressources d'un voisin ne sont **jamais gratuites**.
@@ -190,6 +196,9 @@ Effets de carte permettant de rejouer une carte ou une action supplémentaire, m
 
 Cocher une ligne quand la règle est implémentée **et** testée.
 
+Répartition : le **back** fait autorité sur la partie (trésor, commerce, temps de tour officiel) ; le
+**front** prévisualise et affiche (devis d'achat, compte à rebours) sans jamais modifier l'état de la partie.
+
 ### Mise en place
 
 - [x] 3 à 7 joueurs, 1 pièce chacun au départ (`setup.ts`)
@@ -199,7 +208,9 @@ Cocher une ligne quand la règle est implémentée **et** testée.
 
 ### Tour de jeu
 
-- [x] Temps de tour : en cours, bientôt fini, expiré, sur une horloge injectée (front `turnTimer.ts`, back `TurnTimer.java`)
+- [x] Temps de tour officiel et heure limite, sur une horloge injectée (back `TurnTimer.java`)
+- [x] Compte à rebours affiché à partir de l'heure limite (front `turnCountdown.ts`)
+- [x] Signalement d'inactivité, une seule fois, à l'expiration du tour (front `turnCountdown.ts`)
 - [ ] Défausse automatique à l'expiration du tour
 - [ ] Choix simultané des cartes et passage des mains selon l'âge
 - [ ] Défausser une carte pour 3 pièces
@@ -207,9 +218,10 @@ Cocher une ligne quand la règle est implémentée **et** testée.
 
 ### Économie
 
-- [x] Trésor : crédit, débit, transfert, jamais négatif (front `treasury.ts`, back `Treasury.java`)
-- [x] Audit anti-triche au franchissement du seuil critique de 30 pièces (front `treasury.ts`, back `Treasury.java`)
-- [x] Achat de ressources à un voisin au prix standard de 2 pièces (front `trade.ts`, back `Trade.java`)
+- [x] Trésor : crédit, débit, transfert, jamais négatif (back `Treasury.java`)
+- [x] Audit anti-triche au franchissement du seuil critique de 30 pièces (back `Treasury.java`)
+- [x] Achat de ressources à un voisin au prix standard de 2 pièces (back `Trade.java`)
+- [x] Devis d'achat : prix et achat possible ou non, sans débit (front `tradeQuote.ts`)
 - [ ] Vérifier que le vendeur est un voisin et produit la ressource
 - [ ] Prix réduit à 1 pièce (cartes jaunes)
 
@@ -235,30 +247,30 @@ Cocher une ligne quand la règle est implémentée **et** testée.
 
 ### Architecture testable
 
-La logique du jeu ne dépend que d'interfaces pures, sans I/O. Les mêmes contrats existent des deux
-côtés, chacun avec ses implémentations de production et ses doublures de test.
+La logique du jeu ne dépend que d'interfaces pures, sans I/O. Les deux côtés ont les mêmes quatre
+contrats, chacun utilisé pour son propre rôle, avec ses implémentations de production et ses doublures.
 
-#### Front (Vitest)
-
-Contrats dans `ports.ts`, production dans `adapters.ts`, tests et doublures dans `test/` (`test/fakes.ts`).
-
-| Contrat             | Rôle                                   | Production                   | Doublure de test                         |
-| ------------------- | -------------------------------------- | ---------------------------- | ---------------------------------------- |
-| `CurrencyConverter` | Prix d'achat des ressources, en pièces | `standardTrade` (2 pièces)   | Stub `fixedRate` (taux figé)             |
-| `TreasuryRegistry`  | Registre des pièces de chaque joueur   | `playersTreasury` (`Player`) | Fake `FakeTreasuryRegistry` (en mémoire) |
-| `AuditNotifier`     | Journal d'audit anti-triche            | `loggerAudit` (Pino)         | Mock `vi.fn()` (appel vérifié)           |
-| `Clock`             | Heure courante, en millisecondes       | `systemClock` (`Date.now()`) | Fake `FakeClock` (avancée à la main)     |
-
-#### Back (JUnit 5)
+#### Back (JUnit 5) : arbitre de la partie
 
 Package `fr.tikigaming.games.sdv_civilisation` ; doublures dans le même package, sous `src/test/java`.
 
-| Contrat             | Production                                 | Doublure de test                             |
-| ------------------- | ------------------------------------------ | -------------------------------------------- |
-| `CurrencyConverter` | `StandardTrade` (2 pièces)                 | Stub `FixedRateConverter` (taux figé)        |
-| `TreasuryRegistry`  | à venir (persistance de la partie)         | Fake `InMemoryTreasuryRegistry` (en mémoire) |
-| `AuditNotifier`     | `LogAuditNotifier` (SLF4J)                 | Mock Mockito (`verify(audit, times(1))`)     |
-| `Clock`             | `SystemClock` (`System.currentTimeMillis`) | Fake `FakeClock` (avancée à la main)         |
+| Contrat             | Utilisé par                              | Production                                 | Doublure de test                             |
+| ------------------- | ---------------------------------------- | ------------------------------------------ | -------------------------------------------- |
+| `CurrencyConverter` | `Trade` (prix de l'achat)                | `StandardTrade` (2 pièces)                 | Stub `FixedRateConverter` (taux figé)        |
+| `TreasuryRegistry`  | `Treasury` (pièces des joueurs)          | à venir (persistance de la partie)         | Fake `InMemoryTreasuryRegistry` (en mémoire) |
+| `AuditNotifier`     | `Treasury` (seuil critique de 30 pièces) | `LogAuditNotifier` (SLF4J)                 | Mock Mockito (`verify(audit, times(1))`)     |
+| `Clock`             | `TurnTimer` (heure limite officielle)    | `SystemClock` (`System.currentTimeMillis`) | Fake `FakeClock` (avancée à la main)         |
+
+#### Front (Vitest) : affichage
+
+Contrats dans `ports.ts`, production dans `adapters.ts`, tests et doublures dans `test/` (`test/fakes.ts`).
+
+| Contrat             | Utilisé par                               | Production                   | Doublure de test                         |
+| ------------------- | ----------------------------------------- | ---------------------------- | ---------------------------------------- |
+| `CurrencyConverter` | `quotePurchase` (prix du devis)           | `standardTrade` (2 pièces)   | Stub `fixedRate` (taux figé)             |
+| `TreasuryRegistry`  | `quotePurchase` (pièces de l'acheteur)    | `playersTreasury` (`Player`) | Fake `FakeTreasuryRegistry` (en mémoire) |
+| `AuditNotifier`     | `createCountdown` (inactivité)            | `loggerAudit` (Pino)         | Mock `vi.fn()` (appel vérifié)           |
+| `Clock`             | `createCountdown` (temps restant affiché) | `systemClock` (`Date.now()`) | Fake `FakeClock` (avancée à la main)     |
 
 ## Tests
 
