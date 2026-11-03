@@ -2,6 +2,7 @@
 #
 # Atelier « 3 amigos » (métier, développement, test) : règles retenues, exemples et questions tranchées.
 #   Règle    : chaque joueur commence avec 3 pièces et un plateau merveille, qui produit une ressource.
+#   Question : peut-on choisir sa merveille ? → oui, le joueur choisit la sienne ; les IA reçoivent les autres.
 #   Règle    : à chaque tour, une carte et une seule action : construire le bâtiment, construire une étape
 #              de merveille avec la carte, ou défausser la carte pour 3 pièces.
 #   Règle    : on ne construit qu'un bâtiment payable, et jamais deux fois le même.
@@ -32,6 +33,11 @@ Fonctionnalité: Partie contre les IA
   Scénario: Chaque joueur commence avec 3 pièces et sa propre merveille
     Alors chaque joueur a 3 pièces
     Et chaque joueur a une merveille différente, sans étape construite
+
+  Scénario: Le joueur choisit sa merveille, les IA reçoivent les autres
+    Soit une partie où "alice" a choisi la "Citadelle d’Orkan"
+    Alors "alice" a la "Citadelle d’Orkan"
+    Et les IA ont chacune une autre merveille
 
   Scénario: Construire une carte gratuite
     Quand "alice" construit "Chantier"

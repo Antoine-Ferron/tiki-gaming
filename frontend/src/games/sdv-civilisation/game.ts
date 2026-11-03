@@ -17,6 +17,8 @@ export interface PlayerState extends Seat {
   built: Card[]
   /** Somme des jetons de conflit gagnés et perdus. */
   military: number
+  /** Résultat de chaque duel de fin d'âge, voisin par voisin. */
+  tokens: MilitaryToken[]
 }
 
 export interface GameState {
@@ -31,6 +33,13 @@ export interface GameState {
   lastTurn: TurnEvent[]
   /** Jetons gagnés ou perdus par chaque joueur aux conflits de l'âge qui vient de se terminer, sinon null. */
   conflicts: number[] | null
+}
+
+export interface MilitaryToken {
+  age: Age
+  against: string
+  /** +1 / +3 / +5 pour une victoire, −1 pour une défaite, 0 pour une égalité. */
+  value: number
 }
 
 export interface TurnEvent {
@@ -59,9 +68,14 @@ function deal(age: Age, playerCount: number, shuffler: Shuffler): Card[][] {
   return Array.from({ length: playerCount }, (_, i) => deck.slice(i * HAND_SIZE, (i + 1) * HAND_SIZE))
 }
 
-/** Mise en place : 3 pièces, un plateau merveille différent par joueur et 7 cartes de l'âge I. */
-export function createGame(seats: Seat[], shuffler: Shuffler): GameState {
-  const wonders = shuffler.shuffle(WONDERS)
+/**
+ * Mise en place : 3 pièces, un plateau merveille différent par joueur et 7 cartes de l'âge I.
+ * Si le premier joueur a choisi sa merveille, les autres reçoivent au hasard les plateaux restants.
+ */
+export function createGame(seats: Seat[], shuffler: Shuffler, chosen?: Wonder): GameState {
+  const wonders = chosen
+    ? [chosen, ...shuffler.shuffle(WONDERS.filter((w) => w !== chosen))]
+    : shuffler.shuffle(WONDERS)
   return {
     age: 1,
     turn: 1,
@@ -71,6 +85,7 @@ export function createGame(seats: Seat[], shuffler: Shuffler): GameState {
       stagesBuilt: 0,
       built: [],
       military: 0,
+      tokens: [],
     })),
     hands: deal(1, seats.length, shuffler),
     over: false,
@@ -153,15 +168,19 @@ export function wonderPayment(state: GameState, index: number, converter: Curren
   return pay(state, index, stage.cost, converter)
 }
 
-/** Chaque joueur affronte ses deux voisins : victoire selon l'âge, défaite −1, égalité 0. */
-function conflictTokens(players: PlayerState[], age: Age): number[] {
+/** Chaque joueur affronte séparément ses deux voisins : victoire selon l'âge, défaite −1, égalité 0. */
+function conflictTokens(players: PlayerState[], age: Age): MilitaryToken[][] {
   return players.map((player, index) => {
     const { left, right } = neighbours(players, index)
-    return [left, right].reduce((sum, other) => {
-      if (shields(player) > shields(other)) return sum + VICTORY_TOKENS[age]
-      if (shields(player) < shields(other)) return sum + DEFEAT_TOKEN
-      return sum
-    }, 0)
+    const duel = (other: PlayerState) => {
+      if (shields(player) > shields(other)) return VICTORY_TOKENS[age]
+      if (shields(player) < shields(other)) return DEFEAT_TOKEN
+      return 0
+    }
+    return [
+      { age, against: left.name, value: duel(left) },
+      { age, against: right.name, value: duel(right) },
+    ]
   })
 }
 
@@ -225,8 +244,13 @@ export function playTurn(
 
   // Fin d'âge : la dernière carte de chaque main est défaussée, puis les conflits sont résolus.
   discards.push(...passed.flat())
-  const conflicts = conflictTokens(players, state.age)
-  const afterConflicts = players.map((p, i) => ({ ...p, military: p.military + conflicts[i] }))
+  const duels = conflictTokens(players, state.age)
+  const conflicts = duels.map((pair) => pair.reduce((sum, token) => sum + token.value, 0))
+  const afterConflicts = players.map((p, i) => ({
+    ...p,
+    military: p.military + conflicts[i],
+    tokens: [...p.tokens, ...duels[i]],
+  }))
   const end = { players: afterConflicts, discards, lastTurn, conflicts }
   if (state.age === 3) return { ...state, ...end, hands: players.map(() => []), over: true }
 

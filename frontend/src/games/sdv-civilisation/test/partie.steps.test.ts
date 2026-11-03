@@ -3,6 +3,7 @@ import { expect, vi } from 'vitest'
 import { chooseAction } from '../ai'
 import { fillWithBots } from '../bots'
 import { createGame, playTurn, type Action, type GameState } from '../game'
+import { WONDERS } from '../wonders'
 import type { CurrencyConverter } from '../ports'
 import { finalScore, ranking } from '../score'
 import { findCard, fixedRate, identityShuffler } from './fakes'
@@ -54,6 +55,18 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
     And('chaque joueur a une merveille différente, sans étape construite', () => {
       expect(new Set(state.players.map((p) => p.wonder.name)).size).toBe(3)
       expect(state.players.map((p) => p.stagesBuilt)).toEqual([0, 0, 0])
+    })
+  })
+
+  Scenario('Le joueur choisit sa merveille, les IA reçoivent les autres', ({ Given, Then, And }) => {
+    Given('une partie où "alice" a choisi la "Citadelle d’Orkan"', () => {
+      const citadel = WONDERS.find((w) => w.name === 'Citadelle d’Orkan')!
+      state = createGame(fillWithBots(['alice']), identityShuffler, citadel)
+    })
+    Then('"alice" a la "Citadelle d’Orkan"', () => expect(player('alice').wonder.name).toBe('Citadelle d’Orkan'))
+    And('les IA ont chacune une autre merveille', () => {
+      const others = [player('IA 1').wonder.name, player('IA 2').wonder.name]
+      expect(new Set([...others, 'Citadelle d’Orkan']).size).toBe(3)
     })
   })
 
@@ -167,6 +180,11 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
     Then('les jetons militaires sont alice 2, IA 1 -1 et IA 2 -1', () => {
       expect(state.players.map((p) => p.military)).toEqual([2, -1, -1])
       expect(state.conflicts).toEqual([2, -1, -1])
+      // Deux duels distincts, un par voisin.
+      expect(player('alice').tokens).toEqual([
+        { age: 1, against: 'IA 2', value: 1 },
+        { age: 1, against: 'IA 1', value: 1 },
+      ])
     })
     And('les dernières cartes des mains rejoignent la défausse', () => {
       // 6 tours × 3 défausses + la dernière carte de chaque main : les 21 cartes de l'âge.
