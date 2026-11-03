@@ -1,14 +1,161 @@
 .yams {
+  /* Couleurs propres au jeu (voir docs/charte-graphique.md, section Jeux) */
+  --yams-felt: #23305e;
+  --yams-tray: #10122a;
+  --yams-rim: #3b3f73;
+  --yams-die: #fbf6ea;
+  --yams-die-light: #ffffff;
+  --yams-die-edge: #c9bc9c;
+  --yams-pip: #1b1d36;
+  --yams-gold: #f5c542;
+  --yams-shadow: rgb(0 0 0 / 0.45);
+
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'board' 'sheet' 'ranking';
+}
+
+@media (min-width: 900px) {
+  .yams {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-areas: 'board sheet' 'ranking sheet';
+    /* La feuille couvre les deux lignes : la seconde absorbe sa hauteur, le classement reste collé au plateau. */
+    grid-template-rows: auto 1fr;
+    align-items: start;
+  }
 }
 
 .yams-board {
+  grid-area: board;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.yams-sheet-card {
+  grid-area: sheet;
+}
+
+.yams-ranking {
+  grid-area: ranking;
+}
+
+/* --- Joueurs ------------------------------------------------------------ */
+
+.yams-players {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.yams-player {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  transition:
+    border-color 200ms,
+    box-shadow 200ms;
+}
+
+.yams-avatar {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--muted);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.yams-player[data-active='true'] .yams-avatar {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.yams-player[data-winner='true'] .yams-avatar {
+  border-color: var(--yams-gold);
+  background: var(--yams-gold);
+  color: var(--yams-pip);
+}
+
+.yams-player-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.yams-player-progress {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.yams-player-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.yams-player-score {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.yams-player-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.yams-player[data-active='true'] {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 20px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.yams-player[data-active='true'] .yams-player-tag {
+  color: var(--accent);
+}
+
+.yams-player[data-winner='true'] {
+  border-color: var(--yams-gold);
+  box-shadow: 0 0 0 1px var(--yams-gold);
+}
+
+.yams-player[data-winner='true'] .yams-player-tag {
+  color: var(--yams-gold);
+}
+
+/* --- Piste de dés ------------------------------------------------------- */
+
+.yams-tray {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
+  padding: 1.5rem 1rem 1.25rem;
+  border-radius: calc(var(--radius) * 1.5);
+  /* Feutrine : une trame de points discrète par-dessus le dégradé. */
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--text) 5%, transparent) 1px, transparent 1.5px) 0 0 / 14px 14px,
+    radial-gradient(ellipse at 50% 30%, var(--yams-felt), var(--yams-tray) 75%);
+  box-shadow:
+    inset 0 0 0 3px var(--yams-rim),
+    inset 0 4px 18px var(--yams-shadow);
   text-align: center;
 }
 
@@ -17,67 +164,407 @@
   margin: 0;
 }
 
+.yams-turn strong {
+  color: var(--accent);
+}
+
 .yams-dice {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.5rem;
+  gap: clamp(0.5rem, 2.5vw, 1rem);
+  padding-bottom: 1.4rem;
 }
 
 .yams-die {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  padding: 0;
-  font-size: 2.75rem;
-  line-height: 1;
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
+  flex: none;
+  width: clamp(3.25rem, 13vw, 4.5rem);
+  height: clamp(3.25rem, 13vw, 4.5rem);
+  /* En rem et pas en % : un padding en % se calcule sur la largeur du parent, pas du dé. */
+  padding: 0.55rem;
+  border-radius: 20%;
+  background: linear-gradient(145deg, var(--yams-die-light), var(--yams-die) 55%, var(--yams-die-edge));
+  color: var(--yams-pip);
+  box-shadow:
+    0 4px 0 var(--yams-die-edge),
+    0 8px 14px var(--yams-shadow);
+  transition:
+    transform 150ms,
+    box-shadow 150ms;
+}
+
+button.yams-die:hover {
+  transform: translateY(-2px);
+}
+
+.yams-die:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .yams-die[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-text);
+  transform: translateY(-6px);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 4px 0 var(--yams-die-edge),
+    0 12px 20px var(--yams-shadow);
+}
+
+/* L'état « gardé » est écrit, pas seulement coloré. */
+.yams-die[aria-pressed='true']::after {
+  content: 'Gardé';
+  position: absolute;
+  left: 50%;
+  bottom: -1.75rem;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.yams-die-idle {
+  opacity: 0.3;
+}
+
+.yams-face {
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.yams-face > span {
+  width: 72%;
+  height: 72%;
+  border-radius: 50%;
+}
+
+.yams-face > .yams-pip {
+  background: var(--yams-pip);
+  box-shadow: inset 0 1px 2px var(--yams-shadow);
+}
+
+.yams-rolling {
+  animation: yams-roll 300ms ease-out;
+}
+
+@keyframes yams-roll {
+  0% {
+    transform: rotate(-180deg) scale(0.6);
+    opacity: 0.3;
+  }
+  70% {
+    transform: rotate(12deg) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* --- Combinaison obtenue ---------------------------------------------- */
+
+/* Hauteur réservée : la piste ne saute pas quand l'annonce apparaît. */
+.yams-combo-slot {
+  min-height: 2rem;
+  margin: -0.75rem 0 0;
+}
+
+.yams-combo {
+  display: inline-block;
+  padding: 0.2rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  animation: yams-pop 300ms ease-out;
+}
+
+.yams-combo-yams {
+  border-color: var(--yams-gold);
+  background: var(--yams-gold);
+  color: var(--yams-pip);
+  font-size: 1.25rem;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--yams-gold) 60%, transparent);
+}
+
+@keyframes yams-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* --- Fin de partie ------------------------------------------------------ */
+
+.yams-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.yams-trophy {
+  font-size: 3.5rem;
+  line-height: 1;
+  animation: yams-pop 300ms ease-out;
+}
+
+.yams-final {
+  margin: 0 0 0.5rem;
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Commandes ---------------------------------------------------------- */
+
+.yams-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .yams-roll {
-  font-size: 1.25rem;
-  min-width: 200px;
-  min-height: 56px;
+  font-size: 1.15rem;
+  min-width: 210px;
+  min-height: 52px;
+  border-radius: 999px;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 55%, var(--yams-tray));
+  transition:
+    transform 100ms,
+    box-shadow 100ms;
 }
+
+.yams-roll:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 55%, var(--yams-tray));
+}
+
+.yams-rolls-left {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.yams-rolls-left > span {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.yams-rolls-left > span[data-used='true'] {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--muted);
+}
+
+.yams-hint {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.yams-result {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--yams-gold);
+}
+
+/* --- Feuille de score --------------------------------------------------- */
 
 .yams-sheet {
   width: 100%;
   border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
 }
 
 .yams-sheet th,
 .yams-sheet td {
-  padding: 0.3rem 0.5rem;
+  padding: 0.35rem 0.6rem;
   border-bottom: 1px solid var(--border);
   text-align: center;
 }
 
-.yams-sheet th[scope='row'] {
+.yams-sheet thead th {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border-bottom: 2px solid var(--border);
+}
+
+.yams-sheet thead th.yams-col-active {
+  color: var(--accent);
+}
+
+.yams-sheet tbody th[scope='row'] {
   text-align: left;
   font-weight: normal;
 }
 
-.yams-current {
-  color: var(--accent);
+.yams-label {
+  display: block;
 }
 
-.yams-total th[scope='row'],
-.yams-total td {
-  font-weight: bold;
+.yams-label-hint {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.yams-open:hover th,
+.yams-open:hover td {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.yams-col-active {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.yams-section th {
+  padding-top: 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: left;
+}
+
+.yams-sheet .yams-subtotal th,
+.yams-sheet .yams-subtotal td {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.yams-bonus-bar {
+  display: block;
+  height: 4px;
+  margin-top: 0.25rem;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.yams-bonus-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--success);
+  transition: width 300ms;
+}
+
+.yams-bonus-ok {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.yams-sheet .yams-total th,
+.yams-sheet .yams-total td {
+  font-size: 1.15rem;
+  font-weight: 800;
+  border-top: 2px solid var(--border);
+  border-bottom: none;
+}
+
+.yams-scratched {
+  color: var(--muted);
 }
 
 .yams-choice {
-  min-width: 3rem;
-  padding: 0.15rem 0.5rem;
+  min-width: 2.75rem;
+  padding: 0.1rem 0.55rem;
+  border: 1px dashed var(--accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.yams-choice:hover,
+.yams-choice:focus-visible {
+  border-style: solid;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.yams-choice-best {
+  border-style: solid;
+  background: var(--accent);
+  color: var(--accent-text);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.yams-best-mark {
+  margin-left: 0.25rem;
+  color: var(--accent);
+}
+
+.yams-just-played {
+  animation: yams-flash 600ms ease-out;
+}
+
+@keyframes yams-flash {
+  from {
+    background: color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+}
+
+.yams-choice-zero {
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+.yams-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yams-rolling,
+  .yams-combo,
+  .yams-trophy,
+  .yams-just-played {
+    animation: none;
+  }
+
+  .yams-die,
+  .yams-roll,
+  .yams-player,
+  .yams-choice,
+  .yams-bonus-bar > span {
+    transition: none;
+  }
+}
+
+/* Écran étroit : l'avatar laisse la place au nom et au score. */
+@media (max-width: 480px) {
+  .yams-avatar {
+    display: none;
+  }
+
+  .yams-player {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
 }
