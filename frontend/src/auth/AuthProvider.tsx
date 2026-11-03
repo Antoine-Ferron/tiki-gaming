@@ -30,8 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return
     let cancelled = false
-    fetchProfile(userId).then((p) => {
-      if (!cancelled) setLoaded({ userId, profile: p })
+    const done = (profile: Profile | null) => {
+      if (!cancelled) setLoaded({ userId, profile })
+    }
+    // Un échec (réseau…) est journalisé au lieu de remonter en rejet non géré ; le profil reste absent.
+    fetchProfile(userId).then(done, (err: unknown) => {
+      logger.error({ err }, 'Chargement du profil impossible')
+      done(null)
     })
     return () => {
       cancelled = true
