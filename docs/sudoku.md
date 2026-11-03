@@ -150,6 +150,10 @@ convertit les points (`PTS`) en pièces (`TIKI`) avec `CurrencyConverter`, inscr
 `Ledger` (registre) à l'heure donnée par `Clock`, puis envoie un événement `REWARD_GRANTED` à
 `AuditNotifier`. Il renvoie les pièces créditées.
 
+- **Seuil critique** : quand le solde d'un joueur passe de moins de 100 pièces à 100 ou plus, un second
+  événement `CRITICAL_THRESHOLD_CROSSED` part vers l'audit (joueur, solde, seuil). Il part **une seule
+  fois**, au franchissement : pas avant, pas sur les récompenses suivantes. Chaque joueur a son propre
+  solde. Le seuil de 100 est une hypothèse.
 - Un joueur vide ou un score négatif est refusé (`IllegalArgumentException`).
 - Si la conversion échoue (devise inconnue), **ni le registre ni l'audit ne sont modifiés**.
 - Un score de 0 est inscrit au registre pour 0 pièce.
@@ -175,6 +179,7 @@ Les tests unitaires du backend sont dans `backend/src/test/java/fr/tikigaming/su
 | `FixedRateCurrencyConverterTest` | Conversion via la référence, arrondi, devise inconnue, montant négatif |
 | `AuditNotifierTest`       | Ordre des événements, immutabilité des détails, entrées invalides    |
 | `RewardServiceTest`       | Conversion au taux figé, registre, audit, solde, entrées invalides, échec de conversion |
+| `RewardAuditMockTest`     | Mock Mockito de la passerelle d'audit : un seul appel au franchissement du seuil, ordre des événements, contenu, aucun appel si l'entrée est invalide |
 
 **Doubles de test** (en RAM, dans `src/test`), tous sans I/O :
 
@@ -184,6 +189,7 @@ Les tests unitaires du backend sont dans `backend/src/test/java/fr/tikigaming/su
 | `InMemoryLedger`        | Fake | Vrai registre fonctionnel, stocké dans une liste                      |
 | `FixedClock`            | Stub | Heure figée, avancée à la main                                         |
 | `RecordingAuditNotifier`| Spy  | Garde les événements reçus pour les vérifier                           |
+| `AuditNotifier` (Mockito) | Mock | Vérifie le comportement : combien d'appels, avec quoi, dans quel ordre. Aucun réseau possible |
 
 Exigences : logique pure, aucun accès réseau ni disque, pas de contexte Spring. Le seul aléa est un
 `Random` à graine fixe. Les tests à backtracking (générateur, solveur) prennent quelques dizaines de ms
