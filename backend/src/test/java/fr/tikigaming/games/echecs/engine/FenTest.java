@@ -75,6 +75,20 @@ class FenTest {
         assertThat(apresE4.enPassant()).contains(Square.of("e3"));
     }
 
+    @Test
+    @DisplayName("lit le compteur de demi-coups (règle des 50 coups) et le numéro du coup")
+    void litLesCompteurs() {
+        // Act
+        Position depart = Fen.parse(START);
+        Position milieuDePartie = Fen.parse("4k3/8/8/8/8/8/8/4K3 w - - 45 30");
+
+        // Assert
+        assertThat(depart.halfmoveClock()).isZero();
+        assertThat(depart.fullmoveNumber()).isEqualTo(1);
+        assertThat(milieuDePartie.halfmoveClock()).isEqualTo(45);
+        assertThat(milieuDePartie.fullmoveNumber()).isEqualTo(30);
+    }
+
     private static final String AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
 
     private static final String START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
