@@ -121,11 +121,12 @@ class PrivateTablesHttpTest {
                         .exists())
                 .andExpect(jsonPath("$.components.schemas.GameStarted.properties.currentSeat")
                         .exists())
+                .andExpect(jsonPath(path + ".responses['503']").doesNotExist())
                 .andExpect(jsonPath(path + ".responses['403'].content['application/json'].schema.anyOf[*]['$ref']")
                         .value(org.hamcrest.Matchers.containsInAnyOrder(
                                 "#/components/schemas/ApiError", "#/components/schemas/CsrfErrorResponse")));
 
-        for (int error : List.of(401, 404, 409, 503)) {
+        for (int error : List.of(401, 404, 409)) {
             docs.andExpect(jsonPath(path + ".responses['" + error + "'].content.*.schema['$ref']")
                     .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
         }

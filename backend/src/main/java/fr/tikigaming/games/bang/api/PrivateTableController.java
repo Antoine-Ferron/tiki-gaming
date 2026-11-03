@@ -121,10 +121,6 @@ public class PrivateTableController {
             responseCode = "409",
             description = "Moins de quatre joueurs assis",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
-    @ApiResponse(
-            responseCode = "503",
-            description = "La composition de la pioche BANG! n'est pas encore disponible",
-            content = @Content(schema = @Schema(implementation = ApiError.class)))
     GameStarted start(@PathVariable String code, HttpServletRequest request) {
         return tables.start(code, connectedAccountId(request));
     }
