@@ -137,7 +137,8 @@ public class PrismineController {
         UUID previous = session != null && session.getAttribute(GUEST_RUN) instanceof UUID id ? id : null;
         Run run = service.start(userId, previous);
         if (userId == null) {
-            session.setAttribute(GUEST_RUN, run.id());
+            HttpSession guestSession = request.getSession(true);
+            guestSession.setAttribute(GUEST_RUN, run.id());
         } else if (session != null) {
             session.removeAttribute(GUEST_RUN);
         }
