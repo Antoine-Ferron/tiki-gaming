@@ -104,6 +104,7 @@ serveur (Google OAuth, `SUPABASE_JWT_SECRET`, clé `service_role`) vont uniqueme
 | `npm run build`        | Vérification des types + build de production                          |
 | `npm test`             | Tests unitaires et de composants (Vitest), fichiers `*.test.ts(x)` à côté du code testé |
 | `npm run test:mutation`| **Mutation testing** (Stryker) du cœur de la plateforme ; échoue sous 75 % (rapport : `reports/mutation/`) |
+| `npm run test:integration` | **Tests d'intégration** (Testcontainers, Docker requis) : migrations, RLS et catalogue sur une vraie base |
 
 Lancer `npm run format` avant chaque commit : la CI refuse un code non formaté. Comme pour le backend,
 c'est le formatter qui tranche les questions de style.
@@ -126,6 +127,12 @@ c'est le formatter qui tranche les questions de style.
   on vérifie ce que le joueur voit (texte, rôles ARIA), pas l'implémentation.
 - Le SDK des jeux se teste avec les **fakes** de `src/games/testing/fakes.ts` (`fakeDeps()`) : scores,
   sauvegardes et stockage en mémoire, pannes simulées avec `FakeScores.failNext()`. Pas de mock de Supabase.
+- **Intégration** (`tests/integration/`) : un conteneur `supabase/postgres` (même version que la prod) est
+  démarré une fois pour la suite, les migrations du dépôt y sont rejouées, puis chaque test tourne dans une
+  transaction annulée à la fin. `as(db, userId, …)` exécute une requête avec les droits d'un joueur
+  (`authenticated` + JWT) ou d'un visiteur (`anon`, `userId` à `null`) : c'est la RLS réelle qui est testée.
+  **Toute nouvelle table ou politique RLS arrive avec ses tests d'intégration.** Sans Docker, ces tests sont
+  ignorés en local (la CI, elle, échoue).
 - Mutation testing : un mutant survivant se tue par un test. S'il est équivalent (journalisation…), on le
   désactive sur la ligne avec sa justification : `// Stryker disable next-line all: journalisation seule`.
 
@@ -146,6 +153,7 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
 | `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, et échec si le code n'est pas formaté |
+| `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
 
 Une fois le serveur lancé, l'API est documentée et testable sur **http://localhost:8080/swagger-ui.html**
@@ -199,10 +207,17 @@ fr.tikigaming
 
 `.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main` :
 
-| Job        | Étapes                                             |
-|------------|----------------------------------------------------|
-| `frontend` | `npm ci` → `npm run format:check` → `npm run lint` → `npm test` → `npm run build` |
-| `backend`  | `mvn -B verify` (linter, compilation, tests, format) |
+| Job                 | Étapes                                             |
+|---------------------|----------------------------------------------------|
+| `frontend`          | `npm ci` → `npm run format:check` → `npm run lint` → `npm test` → `npm run build` |
+| `backend`           | `mvn -B verify` (linter, compilation, tests, format) |
+| `integration`       | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
+| `mutation-frontend` | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
+| `mutation-backend`  | Pitest (seuil 75 %), rapport en artefact |
+| `security`          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
+
+`.github/workflows/codeql.yml` lance en plus l'analyse de sécurité **CodeQL** (TypeScript et Java) sur
+chaque PR, chaque push et chaque lundi ; les alertes sont dans l'onglet *Security* du dépôt.
 
 Une PR ne se fusionne qu'avec une CI verte.
 Les noms des jobs (`Frontend (format + lint + build)`, `Backend (format + lint + tests)`) sont des checks
