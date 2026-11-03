@@ -20,6 +20,7 @@ function setup() {
 }
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
+const status = () => document.querySelector('.sdv-civilisation-status')!.textContent
 
 describe('SdvCivilisationGame', () => {
   it('assoit le joueur autour de la table avec deux IA et lui montre sa main', () => {
@@ -27,9 +28,9 @@ describe('SdvCivilisationGame', () => {
 
     const seats = within(screen.getByRole('list', { name: 'Table de jeu' })).getAllByRole('listitem')
     expect(seats.map((seat) => seat.getAttribute('aria-label'))).toEqual([
-      'alice (toi), 1 pièce, voisin de gauche IA 2, voisin de droite IA 1',
-      'IA 1, 1 pièce, voisin de gauche alice, voisin de droite IA 2',
-      'IA 2, 1 pièce, voisin de gauche IA 1, voisin de droite alice',
+      'alice (toi), 3 pièces, voisin de gauche IA 2, voisin de droite IA 1',
+      'IA 1, 3 pièces, voisin de gauche alice, voisin de droite IA 2',
+      'IA 2, 3 pièces, voisin de gauche IA 1, voisin de droite alice',
     ])
     expect(screen.getAllByRole('button', { pressed: false })).toHaveLength(7)
   })
@@ -39,22 +40,35 @@ describe('SdvCivilisationGame', () => {
 
     click(/^Bains/)
 
-    expect(screen.getByRole('button', { name: 'Construire Bains' }).hasAttribute('disabled')).toBe(true)
-    // Le motif est annoncé sur la carte elle-même et sous les boutons d'action.
+    // Le motif est annoncé sur la carte elle-même (court) et sur le bouton d'action (complet).
     expect(screen.getByRole('button', { name: /^Bains .*Ressources manquantes$/ })).toBeTruthy()
-    expect(screen.getByText('Il te manque des ressources.', { selector: '.sdv-civilisation-actions p' })).toBeTruthy()
+    const build = screen.getByRole('button', { name: /^Construire Bains/ })
+    expect(build.hasAttribute('disabled')).toBe(true)
+    expect(build.textContent).toContain('Il te manque des ressources.')
   })
 
   it('construit la carte choisie pendant que les IA jouent', () => {
     setup()
 
     click(/^Chantier/)
-    click('Construire Chantier')
+    click(/^Construire Chantier/)
 
-    const lastTurn = within(screen.getByRole('list', { name: 'Dernier tour' })).getAllByRole('listitem')
-    expect(lastTurn).toHaveLength(3)
-    expect(lastTurn[0].textContent).toBe('Tu as construit Chantier')
-    expect(screen.getByText(/Tour/).textContent).toBe('Âge I · Tour 2 / 6')
+    const turn = within(screen.getByRole('list', { name: 'Âge I, tour 1' })).getAllByRole('listitem')
+    expect(turn).toHaveLength(3)
+    expect(turn[0].textContent).toBe('Tu as construit Chantier')
+    expect(status()).toBe('Âge I · Tour 2 / 6')
+  })
+
+  it('bâtit une étape de merveille avec la carte choisie', () => {
+    setup()
+
+    click(/^Bains/)
+    click(/^Bâtir l’étape 1 de ta merveille/)
+
+    expect(screen.getByText('(bâtie)')).toBeTruthy()
+    expect(within(screen.getByRole('list', { name: 'Âge I, tour 1' })).getAllByRole('listitem')[0].textContent).toBe(
+      'Tu as bâti une étape de merveille avec Bains',
+    )
   })
 
   it('envoie le score à chaque fin de partie et affiche un échec d’envoi', async () => {
@@ -67,14 +81,14 @@ describe('SdvCivilisationGame', () => {
       while (!screen.queryByText('Fin de partie')) {
         // Les cartes de la main sont les seuls boutons à bascule (aria-pressed).
         fireEvent.click(screen.getAllByRole('button', { pressed: false })[0])
-        click('Défausser (+3 pièces)')
+        click(/^Défausser/)
       }
     }
 
     playToTheEnd()
     expect(await screen.findByText('Envoi impossible.')).toBeTruthy()
     click('Rejouer')
-    expect(screen.getByText(/Tour/).textContent).toBe('Âge I · Tour 1 / 6')
+    expect(status()).toBe('Âge I · Tour 1 / 6')
     playToTheEnd()
 
     expect(await screen.findByText('alice', { selector: '.name' })).toBeTruthy()
@@ -118,7 +132,7 @@ describe('SdvCivilisationGame', () => {
     setup()
 
     click('Plein écran')
-    const board = document.querySelector('.sdv-civilisation-board')
+    const board = document.querySelector('.sdv-civilisation')
     Object.defineProperty(document, 'fullscreenElement', { value: board, configurable: true })
     fireEvent(document, new Event('fullscreenchange'))
     click('Quitter le plein écran')

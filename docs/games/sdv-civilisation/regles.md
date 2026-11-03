@@ -20,7 +20,7 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 ## Mise en place
 
 1. Il faut entre **3 et 7 joueurs**.
-2. Chaque joueur commence avec **1 pièce** et aucune carte construite.
+2. Chaque joueur commence avec **3 pièces** et aucune carte construite.
 3. Chaque joueur reçoit un **plateau de merveille** différent, tiré au hasard.
 4. La merveille fournit une **ressource de départ** gratuite, produite à chaque tour.
 5. Chaque joueur a un **voisin de gauche** et un **voisin de droite** (le premier et le dernier joueur
@@ -173,25 +173,44 @@ l'égalité persiste, les joueurs concernés partagent la victoire.
 
 ## Version contre IA
 
-Première version jouable : le joueur affronte 2 IA, sur un catalogue réduit. Les règles ci-dessus
-s'appliquent, avec ces simplifications :
+Version jouable : le joueur affronte 2 IA. Les règles ci-dessus s'appliquent ; le catalogue, les
+plateaux merveille et les chaînes sont des créations du jeu (pas la transcription d'un jeu existant).
 
-- **Catalogue** : 7 cartes par âge, chacune en un exemplaire par joueur (`cards.ts`). Chaque joueur
+- **Mise en place** : 3 pièces et un plateau merveille par joueur, tiré au hasard (`wonders.ts`). Le
+  plateau produit une ressource dès le départ et a 3 étapes à bâtir dans l'ordre.
+- **Catalogue** (`cards.ts`) : 7 cartes par âge, chacune en un exemplaire par joueur. Chaque joueur
   reçoit 7 cartes tirées au hasard dans le paquet de l'âge.
-- **Pas de merveilles, de chaînes de construction, de guildes ni de prix réduits** pour l'instant.
+- **Trois actions** par tour, avec la carte choisie :
+  - **construire le bâtiment** en payant son coût (pièces, ressources produites, commerce), ou
+    gratuitement par **chaîne** si le bâtiment indiqué est déjà construit ;
+  - **bâtir l'étape suivante de sa merveille** en payant le coût de l'étape : la carte est posée face
+    cachée, ni construite ni défaussée, et l'effet de l'étape s'applique (points, boucliers ou pièces) ;
+  - **défausser** la carte pour 3 pièces ; elle va sur la pile de défausse, qui reçoit aussi la dernière
+    carte de chaque main en fin d'âge.
 - **Commerce automatique** : une ressource manquante est achetée d'abord au voisin de gauche, puis à
-  celui de droite, à 2 pièces l'unité, dans la limite de ce qu'ils produisent.
-- **Actions** : construire la carte choisie ou la défausser pour 3 pièces ; la carte défaussée va sur la
-  pile de défausse, qui reçoit aussi la dernière carte de chaque main en fin d'âge. Une carte jaune peut
-  rapporter des pièces dès sa construction.
-- **IA** (`ai.ts`) : elle construit la carte payable la plus intéressante (points, boucliers et
-  science d'abord), sinon elle défausse la moins intéressante.
+  celui de droite, à 2 pièces l'unité, dans la limite de ce qu'ils produisent (plateau compris). Les
+  pièces reçues pendant le tour ne servent pas à payer : tout est calculé sur l'état de début de tour.
+- **Guildes** (violettes, âge III) : 1 point par carte des couleurs indiquées chez les deux voisins.
+- **Score** : militaire, trésor, merveille, bâtiments civils, science et guildes. À égalité, le plus de
+  pièces gagne ; sinon la victoire est partagée.
+- **IA** (`ai.ts`) : elle construit le bâtiment payable le plus intéressant (points, boucliers, science,
+  guildes d'abord) ; sinon elle bâtit une étape de sa merveille avec la carte la moins intéressante ;
+  sinon elle la défausse.
+- **Pas encore dans le catalogue** : productions « au choix », réductions commerciales et cartes jaunes
+  qui rapportent des points. Les règles les permettent, aucune carte ne les utilise pour l'instant.
 
-| Âge | Cartes                                                                                  |
-| --- | --------------------------------------------------------------------------------------- |
-| I   | Chantier, Cavité, Filon, Verrerie (ressources), Bains, Palissade, Atelier               |
-| II  | Scierie, Carrière (ressources ×2), Taverne, Aqueduc, Écuries, Bibliothèque, Dispensaire |
-| III | Panthéon, Jardins, Fortifications, Arsenal, Université, Observatoire, Académie          |
+| Âge | Cartes (chaîne : ⛓ bâtiment requis)                                                                                                                            |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I   | Chantier, Cavité, Filon, Verrerie (ressources), Bains, Palissade, Atelier                                                                                      |
+| II  | Scierie, Carrière (ressources ×2), Taverne, Aqueduc ⛓ Bains, Écuries ⛓ Palissade, Bibliothèque, Dispensaire                                                    |
+| III | Panthéon ⛓ Aqueduc, Arsenal ⛓ Écuries, Université ⛓ Bibliothèque, Observatoire ⛓ Atelier, Académie ⛓ Dispensaire, Guilde des bâtisseurs, Guilde des magistrats |
+
+| Merveille         | Produit | Étape 1         | Étape 2                  | Étape 3                   |
+| ----------------- | ------- | --------------- | ------------------------ | ------------------------- |
+| Temple d’Ysar     | minerai | minerai → 3 pts | bois ×2 → 2 boucliers    | pierre ×2, verre → 7 pts  |
+| Phare de Sélène   | verre   | bois → 3 pts    | pierre ×2 → +6 pièces    | minerai ×2, verre → 7 pts |
+| Jardins de Mirah  | bois    | bois → 3 pts    | minerai ×2 → 2 boucliers | pierre ×3 → 7 pts         |
+| Citadelle d’Orkan | pierre  | pierre → 3 pts  | verre, bois → +6 pièces  | bois ×2, minerai → 7 pts  |
 
 ## Hors périmètre (première version)
 
@@ -208,7 +227,7 @@ Effets de carte permettant de rejouer une carte ou une action supplémentaire.
 - [x] Une partie complète (3 âges) se joue de bout en bout contre 2 IA.
 - [ ] Une partie complète se joue entre 3 à 7 joueurs connectés.
 - [x] Seuls les coups payables sont proposés ; une action impossible est refusée.
-- [ ] Le commerce avec les voisins et les chaînes de construction sont appliqués.
+- [x] Le commerce avec les voisins et les chaînes de construction sont appliqués.
 - [x] Les conflits militaires sont résolus à la fin de chaque âge.
 - [x] Le score final détaillé par catégorie s'affiche en fin de partie et est envoyé à `ctx.submitScore`.
 - [ ] Une partie en cours est sauvegardée et peut être reprise.
@@ -223,9 +242,9 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 
 ### Mise en place
 
-- [x] 3 à 7 joueurs, 1 pièce chacun au départ (`setup.ts`)
+- [x] 3 à 7 joueurs, 3 pièces chacun au départ (`setup.ts`)
 - [x] Voisins de gauche et de droite, assis en cercle (`setup.ts`)
-- [ ] Tirage des plateaux de merveille et ressource de départ
+- [x] Tirage des plateaux de merveille et ressource de départ (`wonders.ts`, `game.ts`)
 - [x] Paquets des trois âges, mélangés et distribués (`game.ts`, catalogue réduit `cards.ts`)
 
 ### Tour de jeu
@@ -251,8 +270,9 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 
 - [x] Payer le coût d'une carte : pièces, ressources produites et commerce (`game.ts`)
 - [x] Refuser une carte déjà construite, impayable ou absente de la main (`game.ts`)
-- [ ] Chaînes de construction gratuites
-- [ ] Étapes de merveille dans l'ordre
+- [x] Chaînes de construction gratuites (`game.ts`)
+- [x] Étapes de merveille dans l'ordre, carte posée face cachée sans effet (`game.ts`)
+- [x] Guildes : points selon les cartes des voisins (`score.ts`)
 
 ### Fin d'âge et score
 
@@ -272,7 +292,8 @@ Répartition : le **back** fait autorité sur la partie (trésor, commerce, temp
 - [x] Interface jouable : main face visible, construire ou défausser, dernier tour, fin de partie (`SdvCivilisationGame.tsx`)
 - [x] Repères visuels : à qui de jouer, cartes constructibles / achat aux voisins / impossibles, cartes jouées posées sur la table (animées), pile de défausse, journal du dernier tour et des conflits
 - [x] Règles du jeu à l'écran et plein écran (`RulesDialog.tsx`)
-- [ ] Plateau de merveille à l'écran
+- [x] Plateau de merveille à l'écran : avancement sur chaque siège, détail dans la barre latérale (`WonderPanel.tsx`)
+- [x] Journal de la partie dans une barre latérale, plateau dimensionné pour tenir dans l'écran
 
 ### Architecture testable
 

@@ -5,15 +5,25 @@ import { randomShuffler, standardTrade } from './adapters'
 import { chooseAction } from './ai'
 import { fillWithBots } from './bots'
 import { CardFace, PlayedCard } from './CardFace'
-import { cardStatus } from './cardText'
-import { createGame, payment, playTurn, shields, TURNS_PER_AGE, type Action, type PlayerState } from './game'
+import { actionDetail, cardStatus, wonderAction } from './cardText'
+import {
+  createGame,
+  payment,
+  playTurn,
+  shields,
+  TURNS_PER_AGE,
+  wonderPayment,
+  type Action,
+  type PlayerState,
+} from './game'
 import { FullscreenIcon, RulesIcon } from './icons'
 import type { Shuffler } from './ports'
 import { Results } from './Results'
 import { RulesDialog } from './RulesDialog'
 import { ranking } from './score'
 import { neighbours } from './setup'
-import { TurnLog } from './TurnLog'
+import { TurnLog, type TurnRecord } from './TurnLog'
+import { WonderPanel } from './WonderPanel'
 import './sdv-civilisation.css'
 
 const AGES = ['I', 'II', 'III']
@@ -53,6 +63,16 @@ function useFullscreen(ref: RefObject<HTMLElement | null>) {
   return { active, supported: Boolean(document.fullscreenEnabled), toggle }
 }
 
+/** Une des trois actions possibles avec la carte choisie : titre, explication, et bouton désactivé si impossible. */
+function ActionChoice(props: { title: string; detail: string; enabled: boolean; onPlay: () => void }) {
+  return (
+    <button type="button" className="sdv-civilisation-action" disabled={!props.enabled} onClick={props.onPlay}>
+      <span className="sdv-civilisation-action-title">{props.title}</span>
+      <span className="sdv-civilisation-action-detail">{props.detail}</span>
+    </button>
+  )
+}
+
 /**
  * Partie contre deux IA. Le mélangeur est injectable : aléatoire en production, ordre fixe dans les tests.
  * Voir docs/games/sdv-civilisation/regles.md#version-contre-ia
@@ -61,6 +81,7 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
   const me = ctx.player?.username ?? 'Toi'
   const newGame = () => createGame(fillWithBots([me]), shuffler)
   const [game, setGame] = useState(newGame)
+  const [history, setHistory] = useState<TurnRecord[]>([])
   // Position de la carte choisie dans la main (une main peut contenir deux exemplaires de la même carte).
   const [selected, setSelected] = useState<number | null>(null)
   const [showRules, setShowRules] = useState(false)
@@ -88,29 +109,50 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
       .catch((e) => setError(e.message))
   }, [ctx, game, me])
 
+  const myself = game.players[ME]
   const hand = game.hands[ME]
   const costs = hand.map((card) => payment(game, ME, card, standardTrade))
   const selectedCard = selected === null ? undefined : hand[selected]
-  const cost = selected === null ? undefined : costs[selected]
   const { left, right } = neighbours(game.players, ME)
+  const wonderCost = wonderPayment(game, ME, standardTrade)
 
   function play(action: Action) {
     const actions = game.players.map((_, i) => (i === ME ? action : chooseAction(game, i, standardTrade)))
-    setGame(playTurn(game, actions, standardTrade, shuffler))
+    const next = playTurn(game, actions, standardTrade, shuffler)
+    setHistory([{ age: game.age, turn: game.turn, events: next.lastTurn, conflicts: next.conflicts }, ...history])
+    setGame(next)
     setSelected(null)
   }
 
   function replay() {
     setGame(newGame())
+    setHistory([])
     setError(null)
   }
 
   return (
-    <div className="sdv-civilisation">
-      <div ref={boardRef} className="sdv-civilisation-board">
+    <div ref={boardRef} className="sdv-civilisation">
+      <div className="sdv-civilisation-main">
         <div className="sdv-civilisation-toolbar">
           <p className="sdv-civilisation-status">
             Âge <strong>{AGES[game.age - 1]}</strong> · Tour <strong>{game.turn}</strong> / {TURNS_PER_AGE}
+          </p>
+          <p className="sdv-civilisation-direction">
+            <span aria-hidden="true">{game.age === 2 ? '↺' : '↻'}</span> Passage à{' '}
+            {game.age === 2 ? 'droite' : 'gauche'}
+          </p>
+          <p className="sdv-civilisation-banner" role="status">
+            {game.over && 'Partie terminée : voici le score de chacun.'}
+            {!game.over && selectedCard && (
+              <>
+                Que fais-tu de <strong>{selectedCard.name}</strong> ? Choisis une action.
+              </>
+            )}
+            {!game.over && !selectedCard && (
+              <>
+                <strong>À toi de jouer :</strong> choisis une carte de ta main.
+              </>
+            )}
           </p>
           <div className="sdv-civilisation-tools">
             <button
@@ -149,10 +191,6 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
                 </span>
               ))}
             </div>
-            <p className="sdv-civilisation-direction">
-              <span aria-hidden="true">{game.age === 2 ? '↺' : '↻'}</span> Passage à{' '}
-              {game.age === 2 ? 'droite' : 'gauche'}
-            </p>
           </div>
 
           <div className="sdv-civilisation-discard" title="Pile de défausse">
@@ -165,7 +203,7 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
             <PlayedCard
               key={`${game.age}-${game.turn}-${event.player}`}
               card={event.card}
-              discarded={event.action === 'discard'}
+              action={event.action}
               style={around(event.player, game.players.length, 22, 22)}
             />
           ))}
@@ -187,8 +225,11 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
                     </span>
                     <span className="sdv-civilisation-name">{isMe ? 'Toi' : seat.name}</span>
                     {!game.over && (
-                      <span className={`sdv-civilisation-turn-badge${isMe ? ' sdv-civilisation-turn-badge-me' : ''}`}>
-                        {isMe ? 'À toi' : '✓ prête'}
+                      <span
+                        className={`sdv-civilisation-turn-badge${isMe ? ' sdv-civilisation-turn-badge-me' : ''}`}
+                        title={isMe ? 'À toi de jouer' : 'A choisi sa carte'}
+                      >
+                        {isMe ? 'À toi' : '✓'}
                       </span>
                     )}
                   </div>
@@ -199,6 +240,11 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
                     </span>
                     <span title="Boucliers">⚔ {shields(seat)}</span>
                     <span title="Jetons militaires">★ {seat.military}</span>
+                  </div>
+                  <div className="sdv-civilisation-seat-wonder" aria-hidden="true" title={seat.wonder.name}>
+                    {seat.wonder.stages.map((_, i) => (
+                      <span key={i} className={i < seat.stagesBuilt ? 'sdv-civilisation-pip-built' : undefined} />
+                    ))}
                   </div>
                   <div className="sdv-civilisation-built" aria-hidden="true" title="Cartes construites">
                     {seat.built.map((card, i) => (
@@ -215,17 +261,6 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
           <Results ranked={ranking(game.players)} me={me} isGuest={ctx.isGuest} onReplay={replay} />
         ) : (
           <div className="sdv-civilisation-hand">
-            <p className="sdv-civilisation-banner" role="status">
-              {selectedCard ? (
-                <>
-                  Construis ou défausse <strong>{selectedCard.name}</strong>.
-                </>
-              ) : (
-                <>
-                  <strong>À toi de jouer :</strong> choisis une carte de ta main. Les IA ont déjà choisi.
-                </>
-              )}
-            </p>
             <div className="sdv-civilisation-cards">
               {hand.map((card, i) => (
                 <CardFace
@@ -238,47 +273,48 @@ export function SdvCivilisationBoard({ ctx, shuffler }: { ctx: GameContext; shuf
                 />
               ))}
             </div>
-            {selectedCard && cost && (
-              <div className="sdv-civilisation-actions">
-                <button
-                  type="button"
-                  disabled={!cost.ok}
-                  onClick={() => play({ type: 'build', card: selectedCard.name })}
-                >
-                  Construire {selectedCard.name}
-                </button>
-                <button
-                  type="button"
-                  className="link"
-                  onClick={() => play({ type: 'discard', card: selectedCard.name })}
-                >
-                  Défausser (+3 pièces)
-                </button>
-                <p className={cost.ok ? 'muted' : 'error'}>
-                  {!cost.ok && cost.reason}
-                  {cost.ok && cost.coins === 0 && 'Gratuit : tu produis déjà tout ce qu’il faut.'}
-                  {cost.ok && cost.coins > 0 && (
-                    <>
-                      Tu paies {cost.coins} pièce{cost.coins > 1 ? 's' : ''}
-                      {cost.toLeft > 0 && `, dont ${cost.toLeft} à ${left.name}`}
-                      {cost.toRight > 0 && `, dont ${cost.toRight} à ${right.name}`}.
-                    </>
-                  )}
-                </p>
+            {!selectedCard && (
+              <p className="sdv-civilisation-actions-hint">
+                Clique sur une carte pour voir ce que tu peux en faire : la construire, bâtir ta merveille avec, ou la
+                défausser.
+              </p>
+            )}
+            {selectedCard && (
+              <div className="sdv-civilisation-actions" role="group" aria-label="Actions possibles">
+                <ActionChoice
+                  title={`Construire ${selectedCard.name}`}
+                  detail={actionDetail(costs[selected!], left.name, right.name)}
+                  enabled={costs[selected!].ok}
+                  onPlay={() => play({ type: 'build', card: selectedCard.name })}
+                />
+                <ActionChoice
+                  {...wonderAction(myself, wonderCost, left.name, right.name)}
+                  enabled={wonderCost.ok}
+                  onPlay={() => play({ type: 'wonder', card: selectedCard.name })}
+                />
+                <ActionChoice
+                  title="Défausser"
+                  detail="+3 pièces ; la carte va sur la défausse."
+                  enabled
+                  onPlay={() => play({ type: 'discard', card: selectedCard.name })}
+                />
               </div>
             )}
           </div>
         )}
-
-        <TurnLog game={game} me={ME} />
         {error && <p className="error">{error}</p>}
-        {showRules && <RulesDialog onClose={closeRules} />}
       </div>
 
-      <div className="card">
-        <h2>Classement</h2>
-        <Leaderboard entries={leaderboard} currentUserId={ctx.player?.id} />
-      </div>
+      <aside className="sdv-civilisation-side">
+        <WonderPanel player={myself} />
+        <TurnLog history={history} players={game.players} me={ME} />
+        <section className="sdv-civilisation-ranking" aria-labelledby="sdv-civilisation-ranking-title">
+          <h3 id="sdv-civilisation-ranking-title">Classement</h3>
+          <Leaderboard entries={leaderboard} currentUserId={ctx.player?.id} />
+        </section>
+      </aside>
+
+      {showRules && <RulesDialog onClose={closeRules} />}
     </div>
   )
 }
