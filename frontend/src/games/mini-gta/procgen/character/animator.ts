@@ -16,6 +16,8 @@ export interface AnimState {
   attack: number
   crouch: boolean
   seated: boolean
+  /** Assis dans une voiture fermée : dossier incliné, jambes tendues, pour que la tête passe sous le toit. */
+  reclined: boolean
   /** 0 = alive, >0 = seconds since death. */
   dead: number
   /** Hands raised (surrender / cower). */
@@ -32,6 +34,7 @@ export function defaultAnimState(): AnimState {
     attack: 0,
     crouch: false,
     seated: false,
+    reclined: false,
     dead: 0,
     handsUp: false,
   }
@@ -170,6 +173,15 @@ export class CharacterAnimator {
       t.footL = [0, 0, 0]
       t.footR = [0, 0, 0]
       t.spine = [-0.1, 0, 0]
+      if (s.reclined) {
+        hips = this.hipsY * 0.3
+        t.thighL = [-1.35, 0, 0.05]
+        t.thighR = [-1.35, 0, -0.05]
+        t.shinL = [0.5, 0, 0]
+        t.shinR = [0.5, 0, 0]
+        t.spine = [-0.45, 0, 0]
+        t.head = [0.35, 0, 0]
+      }
       if (!s.aiming) {
         t.upperArmL = [-1.0, 0, -0.15]
         t.upperArmR = [-1.0, 0, 0.15]

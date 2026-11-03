@@ -111,7 +111,9 @@ export class Actor {
     const o = this.rig.object
     if (this.seatedIn) {
       this.anim.seated = true
+      this.anim.reclined = (this.seatedIn as { spec?: { kind: string } }).spec?.kind === 'car'
     } else {
+      this.anim.reclined = false
       this.interp.position(alpha, this.tmp)
       o.position.copy(this.tmp)
       o.rotation.set(0, this.heading, 0)

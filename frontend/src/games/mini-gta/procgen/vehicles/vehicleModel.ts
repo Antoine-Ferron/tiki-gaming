@@ -294,7 +294,7 @@ export function buildVehicle(spec: VehicleSpec, paintColor: Color): VehicleVisua
           Surface.Chrome,
         )
       }
-      seat = new Vector3(W * 0.24, belt - 0.4, zf - 1.2)
+      seat = new Vector3(W * 0.24, belt - 0.72, zf - 1.2)
     } else {
       const sport = spec.style === 'sport'
       const boxy = spec.style === 'van' || spec.style === 'bus'
@@ -504,7 +504,8 @@ export function buildVehicle(spec: VehicleSpec, paintColor: Color): VehicleVisua
           add(rbox(0.04, 0.05, re - rs, sx * W * 0.36, top + 0.04, (rs + re) / 2, 0.02), CHROME, Surface.Chrome)
       }
       if (sport) add(rbox(W * 0.9, 0.04, 0.3, 0, belt + 0.18, zr + 0.25, 0.02), TRIM, Surface.Trim)
-      seat = new Vector3(W * 0.22, belt - 0.62 - (sport ? 0.08 : 0), sz)
+      // Siège bas : avec le dossier incliné, la tête du conducteur reste sous le toit.
+      seat = new Vector3(W * 0.22, belt - 0.72 - (sport ? 0.08 : 0), sz)
       if (spec.style === 'bus') seat = new Vector3(W * 0.25, belt - 0.55, zf - 1.4)
       if (spec.style === 'van') seat = new Vector3(W * 0.24, belt - 0.55, ge - 1.0)
     }
