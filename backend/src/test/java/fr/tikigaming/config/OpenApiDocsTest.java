@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -56,7 +57,11 @@ class OpenApiDocsTest {
                     .andExpect(jsonPath("$.paths['/api/auth/password/forgot'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/password/reset'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/password'].post.summary", not(emptyOrNullString())))
-                    .andExpect(jsonPath("$.paths['/api/auth/logout'].post.summary", not(emptyOrNullString())));
+                    .andExpect(jsonPath("$.paths['/api/auth/logout'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/{id}")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/{id}/guesses")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/{id}/restart")));
         }
 
         @Test
