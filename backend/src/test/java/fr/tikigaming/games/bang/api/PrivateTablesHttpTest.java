@@ -1,6 +1,7 @@
 package fr.tikigaming.games.bang.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -289,6 +290,10 @@ class PrivateTablesHttpTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.tags[0]").value("bang"))
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.summary", not(emptyOrNullString())))
+                .andExpect(jsonPath("$.paths['" + TABLES + "'].post.description")
+                        .value(containsString(
+                                "La table et sa donne expirent après 1 h sans création, jonction acceptée ou démarrage accepté. "
+                                        + "Un démarrage refusé ne renouvelle pas ce délai.")))
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.responses['201']")
                         .exists())
                 .andExpect(jsonPath("$.paths['" + TABLES + "/{code}/join'].post.summary", not(emptyOrNullString())))
