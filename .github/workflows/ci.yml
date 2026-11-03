@@ -28,6 +28,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
       database: ${{ steps.filter.outputs.database }}
+      quality: ${{ steps.filter.outputs.quality }}
     steps:
       - uses: actions/checkout@v7
       - id: filter
@@ -47,6 +48,9 @@ jobs:
               - *ci
               - 'frontend/**'
               - 'supabase/**'
+            quality:
+              - *ci
+              - 'quality/**'
 
   frontend:
     name: Frontend (format + lint + build)
@@ -244,6 +248,8 @@ jobs:
 
   performance:
     name: Performance (k6)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.database != 'false' || needs.changes.outputs.quality != 'false') }}
     runs-on: ubuntu-latest
     env:
       # Valeurs factices : aucun appel externe tant qu'aucun joueur n'est connecté (voir OpenApiDocsTest).
@@ -286,6 +292,8 @@ jobs:
 
   dast:
     name: DAST (ZAP baseline)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.quality != 'false') }}
     runs-on: ubuntu-latest
     env:
       GOOGLE_CLIENT_ID: ci-client-id
@@ -331,6 +339,8 @@ jobs:
 
   sonar:
     name: SonarQube Cloud
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false') }}
     runs-on: ubuntu-latest
     # Actif dès que le secret SONAR_TOKEN est configuré (Settings → Secrets → Actions), voir quality/README.md.
     env:
