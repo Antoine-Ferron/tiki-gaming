@@ -84,6 +84,24 @@ class GameStartHttpTest {
                 .hasSize(4);
     }
 
+    @Test
+    void startingGivesEachCharacterItsHealthAndAddsTheSheriffBonus() throws Exception {
+        String code = fullTable();
+
+        postAs(TABLES + "/" + code + "/start", sessionFor("second")).andExpect(status().isOk());
+
+        for (GameState.Player player : tables.game(code).players()) {
+            int expected = player.character().health() + (player.role().equals("Shérif") ? 1 : 0);
+            assertThat(player.health()).isEqualTo(expected);
+            assertThat(player.maxHealth()).isEqualTo(expected);
+        }
+        GameState.Player paul = tables.game(code).players().get(2);
+        assertThat(paul.character().id()).isEqualTo("Paul Regret");
+        assertThat(paul.role()).isEqualTo("Shérif");
+        assertThat(paul.health()).isEqualTo(4);
+        assertThat(paul.maxHealth()).isEqualTo(4);
+    }
+
     private String fullTable() throws Exception {
         String body =
                 postAs(TABLES, sessionFor("creator")).andReturn().getResponse().getContentAsString();

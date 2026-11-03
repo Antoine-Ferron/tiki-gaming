@@ -37,8 +37,16 @@ public class InitialDeal {
         shuffle.accept(characters);
         List<GameState.Player> players = new ArrayList<>();
         for (int seat = 0; seat < 4; seat++) {
+            int health =
+                    characters.get(seat).health() + (assignedRoles.get(seat).equals(roles.sheriff()) ? 1 : 0);
             players.add(new GameState.Player(
-                    accounts.get(seat), seat + 1, assignedRoles.get(seat), characters.get(seat), 0, 0, List.of()));
+                    accounts.get(seat),
+                    seat + 1,
+                    assignedRoles.get(seat),
+                    characters.get(seat),
+                    health,
+                    health,
+                    List.of()));
         }
         return new GameState(List.copyOf(players), List.of(), 1);
     }
