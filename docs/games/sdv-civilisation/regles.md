@@ -31,11 +31,11 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 
 ### Les âges
 
-| Âge | Contenu du paquet                                      | Sens de passage |
-| --- | ------------------------------------------------------ | --------------- |
-| 1   | Ressources de base, développement initial              | gauche          |
-| 2   | Bâtiments avancés, stratégies intermédiaires           | droite          |
-| 3   | Bâtiments prestigieux, guildes, spécialisation finale  | gauche          |
+| Âge | Contenu du paquet                                     | Sens de passage |
+| --- | ----------------------------------------------------- | --------------- |
+| 1   | Ressources de base, développement initial             | gauche          |
+| 2   | Bâtiments avancés, stratégies intermédiaires          | droite          |
+| 3   | Bâtiments prestigieux, guildes, spécialisation finale | gauche          |
 
 ## Ressources
 
@@ -51,8 +51,8 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 ## Déroulement d'un âge
 
 1. Chaque joueur reçoit une main de **7 cartes** de l'âge en cours.
-2. À chaque tour, tous les joueurs choisissent **simultanément une carte** de leur main, puis la
-   révèlent en même temps et réalisent **une action** :
+2. À chaque tour, tous les joueurs choisissent **simultanément une carte** de leur main (voir
+   [Temps de tour](#temps-de-tour)), puis la révèlent en même temps et réalisent **une action** :
    - **construire** le bâtiment de la carte en payant son coût ;
    - **construire une étape de merveille** en payant le coût de l'étape ;
    - **défausser** la carte et gagner **3 pièces** de la réserve.
@@ -61,6 +61,23 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 5. Après **6 tours**, la dernière carte de chaque main est défaussée.
 6. L'âge se termine par la **résolution des conflits militaires**.
 7. Les cartes construites et les jetons militaires sont conservés pour les âges suivants.
+
+### Temps de tour
+
+- Chaque joueur dispose de **60 secondes** pour choisir sa carte.
+- Pendant les **10 dernières secondes**, le tour est signalé comme **bientôt fini**.
+- À **60 secondes pile**, le tour est **expiré** : la carte choisie (ou la première de la main) est
+  défaussée automatiquement et le joueur gagne 3 pièces.
+
+## Trésor
+
+- Les pièces d'un joueur ne sont **jamais négatives** : un paiement supérieur au trésor est refusé et
+  rien n'est débité.
+- Un montant crédité ou débité est un **entier strictement positif**.
+- **Audit anti-triche** : quand le trésor d'un joueur **franchit** le seuil critique de **30 pièces**
+  (passe de moins de 30 à 30 ou plus), un signalement est envoyé **une seule fois** au journal d'audit.
+  Rester au-dessus du seuil ne déclenche pas de nouveau signalement ; repasser sous le seuil puis le
+  franchir à nouveau en déclenche un. Le signalement ne bloque pas la partie.
 
 ## Construire un bâtiment
 
@@ -79,6 +96,8 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 
 - On n'achète qu'aux **deux voisins directs**, éventuellement aux deux dans le même tour.
 - Prix standard : **2 pièces par ressource**. Le voisin touche les pièces et **ne peut pas refuser**.
+- On achète au moins **1 ressource** ; si l'acheteur ne peut pas payer, l'achat est refusé et aucun
+  trésor ne change.
 - On ne peut acheter qu'une ressource que le voisin **produit** (cartes marron, grises et merveille).
 - Acheter ne prive pas le voisin de sa ressource : elle sert seulement à payer le coût de construction.
 - Les ressources d'un voisin ne sont **jamais gratuites**.
@@ -98,15 +117,15 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 
 ## Types de cartes
 
-| Couleur | Type                   | Effet                                                                 |
-| ------- | ---------------------- | --------------------------------------------------------------------- |
-| Marron  | Ressource brute        | Produit bois, pierre, argile ou minerai                               |
-| Gris    | Ressource manufacturée | Produit verre, papyrus ou textile                                     |
-| Bleu    | Bâtiment civil         | Points de victoire                                                    |
+| Couleur | Type                   | Effet                                                                  |
+| ------- | ---------------------- | ---------------------------------------------------------------------- |
+| Marron  | Ressource brute        | Produit bois, pierre, argile ou minerai                                |
+| Gris    | Ressource manufacturée | Produit verre, papyrus ou textile                                      |
+| Bleu    | Bâtiment civil         | Points de victoire                                                     |
 | Jaune   | Bâtiment commercial    | Pièces, commerce réduit, ressources au choix, ou points sous condition |
-| Rouge   | Bâtiment militaire     | Boucliers                                                             |
-| Vert    | Bâtiment scientifique  | Symbole : tablette, roue dentée ou compas                             |
-| Violet  | Guilde (âge 3)         | Points selon les cartes du joueur, de ses voisins ou de tous          |
+| Rouge   | Bâtiment militaire     | Boucliers                                                              |
+| Vert    | Bâtiment scientifique  | Symbole : tablette, roue dentée ou compas                              |
+| Violet  | Guilde (âge 3)         | Points selon les cartes du joueur, de ses voisins ou de tous           |
 
 ## Conflits militaires (fin de chaque âge)
 
@@ -124,24 +143,24 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 
 Score = (nb de tablettes)² + (nb de roues)² + (nb de compas)² + **7 par série complète** des 3 symboles.
 
-| Symboles                        | Points             |
-| ------------------------------- | ------------------ |
-| 2 tablettes                     | 4                  |
-| 3 roues                         | 9                  |
-| 1 tablette + 1 roue + 1 compas  | 1 + 1 + 1 + 7 = 10 |
+| Symboles                         | Points             |
+| -------------------------------- | ------------------ |
+| 2 tablettes                      | 4                  |
+| 3 roues                          | 9                  |
+| 1 tablette + 1 roue + 1 compas   | 1 + 1 + 1 + 7 = 10 |
 | 3 tablettes + 2 roues + 1 compas | 9 + 4 + 1 + 7 = 21 |
 
 ## Score final (fin de l'âge 3)
 
-| Catégorie | Calcul                                              |
-| --------- | --------------------------------------------------- |
-| Militaire | somme des jetons de conflit                         |
-| Trésor    | 1 point par tranche complète de 3 pièces            |
-| Merveille | points des étapes construites                       |
-| Civil     | points des cartes bleues                            |
-| Commerce  | points des cartes jaunes qui en rapportent          |
-| Science   | voir section Science                                |
-| Guildes   | points selon les conditions des cartes violettes    |
+| Catégorie | Calcul                                           |
+| --------- | ------------------------------------------------ |
+| Militaire | somme des jetons de conflit                      |
+| Trésor    | 1 point par tranche complète de 3 pièces         |
+| Merveille | points des étapes construites                    |
+| Civil     | points des cartes bleues                         |
+| Commerce  | points des cartes jaunes qui en rapportent       |
+| Science   | voir section Science                             |
+| Guildes   | points selon les conditions des cartes violettes |
 
 Le joueur au plus haut total gagne. En cas d'égalité, celui qui a le plus de pièces l'emporte ; si
 l'égalité persiste, les joueurs concernés partagent la victoire.
@@ -167,9 +186,68 @@ Effets de carte permettant de rejouer une carte ou une action supplémentaire, m
 - [ ] En invité, le jeu fonctionne et invite à se connecter pour être classé.
 - [ ] Chaque règle ci-dessus est couverte par un test unitaire.
 
+## Avancement
+
+Cocher une ligne quand la règle est implémentée **et** testée.
+
+### Mise en place
+
+- [x] 3 à 7 joueurs, 1 pièce chacun au départ (`setup.ts`)
+- [x] Voisins de gauche et de droite, assis en cercle (`setup.ts`)
+- [ ] Tirage des plateaux de merveille et ressource de départ
+- [ ] Paquets des trois âges selon le nombre de joueurs
+
+### Tour de jeu
+
+- [x] Temps de tour : en cours, bientôt fini, expiré, sur une horloge injectée (`turnTimer.ts`)
+- [ ] Défausse automatique à l'expiration du tour
+- [ ] Choix simultané des cartes et passage des mains selon l'âge
+- [ ] Défausser une carte pour 3 pièces
+- [ ] Fin d'âge après 6 tours
+
+### Économie
+
+- [x] Trésor : crédit, débit, transfert, jamais négatif (`treasury.ts`)
+- [x] Audit anti-triche au franchissement du seuil critique de 30 pièces (`treasury.ts`)
+- [x] Achat de ressources à un voisin au prix standard de 2 pièces (`trade.ts`, `adapters.ts`)
+- [ ] Vérifier que le vendeur est un voisin et produit la ressource
+- [ ] Prix réduit à 1 pièce (cartes jaunes)
+
+### Construction
+
+- [ ] Payer le coût d'une carte (ressources produites + commerce)
+- [ ] Refuser une carte déjà construite
+- [ ] Chaînes de construction gratuites
+- [ ] Étapes de merveille dans l'ordre
+
+### Fin d'âge et score
+
+- [ ] Conflits militaires
+- [x] Score de science (back : `ScienceScore.java`)
+- [ ] Score final par catégorie et départage
+- [ ] Envoi du score (`ctx.submitScore`)
+
+### Plateforme
+
+- [ ] Déclaration du jeu (`index.ts`, `registry.ts`) et migration du catalogue
+- [ ] Sauvegarde et reprise de partie
+- [ ] Interface de jeu et IA adverses
+
+### Architecture testable
+
+La logique du jeu ne dépend que d'interfaces pures, sans I/O (`ports.ts`). Les implémentations de
+production sont dans `adapters.ts`, les doublures de test dans `testing/fakes.ts`.
+
+| Contrat             | Rôle                                   | Production                   | Doublure de test                         |
+| ------------------- | -------------------------------------- | ---------------------------- | ---------------------------------------- |
+| `CurrencyConverter` | Prix d'achat des ressources, en pièces | `standardTrade` (2 pièces)   | Stub `fixedRate` (taux figé)             |
+| `TreasuryRegistry`  | Registre des pièces de chaque joueur   | `playersTreasury` (`Player`) | Fake `FakeTreasuryRegistry` (en mémoire) |
+| `AuditNotifier`     | Journal d'audit anti-triche            | `loggerAudit` (Pino)         | Mock `vi.fn()` (appel vérifié)           |
+| `Clock`             | Heure courante, en millisecondes       | `systemClock` (`Date.now()`) | Fake `FakeClock` (avancée à la main)     |
+
 ## Tests
 
-| Côté  | Emplacement                                                            | Lancer                        |
-| ----- | ---------------------------------------------------------------------- | ----------------------------- |
-| Front | `frontend/src/games/sdv-civilisation/*.test.ts` (Vitest)               | `npm test` dans `frontend/`   |
-| Back  | `backend/src/test/java/fr/tikigaming/games/sdv_civilisation/` (JUnit)  | `mvn -f backend/pom.xml test` |
+| Côté  | Emplacement                                                           | Lancer                        |
+| ----- | --------------------------------------------------------------------- | ----------------------------- |
+| Front | `frontend/src/games/sdv-civilisation/*.test.ts` (Vitest)              | `npm test` dans `frontend/`   |
+| Back  | `backend/src/test/java/fr/tikigaming/games/sdv_civilisation/` (JUnit) | `mvn -f backend/pom.xml test` |
