@@ -4,20 +4,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import fr.tikigaming.games.bang.model.TableSeat;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 class PrivateTableServiceTest {
 
-    private final PrivateTableService tables = new PrivateTableService();
+    private final MutableClock clock = new MutableClock();
+    private final PrivateTableService tables = new PrivateTableService(clock);
 
     @Test
     void createsATableWithAShareableCodeAndTheCreatorsSeat() {
@@ -30,6 +39,33 @@ class PrivateTableServiceTest {
     }
 
     @Test
+    void aCreatorCanCreateOnlyOnePrivateTable() {
+        TableSeat original = tables.create("creator");
+
+        assertThatThrownBy(() -> tables.create("creator"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(tables.join(original.code(), "creator")).isEqualTo(original);
+        assertThat(tables.create("another-creator").code()).isNotEqualTo(original.code());
+    }
+
+    @Test
+    void theNumberOfStoredTablesIsBoundedAndExistingSeatsRemainAvailable() {
+        TableSeat first = tables.create("creator-0");
+        for (int account = 1; account < 1000; account++) {
+            tables.create("creator-" + account);
+        }
+
+        assertThatThrownBy(() -> tables.create("one-too-many"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        assertThat(tables.join(first.code(), "creator-0")).isEqualTo(first);
+        assertThat(tables.join(first.code(), "joining-player")).isEqualTo(new TableSeat(first.code(), 2, 2));
+    }
+
+    @Test
     void threeDistinctAccountsTakeTheRemainingSeats() {
         String code = tables.create("creator").code();
 
@@ -38,12 +74,23 @@ class PrivateTableServiceTest {
         }
     }
 
-    @Test
-    void refusesAnUnknownTableCode() {
-        assertThatThrownBy(() -> tables.join("UNKNOWN", "player"))
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"UNKNOWN", "  "})
+    void refusesAnUnknownTableCode(String code) {
+        assertThatThrownBy(() -> tables.join(code, "player"))
                 .isInstanceOfSatisfying(
-                        ResponseStatusException.class,
-                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    void joiningNormalizesTheCodeAndReturnsItsCanonicalValue() {
+        String code = tables.create("creator").code();
+        String entered = " \t" + code.toLowerCase(Locale.ROOT) + "  ";
+
+        assertThat(tables.join(entered, "second")).isEqualTo(new TableSeat(code, 2, 2));
+        assertThat(tables.join(entered, "second")).isEqualTo(new TableSeat(code, 2, 2));
     }
 
     @Test
@@ -55,8 +102,8 @@ class PrivateTableServiceTest {
 
         assertThatThrownBy(() -> tables.join(code, "fifth-account"))
                 .isInstanceOfSatisfying(
-                        ResponseStatusException.class,
-                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT));
     }
 
     @Test
@@ -64,7 +111,8 @@ class PrivateTableServiceTest {
         int contenders = 8;
         try (var executor = Executors.newFixedThreadPool(contenders)) {
             for (int round = 0; round < 100; round++) {
-                String code = tables.create("creator").code();
+                String creator = "creator-" + round;
+                String code = tables.create(creator).code();
                 tables.join(code, "second");
                 tables.join(code, "third");
                 CountDownLatch ready = new CountDownLatch(contenders);
@@ -78,8 +126,8 @@ class PrivateTableServiceTest {
                         while (!start.get()) Thread.onSpinWait();
                         try {
                             return tables.join(code, accountId);
-                        } catch (ResponseStatusException error) {
-                            assertThat(error.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                        } catch (PrivateTableException error) {
+                            assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT);
                             return null;
                         }
                     }));
@@ -96,7 +144,7 @@ class PrivateTableServiceTest {
                     if (seat != null) accepted.add(seat);
                 }
                 assertThat(accepted).as("round %s", round).containsExactly(new TableSeat(code, 4, 4));
-                assertThat(tables.join(code, "creator")).isEqualTo(new TableSeat(code, 1, 4));
+                assertThat(tables.join(code, creator)).isEqualTo(new TableSeat(code, 1, 4));
             }
         }
     }
@@ -111,5 +159,80 @@ class PrivateTableServiceTest {
         assertThat(tables.join(code, "third")).isEqualTo(new TableSeat(code, 3, 3));
         assertThat(tables.join(code, "fourth")).isEqualTo(new TableSeat(code, 4, 4));
         assertThat(tables.join(code, "second")).isEqualTo(new TableSeat(code, 2, 4));
+    }
+
+    @Test
+    void anInactiveTableIsRemovedAndItsCreatorCanOpenANewOne() {
+        String code = tables.create("creator").code();
+
+        clock.advance(PrivateTableService.INACTIVITY_TIMEOUT);
+
+        assertThatThrownBy(() -> tables.join(code, "creator"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.NOT_FOUND));
+        assertThat(tables.create("creator").code()).isNotEqualTo(code);
+    }
+
+    @Test
+    void joiningKeepsATableAlive() {
+        String code = tables.create("creator").code();
+
+        clock.advance(PrivateTableService.INACTIVITY_TIMEOUT.minusMinutes(1));
+        tables.join(code, "second");
+        clock.advance(PrivateTableService.INACTIVITY_TIMEOUT.minusMinutes(1));
+
+        assertThat(tables.join(code, "creator")).isEqualTo(new TableSeat(code, 1, 2));
+    }
+
+    @Test
+    void aRefusedJoinAtAFullTableDoesNotKeepItAlive() {
+        String code = tables.create("creator").code();
+        tables.join(code, "second");
+        tables.join(code, "third");
+        tables.join(code, "fourth");
+
+        clock.advance(PrivateTableService.INACTIVITY_TIMEOUT.minusMinutes(1));
+        assertThatThrownBy(() -> tables.join(code, "fifth")).isInstanceOf(PrivateTableException.class);
+        clock.advance(Duration.ofMinutes(1));
+
+        assertThatThrownBy(() -> tables.join(code, "creator"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    void inactiveTablesFreeTheGlobalCapacity() {
+        for (int account = 0; account < PrivateTableService.MAX_TABLES; account++) {
+            tables.create("creator-" + account);
+        }
+
+        clock.advance(PrivateTableService.INACTIVITY_TIMEOUT);
+
+        assertThat(tables.create("newcomer").seat()).isEqualTo(1);
+    }
+
+    private static final class MutableClock extends Clock {
+        private Instant now = Instant.parse("2026-11-03T12:00:00Z");
+
+        void advance(Duration duration) {
+            now = now.plus(duration);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
     }
 }

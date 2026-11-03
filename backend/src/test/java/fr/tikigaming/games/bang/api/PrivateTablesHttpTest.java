@@ -13,6 +13,8 @@ import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.games.bang.model.TableSeat;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +47,8 @@ class PrivateTablesHttpTest {
 
     private static final String TABLES = "/api/games/bang/tables";
 
+    private final String accountPrefix = UUID.randomUUID().toString();
+
     @Autowired
     private MockMvc mvc;
 
@@ -61,6 +65,22 @@ class PrivateTablesHttpTest {
     }
 
     @Test
+    void aCreatorCannotAllocateAnotherTableEvenWithANewSession() throws Exception {
+        MockHttpSession originalSession = sessionFor("creator");
+        String code = createTable(originalSession);
+
+        for (MockHttpSession session : List.of(originalSession, sessionFor("creator"))) {
+            postAs(TABLES, session)
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error").value("Tu as déjà une table privée ouverte."));
+        }
+        postAs(TABLES + "/" + code + "/join", sessionFor("creator"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seat").value(1))
+                .andExpect(jsonPath("$.playerCount").value(1));
+    }
+
+    @Test
     void threeOtherAccountsJoinUsingTheSharedCode() throws Exception {
         String code = createTable("creator");
 
@@ -70,6 +90,21 @@ class PrivateTablesHttpTest {
                     .andExpect(jsonPath("$.code").value(code))
                     .andExpect(jsonPath("$.seat").value(seat))
                     .andExpect(jsonPath("$.playerCount").value(seat));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"%s", "  %s  "})
+    void sharedCodesIgnoreLetterCaseAndOuterSpaces(String format) throws Exception {
+        String code = createTable("creator");
+        String enteredCode = format.formatted(code.toLowerCase(Locale.ROOT));
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            postAs(TABLES + "/{code}/join", sessionFor("second"), enteredCode)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(code))
+                    .andExpect(jsonPath("$.seat").value(2))
+                    .andExpect(jsonPath("$.playerCount").value(2));
         }
     }
 
@@ -195,6 +230,11 @@ class PrivateTablesHttpTest {
                             + "'].content.*.schema['$ref']")
                     .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
         }
+        for (int error : List.of(409, 503)) {
+            docs.andExpect(
+                    jsonPath("$.paths['" + TABLES + "'].post.responses['" + error + "'].content.*.schema['$ref']")
+                            .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
+        }
     }
 
     private MvcResult joinAtTheSameTime(MockHttpServletRequestBuilder request, CyclicBarrier start) throws Exception {
@@ -215,22 +255,23 @@ class PrivateTablesHttpTest {
         return json.readTree(body).get("code").asString();
     }
 
-    private ResultActions postAs(String path, MockHttpSession session) throws Exception {
-        return mvc.perform(preparePost(path, session));
+    private ResultActions postAs(String path, MockHttpSession session, Object... uriVariables) throws Exception {
+        return mvc.perform(preparePost(path, session, uriVariables));
     }
 
-    private MockHttpServletRequestBuilder preparePost(String path, MockHttpSession session) throws Exception {
+    private MockHttpServletRequestBuilder preparePost(String path, MockHttpSession session, Object... uriVariables)
+            throws Exception {
         Cookie csrf = mvc.perform(get("/api/auth/session").session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getCookie("XSRF-TOKEN");
-        return post(path).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
+        return post(path, uriVariables).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
     }
 
-    private static MockHttpSession sessionFor(String accountId) {
+    private MockHttpSession sessionFor(String accountId) {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        AuthSession.signIn(request, new AuthUser(accountId, accountId + "@example.com"));
+        AuthSession.signIn(request, new AuthUser(accountPrefix + ":" + accountId, accountId + "@example.com"));
         return (MockHttpSession) request.getSession();
     }
 }
