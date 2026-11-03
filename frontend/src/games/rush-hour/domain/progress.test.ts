@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { recordResult } from './progress'
+import { type BestScores, isUnlocked, recordResult } from './progress'
 
 describe('recordResult', () => {
   test('enregistre le premier score d’un niveau', () => {
@@ -35,5 +35,29 @@ describe('recordResult', () => {
 
     // Assert
     expect(best).toEqual({ 1: 800 })
+  })
+})
+
+describe('isUnlocked', () => {
+  test('le niveau 1 est toujours ouvert', () => {
+    // Act
+    const open = isUnlocked({}, 1)
+
+    // Assert
+    expect(open).toBe(true)
+  })
+
+  // Valeurs limites : un niveau s'ouvre dès que le précédent est terminé, quel que soit son score
+  test.each<{ best: BestScores; level: number; open: boolean }>([
+    { best: {}, level: 2, open: false },
+    { best: { 1: 0 }, level: 2, open: true },
+    { best: { 1: 900 }, level: 3, open: false },
+    { best: { 1: 900, 2: 400 }, level: 3, open: true },
+  ])('niveau $level avec les records $best → ouvert : $open', ({ best, level, open }) => {
+    // Act
+    const result = isUnlocked(best, level)
+
+    // Assert
+    expect(result).toBe(open)
   })
 })
