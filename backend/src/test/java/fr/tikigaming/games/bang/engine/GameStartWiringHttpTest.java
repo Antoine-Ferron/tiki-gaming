@@ -12,6 +12,7 @@ import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,6 +24,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(
         properties = {
@@ -37,11 +39,16 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @Import(GameStartWiringHttpTest.Catalogue.class)
 class GameStartWiringHttpTest {
+    private final String accountPrefix = UUID.randomUUID().toString();
+
     @Autowired
     private MockMvc mvc;
 
     @Autowired
     private PrivateTableService tables;
+
+    @Autowired
+    private ObjectMapper json;
 
     @TestConfiguration
     static class Catalogue {
@@ -53,16 +60,28 @@ class GameStartWiringHttpTest {
 
     @Test
     void acceptanceUsesTheRealComponentsAndShuffleWithOnlyTheUnavailableCatalogueReplaced() throws Exception {
-        String code = tables.create("player-1").code();
-        for (int player = 2; player <= 4; player++) tables.join(code, "player-" + player);
-        MockHttpServletRequest login = new MockHttpServletRequest();
-        AuthSession.signIn(login, new AuthUser("player-4", "joueur@example.com"));
-        MockHttpSession session = (MockHttpSession) login.getSession();
+        MockHttpSession session = sessionFor("player-4");
         Cookie csrf = mvc.perform(get("/api/auth/session").session(session))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getCookie("XSRF-TOKEN");
+        String body = mvc.perform(post("/api/games/bang/tables")
+                        .session(sessionFor("creator"))
+                        .cookie(csrf)
+                        .header("X-XSRF-TOKEN", csrf.getValue()))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String code = json.readTree(body).path("code").asString();
+        for (int player = 2; player <= 4; player++) {
+            mvc.perform(post("/api/games/bang/tables/" + code + "/join")
+                            .session(sessionFor("player-" + player))
+                            .cookie(csrf)
+                            .header("X-XSRF-TOKEN", csrf.getValue()))
+                    .andExpect(status().isOk());
+        }
 
         var response = mvc.perform(post("/api/games/bang/tables/" + code + "/start")
                         .session(session)
@@ -93,5 +112,11 @@ class GameStartWiringHttpTest {
                 .json(
                         "{\"code\":\"" + code + "\",\"currentSeat\":" + game.currentSeat() + "}",
                         JsonCompareMode.STRICT));
+    }
+
+    private MockHttpSession sessionFor(String accountId) {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser(accountPrefix + ":" + accountId, "joueur@example.com"));
+        return (MockHttpSession) request.getSession();
     }
 }

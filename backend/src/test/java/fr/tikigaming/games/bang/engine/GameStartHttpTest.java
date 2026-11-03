@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -48,6 +49,7 @@ import tools.jackson.databind.ObjectMapper;
 @Import(GameStartHttpTest.Setup.class)
 class GameStartHttpTest {
     private static final String TABLES = "/api/games/bang/tables";
+    private final String accountPrefix = UUID.randomUUID().toString();
 
     @Autowired
     private MockMvc mvc;
@@ -187,8 +189,11 @@ class GameStartHttpTest {
     }
 
     private String fullTable() throws Exception {
-        String body =
-                postAs(TABLES, sessionFor("creator")).andReturn().getResponse().getContentAsString();
+        String body = postAs(TABLES, sessionFor("creator"))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         String code = json.readTree(body).path("code").asString();
         for (String account : new String[] {"second", "third", "fourth"}) {
             postAs(TABLES + "/" + code + "/join", sessionFor(account)).andExpect(status().isOk());
@@ -209,7 +214,8 @@ class GameStartHttpTest {
         return post(path).session(session).cookie(csrf).header("X-XSRF-TOKEN", csrf.getValue());
     }
 
-    private static MockHttpSession sessionFor(String accountId) {
+    private MockHttpSession sessionFor(String accountId) {
+        accountId = accountPrefix + ":" + accountId;
         MockHttpServletRequest request = new MockHttpServletRequest();
         AuthSession.signIn(request, new AuthUser(accountId, accountId + "@example.com"));
         return (MockHttpSession) request.getSession();
