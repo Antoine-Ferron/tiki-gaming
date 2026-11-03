@@ -1,4 +1,4 @@
-package fr.tikigaming.games.bang;
+package fr.tikigaming.games.bang.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.emptyOrNullString;
@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
+import fr.tikigaming.games.bang.model.TableSeat;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.concurrent.CyclicBarrier;
@@ -166,7 +167,7 @@ class PrivateTablesHttpTest {
 
     @Test
     void swaggerDescribesTheTableRoutesAndTheirErrorBodies() throws Exception {
-        mvc.perform(get("/v3/api-docs"))
+        ResultActions docs = mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.tags[0]").value("bang"))
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.summary", not(emptyOrNullString())))
@@ -177,17 +178,15 @@ class PrivateTablesHttpTest {
                         .value("bang"));
 
         for (String path : List.of(TABLES, TABLES + "/{code}/join")) {
-            mvc.perform(get("/v3/api-docs"))
-                    .andExpect(jsonPath("$.paths['" + path + "'].post.responses['401'].content.*.schema['$ref']")
+            docs.andExpect(jsonPath("$.paths['" + path + "'].post.responses['401'].content.*.schema['$ref']")
                             .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")))
                     .andExpect(jsonPath("$.paths['" + path + "'].post.responses['403'].content")
                             .doesNotExist());
         }
         for (int error : List.of(404, 409)) {
-            mvc.perform(get("/v3/api-docs"))
-                    .andExpect(jsonPath("$.paths['" + TABLES + "/{code}/join'].post.responses['" + error
-                                    + "'].content.*.schema['$ref']")
-                            .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
+            docs.andExpect(jsonPath("$.paths['" + TABLES + "/{code}/join'].post.responses['" + error
+                            + "'].content.*.schema['$ref']")
+                    .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
         }
     }
 

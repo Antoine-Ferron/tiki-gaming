@@ -1,9 +1,11 @@
-package fr.tikigaming.games.bang;
+package fr.tikigaming.games.bang.api;
 
 import fr.tikigaming.auth.AuthException;
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.config.ApiExceptionHandler.ApiError;
+import fr.tikigaming.games.bang.engine.PrivateTableService;
+import fr.tikigaming.games.bang.model.TableSeat;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

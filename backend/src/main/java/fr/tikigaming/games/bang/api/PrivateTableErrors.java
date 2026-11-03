@@ -1,4 +1,4 @@
-package fr.tikigaming.games.bang;
+package fr.tikigaming.games.bang.api;
 
 import fr.tikigaming.config.ApiExceptionHandler.ApiError;
 import java.util.Map;

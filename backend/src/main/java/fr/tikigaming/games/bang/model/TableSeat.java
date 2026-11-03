@@ -1,4 +1,4 @@
-package fr.tikigaming.games.bang;
+package fr.tikigaming.games.bang.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

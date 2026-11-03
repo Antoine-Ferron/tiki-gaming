@@ -1,5 +1,6 @@
-package fr.tikigaming.games.bang;
+package fr.tikigaming.games.bang.engine;
 
+import fr.tikigaming.games.bang.model.TableSeat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

@@ -1,4 +1,4 @@
-package fr.tikigaming.games.bang;
+package fr.tikigaming.games.bang.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import fr.tikigaming.auth.AuthException;
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
+import fr.tikigaming.games.bang.engine.PrivateTableService;
+import fr.tikigaming.games.bang.model.TableSeat;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
