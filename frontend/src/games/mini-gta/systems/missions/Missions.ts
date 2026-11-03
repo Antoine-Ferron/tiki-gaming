@@ -241,6 +241,8 @@ export class Missions {
 
   start(def: MissionDef) {
     if (this.active) return
+    // Les entités d'une tentative précédente (cible encore en vie, voiture abîmée) ne doivent pas compter.
+    this.cleanup(true)
     const game = this.game
     const hooks = HOOKS[def.id] ?? {}
     hooks.setup?.(game, this)
