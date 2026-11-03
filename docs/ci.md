@@ -126,7 +126,7 @@ Tous les tests Vitest doivent passer, **et** la couverture doit rester au-dessus
 | Périmètre | Lignes | Branches | Fonctions | Instructions |
 |-----------|--------|----------|-----------|--------------|
 | Cœur du lobby : `src/games/domain/**`, `errors.ts`, `scoreQueue.ts`, `sdk.ts`, `src/lib/validation.ts` | 95 % | 95 % | 95 % | 95 % |
-| Tout `src/` | 40 % | 44 % | 47 % | 42 % |
+| Tout `src/` | 78 % | 80 % | 75 % | 79 % |
 
 Le seuil global est placé juste sous la couverture actuelle : il empêche toute régression. On le relève quand la
 couverture monte, on ne le baisse jamais.
@@ -151,7 +151,7 @@ Une seule commande Maven enchaîne, dans l'ordre :
 1. **Checkstyle** : imports inutiles, nommage, erreurs probables (`backend/checkstyle.xml`) ;
 2. **compilation** du code et des tests (Java 21, Spring Boot 4.1) ;
 3. **tests** JUnit 5, y compris ceux qui démarrent l'application complète (Swagger) ;
-4. **couverture JaCoCo** : au moins 52 % des lignes et 64 % des branches sur tout le backend, et 95 % (lignes et
+4. **couverture JaCoCo** : au moins 95 % des lignes et 85 % des branches sur tout le backend, et 95 % (lignes et
    branches) sur le cœur métier (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`) ;
 5. **Spotless** : le code doit être formaté (palantir-java-format). Pour corriger : `mvn spotless:apply`.
 
