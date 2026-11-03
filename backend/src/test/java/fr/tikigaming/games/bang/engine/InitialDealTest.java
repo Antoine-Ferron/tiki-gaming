@@ -1,6 +1,7 @@
 package fr.tikigaming.games.bang.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import fr.tikigaming.games.bang.cards.BangCharacter;
 import fr.tikigaming.games.bang.cards.Role;
@@ -34,6 +35,23 @@ class InitialDealTest {
                 .extracting(GameState.Player::character)
                 .containsExactlyInAnyOrder(BangCharacter.values())
                 .doesNotHaveDuplicates();
+    }
+
+    @Test
+    void assignsTheShuffledCharacterToEachSeat() {
+        InitialDeal controlled = new InitialDeal(catalog, list -> {
+            if (list.getFirst() instanceof BangCharacter) Collections.rotate(list, 1);
+        });
+
+        GameState game = controlled.deal(List.of("creator", "second", "third", "fourth"));
+
+        assertThat(game.players())
+                .extracting(GameState.Player::seat, GameState.Player::character)
+                .containsExactly(
+                        tuple(1, BangCharacter.WILLY_THE_KID),
+                        tuple(2, BangCharacter.BART_CASSIDY),
+                        tuple(3, BangCharacter.CALAMITY_JANET),
+                        tuple(4, BangCharacter.PAUL_REGRET));
     }
 
     @ParameterizedTest
