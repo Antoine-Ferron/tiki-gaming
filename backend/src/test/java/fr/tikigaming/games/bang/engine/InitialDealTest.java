@@ -9,14 +9,13 @@ import fr.tikigaming.games.bang.model.GameState;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class InitialDealTest {
     private final TestGameCatalog catalog = new TestGameCatalog();
-    private final InitialDeal deal = new InitialDeal(Optional.of(catalog), list -> {
+    private final InitialDeal deal = new InitialDeal(catalog, list -> {
         if (!(list.getFirst() instanceof BangCharacter)) Collections.rotate(list, 2);
     });
 
@@ -40,7 +39,7 @@ class InitialDealTest {
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3, 4})
     void onlyTheSheriffGetsOneExtraCurrentAndMaximumHealthPoint(int sheriffSeat) {
-        InitialDeal controlled = new InitialDeal(Optional.of(catalog), list -> {
+        InitialDeal controlled = new InitialDeal(catalog, list -> {
             if (!(list.getFirst() instanceof BangCharacter)) Collections.rotate(list, sheriffSeat - 1);
         });
 
@@ -79,8 +78,7 @@ class InitialDealTest {
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3, 4})
     void theFirstTurnBelongsToTheSheriffWhateverTheirSeat(int sheriffSeat) {
-        InitialDeal controlled =
-                new InitialDeal(Optional.of(catalog), list -> Collections.rotate(list, sheriffSeat - 1));
+        InitialDeal controlled = new InitialDeal(catalog, list -> Collections.rotate(list, sheriffSeat - 1));
 
         GameState game = controlled.deal(List.of("creator", "second", "third", "fourth"));
 

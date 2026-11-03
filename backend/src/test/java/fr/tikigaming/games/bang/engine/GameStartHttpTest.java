@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
@@ -86,14 +85,8 @@ class GameStartHttpTest {
 
         @Bean
         @Primary
-        GameCatalog catalog() {
-            return new TestGameCatalog();
-        }
-
-        @Bean
-        @Primary
         InitialDeal orderedDeal(GameCatalog catalog) {
-            return new InitialDeal(Optional.of(catalog), list -> {
+            return new InitialDeal(catalog, list -> {
                 if (!(list.getFirst() instanceof BangCharacter)) Collections.rotate(list, 2);
             });
         }
@@ -151,9 +144,9 @@ class GameStartHttpTest {
             allCards.addAll(player.hand());
         }
         assertThat(game.players().get(2).hand()).hasSize(4);
-        assertThat(game.drawPile()).hasSize(24);
+        assertThat(game.drawPile()).hasSize(21);
         assertThat(allCards).extracting(CardInstance::id).doesNotHaveDuplicates();
-        assertThat(allCards).containsExactlyInAnyOrderElementsOf(new TestGameCatalog().cards());
+        assertThat(allCards).containsExactlyInAnyOrderElementsOf(new BangGameCatalog().cards());
     }
 
     @Test
@@ -170,7 +163,7 @@ class GameStartHttpTest {
         assertThat(paul.maxHealth()).isEqualTo(4);
         assertThat(paul.hand()).hasSize(4);
         assertThat(game.currentSeat()).isEqualTo(3);
-        assertThat(game.drawPile()).hasSize(24);
+        assertThat(game.drawPile()).hasSize(21);
     }
 
     @Test
@@ -184,7 +177,7 @@ class GameStartHttpTest {
                 .andExpect(content().json("{\"code\":\"" + code + "\",\"currentSeat\":3}", JsonCompareMode.STRICT));
 
         assertThat(tables.game(code)).isSameAs(first);
-        assertThat(tables.game(code).drawPile()).hasSize(24);
+        assertThat(tables.game(code).drawPile()).hasSize(21);
     }
 
     @Test
@@ -207,7 +200,7 @@ class GameStartHttpTest {
         GameState first = tables.game(code);
         postAs(TABLES + "/" + code + "/start", sessionFor("creator")).andExpect(status().isOk());
         assertThat(tables.game(code)).isSameAs(first);
-        assertThat(first.drawPile()).hasSize(24);
+        assertThat(first.drawPile()).hasSize(21);
         assertThat(first.players())
                 .allSatisfy(player -> assertThat(player.hand()).hasSize(player.health()));
     }
