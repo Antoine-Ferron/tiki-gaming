@@ -105,6 +105,7 @@ serveur (Google OAuth, `SUPABASE_JWT_SECRET`, clé `service_role`) vont uniqueme
 | `npm test`             | Tests unitaires et de composants (Vitest), fichiers `*.test.ts(x)` à côté du code testé |
 | `npm run test:mutation`| **Mutation testing** (Stryker) du cœur de la plateforme ; échoue sous 75 % (rapport : `reports/mutation/`) |
 | `npm run test:e2e`     | **E2E** (Playwright, Chromium) : parcours du lobby et audit d'accessibilité axe ; `npx playwright install chromium` la première fois |
+| `npm run test:coverage`| Couverture des tests (rapport `coverage/lcov.info`, lu par SonarQube) |
 | `npm run test:integration` | **Tests d'intégration** (Testcontainers, Docker requis) : migrations, RLS et catalogue sur une vraie base |
 
 Lancer `npm run format` avant chaque commit : la CI refuse un code non formaté. Comme pour le backend,
@@ -227,6 +228,9 @@ que si sa zone a changé ; sinon il apparaît « skipped », ce qui compte comme
 | `mutation-frontend` | `frontend/**`                     | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
 | `mutation-backend`  | `backend/**`                      | Pitest (seuil 75 %), rapport en artefact |
 | `e2e`               | `frontend/**`                     | `npm run test:e2e` : Playwright + audit WCAG 2.1 AA (axe), rapport en artefact en cas d'échec |
+| `performance`       | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 sur base éphémère + PostgREST + backend : P95 < 300 ms, < 1 % d'erreurs (voir [quality/](quality/README.md)) |
+| `dast`              | `frontend/**`, `backend/**` ou `quality/**` | Scan ZAP baseline du front buildé et du backend, échoue sur toute alerte non acceptée |
+| `sonar`             | `frontend/**` ou `backend/**`     | SonarQube Cloud et son Quality Gate, actif dès que le secret `SONAR_TOKEN` est configuré |
 | `security`          | toujours                          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
 
 Modifier `.github/workflows/ci.yml` relance tous les jobs. Si le job `changes` (détection des zones)

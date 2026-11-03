@@ -22,6 +22,7 @@
     <palantir-java-format.version>2.103.0</palantir-java-format.version>
     <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
     <checkstyle.version>14.4.0</checkstyle.version>
+    <jacoco.version>0.8.13</jacoco.version>
     <pitest.version>1.19.1</pitest.version>
     <pitest-junit5.version>1.2.2</pitest-junit5.version>
     <!-- Ligne 3.x = Spring Boot 4.x (la 2.x de springdoc cible Spring Boot 3). -->
@@ -75,6 +76,27 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+
+      <!-- Couverture des tests (JaCoCo) : target/site/jacoco/jacoco.xml après `mvn verify`, lu par SonarQube. -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <!-- Formatter : `mvn spotless:apply` reformate, `mvn verify` échoue si le code n'est pas formaté. -->

@@ -66,7 +66,7 @@ export default function ClickerGame({ ctx }: GameProps) {
       setRemaining(left)
       if (left === 0) {
         clearInterval(id)
-        finish()
+        void finish() // finish rattrape lui-même ses erreurs
       }
     }, 50)
     return () => clearInterval(id)
