@@ -55,6 +55,17 @@ class GameStartServiceTest {
     }
 
     @Test
+    void aMemberCannotReadAnUndealtGame() {
+        String code = tableWith(4);
+
+        assertThatThrownBy(() -> tables.state(code, "player-2"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT));
+        verifyNoInteractions(deal);
+    }
+
+    @Test
     void startingRequestsADealForTheAccountsInSeatOrder() {
         String code = tableWith(4);
         GameState game = new GameState(List.of(), List.of(), 3);

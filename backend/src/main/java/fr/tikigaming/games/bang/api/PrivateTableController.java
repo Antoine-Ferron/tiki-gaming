@@ -141,6 +141,10 @@ public class PrivateTableController {
             responseCode = "403",
             description = "Compte non assis à cette table",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Partie non démarrée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     void state(@PathVariable String code, HttpServletRequest request) {
         tables.state(code, connectedAccountId(request));
     }

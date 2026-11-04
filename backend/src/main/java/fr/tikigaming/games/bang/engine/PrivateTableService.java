@@ -105,6 +105,9 @@ public class PrivateTableService {
             throw new PrivateTableException(
                     HttpStatus.FORBIDDEN, "Tu dois être assis à cette table pour consulter la partie.");
         }
+        if (table.game == null) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "La partie n'a pas encore démarré.");
+        }
     }
 
     synchronized GameState game(String code) {

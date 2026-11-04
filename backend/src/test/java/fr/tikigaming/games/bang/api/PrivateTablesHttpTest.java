@@ -87,6 +87,15 @@ class PrivateTablesHttpTest {
     }
 
     @Test
+    void aMemberCannotReadBeforeTheGameStarts() throws Exception {
+        String code = createTable("creator");
+
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor("creator")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("La partie n'a pas encore démarré."));
+    }
+
+    @Test
     void threePlayersCannotStartAPrivateTable() throws Exception {
         String code = createTable("creator");
         postAs(TABLES + "/" + code + "/join", sessionFor("second")).andExpect(status().isOk());
