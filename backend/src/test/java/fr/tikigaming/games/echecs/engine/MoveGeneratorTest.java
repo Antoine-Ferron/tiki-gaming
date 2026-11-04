@@ -311,6 +311,18 @@ class MoveGeneratorTest {
         assertThat(MoveGenerator.destinations(position, Square.of("e7"))).isEqualTo(squares("e6", "e5", "d6"));
     }
 
+    @ParameterizedTest(name = "pion en {0} → {1}")
+    @CsvSource({"e7, e8", "d2, d1"})
+    @DisplayName(
+            "un pion à une case de la promotion avance sans faire planter le moteur (trouvé par le test de propriétés)")
+    void unPionAvantLaPromotionAvanceSansPlanter(String from, String expected) {
+        // Arrange : pion blanc en e7, pion noir en d2, cases d'arrivée libres
+        Position position = Fen.parse("k7/4P3/8/8/8/8/3p4/7K w - - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of(from))).isEqualTo(squares(expected));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
