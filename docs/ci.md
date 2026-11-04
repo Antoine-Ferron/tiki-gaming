@@ -2,7 +2,7 @@
 
 Ce qui se passe, étape par étape, entre le moment où tu pousses du code et celui où ta PR peut être fusionnée.
 
-Fichiers de référence : `.github/workflows/ci.yml` (11 jobs), `.github/workflows/codeql.yml` (CodeQL) et, pour
+Fichiers de référence : `.github/workflows/ci.yml` (12 jobs), `.github/workflows/codeql.yml` (CodeQL) et, pour
 les outils de qualimétrie, [quality/README.md](../quality/README.md). Les règles d'équipe sont dans
 [CONTRIBUTING.md](../CONTRIBUTING.md#intégration-continue).
 
@@ -15,19 +15,34 @@ flowchart LR
     PUSH --> CQ["CodeQL"]
     CH --> FE["Frontend"]
     CH --> BE["Backend"]
-    CH --> IT["Integration"]
-    CH --> MF["Mutation Stryker"]
-    CH --> MB["Mutation Pitest"]
-    CH --> E2E["E2E"]
-    CH --> PERF["Performance k6"]
-    CH --> DAST["DAST ZAP"]
-    CH --> SQ["SonarQube"]
-    FE & BE --> GATE{{"Checks obligatoires<br/>+ 1 relecture"}}
+    FE & BE --> IT["Integration"]
+    IT --> MF["Mutation Stryker"]
+    IT --> MB["Mutation Pitest"]
+    IT --> E2E["E2E"]
+    MF & MB & E2E --> PERF["Performance k6"]
+    MF & MB & E2E --> DAST["DAST ZAP"]
+    MF & MB & E2E --> SQ["SonarQube"]
+    SEC & PERF & DAST & SQ --> V["CI (verdict)"]
+    V --> GATE{{"Checks obligatoires<br/>+ 1 relecture"}}
     GATE --> MERGE["Fusion<br/>(squash)"]
 ```
 
-Tous les jobs tournent **en parallèle**, chacun sur une machine Ubuntu neuve. Seul `Changes` doit finir avant
-les autres, puisqu'il décide lesquels lancer.
+Le pipeline avance par **paliers**, du plus rapide au plus coûteux, et **s'arrête au premier échec**
+(*fail-fast*) : un palier ne démarre que si aucun job des paliers précédents n'a échoué. Inutile de lancer dix
+minutes de mutation ou de tests de charge sur du code qui ne passe pas le lint.
+
+| Palier | Jobs | Ce qu'il prouve |
+|--------|------|-----------------|
+| 1. Statique et unitaires | `Frontend`, `Backend` (et `Security`, `CodeQL` en parallèle, toujours) | le code est formaté, typé, et ses tests unitaires passent avec la couverture minimale |
+| 2. Intégration | `Integration` | les migrations, la RLS et les triggers marchent sur un vrai PostgreSQL |
+| 3. Robustesse des tests et parcours | `Mutation (Stryker)`, `Mutation (Pitest)`, `E2E` | les tests détectent vraiment les bugs ; les parcours joueur et l'accessibilité tiennent |
+| 4. Non fonctionnel et quality gate | `Performance (k6)`, `DAST (ZAP baseline)`, `SonarQube Cloud` | performance, sécurité dynamique et qualimétrie |
+| 5. Verdict | `CI (verdict)` | échoue si un seul job a échoué |
+
+Dans un job, les étapes s'arrêtent aussi au premier échec, de la plus rapide à la plus lente : format → lint →
+types → tests → build. Les jobs d'un même palier tournent en parallèle, chacun sur une machine Ubuntu neuve, et
+vont jusqu'au bout : un seul run donne tous les problèmes du palier. Un job arrêté parce qu'un palier précédent a
+échoué apparaît **« skipped »**.
 
 | # | Étape | Job | Bloque si… |
 |---|-------|-----|------------|
@@ -109,6 +124,7 @@ Les caches ne changent jamais le résultat d'un check : ils accélèrent, ils n'
 ```bash
 npm run format:check   # Prettier : le code a-t-il le format attendu ?
 npm run lint           # ESLint : TypeScript, règles des hooks React
+npm run typecheck      # tsc -b : une erreur de type arrête le job avant les tests
 ```
 
 Le style n'est pas discuté en relecture : c'est **Prettier** qui tranche (`frontend/.prettierrc.json`). Un fichier
@@ -143,10 +159,11 @@ type n'importe où, même dans un fichier qu'aucun test ne couvre, fait échouer
 ## 7. Vérification complète du backend (`Backend`)
 
 ```bash
-mvn -B verify   # dans backend/
+mvn -B spotless:check   # dans backend/ : formatage, en premier pour ne pas attendre la fin des tests
+mvn -B verify
 ```
 
-Une seule commande Maven enchaîne, dans l'ordre :
+`mvn verify` enchaîne ensuite, dans l'ordre :
 
 1. **Checkstyle** : imports inutiles, nommage, erreurs probables (`backend/checkstyle.xml`) ;
 2. **compilation** du code et des tests (Java 21, Spring Boot 4.1) ;
@@ -292,6 +309,9 @@ Sans secret, le job affiche un message et réussit sans rien analyser. Configura
 `sonar-project.properties` et [quality/README.md](../quality/README.md#sonarqube).
 
 ## 16. Verdict et fusion
+
+Le job **`CI (verdict)`** attend tous les autres et échoue si un seul a échoué : c'est le résumé du pipeline en un
+check. Un job « skipped » parce que sa zone n'a pas changé compte comme réussi.
 
 Pour fusionner une PR dans `dev` ou `main`, GitHub exige (règle « Protected ») :
 
