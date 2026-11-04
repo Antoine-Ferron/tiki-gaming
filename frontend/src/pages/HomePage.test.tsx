@@ -38,7 +38,7 @@ describe('HomePage', () => {
   })
 
   test('aucun jeu ne correspond : le dit plutôt que d’afficher une grille vide', () => {
-    renderPage(<HomePage />, { url: '/?categorie=duel', route: '/' })
+    renderPage(<HomePage />, { url: '/?categorie=duel&theme=reflexion', route: '/' })
 
     expect(titles()).toEqual([])
     expect(screen.getByRole('status').textContent).toBe('Aucun jeu ne correspond à ces filtres.')

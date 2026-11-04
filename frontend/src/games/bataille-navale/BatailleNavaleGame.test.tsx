@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { GameContext } from '../types'
+import { FakeRealtime } from '../testing/fakes'
 import { coordKey, type PlacedShip } from './logic'
 import BatailleNavaleGame from './BatailleNavaleGame'
 
@@ -42,6 +43,7 @@ function buildCtx(overrides: Partial<GameContext> = {}): GameContext {
     loadSave: vi.fn().mockResolvedValue(null),
     save: vi.fn().mockResolvedValue(undefined),
     clearSave: vi.fn().mockResolvedValue(undefined),
+    realtime: new FakeRealtime(),
     ...overrides,
   }
 }

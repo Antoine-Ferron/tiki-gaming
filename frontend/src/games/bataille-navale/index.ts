@@ -6,6 +6,7 @@ const batailleNavale: GameDefinition = {
   title: 'Bataille navale',
   description: 'Coule la flotte adverse en duel, à deux sur le même appareil.',
   category: 'duel',
+  theme: 'action',
   mode: 'solo',
   component: lazy(() => import('./BatailleNavaleGame')),
 }
