@@ -22,6 +22,8 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -209,6 +211,42 @@ class GameShotHttpTest {
         command(code, "shots/bang-2/targets/2", 1).andExpect(status().isNoContent());
 
         view(code, 1).andExpect(jsonPath("$.pendingShot.targetSeat").value(2));
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = GameState.Phase.class,
+            names = {"DRAW", "DISCARD"})
+    void shootingOutsideThePlayPhaseChangesNothing(GameState.Phase phase) throws Exception {
+        String code = startedTable(preparedGame(BangCharacter.BART_CASSIDY, BangCharacter.CALAMITY_JANET, phase));
+        GameState before = tables.game(code);
+
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isConflict());
+
+        assertThat(tables.game(code)).isSameAs(before);
+        view(code, 1).andExpect(jsonPath("$.pendingShot").doesNotExist());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "bang-1,1,1,409",
+        "bang-1,3,1,409",
+        "bang-1,9,1,409",
+        "unknown,2,1,409",
+        "missed-2,2,1,409",
+        "bang-1,2,2,403",
+        "bang-1,2,5,403"
+    })
+    void invalidFiringChangesNeitherTheGameNorTheShotAllowance(String cardId, int target, int actor, int expected)
+            throws Exception {
+        String code = startedTable();
+        GameState before = tables.game(code);
+
+        command(code, "shots/" + cardId + "/targets/" + target, actor).andExpect(status().is(expected));
+
+        assertThat(tables.game(code)).isSameAs(before);
+        view(code, 1).andExpect(jsonPath("$.pendingShot").doesNotExist());
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
     }
 
     private String pendingId(String code) throws Exception {

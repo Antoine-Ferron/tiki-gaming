@@ -237,6 +237,9 @@ public class PrivateTableService {
     public synchronized void fire(String code, String accountId, String cardId, int targetSeat) {
         Table table = activeTable(code, accountId);
         GameState game = table.game;
+        if (game.phase() != GameState.Phase.PLAY) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Ce n'est pas la phase de jeu.");
+        }
         ShotOutcome outcome;
         try {
             outcome = shotRules(game).fire(game, game.currentSeat(), cardId, targetSeat, table.shotsThisTurn);
