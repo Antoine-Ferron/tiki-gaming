@@ -1,6 +1,6 @@
 # Rush Hour : analyse SonarQube
 
-> **Statut : corrigé (0 problème ouvert sur Rush Hour).** Ce document garde la trace de l'analyse de qualité du code de Rush Hour : ce que SonarQube a relevé, ce qu'on en a conclu, ce qu'on a corrigé et ce que ça a changé.
+> **Statut : corrigé (0 problème ouvert sur Rush Hour), puis prolongé par la mutation (section 7).** Ce document garde la trace de l'analyse de qualité du code de Rush Hour : ce que SonarQube a relevé, ce qu'on en a conclu, ce qu'on a corrigé et ce que ça a changé.
 > Issue : #102 · Branche : `game/rush-hour/qualite-sonar` · PR : #…
 
 ---
@@ -130,3 +130,40 @@ Le gate de **SonarQube Cloud**, celui de la CI, n'a pas les mêmes conditions et
 **Leçon pour la lecture d'un rapport.** Un statut de gate n'a de sens qu'avec son contexte : quelle instance, quel profil de règles, quelle période de « nouveau code ». Ici, l'alerte `S7767` de Rush Hour a disparu **sur notre branche**, mais elle reste visible sur `dev` et sur les autres PR tant que celle-ci n'est pas fusionnée.
 
 **Ce qui reste, et où ça se traite.** Quelques branches ne sont pas couvertes dans `LevelPicker.tsx` et `LevelPlayer.tsx` (texte d'un indice vers le haut ou vers la gauche, par exemple). Elles ne valent pas un test de composant de plus. La suite logique est la **mutation** (Stryker / Pitest, cours J3_AM) : vérifier non plus que le code est *exécuté*, mais que les tests *détectent* une modification.
+
+## 7. Suite : la mutation (Stryker et Pitest)
+
+La couverture dit qu'une ligne a été **exécutée**, pas qu'un test **vérifie** son résultat (cours J3_AM, « l'illusion de la couverture »). La mutation le mesure : l'outil introduit un petit bug dans le code (un `>` changé en `>=`, un `+` en `-`, une condition remplacée par `true`…) et regarde si un test échoue. Un mutant **tué** prouve que les tests protègent cette ligne. Un mutant **survivant** révèle soit un test qui manque, soit du code en trop.
+
+Rush Hour ne faisait partie d'aucune campagne de mutation : ni Stryker (front) ni Pitest (back).
+
+### Ce que la mutation a trouvé avant même de muter
+
+Le premier lancement de Stryker a échoué : le **test de contrat** lisait `shared/games/rush-hour/contrat.json` par un chemin fixe (`../../../..`). Or Stryker copie `frontend/` dans un bac à sable (`frontend/.stryker-tmp/sandbox-…`), et le chemin n'y menait plus nulle part. La CI ne le voyait pas, parce que Rush Hour n'était pas muté. Le test cherche maintenant le contrat en remontant les dossiers.
+
+### Mutants survivants et traitement
+
+| Où | Mutant | Diagnostic | Traitement |
+|---|---|---|---|
+| `generator.ts` | `random() * n` remplacé par `random() / n` | Le générateur prenait toujours la 1ʳᵉ disposition de la réserve, et aucun test ne le voyait | **Test** : chaque disposition peut être tirée |
+| `session.ts` | `?.` remplacé par `.`, `if (next)` remplacé par `true` | Aucun test d'indice sur un plateau sans solution | **Test** : ni indice, ni indice compté |
+| `session.ts` | `if (this.solved) return null` remplacé par `false` | **Équivalent** : la solution d'un plateau gagné est vide | **Ligne supprimée** (code en trop) |
+| `moves.ts` | retrait du filtre « sauf le véhicule lui-même » | **Équivalent** : les cases du véhicule ne sont jamais testées | **Filtre supprimé** (code en trop) |
+| `SolutionVerifier.java` | `delta > 0` remplacé par `true` | Aucun test de recul contre un autre véhicule | **Test** |
+| `SolutionVerifier.java` | `target + length > SIZE` remplacé par `false` | Aucun test de dépassement du bord droit | **Test** |
+| `SolutionVerifier.java` | `total != 0` remplacé par `false` | La fusion R6 perdue passait inaperçue si le coup suivant touchait le même véhicule | **Test** : un coup fusionné suivi d'un autre véhicule |
+| `SolutionVerifier.java:79-80`, `Solver.java:72` | changements de borne, boucle | **Équivalents** : `delta = 0` est refusé plus tôt, et `Board.parse` garantit une voiture rouge | Gardés, documentés ici |
+
+Chaque nouveau test a été vérifié en réappliquant le mutant à la main : il échoue avec le mutant et passe sur le vrai code.
+
+### Résultats
+
+| | Avant | Après |
+|---|---|---|
+| Score de mutation (MSI) front (domaine + `drag.ts`) | 98,65 % (6 survivants) | **100 %** (436 mutants neutralisés) |
+| Score de mutation (MSI) back (`rush_hour`) | 95 % (8 survivants) | **97 %** (4 survivants, tous équivalents) |
+| Dans la mutation de la CI | non | **oui** (`stryker.config.mjs`, profil `mutation` du `pom.xml`) |
+
+Les deux scores dépassent largement le seuil de 75 % du cours et de la plateforme. Ce n'est pas surprenant pour un domaine écrit en TDD : chaque ligne y est née pour faire passer un test. La mutation a quand même trouvé **3 cas limites non testés** et **2 bouts de code inutiles**. Une couverture de 96 % ne les aurait jamais montrés.
+
+**Coût.** La campagne complète du front prend environ 6 minutes en local, parce que 61 % des mutants sont « statiques » (des valeurs définies au niveau du module, qui obligent à relancer toute la suite). En CI, Stryker tourne en mode **incrémental** sur les PR : seuls les mutants des fichiers modifiés sont rejoués.
