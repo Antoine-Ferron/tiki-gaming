@@ -1,6 +1,7 @@
 package fr.tikigaming.games.echecs.api;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -8,8 +9,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -108,5 +112,26 @@ class EchecsControllerTest {
         send("destinations", "{\"fen\":\"abc\",\"from\":\"e2\"}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Entrée invalide : Une FEN a 6 champs : abc"));
+    }
+
+    static Stream<String> corpsInvalides() {
+        String fen = "k7/8/8/8/8/8/8/7K w - - 0 1";
+        return Stream.of(
+                "{}", // tout manque
+                "{\"from\":\"e2\",\"to\":\"e4\"}", // FEN absente
+                "{\"fen\":\"\",\"from\":\"e2\",\"to\":\"e4\"}", // FEN vide
+                "{\"fen\":\"" + fen + "\",\"to\":\"e4\"}", // case de départ absente
+                "{\"fen\":\"" + fen + "\",\"from\":\"e2\",\"to\":\"  \"}", // case d'arrivée blanche
+                "{\"fen\":\"" + fen + "\",\"from\":\"e2e2e2\",\"to\":\"e4\"}", // case trop longue
+                "{\"fen\":\"" + "x".repeat(101) + "\",\"from\":\"e2\",\"to\":\"e4\"}"); // FEN géante
+    }
+
+    @ParameterizedTest(name = "[{index}] corps invalide")
+    @MethodSource("corpsInvalides")
+    @DisplayName("un corps incomplet ou démesuré donne 400 sans même appeler le service")
+    void unCorpsIncompletDonne400SansAppelerLeService(String body) throws Exception {
+        // Act + Assert
+        send("moves", body).andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
     }
 }
