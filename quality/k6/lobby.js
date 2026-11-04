@@ -95,11 +95,14 @@ export const options = {
     // Fin de partie d'un joueur connecté : l'insertion que fait le backend (service_role, trigger max_score).
     submit_score: scenario('submitScore', 20),
     ...(BACKEND_URL ? { session: scenario('readSession', 50) } : {}),
+    // Fin d'un niveau de Rush Hour : le serveur rejoue la partie et calcule le minimum (solveur). Niveau 20 = pire cas.
+    ...(BACKEND_URL ? { rush_hour_verify: scenario('verifyRushHourLevel', 20) } : {}),
   },
   thresholds: {
     ...slo('leaderboard'),
     ...slo('submit_score'),
     ...(BACKEND_URL ? slo('session') : {}),
+    ...(BACKEND_URL ? slo('rush_hour_verify') : {}),
     http_req_failed: ['rate<0.01'],
     checks: ['rate>0.99'],
   },
@@ -165,11 +168,38 @@ export function readSession() {
   check(res, { 'session : 200': (r) => r.status === 200 })
 }
 
+// Partie gagnante du niveau 20 de Rush Hour (26 coups, le minimum), trouvée par le solveur du jeu.
+// prettier-ignore
+const RUSH_HOUR_LEVEL_20 = [
+  ['I', -1], ['F', -1], ['B', 2], ['H', 1], ['K', -4], ['G', 1], ['D', 1], ['L', 1], ['F', 1], ['I', 3], ['F', -2],
+  ['X', 2], ['K', 2], ['H', -4], ['E', -4], ['X', -2], ['K', -2], ['B', -2], ['C', -2], ['A', -4], ['L', 1], ['B', 1],
+  ['C', 1], ['J', -1], ['G', 2], ['X', 4],
+].map(([vehicle, delta]) => ({ vehicle, delta }))
+
+export function verifyRushHourLevel() {
+  // Jeton CSRF : lu dans le cookie que le backend pose à la visite (k6 vide les cookies entre deux itérations).
+  const jar = http.cookieJar()
+  let token = jar.cookiesForURL(BACKEND_URL)['XSRF-TOKEN']?.[0]
+  if (!token) {
+    http.get(`${BACKEND_URL}/api/auth/session`, { tags: { name: 'GET /api/auth/session (CSRF)' } })
+    token = jar.cookiesForURL(BACKEND_URL)['XSRF-TOKEN']?.[0]
+  }
+  const res = http.post(
+    `${BACKEND_URL}/api/games/rush-hour/levels/20/results`,
+    JSON.stringify({ moves: RUSH_HOUR_LEVEL_20, hints: 0 }),
+    {
+      headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': token },
+      tags: { name: 'POST /api/games/rush-hour/levels/{level}/results' },
+    },
+  )
+  check(res, { 'rush hour : 200 et 1000 points': (r) => r.status === 200 && r.json().score === 1000 })
+}
+
 export function handleSummary(data) {
   const metric = (s, p) => data.metrics[`http_req_duration{scenario:${s}}`]?.values[p]
-  const lines = ['leaderboard', 'submit_score', 'session']
+  const lines = ['leaderboard', 'submit_score', 'session', 'rush_hour_verify']
     .filter((s) => metric(s, 'p(95)') !== undefined)
-    .map((s) => `${s.padEnd(14)} P95 = ${metric(s, 'p(95)').toFixed(1)} ms   P99 = ${metric(s, 'p(99)').toFixed(1)} ms`)
+    .map((s) => `${s.padEnd(17)} P95 = ${metric(s, 'p(95)').toFixed(1)} ms   P99 = ${metric(s, 'p(99)').toFixed(1)} ms`)
   const text = [
     `Profil   : ${PROFILE}`,
     `Requêtes : ${data.metrics.http_reqs.values.count} (${data.metrics.http_reqs.values.rate.toFixed(1)}/s)`,
