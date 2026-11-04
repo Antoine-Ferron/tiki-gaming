@@ -10,6 +10,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
   document.cookie = 'XSRF-TOKEN=; Max-Age=0; Path=/'
+  sessionStorage.clear()
 })
 
 test('seule la cible esquive avec sa carte et l’identifiant courant, puis relit les quatre tapis', async () => {
@@ -32,7 +33,7 @@ test('seule la cible esquive avec sa carte et l’identifiant courant, puis reli
     return Response.json({ code: view.code, seat: 1, playerCount: 4 })
   })
   vi.stubGlobal('fetch', fetch)
-  render(<OnlineTable />)
+  render(<OnlineTable accountId="compte-test" />)
   fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Esquiver avec Raté !' }))
 
@@ -58,7 +59,7 @@ test('depuis la partie en ligne, choisir un BANG ! et viser envoie le vrai POST 
   })
   vi.stubGlobal('fetch', fetch)
   document.cookie = 'XSRF-TOKEN=jeton%20test; Path=/'
-  render(<OnlineTable />)
+  render(<OnlineTable accountId="compte-test" />)
   fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
   const hand = within(await screen.findByRole('region', { name: 'Ta main' }))
   fireEvent.click(hand.getAllByRole('button', { name: 'BANG !' })[0])
@@ -86,7 +87,7 @@ test('le tireur attend la réponse du tir serveur et ne peut plus jouer ni finir
       Response.json(url.endsWith('/state') ? view : { code: view.code, seat: 1, playerCount: 4 }),
     ),
   )
-  render(<OnlineTable />)
+  render(<OnlineTable accountId="compte-test" />)
   fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
   await screen.findByRole('region', { name: 'Ta main' })
 
@@ -116,7 +117,7 @@ test('accepter applique uniquement la vue reçue, avec les dégâts et le bonus 
     return Response.json({ code: view.code, seat: 1, playerCount: 4 })
   })
   vi.stubGlobal('fetch', fetch)
-  render(<OnlineTable />)
+  render(<OnlineTable accountId="compte-test" />)
   fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Accepter le tir' }))
 
@@ -147,7 +148,7 @@ test('deux clics sur accepter pendant la même requête ne lancent qu’une rép
     return Response.json({ code: view.code, seat: 1, playerCount: 4 })
   })
   vi.stubGlobal('fetch', fetch)
-  render(<OnlineTable />)
+  render(<OnlineTable accountId="compte-test" />)
   fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
   const accept = await screen.findByRole('button', { name: 'Accepter le tir' })
   fireEvent.click(accept)
@@ -176,7 +177,7 @@ test.each([
     return Response.json({ code: view.code, seat: 1, playerCount: 4 })
   })
   vi.stubGlobal('fetch', fetch)
-  render(<OnlineTable />)
+  render(<OnlineTable accountId="compte-test" />)
   fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
   const hand = within(await screen.findByRole('region', { name: 'Ta main' }))
   fireEvent.click(hand.getByRole('button', { name: button }))
@@ -197,7 +198,7 @@ test.each([1, 3, 4])('la place %i ne répond pas au tir visant la place 2', asyn
       Response.json(url.endsWith('/state') ? view : { code: view.code, seat, playerCount: 4 }),
     ),
   )
-  render(<OnlineTable />)
+  render(<OnlineTable accountId="compte-test" />)
   fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
   await screen.findByRole('region', { name: 'Ta main' })
   expect(screen.queryByRole('button', { name: /Esquiver avec/ })).toBeNull()
@@ -219,7 +220,7 @@ test('une réponse périmée affiche le refus puis le nouveau tir, sans rejouer 
     return Response.json({ code: view.code, seat: 1, playerCount: 4 })
   })
   vi.stubGlobal('fetch', fetch)
-  render(<OnlineTable />)
+  render(<OnlineTable accountId="compte-test" />)
   fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Accepter le tir' }))
   expect((await screen.findByRole('alert')).textContent).toBe('Ce tir est déjà résolu.')
@@ -260,7 +261,7 @@ test('une ancienne lecture périodique ne réaffiche pas un tir déjà résolu',
     }),
   )
   vi.useFakeTimers()
-  render(<OnlineTable />)
+  render(<OnlineTable accountId="compte-test" />)
   await act(async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
   })
@@ -276,4 +277,24 @@ test('une ancienne lecture périodique ne réaffiche pas un tir déjà résolu',
   })
   expect(screen.getByRole('status').textContent).toBe('Au tour de la place 4.')
   expect(screen.queryByRole('button', { name: 'Accepter le tir' })).toBeNull()
+})
+
+test('actualiser la partie retrouve le même tir et sa place par une lecture, sans rejoindre ni démarrer', async () => {
+  const view: GameView = {
+    ...fourPlayerView(),
+    currentSeat: 4,
+    pendingShot: { id: 'conserve', shooterSeat: 4, targetSeat: 1 },
+  }
+  const fetch = vi.fn(async (url: string) =>
+    Response.json(url.endsWith('/state') ? view : { code: view.code, seat: 1, playerCount: 4 }),
+  )
+  vi.stubGlobal('fetch', fetch)
+  const first = render(<OnlineTable accountId="compte-test" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  await screen.findByRole('button', { name: 'Accepter le tir' })
+  first.unmount()
+  fetch.mockClear()
+  render(<OnlineTable accountId="compte-test" />)
+  expect((await screen.findByRole('status')).textContent).toContain('La place 4 te vise')
+  expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/games/bang/tables/ABC123/state'])
 })

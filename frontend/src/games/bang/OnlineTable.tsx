@@ -9,8 +9,15 @@ const POLL_MS = 2000
 const messageOf = (err: unknown) => (err instanceof Error ? err.message : 'Une erreur est survenue.')
 
 /** Table en ligne : créer ou rejoindre une table, la démarrer, puis jouer ses tours avec les routes du serveur. */
-export function OnlineTable() {
-  const [code, setCode] = useState<string | null>(null)
+export function OnlineTable({ accountId }: { accountId: string }) {
+  const storageKey = `tiki:bang:table:${accountId}`
+  const [code, setCode] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(storageKey)
+    } catch {
+      return null
+    }
+  })
   const [joinCode, setJoinCode] = useState('')
   const [view, setView] = useState<GameView | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +37,7 @@ export function OnlineTable() {
 
   useEffect(() => {
     if (!code) return
+    void refresh(code)
     const timer = setInterval(() => void refresh(code), POLL_MS)
     return () => clearInterval(timer)
   }, [code, refresh])
@@ -49,10 +57,14 @@ export function OnlineTable() {
     }
   }
 
-  /** Entre dans la table, puis lit tout de suite sa vue (la relecture périodique prend ensuite le relais). */
-  async function enter(seat: api.TableSeat) {
+  /** Ne mémorise que le code, jamais les mains ou les rôles ; la session serveur décide de la place. */
+  function enter(seat: api.TableSeat) {
+    try {
+      sessionStorage.setItem(storageKey, seat.code)
+    } catch {
+      // Un stockage refusé ne bloque pas la partie en cours.
+    }
     setCode(seat.code)
-    await refresh(seat.code)
   }
 
   return (
