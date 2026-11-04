@@ -92,16 +92,17 @@ describe('propriétés de moveGrid', () => {
 })
 
 describe('propriétés de play', () => {
-  test('le score ne baisse jamais et un coup ajoute au plus une tuile', () => {
+  test('le score augmente exactement des points du coup, et un coup ajoute au plus une tuile', () => {
+    const draws = fc.infiniteStream(fc.double({ min: 0, max: 0.999, noNaN: true }))
     fc.assert(
-      fc.property(grid, direction, fc.infiniteStream(fc.double({ min: 0, max: 0.999 })), (start, dir, draws) => {
-        const game: GameState = { grid: start, score: 0, moves: 0, status: 'playing', continued: false }
+      fc.property(grid, direction, fc.nat(100_000), draws, (start, dir, score, stream) => {
+        const game: GameState = { grid: start, score, moves: 0, status: 'playing', continued: false }
         const after = play(
           game,
           dir,
-          randomSpawner(() => draws.next().value),
+          randomSpawner(() => stream.next().value),
         )
-        expect(after.score).toBeGreaterThanOrEqual(game.score)
+        expect(after.score).toBe(score + moveGrid(start, dir).points)
         expect(tiles(after.grid.flat()).length).toBeLessThanOrEqual(tiles(start.flat()).length + 1)
       }),
     )
