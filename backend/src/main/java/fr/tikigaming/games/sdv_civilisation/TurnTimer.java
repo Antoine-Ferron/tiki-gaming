@@ -1,0 +1,49 @@
+package fr.tikigaming.games.sdv_civilisation;
+
+/** Minuteur d'un tour, voir docs/games/sdv-civilisation/regles.md#temps-de-tour */
+public final class TurnTimer {
+
+    public static final long DURATION_MILLIS = 60_000L;
+    public static final long WARNING_MILLIS = 10_000L;
+
+    private final Clock clock;
+    private final long deadline;
+
+    private TurnTimer(Clock clock, long deadline) {
+        this.clock = clock;
+        this.deadline = deadline;
+    }
+
+    public static TurnTimer start(Clock clock) {
+        return start(clock, DURATION_MILLIS);
+    }
+
+    public static TurnTimer start(Clock clock, long duration) {
+        return new TurnTimer(clock, clock.now() + duration);
+    }
+
+    /** Reprend le minuteur d'un tour déjà commencé, à partir de son heure limite officielle (partie rechargée). */
+    public static TurnTimer resume(Clock clock, long deadline) {
+        return new TurnTimer(clock, deadline);
+    }
+
+    /** Heure limite officielle du tour, envoyée aux joueurs pour leur compte à rebours. */
+    public long deadline() {
+        return deadline;
+    }
+
+    public long remainingMillis() {
+        return Math.max(0, deadline - clock.now());
+    }
+
+    public TurnPhase phase() {
+        long remaining = remainingMillis();
+        if (remaining == 0) {
+            return TurnPhase.EXPIRED;
+        }
+        if (remaining <= WARNING_MILLIS) {
+            return TurnPhase.WARNING;
+        }
+        return TurnPhase.RUNNING;
+    }
+}

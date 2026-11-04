@@ -30,7 +30,8 @@ d'écart entre les deux, c'est le CSS qui fait foi : corrigez la charte dans la 
 ### Catégories de jeux
 
 Chaque catégorie a sa couleur, utilisée **uniquement** pour son étiquette (`.tag-<catégorie>`) et
-jamais comme couleur d'action.
+pour la couverture d'un jeu sans vignette (`.game-card-<catégorie>`), jamais comme couleur d'action.
+Les thèmes (Action, Réflexion, Stratégie) n'ont pas de couleur : étiquette neutre.
 
 | Token          | Valeur    | Catégorie                 | Contraste sur surface |
 |----------------|-----------|---------------------------|-----------------------|
@@ -83,17 +84,22 @@ Police système, sans téléchargement : `system-ui, -apple-system, 'Segoe UI', 
 | `button.link`            | Action secondaire présentée comme un lien         |
 | `button.big`             | Grosse action de jeu (« Jouer », « Rejouer »)     |
 | `.form` + `label` + `input` | Formulaire en colonne, `max-width: 420px`      |
+| `<Field />` (`.field-hint`, `.field-error`) | Champ avec aide et message d'erreur sous l'input (bordure `--error`) |
 | `.muted`, `.error`, `.success` | Texte secondaire, erreur, confirmation      |
 | `.notice`                | Bandeau d'information teinté d'accent             |
 | `.tags` + `.tag` (+ `.tag-solo`, `.tag-duel`, `.tag-multi`) | Étiquettes ; `<GameTags game={…} />` les génère |
-| `.grid` + `.game-card`   | Catalogue de jeux                                 |
+| `.grid` + `.game-card`   | Catalogue de jeux ; sans vignette, `.game-card-cover` affiche l'initiale du jeu |
+| `<FilterChips />` (`.filter`, `button.chip`) | Filtre à choix unique (« Tous » + options), état par `aria-pressed` |
+| `button.secondary`       | Action secondaire encadrée (« Se connecter avec Google ») |
+| `.divider`               | Séparateur « ou » entre deux façons de faire      |
+| `<CursorSwarm />`        | Essaim de particules qui suit le curseur, **réservé au lobby et à la connexion** ; ne capte aucun clic, coupé si `prefers-reduced-motion` |
 | `<Leaderboard />` (`.leaderboard`, `li.me`) | Classement ; la ligne du joueur courant est en accent |
 
 ### États
 
 | État      | Règle                                                                     |
 |-----------|---------------------------------------------------------------------------|
-| Survol    | Bordure `--accent` sur les cartes cliquables ; soulignement sur les liens |
+| Survol    | Bordure `--accent` sur les cartes cliquables ; soulignement sur les liens (toujours souligné dans un paragraphe, WCAG 1.4.1) |
 | Focus     | `outline: 2px solid var(--accent)`, décalé de 1px. **Ne jamais supprimer le focus** |
 | Désactivé | `opacity: 0.6`, curseur normal                                            |
 | Chargement | Texte `.muted` (« Chargement… ») ; libellé du bouton changé (« Connexion… ») |
@@ -122,7 +128,7 @@ Chaque jeu garde sa personnalité **dans son plateau**, mais l'enveloppe reste c
 - **Tutoiement** pour s'adresser au joueur (« Choisis un jeu », « Connecte-toi pour apparaître au classement »).
 - Boutons : un verbe à l'infinitif ou à la première personne (« Jouer », « Se connecter », « Créer mon compte »).
 - Messages d'erreur : dire ce qui s'est passé et quoi faire (« Ce pseudo est déjà pris. »), sans code technique.
-- Catégories et modes, toujours avec ces libellés : **Solo**, **Duel**, **Multi** ; **Sans compte**, **Compte requis**.
+- Catégories, thèmes et modes, toujours avec ces libellés : **Solo**, **Duel**, **Multi** ; **Action**, **Réflexion**, **Stratégie** ; **Sans compte**, **Compte requis**.
 
 ## À définir
 

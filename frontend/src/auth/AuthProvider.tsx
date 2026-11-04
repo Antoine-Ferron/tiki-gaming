@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { apiPost } from '@/lib/api'
+import { logger } from '@/lib/logger'
 import { clearSession, fetchSession, onSessionChange, type AuthUser } from '@/lib/session'
 import { AuthContext, type AuthContextValue, type Profile } from './AuthContext'
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
-  if (error) console.error('Chargement du profil impossible', error)
+  if (error) logger.error({ err: error }, 'Chargement du profil impossible')
   return data
 }
 
@@ -21,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onSessionChange((next) => setUser((prev) => (prev?.id === next?.id ? prev : next)))
     fetchSession()
-      .catch((e) => console.error('Backend d’authentification injoignable', e))
+      .catch((err) => logger.error({ err }, 'Backend d’authentification injoignable'))
       .finally(() => setLoading(false))
     return unsubscribe
   }, [])
@@ -29,8 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return
     let cancelled = false
-    fetchProfile(userId).then((p) => {
-      if (!cancelled) setLoaded({ userId, profile: p })
+    const done = (profile: Profile | null) => {
+      if (!cancelled) setLoaded({ userId, profile })
+    }
+    // Un échec (réseau…) est journalisé au lieu de remonter en rejet non géré ; le profil reste absent.
+    fetchProfile(userId).then(done, (err: unknown) => {
+      logger.error({ err }, 'Chargement du profil impossible')
+      done(null)
     })
     return () => {
       cancelled = true

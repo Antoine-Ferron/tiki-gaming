@@ -1,0 +1,492 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+  # Palier « nuit » : run complet (toutes les zones, mutation complète) sur la branche par défaut, et à la demande.
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Les noms des jobs sont des checks obligatoires de la règle « Protected » (dev, main) :
+# renommer un job bloque toutes les PR tant que la règle n'est pas mise à jour dans les settings du dépôt.
+#
+# Pipeline en paliers, arrêt au premier échec (fail-fast) : un palier ne démarre que si aucun job des paliers
+# précédents n'a échoué (`!contains(needs.*.result, 'failure')`). Chaque job liste dans `needs` tous les jobs des
+# paliers d'avant, pas seulement le dernier : un job sauté parce que son amont a échoué est « skipped », pas
+# « failure », et ne suffirait pas à arrêter la suite.
+#   1. Statique + unitaires : Frontend (format, lint, types, Vitest + couverture, contrat Pact, build), Backend
+#      (Spotless, Checkstyle, JUnit + JaCoCo, Pact provider, chaos Toxiproxy) ; Traçabilité et Security, toujours.
+#   2. Intégration : Testcontainers (PostgreSQL réel, migrations, RLS).
+#   3. Mutation (Stryker, Pitest) et E2E (Playwright + axe).
+#   4. Non fonctionnel et quality gate : k6, ZAP, SonarQube.
+#   5. Verdict : échoue si un job a échoué.
+#
+# Chaque job ne tourne que si sa zone a changé (job « changes »). Un job ignoré par son `if` est compté comme
+# réussi par la règle ; un workflow non déclenché, lui, laisserait les checks en attente : d'où des `if` au niveau
+# des jobs plutôt qu'un filtre `paths` sur le workflow. Si le filtre échoue (`continue-on-error`), « changes »
+# réussit avec des sorties vides et tous les jobs tournent (`!= 'false'`).
+jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      database: ${{ steps.filter.outputs.database }}
+      quality: ${{ steps.filter.outputs.quality }}
+    steps:
+      - uses: actions/checkout@v7
+        continue-on-error: true
+      # Run de nuit ou manuel : pas de filtre, sorties vides, donc tous les jobs tournent.
+      - id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        continue-on-error: true
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          # Modifier ce workflow relance tous les jobs.
+          filters: |
+            ci: &ci
+              - '.github/workflows/ci.yml'
+            frontend:
+              - *ci
+              - 'frontend/**'
+              - 'shared/**'
+            backend:
+              - *ci
+              - 'backend/**'
+              # Contrat Pact écrit par le front : le backend doit le rejouer.
+              - 'frontend/pacts/**'
+              - 'shared/**'
+            database:
+              - *ci
+              - 'frontend/**'
+              - 'supabase/**'
+            quality:
+              - *ci
+              - 'quality/**'
+
+  frontend:
+    name: Frontend (format + lint + build)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.frontend != 'false' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # Après `npm ci`, qui vide node_modules. Prettier et ESLint comparent le contenu des fichiers (pas leur date) :
+      # un fichier modifié est toujours revérifié. Une nouvelle clé par run, la plus récente est restaurée.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: frontend/node_modules/.cache
+          key: lint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ github.run_id }}
+          restore-keys: lint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
+      - run: npm run format:check
+      - run: npm run lint
+      # Erreur de type : arrêt avant de lancer les tests (le build refait tsc -b, incrémental donc instantané).
+      - run: npm run typecheck
+      # Tests + couverture : échoue sous les seuils de vite.config.ts (cœur du lobby ≥ 95 %, global sans régression).
+      - run: npm run test:coverage
+      # Contrat Pact (consumer) : le contrat régénéré doit être celui commité, que le backend rejoue.
+      - run: npm run test:contract
+      - name: Contrat Pact à jour
+        run: |
+          if ! git diff --exit-code -- pacts; then
+            echo "::error::Le contrat Pact a changé : lance npm run test:contract dans frontend/ et commite frontend/pacts."
+            exit 1
+          fi
+      - run: npm run build
+
+  backend:
+    name: Backend (format + lint + tests)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.backend != 'false' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      # Formatage vérifié d'abord : sinon Spotless (phase verify) ne tombe qu'après tous les tests.
+      - run: mvn -B spotless:check
+      # verify = Checkstyle (validate) + compilation + tests + couverture JaCoCo + Spotless (check)
+      - run: mvn -B verify
+
+  # Toujours exécuté et sans dépendance : un test renommé côté front ou backend casse la matrice.
+  traceability:
+    name: Traçabilité (RTM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # Exigences ↔ cas de test ↔ anomalies (specs/rtm-matrix.md) : zéro rupture de chaîne.
+      - run: node frontend/scripts/check-rtm.mjs
+
+  integration:
+    name: Integration (Testcontainers)
+    needs: [changes, frontend, backend]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.database != 'false' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # Le runner identifie une migration par sa version (horodatage) : deux fichiers de même version, et le second
+      # serait ignoré sans bruit en prod. Sans dépendance : passe avant npm ci.
+      - name: Migrations (format des noms, versions uniques)
+        run: npm run db:check
+      # Une migration déjà sur la branche cible est (ou sera) appliquée en prod, et le runner ne rejoue jamais une
+      # version connue : la modifier, la renommer ou la supprimer n'aurait aucun effet en base. Il faut en ajouter une.
+      - name: Migrations déjà mergées inchangées
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          changed=$(git diff --name-status --diff-filter=DMR FETCH_HEAD HEAD -- ':/supabase/migrations')
+          if [ -n "$changed" ]; then
+            echo "::error::Migration déjà sur $BASE_REF modifiée, renommée ou supprimée : crée plutôt une nouvelle migration (supabase migration new <nom>)."
+            echo "$changed"
+            exit 1
+          fi
+      - run: npm ci
+      # Conteneur supabase/postgres éphémère, migrations rejouées sur base vide, puis RLS et catalogue.
+      - run: npm run test:integration
+
+  # Mutation : incrémental sur les PR (seuls les mutants touchés par le changement sont rejoués), complet sur un
+  # push vers dev ou main, qui sert de filet de sécurité et alimente le cache lu par les PR suivantes. La clé
+  # contient le lockfile et la config : changer de version d'outil ou de config repart d'un run complet.
+  mutation-frontend:
+    name: Mutation (Stryker)
+    needs: [changes, frontend, backend, integration]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.frontend != 'false' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: frontend/reports/stryker-incremental.json
+          key: stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-${{ github.head_ref || github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-${{ github.head_ref || github.ref_name }}-
+            stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-
+      - if: github.event_name == 'pull_request'
+        run: npm run test:mutation -- --incremental
+      - if: github.event_name != 'pull_request'
+        run: npm run test:mutation -- --incremental --force
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-mutation-frontend
+          path: frontend/reports/mutation/
+
+  mutation-backend:
+    name: Mutation (Pitest)
+    needs: [changes, frontend, backend, integration]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.backend != 'false' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PIT_HISTORY: target/pit-history/history.bin
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: backend/target/pit-history
+          key: pitest-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}-${{ github.head_ref || github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            pitest-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}-${{ github.head_ref || github.ref_name }}-
+            pitest-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}-
+      - if: github.event_name == 'pull_request'
+        run: >-
+          mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
+          -DhistoryInputFile=$PIT_HISTORY -DhistoryOutputFile=$PIT_HISTORY
+      - if: github.event_name != 'pull_request'
+        run: >-
+          mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
+          -DhistoryOutputFile=$PIT_HISTORY
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-mutation-backend
+          path: backend/target/pit-reports/
+
+  # Toujours exécuté : une nouvelle vulnérabilité peut être publiée sans qu'aucun fichier ne change.
+  security:
+    name: Security (npm audit + dependency review)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # Bloquant à partir d'une vulnérabilité « high » (dépendances de prod et de dev).
+      - run: npm audit --audit-level=high
+        working-directory: frontend
+      # Sur une PR : refuse l'ajout d'une dépendance vulnérable (high+) ou sous licence incompatible.
+      - if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+
+  e2e:
+    name: E2E (Playwright + axe)
+    needs: [changes, frontend, backend, integration]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.frontend != 'false' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # Navigateurs Playwright mis en cache selon le lockfile (donc la version de Playwright) ; les dépendances
+      # système (apt) ne se mettent pas en cache et sont réinstallées à chaque run.
+      - id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+      - if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium firefox webkit
+      - if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium firefox webkit
+      # Parcours du lobby et audit WCAG 2.1 AA sous Chromium, Firefox et WebKit ; backend et Supabase simulés.
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: rapport-e2e
+          path: frontend/playwright-report/
+
+  performance:
+    name: Performance (k6)
+    needs:
+      - changes
+      - frontend
+      - backend
+      - integration
+      - mutation-frontend
+      - mutation-backend
+      - e2e
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.database != 'false' || needs.changes.outputs.quality != 'false') }}
+    runs-on: ubuntu-latest
+    env:
+      # Valeurs factices : aucun appel externe tant qu'aucun joueur n'est connecté (voir OpenApiDocsTest).
+      GOOGLE_CLIENT_ID: ci-client-id
+      GOOGLE_CLIENT_SECRET: ci-client-secret
+      SUPABASE_URL: https://ci.supabase.invalid
+      SUPABASE_ANON_KEY: ci-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+      SUPABASE_JWT_SECRET: ci-jwt-secret-with-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: npm ci
+        working-directory: frontend
+      # Base éphémère (image de prod) + migrations du dépôt + 1 000 joueurs factices, puis PostgREST.
+      - run: docker compose -f quality/docker-compose.yml up -d --wait db
+      - run: npm run quality:seed
+        working-directory: frontend
+      - run: docker compose -f quality/docker-compose.yml up -d rest
+      - name: Backend en arrière-plan
+        run: |
+          (cd backend && mvn -B -q spring-boot:run > ../backend.log 2>&1 &)
+          for i in $(seq 1 90); do curl -sf http://localhost:8080/api/auth/session && curl -sf -o /dev/null http://localhost:54330/ && break; sleep 2; done
+      # Seuils bloquants (quality/k6/lobby.js) : P95 < 300 ms par scénario, moins de 1 % d'erreurs.
+      - run: mkdir -p quality/reports && HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f quality/docker-compose.yml run --rm k6
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-k6
+          path: quality/reports/k6-summary.json
+
+  dast:
+    name: DAST (ZAP baseline)
+    needs:
+      - changes
+      - frontend
+      - backend
+      - integration
+      - mutation-frontend
+      - mutation-backend
+      - e2e
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.quality != 'false') }}
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_CLIENT_ID: ci-client-id
+      GOOGLE_CLIENT_SECRET: ci-client-secret
+      SUPABASE_URL: https://ci.supabase.invalid
+      SUPABASE_ANON_KEY: ci-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+      SUPABASE_JWT_SECRET: ci-jwt-secret-with-at-least-32-characters
+      VITE_SUPABASE_URL: https://ci.supabase.invalid
+      VITE_SUPABASE_ANON_KEY: ci-anon-key
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: npm ci && npm run build
+        working-directory: frontend
+      - name: Front buildé (vite preview, avec les en-têtes de sécurité) et backend en arrière-plan
+        run: |
+          (cd frontend && npx vite preview --host 0.0.0.0 --port 4173 --strictPort > ../preview.log 2>&1 &)
+          (cd backend && mvn -B -q spring-boot:run > ../backend.log 2>&1 &)
+          for i in $(seq 1 90); do curl -sf -o /dev/null http://localhost:4173/ && curl -sf http://localhost:8080/api/auth/session && break; sleep 2; done
+      # Scan passif. Échoue sur une alerte non acceptée ; les risques acceptés sont justifiés dans quality/zap/rules.tsv.
+      - name: ZAP baseline
+        run: |
+          mkdir -p quality/reports && chmod 777 quality/reports
+          for target in front:4173 api:8080; do
+            docker compose -f quality/docker-compose.yml run --rm zap zap-baseline.py \
+              -t "http://host.docker.internal:${target#*:}/" -c /zap/rules/rules.tsv -r "zap-${target%%:*}.html"
+          done
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-zap
+          path: quality/reports/
+
+  sonar:
+    name: SonarQube Cloud
+    needs:
+      - changes
+      - frontend
+      - backend
+      - integration
+      - mutation-frontend
+      - mutation-backend
+      - e2e
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false') }}
+    runs-on: ubuntu-latest
+    # Actif dès que le secret SONAR_TOKEN est configuré (Settings → Secrets → Actions), voir quality/README.md.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        if: env.SONAR_TOKEN != ''
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v6
+        if: env.SONAR_TOKEN != ''
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Couverture (Vitest lcov + JaCoCo)
+        if: env.SONAR_TOKEN != ''
+        run: |
+          (cd frontend && npm ci && VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run test:coverage)
+          (cd backend && mvn -B verify)
+      - uses: SonarSource/sonarqube-scan-action@v8
+        if: env.SONAR_TOKEN != ''
+        with:
+          # Le plan SonarCloud ne donne le statut du quality gate que pour les PRs et la branche principale (main) :
+          # sur un push sur dev, on analyse sans attendre le gate (sinon le scanner sort en erreur).
+          args: >-
+            -Dsonar.organization=eanathos
+            -Dsonar.qualitygate.wait=${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
+      - if: env.SONAR_TOKEN == ''
+        run: 'echo "SONAR_TOKEN absent : analyse SonarQube Cloud ignorée (voir quality/README.md)."'
+
+  # Un seul check qui résume tout le pipeline : à rendre obligatoire dans la règle « Protected » pour que « CI
+  # entièrement verte » (CONTRIBUTING) soit imposé par GitHub. Un job sauté pour sa zone compte comme réussi.
+  verdict:
+    name: CI (verdict)
+    needs:
+      - changes
+      - frontend
+      - backend
+      - security
+      - traceability
+      - integration
+      - mutation-frontend
+      - mutation-backend
+      - e2e
+      - performance
+      - dast
+      - sonar
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "::error::Au moins un job a échoué : le pipeline s'est arrêté à ce palier."
+          exit 1
+      - run: echo "Tous les paliers sont passés."

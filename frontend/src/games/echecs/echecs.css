@@ -1,0 +1,25 @@
+/* Jeu d'échecs : toutes les classes sont préfixées par le slug (charte graphique). */
+.echecs {
+  --echecs-square-light: #f0d9b5;
+  --echecs-square-dark: #b58863;
+  display: grid;
+  gap: 16px;
+}
+
+.echecs-board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: min(100%, 480px);
+  aspect-ratio: 1;
+  border: 2px solid var(--muted);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.echecs-square-light {
+  background: var(--echecs-square-light);
+}
+
+.echecs-square-dark {
+  background: var(--echecs-square-dark);
+}

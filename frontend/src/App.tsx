@@ -15,12 +15,21 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<HomePage />} />
-        <Route path="login" element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
-        <Route path="signup" element={<GuestOnlyRoute><SignupPage /></GuestOnlyRoute>} />
-        <Route path="forgot-password" element={<GuestOnlyRoute><ForgotPasswordPage /></GuestOnlyRoute>} />
+        <Route element={<GuestOnlyRoute />}>
+          <Route path="login" element={<LoginPage />} />
+          <Route path="signup" element={<SignupPage />} />
+          <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        </Route>
         {/* Accessible connecté, ou via le lien de réinitialisation reçu par email */}
         <Route path="update-password" element={<UpdatePasswordPage />} />
-        <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route
+          path="profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
         {/* L'accès (solo = invité autorisé, multijoueur = connexion) est géré par GamePage */}
         <Route path="games/:slug" element={<GamePage />} />
         <Route path="*" element={<NotFoundPage />} />

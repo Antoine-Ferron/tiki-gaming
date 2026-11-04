@@ -7,24 +7,32 @@ export function Layout() {
 
   async function handleSignOut() {
     await signOut()
-    navigate('/')
+    void navigate('/')
   }
 
   return (
     <div className="app">
       <header className="header">
-        <Link to="/" className="brand">Tiki Gaming</Link>
+        <Link to="/" className="brand">
+          Tiki Gaming
+        </Link>
         <nav className="nav">
-          <NavLink to="/" end>Jeux</NavLink>
+          <NavLink to="/" end>
+            Jeux
+          </NavLink>
           {user ? (
             <>
               <NavLink to="/profile">{profile?.username ?? 'Profil'}</NavLink>
-              <button className="link" onClick={handleSignOut}>Déconnexion</button>
+              <button className="link" onClick={handleSignOut}>
+                Déconnexion
+              </button>
             </>
           ) : (
             <>
               <NavLink to="/login">Connexion</NavLink>
-              <NavLink to="/signup" className="button small">Inscription</NavLink>
+              <NavLink to="/signup" className="button small">
+                Inscription
+              </NavLink>
             </>
           )}
         </nav>
