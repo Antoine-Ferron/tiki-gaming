@@ -28,4 +28,21 @@ public record GameState(
     public PlayerState player(int index) {
         return players.get(index);
     }
+
+    /** Les joueurs sont assis en cercle : le premier et le dernier sont voisins. */
+    public int leftOf(int index) {
+        return (index - 1 + players.size()) % players.size();
+    }
+
+    public int rightOf(int index) {
+        return (index + 1) % players.size();
+    }
+
+    public PlayerState left(int index) {
+        return player(leftOf(index));
+    }
+
+    public PlayerState right(int index) {
+        return player(rightOf(index));
+    }
 }

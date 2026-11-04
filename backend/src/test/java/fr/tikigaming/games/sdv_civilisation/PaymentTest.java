@@ -74,13 +74,12 @@ class PaymentTest {
         "3, Chantier, Chantier, BUILT, Tu as déjà construit cette carte.",
         "3, Verrerie, Bains, RESOURCES, Il te manque des ressources.",
         "0, Verrerie, Filon, COINS, Pas assez de pièces.",
-        "1, Verrerie, Atelier, COINS, Pas assez de pièces."
+        "1, Chantier, Atelier, COINS, Pas assez de pièces."
     })
     void aBuildingThatCannotBeBuiltIsRefused(
             int coins, String alreadyBuilt, String wanted, Refusal refusal, String reason) {
         // Étant donné "alice" (Temple d’Ysar : minerai) entre deux voisins sans pierre
-        GameState game = player(
-                player(start("Temple d’Ysar"), ALICE, coins(coins)), ALICE, built(alreadyBuilt));
+        GameState game = player(player(start("Temple d’Ysar"), ALICE, coins(coins)), ALICE, built(alreadyBuilt));
 
         // Quand elle veut construire la carte
         Payment payment = Payments.build(game, ALICE, card(wanted), trade);
