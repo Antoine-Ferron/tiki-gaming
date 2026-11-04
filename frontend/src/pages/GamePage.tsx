@@ -23,16 +23,17 @@ export default function GamePage() {
     profileLoaded: !!profile,
   })
   const playable = access === 'guest' || access === 'player'
+  // Dépend de id/username (primitifs), pas de `profile` : une mise à jour du profil qui ne change ni l'un ni
+  // l'autre (ex. avatar) ne doit pas recréer `ctx` et, avec lui, abandonner une connexion temps réel ouverte.
+  const player = useMemo(
+    () => (access === 'player' && profile ? { id: profile.id, username: profile.username } : null),
+    // profile volontairement réduit à ses champs : une autre partie du profil qui change ne doit pas recréer ctx
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [access, profile?.id, profile?.username],
+  )
   const ctx = useMemo(
-    () =>
-      game && playable
-        ? createGameContext(
-            game,
-            access === 'player' && profile ? { id: profile.id, username: profile.username } : null,
-            platformDeps(),
-          )
-        : null,
-    [game, playable, access, profile],
+    () => (game && playable ? createGameContext(game, player, platformDeps()) : null),
+    [game, playable, player],
   )
 
   if (access === 'not-found' || !game) return <NotFoundPage />

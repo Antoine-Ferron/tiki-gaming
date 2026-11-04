@@ -3,7 +3,7 @@ import { logger } from '@/lib/logger'
 import { checkScore } from './domain/score'
 import { GameError, MESSAGES, toGameError } from './errors'
 import { localSaves } from './adapters/local'
-import type { KeyValueStorage, SaveStore, ScoreRepository } from './ports'
+import type { KeyValueStorage, Realtime, SaveStore, ScoreRepository } from './ports'
 import { createScoreQueue, type ScoreQueue } from './scoreQueue'
 import type { GameContext, GameDefinition, Player, SaveSchema } from './types'
 
@@ -17,6 +17,8 @@ export type GameDeps = {
   playerSaves: (playerId: string) => SaveStore
   /** Stockage de l'appareil : sauvegarde invitée et scores en attente. null = indisponible. */
   storage: KeyValueStorage | null
+  /** Socle temps réel (./ports), instancié une fois par jeu. */
+  realtime: (gameSlug: string) => Realtime
 }
 
 type GameInfo = Pick<GameDefinition, 'slug' | 'scoreLimits'>
@@ -55,6 +57,7 @@ function createPlayerContext(game: GameInfo, player: Player, deps: GameDeps): Ga
     gameSlug: game.slug,
     player,
     isGuest: false,
+    realtime: deps.realtime(game.slug),
 
     async submitScore(score, metadata = {}) {
       const invalid = scoreError(score, game)
@@ -89,6 +92,7 @@ function createGuestContext(game: GameInfo, deps: GameDeps): GameContext {
     gameSlug: game.slug,
     player: null,
     isGuest: true,
+    realtime: deps.realtime(game.slug),
 
     async submitScore(score) {
       const invalid = scoreError(score, game)

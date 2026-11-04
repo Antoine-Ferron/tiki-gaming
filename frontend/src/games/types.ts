@@ -2,6 +2,7 @@ import type { ComponentType, LazyExoticComponent } from 'react'
 import type { Json, Views } from '@/lib/database.types'
 import type { GameCategory } from './categories'
 import type { ScoreLimits } from './domain/score'
+import type { Realtime } from './ports'
 import type { GameTheme } from './themes'
 
 export type Player = { id: string; username: string }
@@ -45,6 +46,8 @@ export interface GameContext {
   /** Écrase la sauvegarde du joueur pour ce jeu. */
   save(data: Json): Promise<void>
   clearSave(): Promise<void>
+  /** Socle temps réel (salles de jeu), scopé sur ce jeu. Un jeu solo n'a pas besoin de s'en servir. */
+  readonly realtime: Realtime
 }
 
 export type GameProps = { ctx: GameContext }

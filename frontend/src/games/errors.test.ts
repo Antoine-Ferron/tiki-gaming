@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { GameError, isChunkLoadError, MESSAGES, toGameError } from './errors'
+import { codeForStatus, GameError, isChunkLoadError, MESSAGES, toGameError } from './errors'
 
 describe('toGameError', () => {
   test('laisse passer une GameError telle quelle', () => {
@@ -73,6 +73,20 @@ describe('toGameError', () => {
 
   test.each([{ code: '42501' }, new Error('boom')])('garde l’erreur d’origine en cause : %s', (cause) => {
     expect(toGameError(cause).cause).toBe(cause)
+  })
+})
+
+describe('codeForStatus', () => {
+  test.each([
+    [0, 'network'],
+    [499, null],
+    [500, 'network'],
+    [503, 'network'],
+    [401, 'session'],
+    [403, 'forbidden'],
+    [404, 'not_found'],
+  ] as const)('statut %d → %s', (status, expected) => {
+    expect(codeForStatus(status)).toBe(expected)
   })
 })
 
