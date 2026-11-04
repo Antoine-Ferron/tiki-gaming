@@ -81,3 +81,19 @@ ainsi que la lecture d'un identifiant absent. Les huit scénarios qui nécessite
 l'adaptateur HTTP attendent encore son implémentation. Les noms suivent les mêmes
 limites UTF-16 et espaces Unicode que le domaine Java ; la base refuse les dates
 incohérentes, les insertions déjà terminées, les réécritures et les accès navigateur.
+
+## Adaptateur GREEN
+
+Sans modifier les assertions du RED, l'adaptateur réalise les créations, lectures
+et clôtures conditionnelles via PostgREST. Il traduit les refus et pannes du
+fournisseur, vérifie la forme des réponses et n'utilise pas d'upsert susceptible
+de réécrire une rencontre terminée.
+
+`mvn -B -ntp -f backend/pom.xml -Pintegration clean verify` réussit :
+**1 081 tests backend et 52 tests d'intégration**, zéro échec, erreur ou ignoré.
+La course réelle de deux requêtes de clôture n'en accepte qu'une. Checkstyle,
+Spotless et les seuils JaCoCo passent. Persistance : **70/70 lignes et 17/18
+branches couvertes** ; moteur et rencontres restent à 100 % lignes/branches.
+
+La suite PostgreSQL collective `CI=true npm run test:integration` passe également :
+**57 cas dans 4 fichiers**, avec la nouvelle migration, aucun test ignoré.
