@@ -216,8 +216,7 @@ class GameSocketControllerIntegrationTest {
 
         StompSession strangerSession = connect("subscribe-stranger");
         BlockingQueue<RoomEvent<?>> strangerEvents = subscribeToTopic(strangerSession, created.code());
-        BlockingQueue<RoomEvent<?>> strangerWildcardEvents =
-                subscribeToTopic(strangerSession, "*");
+        BlockingQueue<RoomEvent<?>> strangerWildcardEvents = subscribeToTopic(strangerSession, "*");
 
         creatorSession.send(
                 "/app/rooms/" + SLUG + "/" + created.code() + "/actions",

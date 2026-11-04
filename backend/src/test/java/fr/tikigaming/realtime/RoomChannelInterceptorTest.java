@@ -75,7 +75,11 @@ class RoomChannelInterceptorTest {
     void blocksWildcardAndMalformedRoomTopics() {
         String code = rooms.createRoom(SLUG, "creator", 4).code();
         for (String destination : new String[] {
-            "/topic/rooms/**", "/topic/rooms/" + SLUG + "/*", "/topic/rooms/" + SLUG, "/topic/rooms/" + SLUG + "/" + code + "/extra", "/topic/**"
+            "/topic/rooms/**",
+            "/topic/rooms/" + SLUG + "/*",
+            "/topic/rooms/" + SLUG,
+            "/topic/rooms/" + SLUG + "/" + code + "/extra",
+            "/topic/**"
         }) {
             Message<?> message = stompMessage(StompCommand.SUBSCRIBE, destination, "creator");
 
@@ -85,8 +89,7 @@ class RoomChannelInterceptorTest {
 
     @Test
     void leavesSubscriptionsOutsideTheRoomTopicPatternUntouched() {
-        Message<?> message =
-                stompMessage(StompCommand.SUBSCRIBE, "/user/queue/rooms/" + SLUG + "/response", "someone");
+        Message<?> message = stompMessage(StompCommand.SUBSCRIBE, "/user/queue/rooms/" + SLUG + "/response", "someone");
 
         assertThat(interceptor.preSend(message, channel)).isSameAs(message);
     }
