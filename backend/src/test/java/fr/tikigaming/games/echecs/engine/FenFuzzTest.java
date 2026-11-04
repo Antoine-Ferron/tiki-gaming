@@ -15,7 +15,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * Fuzzing de {@link Fen#parse} (cours J3_AM) : on lui envoie des milliers d'entrées générées au hasard et on vérifie
  * seulement qu'il ne « plante » jamais, sans oracle métier. Une FEN invalide doit être refusée par une
  * {@link IllegalArgumentException} (message lisible), jamais par une autre exception (NullPointerException,
- * IndexOutOfBounds…). Une FEN acceptée doit pouvoir être réécrite puis relue à l'identique.
+ * IndexOutOfBounds…). Une FEN acceptée doit être canonique : sa réécriture redonne exactement l'entrée.
  *
  * <p>La graine est fixe : un échec est donc reproductible, et l'entrée fautive est affichée dans le nom du test.
  */
@@ -48,8 +48,8 @@ class FenFuzzTest {
             fail("Exception imprévue " + unexpected.getClass().getSimpleName() + " pour « " + input + " »", unexpected);
             return;
         }
-        // Acceptée : l'aller-retour doit être stable (propriété, pas de résultat attendu écrit à la main)
-        assertThat(Fen.parse(Fen.toFen(position))).isEqualTo(position);
+        // Acceptée : la FEN doit être canonique, donc réécrite à l'identique (propriété, sans résultat écrit à la main)
+        assertThat(Fen.toFen(position)).isEqualTo(input);
     }
 
     static Stream<String> fuzzedInputs() {

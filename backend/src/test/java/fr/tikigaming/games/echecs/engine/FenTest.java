@@ -169,4 +169,21 @@ class FenTest {
     private static final String AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
 
     private static final String START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    @ParameterizedTest(name = "« {0} » est refusée")
+    @ValueSource(
+            strings = {
+                "k7/8/8/8/8/8/8/7K w  - 0 1", // champ de roque vide (deux espaces)
+                "k7/8/8/8/8/8/8/7K w - - +5 1", // signe « + » dans un compteur
+                "k7/8/8/8/8/8/8/7K w - - 00 1", // zéro inutile
+                "k7/8/8/8/8/8/8/7K w - - 02 1", // zéro en tête
+                "k7/8/8/8/8/8/8/7K w - - 0 01", // zéro en tête dans le numéro du coup
+                "k7/8/8/8/8/8/8/3K21R w - - 0 1", // deux chiffres de suite dans une rangée
+                "k07/8/8/8/8/8/8/7K w - - 0 1" // chiffre 0 dans une rangée
+            })
+    @DisplayName("une FEN non canonique est refusée (cas trouvés par le fuzzing)")
+    void uneFenNonCanoniqueEstRefusee(String fen) {
+        // Act + Assert
+        assertThatThrownBy(() -> Fen.parse(fen)).isInstanceOf(IllegalArgumentException.class);
+    }
 }
