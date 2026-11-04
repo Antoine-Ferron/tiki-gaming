@@ -62,9 +62,10 @@ public final class Fen {
         boolean previousWasDigit = false;
         for (char c : rankText.toCharArray()) {
             boolean digit = Character.isDigit(c);
-            if (digit && (c < '1' || c > '8' || previousWasDigit)) {
+            // Un 9 (ou plus) déborde toujours des 8 cases : refusé par le contrôle de longueur en fin de rangée.
+            if (digit && (c == '0' || previousWasDigit)) {
                 throw new IllegalArgumentException(
-                        "Chiffre invalide dans une rangée (1 à 8, jamais deux de suite) : " + rankText);
+                        "Chiffre invalide dans une rangée (pas de 0, jamais deux chiffres de suite) : " + rankText);
             }
             previousWasDigit = digit;
             if (digit) {
