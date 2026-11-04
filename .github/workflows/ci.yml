@@ -50,6 +50,11 @@ jobs:
               - *ci
               - 'frontend/**'
               - 'supabase/**'
+              # Stockage des parties de SDV Civilisation, testé contre la vraie base (SdvCivilisationTestcontainersIT).
+              - 'backend/pom.xml'
+              - 'backend/src/main/java/fr/tikigaming/games/sdv_civilisation/**'
+              - 'backend/src/test/java/fr/tikigaming/games/sdv_civilisation/**'
+              - 'quality/db-init/**'
             quality:
               - *ci
               - 'quality/**'
@@ -137,6 +142,16 @@ jobs:
       - run: npm ci
       # Conteneur supabase/postgres éphémère, migrations rejouées sur base vide, puis RLS et catalogue.
       - run: npm run test:integration
+      # Même image et mêmes migrations, avec un vrai PostgREST devant : stockage des parties de SDV Civilisation
+      # (classe *IT, ignorée par `mvn test`). L'image Postgres est déjà sur le runner après l'étape précédente.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Stockage des parties SDV Civilisation (Testcontainers + PostgREST)
+        working-directory: backend
+        run: mvn -B test -Dtest=SdvCivilisationTestcontainersIT -Dsurefire.failIfNoSpecifiedTests=false
 
   # Mutation : incrémental sur les PR (seuls les mutants touchés par le changement sont rejoués), complet sur un
   # push vers dev ou main, qui sert de filet de sécurité et alimente le cache lu par les PR suivantes. La clé

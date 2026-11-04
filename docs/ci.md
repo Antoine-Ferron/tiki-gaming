@@ -72,7 +72,7 @@ ne tourne que si l'une de ses zones a changé :
 |-----|---------------------------------|
 | Frontend, E2E, Mutation (Stryker) | `frontend/**` |
 | Backend, Mutation (Pitest) | `backend/**` |
-| Integration | `frontend/**` ou `supabase/**` |
+| Integration | `frontend/**`, `supabase/**`, `quality/db-init/**`, `backend/pom.xml` ou le code du jeu SDV Civilisation (`backend/src/*/java/fr/tikigaming/games/sdv_civilisation/**`) |
 | Performance (k6) | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` |
 | DAST (ZAP) | `frontend/**`, `backend/**` ou `quality/**` |
 | SonarQube Cloud | `frontend/**` ou `backend/**` |
@@ -160,6 +160,7 @@ Une seule commande Maven enchaîne, dans l'ordre :
 ```bash
 npm run db:check           # dans frontend/, sans Docker : noms et versions des migrations
 npm run test:integration   # dans frontend/, Docker requis
+mvn -B test -Dtest=SdvCivilisationTestcontainersIT -Dsurefire.failIfNoSpecifiedTests=false   # dans backend/, Docker requis
 ```
 
 Deux vérifications passent d'abord, sans base de données :
@@ -184,7 +185,12 @@ conteneur éphémère, rejoue **toutes les migrations** de `supabase/migrations/
   pas enregistrer un score au nom d'un autre ; un visiteur n'a aucun accès aux sauvegardes ;
 - les **triggers** : l'inscription crée le profil, et un pseudo déjà pris est dédoublonné ;
 - le **catalogue** : les catégories du front (`GAME_CATEGORIES`) correspondent à la contrainte en base ;
-- `find_auth_user_id` n'est accessible qu'au backend (`service_role`).
+- `find_auth_user_id` n'est accessible qu'au backend (`service_role`) ;
+- le **stockage des parties de SDV Civilisation** (`SdvCivilisationTestcontainersIT`, JUnit) : même image, mêmes
+  migrations, avec un vrai **PostgREST** devant la base, comme l'API REST de Supabase. Le vrai adaptateur
+  `SupabaseGames` enregistre et relit une partie, la colonne `data` reste chiffrée, le verrou optimiste
+  (`data->>version`) refuse une version périmée, et deux joueurs ne voient pas la partie l'un de l'autre. Les
+  classes `*IT` ne sont pas lancées par `mvn test`.
 
 Une migration qui ne s'applique pas sur une base neuve, ou une règle de sécurité cassée, est détectée ici, avant
 d'atteindre la production.
