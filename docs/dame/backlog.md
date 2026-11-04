@@ -2,7 +2,7 @@
 
 Ces US sont des sous-tâches documentaires : aucune issue GitHub créée. Les règles ci-dessous constituent la spécification proposée à confirmer pour les détails internationaux. Coordonnées et orientation sont des conventions internes proposées.
 
-Avancement : les comportements métier testés des US-01 à US-12 sont GREEN, avec **224 cas métier réussis** et **242 cas verts au total** en incluant les 18 tests collectifs. Les 220 cas initiaux ont passé sans affaiblissement des assertions ; quatre régressions US-11 couvrent en plus le statut d'une position déjà terminée à sa reconstruction. Le commit RED `2c03072` reste conservé ; le GREEN est enregistré séparément à la demande de l'utilisateur. Aucun push effectué. Ces résultats ne déclarent pas l'issue #18 terminée : revue collective, nulles internationales et intégrations SDK/API/E2E restent à valider. Voir l'[index des tests métier](tests-metier.md) et le [journal TDD](journal-tdd.md).
+Avancement de cette première PR : les comportements métier testés des US-01 à US-12 sont GREEN, avec **224 cas unitaires réussis**. Le RED `2b95d64` précède le GREEN `8f73f29`. Les 220 cas initiaux passent sans affaiblissement des assertions ; quatre régressions US-11 couvrent le statut d'une position déjà terminée lors de sa reconstruction. `mvn clean verify` passe 847 cas avec les tests collectifs et les seuils JaCoCo ; le domaine est couvert à 100 % des lignes et branches. L'intégration API/SDK/interface et ses tests seront livrés séparément. Les nulles restent à spécifier ; ces résultats ne déclarent pas l'issue #18 terminée. Voir l'[index métier](tests-metier.md) et le [journal TDD](journal-tdd.md).
 
 ## Definition of Done commune
 

@@ -1,34 +1,15 @@
-# Stratégie de tests — dames internationales
+# Stratégie des tests unitaires — dames internationales
 
-Stratégie prévue pour les étapes successives : voir le [backlog](backlog.md) et les [décisions d’architecture](architecture.md). Le RED global des douze US est enregistré dans `2c03072`. Les 220 cas métier initiaux sont passés GREEN sans modification de leurs assertions ; quatre cas de régression US-11 ont ensuite suivi leur propre RED puis GREEN. La suite compte maintenant **224 cas métier verts**, soit **242 cas réussis** avec les 18 tests collectifs, sans erreur ni test ignoré. Voir l'[index des tests métier](tests-metier.md) et le [journal TDD](journal-tdd.md). Aucune mesure de couverture n'est déduite de ce nombre de tests.
+## Périmètre et choix des doublures
 
-## Niveaux et outils
+Cette première PR porte sur le métier pur : 224 cas JUnit 5/AssertJ, sans Spring, I/O, base, réseau, attente ou état global partagé. `Board`, `Piece`, `Position` et `GameRules` sont exécutés réellement. `DameTestSupport` construit des fixtures explicites, sans calculer les résultats attendus avec le moteur.
 
-- **Unitaires** : JUnit 5 et AssertJ via `spring-boot-starter-test` existant. Java pur, sans Spring, I/O, base ni variables d’environnement. Mockito, déjà fourni par le starter, seulement si un futur port nécessite un double ; utiliser de vrais objets Board et Piece pour les règles.
-- **Frontend** : Vitest est désormais fourni par `dev` pour les tests unitaires TypeScript (`npm test`). Aucun test React/Dames supplémentaire n'est ajouté à cette étape.
-- **Intégration** : Spring Boot Test et MockMvc après validation de l’API. Vérifier DTO, validation, sérialisation, erreurs, accès invité, CSRF et appel du vrai moteur. Une tranche MVC avec service simulé ne remplace pas une intégration du moteur réel. Persistance éventuelle dans une base de test isolée uniquement.
-- **E2E** : Playwright envisagé, absent des dépendances actuelles. Justifier son ajout lors de cette étape future. React avec backend réel, aucun moteur simulé ; services de données éventuels isolés. Partie complète déterministe depuis l’état initial jusqu’à victoire puis réinitialisation ; deux personnes sur le même ordinateur, invité et connecté ; clavier et largeur 360 px. Attendre la résolution de la session du shell. Pas d’IA ni de multijoueur réseau.
+Une doublure sera utilisée lorsqu'une dépendance externe réelle devra être contrôlée. Aucune dépendance de ce type n'existe dans le moteur actuel ; ajouter des mocks de ses objets simples masquerait le comportement à vérifier. Les tests d'intégration, API et interface sont réservés à une PR distincte, conformément au découpage demandé par l'utilisateur.
 
-## Matrice prévue
-
-| US | Unitaire | Intégration future | E2E futur |
-|---|---|---|---|
-| 01 | 100 cases, parité, bornes, vide | DTO plateau | Plateau accessible 10 × 10 |
-| 02 | 20/20, centre vide, occupation | État initial exposé | Placement |
-| 03 | Blancs d’abord, alternance | Commande hors tour | Indication du tour |
-| 04 | Diagonales avant des deux camps | Coup accepté / état renvoyé | Déplacer un pion |
-| 05 | Classes invalides, atomicité | Entrées invalides / erreur stable | Refus compréhensible |
-| 06 | Captures dans quatre directions | Retrait sérialisé | Capture visible |
-| 07 | Obligation globale de prise | Refus du coup simple | Prise obligatoire |
-| 08 | Rafles, maximum global, égalité | Parcours atomique | Rafle complète |
-| 09 | Promotion finale, passage puis sortie | Nature sérialisée | Dame identifiable sans couleur seule |
-| 10 | Dame volante, obstacles, rafles | Coups autorisés | Déplacement à distance |
-| 11 | Élimination, blocage, terminal | Refus après fin | Partie complète et résultat |
-| 12 | Restauration, indépendance | Nouvelle partie isolée | Rejouer |
-
-Intégration et E2E dépendent de la validation du SDK/API : aucun endpoint n’existe actuellement. Préparer une suite reproductible de coups légaux depuis la position initiale pour l’E2E complet. Les positions proches de la fin le complètent sans le remplacer ; les fixtures spéciales restent dans l’environnement de test, sans endpoint de triche en production.
+La démarche combine boîte noire (partitions, limites, invariants) et boîte blanche (couverture des branches et mutation). Les durées Surefire, qui incluent l'instrumentation et le démarrage JVM, ne certifient pas un seuil absolu inférieur à 5 ms pour chaque première invocation.
 
 ## Partitions d’équivalence et valeurs limites
+
 
 | Entrée | Partitions | Limites |
 |---|---|---|
@@ -82,50 +63,22 @@ Tests paramétrés pour directions et coordonnées ; sélectionner des représen
 - Act : rafle (2,1) → (0,3) → (2,5).
 - Assert : deux prises, pièce toujours pion car arrivée finale hors rangée de promotion.
 
-## Cycles RED / GREEN / REFACTOR
+## RED, GREEN et preuves
 
-Le 3 novembre, l'utilisateur a choisi une phase RED globale : tous les scénarios métier du backlog ont été préparés avant leur logique, puis le moteur a été implémenté jusqu'au GREEN des 220 cas initiaux. La relecture a ensuite trouvé un statut de reconstruction incorrect pour une position déjà terminée : quatre cas ont été ajoutés, leurs quatre échecs observés, puis le constructeur de Game corrigé. Les 224 cas métier sont maintenant verts. Ce fonctionnement diffère des petits cycles initialement prévus ci-dessous, qui restent recommandés pour les prochaines évolutions. Les résultats valident le périmètre testé du moteur ; les nulles, l'API et les E2E restent à spécifier ou à intégrer avant la livraison du jeu.
+Les étapes originales sont reprises dans cette branche en ne gardant que le domaine, ses tests et leur documentation : `d7d1bb4` (initialisation), `faed34f` (premiers tests), `2b95d64` (RED global), `8f73f29` (GREEN). Le commit RED a été rejoué sur cette base : 220 cas, 191 échecs, zéro erreur. Le GREEN ciblé passe 224 cas ; les quatre cas supplémentaires concernent le statut de parties reconstruites déjà terminales. Aucun test n'est désactivé ni affaibli.
 
-1. Lire l’US et sélectionner un seul comportement observable.
-2. Écrire un test minimal dans `backend/src/test/java/fr/tikigaming/games/dame/`. Ajouter uniquement les signatures nécessaires pour observer un échec comportemental explicite.
-3. Exécuter le test ciblé, conserver commande et échec attendu. Un problème de dépendances ou d’environnement n’est pas une preuve RED métier.
-4. Implémenter le minimum de Java pur ; exécuter le test ciblé puis la suite backend.
-5. Refactorer si nécessaire sans ajouter de comportement, garder les tests verts, puis passer au scénario suivant.
-6. Après modification React : format, lint, tests Vitest et build ; côté Java : Spotless et `mvn verify`. Intégration et E2E quand les couches correspondantes existent.
+Le contrôle complet `mvn clean verify` réussit avec 847 cas (224 Dames, 623 collectifs). JaCoCo mesure 100 % des lignes et branches du domaine. Cette mesure ne constitue pas un score de mutation.
 
-US-03 commence par le camp initial ; son alternance complète se vérifie avec les premiers déplacements de US-04. Ne pas créer toutes les classes avant leur besoin dans les tests.
+Le profil Maven `mutation` existant conserve les cibles d'authentification et reçoit `fr.tikigaming.games.dame.*` et ses tests. Les mutateurs `STRONGER` et le seuil de 75 % sont conservés ; aucun nouvel outil ou dépendance ajouté. Résultat mesuré : Dames 149/156 mutants tués (95,51 %), profil complet 213/220 (96,82 %), sans timeout ni absence de couverture. Les sept survivants sont analysés dans [mutation.md](mutation.md), sans nouvelle exclusion.
 
-## Commandes prévues
+## Commandes
 
 ```bash
-# Racine, Java 21 et Maven disponibles
-mvn -f backend/pom.xml -Dtest=BoardTest test
-mvn -f backend/pom.xml test
+# Depuis la racine, Java 21 et Maven disponibles
+mvn -f backend/pom.xml '-Dtest=fr.tikigaming.games.dame.*Test' test
 mvn -f backend/pom.xml spotless:apply
-mvn -f backend/pom.xml spotless:check checkstyle:check
-mvn -f backend/pom.xml verify
-
-# Frontend, installation verrouillée si nécessaire
-cd frontend
-npm ci
-npm run format:check
-npm run lint
-npm test
-npm run build
+mvn -f backend/pom.xml clean verify
+mvn -f backend/pom.xml -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
 ```
 
-La suite métier comprend 13 classes de tests JUnit 5 et un constructeur de fixtures commun `DameTestSupport`. Les tests paramétrés portent le total à 224 cas, tous verts ; les statuts par classe figurent dans l'index. Maven 3.9.11 est disponible avec Java 21. Aucun wrapper Maven ni script E2E présent ; les tests unitaires frontend utilisent Vitest. Aucun credential Supabase nécessaire pour les tests unitaires métier.
-
-La CI utilise Node 24 pour le frontend et Java 21 pour le backend. `verify` lance Checkstyle, la compilation, les tests et Spotless ; sa dernière exécution locale réussit avec 242 tests. Pendant une phase RED, il s'arrête à l'échec du test : exécuter `spotless:check` séparément permet alors de confirmer le format. Ne pas désactiver de test pour obtenir une CI verte. Pour formater, utiliser `npm run format` côté frontend (ou Prettier ciblé sur les fichiers modifiés) et `mvn spotless:apply` côté backend.
-
-## Commits TDD proposés
-
-Exemples de messages pour les prochains cycles TDD, lorsque les commits sont autorisés :
-
-1. `test(dame): décrit les dimensions du damier (RED) (#18)` : test et signatures minimales, échec métier observé.
-2. `feat(dame): initialise les dimensions du damier (GREEN) (#18)` : implémentation minimale, suite verte.
-3. `refactor(dame): clarifie la représentation du plateau (#18)` : seulement si nécessaire, tests verts.
-
-Conserver commandes et résultats RED/GREEN dans le journal de travail et la future PR. La fusion collective en squash ne conservera pas nécessairement ces commits dans `dev` : les traces doivent rester consultables dans la branche et la PR avant fusion. Dernier état soumis à revue vert ; future PR vers `dev`, liée à #18, en draft pendant le travail puis prête à relire une fois terminée avec CI verte ; revue plateforme pour le backend. Aucun push, commit, PR ou nouvelle issue automatique.
-
-État courant : le commit local RED `2c03072` est conservé ; l'implémentation GREEN et les quatre régressions ajoutées restent non committées. Aucun nouveau commit ni push n'a été effectué pendant cette phase GREEN.
+Rapports : `backend/target/surefire-reports/`, `backend/target/site/jacoco/`, `backend/target/pit-reports/`. La CI collective conserve tous ses contrôles et seuils. La PR vise `dev`, référence #18 sans la fermer et requiert la revue plateforme pour le package serveur et le profil Maven. Aucun test d'intégration propre à Dames n'est ajouté dans cette livraison.

@@ -1,5 +1,7 @@
 # Journal TDD — US-01
 
+Les entrées antérieures au 4 novembre proviennent du travail original de `game/dame/implementation` et décrivent son contexte historique, y compris des étapes frontend absentes de cette première PR. Le périmètre courant est le moteur Java et ses seuls tests unitaires ; voir l'[architecture](architecture.md).
+
 ## 2 novembre 2026 — premier test, RED
 
 Branche : `game/dame/implementation`. Périmètre autorisé : rendre Maven disponible puis écrire uniquement le premier test ; étape GREEN à suivre séparément.
@@ -218,3 +220,13 @@ La documentation d'architecture, la stratégie et l'index sont actualisés. Les 
 L'utilisateur demande d'enregistrer le GREEN vérifié dans un commit local : `feat(dame): implémente le moteur de dames internationales (#18)`. Le commit regroupe le moteur, les quatre cas supplémentaires de GameEndTest et la documentation actualisée. Le commit RED `2c03072` reste dans l'historique sans réécriture.
 
 Validation de référence : `mvn -f backend/pom.xml verify`, 242 tests réussis (224 Dames et 18 collectifs), compilation, packaging, Checkstyle et Spotless verts. Le code et les tests sont inchangés depuis cette vérification ; seuls les statuts documentaires sont actualisés pour l'enregistrement du commit. Les réglages `.vscode/` restent hors du commit. Aucun push ni PR.
+
+## 4 novembre 2026 — première PR limitée aux tests unitaires
+
+L'utilisateur demande une PR directement prête à relire et réserve les tests d'intégration à une autre PR. Un worktree isolé `/private/tmp/tiki-dame-unitaires` porte `game/dame/tests-unitaires`, depuis `dev` à `0317320`. La branche originale reste intacte au commit `62b2458`, avec l'API, le SDK, l'interface et les tests d'intégration pour la suite.
+
+Les quatre premières étapes sont reprises en conservant l'auteur et l'ordre, mais en ne gardant que le domaine, ses tests et la documentation : `baac4c3 → d7d1bb4`, `d2b42c1 → faed34f`, `309ab8b → 2b95d64`, `d097cfc → 8f73f29`. Le RED est rejoué : 220 cas, 191 échecs, zéro erreur ou test ignoré. Le GREEN ciblé passe ensuite les 224 cas. Il s'agit d'une reprise vérifiée de l'historique existant, pas d'un nouveau cycle TDD inventé.
+
+`mvn clean verify` réussit sur cette branche avec **847 cas**, dont **224 métier Dames et 623 collectifs**, zéro échec, erreur ou test ignoré. Checkstyle, Spotless et les seuils JaCoCo passent. Le domaine atteint **187/187 lignes et 128/128 branches (100 %)**. Les seules modifications du pom ajoutent le package et les tests Dames aux cibles du profil PIT existant, en conservant l'authentification, les mutateurs et le seuil de 75 %. Aucune dépendance, migration, API, modification SDK ou frontend dans cette PR.
+
+Le profil PIT complet réussit : **213 mutations tuées sur 220 (96,82 %)**, dont **149/156 pour Dames (95,51 %)** et 64/64 pour l'authentification. Aucun timeout, mutant non couvert ou erreur d'exécution. Les sept survivants du domaine sont documentés dans [mutation.md](mutation.md) : six équivalences argumentées et une limite de sensibilité au message du refus après fin de partie. Aucun seuil, mutateur ou exclusion affaibli. Cette PR ne revendique aucun test d'intégration propre à Dames et référence #18 sans fermer l'issue complète.

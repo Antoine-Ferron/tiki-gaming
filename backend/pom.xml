@@ -225,9 +225,11 @@
                 <param>fr.tikigaming.auth.UsernameValidator</param>
                 <param>fr.tikigaming.auth.SupabaseErrors</param>
                 <param>fr.tikigaming.auth.SupabaseTokenService</param>
+                <param>fr.tikigaming.games.dame.*</param>
               </targetClasses>
               <targetTests>
                 <param>fr.tikigaming.auth.*Test</param>
+                <param>fr.tikigaming.games.dame.*Test</param>
               </targetTests>
               <mutators>
                 <mutator>STRONGER</mutator>

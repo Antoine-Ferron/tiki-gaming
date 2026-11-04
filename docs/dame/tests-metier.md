@@ -1,16 +1,16 @@
 # Suite de spécification métier — US-01 à US-12
 
-Le 3 novembre 2026, l'utilisateur a demandé tous les tests avant l'implémentation, puis le passage complet au GREEN. Le moteur Java pur satisfait maintenant les 224 cas métier de la suite. Le frontend reste une page d'attente sans raccordement au moteur ; les tests d'intégration HTTP et E2E React restent prévus dans la stratégie, avec leur contrat technique à valider. Ces résultats ne déclarent pas l'issue #18 terminée.
+Cette première PR livre uniquement le moteur Java et ses tests unitaires. API, SDK, interface et tests d'intégration sont conservés pour une PR séparée. Le moteur satisfait 224 cas métier ; l'issue #18 reste ouverte, notamment pour l'intégration et les règles de nulle.
 
 ## Résultats observés
 
 - **224 cas métier réussis** dans 13 classes JUnit 5, avec tests paramétrés.
 - **0 échec**, **0 erreur**, **0 test ignoré**.
-- Les **18 tests collectifs restent verts**, soit **242 cas réussis au total**.
+- Les **623 tests collectifs sont verts**, soit **847 cas réussis au total** sur la base `0317320`.
 - Compilation, Spotless et Checkstyle réussis ; `mvn verify` se termine avec `BUILD SUCCESS`.
 - Aucun test `@Disabled`, aucun `fail()` artificiel, aucune dépendance ajoutée, aucun mock dans le domaine.
 
-Le commit `2c03072` conserve le RED initial : 220 cas métier, dont 191 échecs et 29 réussites. Les 220 cas initiaux ont d'abord tous passé sans modifier leurs assertions. Une relecture a ensuite identifié le statut incorrect d'une partie reconstruite alors que le camp au trait n'avait plus de pièce ou était bloqué : quatre cas de régression supplémentaires ont été observés RED, puis le constructeur de Game a été corrigé. Les 224 cas passent désormais. Aucun pourcentage de couverture n'est déduit de ces résultats.
+Le commit `2b95d64` reprend le RED initial (`2c03072` avant les reprises de branche) : 220 cas métier, dont 191 échecs et 29 réussites. Les 220 cas initiaux ont d'abord tous passé sans modifier leurs assertions. Une relecture a ensuite identifié le statut incorrect d'une partie reconstruite alors que le camp au trait n'avait plus de pièce ou était bloqué : quatre cas de régression supplémentaires ont été observés RED, puis le constructeur de Game a été corrigé. Les 224 cas passent désormais. JaCoCo mesure séparément 187/187 lignes et 128/128 branches couvertes dans le domaine (100 %). PIT mesure séparément 149/156 mutants tués (95,51 %) pour Dames ; voir l'[analyse des survivants](mutation.md).
 
 ## Index de la suite GREEN
 
@@ -69,9 +69,9 @@ mvn -f backend/pom.xml -Dtest=SingleCaptureTest test
 # Domaine entier
 mvn -f backend/pom.xml '-Dtest=fr.tikigaming.games.dame.*Test' test
 
-# Formatage puis contrôle complet : 242 cas verts
+# Formatage puis contrôle complet : 847 cas verts
 mvn -f backend/pom.xml spotless:apply
 mvn -f backend/pom.xml spotless:check verify
 ```
 
-Rapports dans `backend/target/surefire-reports/`. Les suites ciblées et le contrôle complet passent, sans affaiblir les assertions ni ignorer de tests. Le commit local RED `2c03072` reste conservé. Les modifications GREEN du moteur et les quatre régressions supplémentaires sont regroupées dans le commit autorisé `feat(dame): implémente le moteur de dames internationales (#18)`. Aucun push ni PR. Le raccordement React/SDK/API, les tests d'intégration/E2E et les décisions sur les nulles restent à traiter avant la livraison.
+Rapports dans `backend/target/surefire-reports/`, `backend/target/site/jacoco/` et `backend/target/pit-reports/`. Le domaine est GREEN dans `8f73f29`, après le RED `2b95d64`. L'historique et les commandes sont conservés dans le [journal TDD](journal-tdd.md). Les tests d'intégration et l'interface feront l'objet d'une autre PR ; aucun endpoint ni catalogue n'est ajouté ici. Les règles de nulle restent à spécifier séparément.
