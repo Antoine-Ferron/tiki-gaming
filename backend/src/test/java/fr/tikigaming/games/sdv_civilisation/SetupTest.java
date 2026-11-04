@@ -54,10 +54,12 @@ class SetupTest {
         assertThat(game.lastTurn()).isEmpty();
         assertThat(game.conflicts()).isEmpty();
         // Et chaque joueur a 7 cartes de l'âge I (paquet non mélangé : alice reçoit le catalogue dans l'ordre)
-        assertThat(game.hands()).hasSize(3).allSatisfy(hand -> assertThat(hand)
-                .hasSize(Engine.HAND_SIZE)
-                .extracting(Card::age)
-                .containsOnly(1));
+        assertThat(game.hands())
+                .hasSize(3)
+                .allSatisfy(hand -> assertThat(hand)
+                        .hasSize(Engine.HAND_SIZE)
+                        .extracting(Card::age)
+                        .containsOnly(1));
         assertThat(game.hands().getFirst()).isEqualTo(Cards.ofAge(1));
     }
 }
