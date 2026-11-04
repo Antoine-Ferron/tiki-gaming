@@ -26,9 +26,27 @@ public final class Game {
         return new Position(
                 pieces,
                 position.turn() == Color.WHITE ? Color.BLACK : Color.WHITE,
-                position.castling(),
+                updatedCastling(position.castling(), from, to),
                 position.enPassant(),
                 resetsClock ? 0 : position.halfmoveClock() + 1,
                 position.turn() == Color.BLACK ? position.fullmoveNumber() + 1 : position.fullmoveNumber());
+    }
+
+    /**
+     * Un droit de roque se perd dès qu'un coup part de la case du roi ou de la tour concernée, ou arrive sur la case
+     * de la tour (elle est alors prise).
+     */
+    private static CastlingRights updatedCastling(CastlingRights rights, Square from, Square to) {
+        return new CastlingRights(
+                rights.whiteKingside() && untouched(from, to, "e1", "h1"),
+                rights.whiteQueenside() && untouched(from, to, "e1", "a1"),
+                rights.blackKingside() && untouched(from, to, "e8", "h8"),
+                rights.blackQueenside() && untouched(from, to, "e8", "a8"));
+    }
+
+    private static boolean untouched(Square from, Square to, String king, String rook) {
+        Square kingSquare = Square.of(king);
+        Square rookSquare = Square.of(rook);
+        return !from.equals(kingSquare) && !from.equals(rookSquare) && !to.equals(rookSquare);
     }
 }
