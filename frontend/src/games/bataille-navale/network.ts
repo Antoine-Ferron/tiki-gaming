@@ -189,10 +189,6 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
       const iAmShooter = by === state.mySeat
       const shots = new Set(iAmShooter ? state.shotsOnOpponent : state.shotsOnMe)
       for (const t of targets) shots.add(coordKey(t))
-      const hitsOnOpponent = iAmShooter
-        ? state.hitsOnOpponent + results.filter((r) => r === 'hit').length
-        : state.hitsOnOpponent
-      const shipsSunkByMe = iAmShooter ? state.shipsSunkByMe + sunk.length : state.shipsSunkByMe
       const resultsOnOpponent = new Map(state.resultsOnOpponent)
       if (iAmShooter) {
         targets.forEach((t, i) => {
@@ -202,6 +198,13 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
       const sunkOpponentShips = iAmShooter
         ? new Set([...state.sunkOpponentShips, ...sunk.map((s) => s.name)])
         : state.sunkOpponentShips
+      // Dérivés de `resultsOnOpponent`/`sunkOpponentShips` (idempotents, par case/par nom), jamais d'un compteur
+      // qu'on incrémente : le socle rediffuse à toute la salle y compris son propre expéditeur, et une
+      // redélivrance (reconnexion STOMP, etc.) ne doit pas compter deux fois le même tir.
+      const hitsOnOpponent = iAmShooter
+        ? [...resultsOnOpponent.values()].filter((r) => r === 'hit').length
+        : state.hitsOnOpponent
+      const shipsSunkByMe = iAmShooter ? sunkOpponentShips.size : state.shipsSunkByMe
       // Un tir qui touche fait rejouer le même camp ; seul un tir entièrement à l'eau passe la main.
       const anyHit = results.includes('hit')
       const next: NetState = {

@@ -145,7 +145,11 @@ describe('FIRE_RESULT — applied identically by both sides', () => {
   })
 
   it('ends the game and queues a score submission only for the winning shooter', () => {
-    const state = battleState({ turnSeat: 1, shotsOnOpponent: new Set([coordKey({ row: 1, col: 1 })]), hitsOnOpponent: 1 })
+    const state = battleState({
+      turnSeat: 1,
+      shotsOnOpponent: new Set([coordKey({ row: 1, col: 1 })]),
+      resultsOnOpponent: new Map([[coordKey({ row: 1, col: 1 }), 'hit']]),
+    })
     const event: RemoteEvent = {
       type: 'FIRE_RESULT',
       payload: { by: 1, targets: [{ row: 2, col: 2 }], results: ['hit'], sunk: [myFleet[0].ship], gameOver: true },
@@ -166,6 +170,21 @@ describe('FIRE_RESULT — applied identically by both sides', () => {
     }
     const { state: next } = applyRemoteEvent(state, event)
     expect(next.sunkOpponentShips.size).toBe(0)
+  })
+
+  it('redelivering the same FIRE_RESULT (e.g. a STOMP reconnect) does not double-count hits or sunk ships', () => {
+    // Le socle rediffuse à toute la salle, moi compris, et une reconnexion peut livrer le même message deux
+    // fois : le réducteur doit rester idempotent, pas seulement correct au premier passage.
+    const state = battleState({ turnSeat: 1 })
+    const event: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: { by: 1, targets: [{ row: 0, col: 0 }, { row: 0, col: 1 }], results: ['hit', 'hit'], sunk: [myFleet[0].ship], gameOver: true },
+    }
+    const once = applyRemoteEvent(state, event).state
+    const twice = applyRemoteEvent(once, event).state
+    expect(twice.hitsOnOpponent).toBe(once.hitsOnOpponent)
+    expect(twice.shipsSunkByMe).toBe(once.shipsSunkByMe)
+    expect(twice.shotsOnOpponent.size).toBe(once.shotsOnOpponent.size)
   })
 
   it('ends the game without queuing a submission for the losing side', () => {
