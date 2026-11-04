@@ -94,3 +94,38 @@ test('le tireur attend la réponse du tir serveur et ne peut plus jouer ni finir
   expect(screen.queryByRole('button', { name: 'BANG !' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Accepter le tir' })).toBeNull()
 })
+
+test('accepter applique uniquement la vue reçue, avec les dégâts et le bonus privé de Bart', async () => {
+  let view: GameView = {
+    ...fourPlayerView(),
+    currentSeat: 4,
+    pendingShot: { id: 'tir-courant', shooterSeat: 4, targetSeat: 1 },
+  }
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/state')) return Response.json(view)
+    if (url.endsWith('/shots/tir-courant/accept')) {
+      view = {
+        ...view,
+        pendingShot: undefined,
+        hand: [...view.hand, { id: 'bonus-serveur', type: 'MISSED' }],
+        players: view.players.map((p) => (p.seat === 1 ? { ...p, health: 3, handCount: 4 } : p)),
+      }
+      return new Response(null, { status: 204 })
+    }
+    return Response.json({ code: view.code, seat: 1, playerCount: 4 })
+  })
+  vi.stubGlobal('fetch', fetch)
+  render(<OnlineTable />)
+  fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Accepter le tir' }))
+
+  await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Au tour de la place 4.'))
+  expect(fetch).toHaveBeenCalledWith(
+    '/api/games/bang/tables/ABC123/shots/tir-courant/accept',
+    expect.objectContaining({ method: 'POST' }),
+  )
+  const mat = within(screen.getByRole('region', { name: 'Tapis de la place 1' }))
+  expect(mat.getByText('3/4 PV')).toBeTruthy()
+  expect(mat.getByText('4 en main')).toBeTruthy()
+  expect(within(screen.getByRole('region', { name: 'Ta main' })).getAllByText('Raté !')).toHaveLength(2)
+})
