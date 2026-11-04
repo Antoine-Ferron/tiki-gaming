@@ -15,7 +15,11 @@ public final class MoveGenerator {
     public static Set<Square> destinations(Position position, Square from) {
         Set<Square> destinations = new HashSet<>();
         for (int[] offset : KNIGHT_OFFSETS) {
-            destinations.add(new Square(from.file() + offset[0], from.rank() + offset[1]));
+            int file = from.file() + offset[0];
+            int rank = from.rank() + offset[1];
+            if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
+                destinations.add(new Square(file, rank));
+            }
         }
         return destinations;
     }
