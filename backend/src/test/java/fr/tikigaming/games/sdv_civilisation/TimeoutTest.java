@@ -44,8 +44,10 @@ class TimeoutTest {
         // Quand le minuteur d'"alice" expire (heure limite 61 000)
         GameState next = engine.timeOut(game, 61_000);
 
-        // Alors sa carte tirée au hasard, l'"Atelier", est défaussée : +3 pièces
-        assertThat(next.lastTurn().get(ALICE)).isEqualTo(new TurnEvent(ALICE, ActionType.DISCARD, card("Atelier"), 3));
+        // Alors sa carte tirée au hasard, l'"Atelier", est défaussée (les IA ont aussi pu lui acheter de la pierre)
+        TurnEvent mine = next.lastTurn().get(ALICE);
+        assertThat(mine.action()).isEqualTo(ActionType.DISCARD);
+        assertThat(mine.card()).isEqualTo(card("Atelier"));
         assertThat(next.discards()).extracting(Card::name).contains("Atelier");
         assertThat(next.turn()).isEqualTo(2);
         // Et le journal d'audit signale qu'elle a laissé passer son tour

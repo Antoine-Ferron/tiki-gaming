@@ -21,6 +21,9 @@ public final class Engine {
     /** Jeton de victoire de chaque âge ; une défaite vaut toujours −1, une égalité 0. */
     private static final List<Integer> VICTORY_TOKENS = List.of(1, 3, 5);
 
+    /** Place du joueur humain à la table ; les IA occupent les suivantes. */
+    public static final int PLAYER = 0;
+
     static final List<String> BOTS = List.of("IA 1", "IA 2");
 
     private final CurrencyConverter converter;
@@ -43,6 +46,23 @@ public final class Engine {
             players.add(PlayerState.seat(BOTS.get(i), true, STARTING_COINS, others.get(i)));
         }
         return new GameState(1, 1, players, deal(1, players.size()), false, List.of(), List.of(), List.of());
+    }
+
+    /** Le joueur joue son action ; les IA choisissent la leur sur le même état de début de tour. */
+    public GameState playAgainstAis(GameState state, Action mine) {
+        List<Action> actions = new ArrayList<>(List.of(mine));
+        for (int i = 1; i < state.players().size(); i++) actions.add(Ai.choose(state, i, converter));
+        return play(state, actions);
+    }
+
+    /**
+     * Le minuteur du joueur a expiré (voir docs/games/sdv-civilisation/regles.md#temps-de-tour) : une carte de sa
+     * main, tirée au hasard, est défaussée à sa place, et le journal d'audit le signale.
+     */
+    public GameState timeOut(GameState state, long deadline) {
+        Card drawn = shuffler.shuffle(state.hands().get(PLAYER)).getFirst();
+        audit.inactivityDetected(new InactivityReport(state.player(PLAYER).name(), deadline));
+        return playAgainstAis(state, new Action(ActionType.DISCARD, drawn.name()));
     }
 
     /** Âges I et III : chaque main part au voisin de gauche (on reçoit celle de droite). Âge II : l'inverse. */
