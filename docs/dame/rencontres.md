@@ -49,7 +49,8 @@ Le port actuel ne promet pas de clôture concurrente atomique : ce contrat devra
 1. Contrats, port, squelettes compilables et cette spécification.
 2. Tests unitaires RED exécutés et documentés avant la logique.
 3. Implémentation GREEN sans modifier les attentes des tests.
-4. Vérification de la qualité et de la mutation, documentation des résultats.
+4. Vérification de la qualité et de la mutation, renforcement des assertions si
+   nécessaire et documentation des résultats.
 
 La persistance réelle, la migration, les tests Testcontainers et le raccordement
 API/interface viennent ensuite. Cette étape ne modifie aucun fichier partagé,
@@ -57,9 +58,9 @@ n'ajoute aucune dépendance et ne publie ni branche ni PR.
 
 ## Journal d'exécution
 
-L'état initial contient uniquement les contrats et des squelettes explicites.
-Les valeurs provisoires de `MatchService` et `Match.finish` seront remplacées
-après l'exécution de la suite RED.
+Le premier commit contient uniquement les contrats et des squelettes explicites.
+Les valeurs provisoires de `MatchService` et `Match.finish` ont ensuite été
+remplacées après l'exécution de la suite RED.
 
 ### Contrats
 
@@ -100,3 +101,61 @@ une opération valide et laisse remonter les pannes du dépôt.
 224 tests du moteur Dames et 59 des rencontres. Checkstyle, Spotless et les seuils
 JaCoCo sont validés. Le package `games.dame.matches` couvre **44/44 lignes et
 21/21 branches**. Ces mesures ne remplacent pas le futur test de la base réelle.
+
+### Renforcement après mutation
+
+Le premier PIT relève un survivant sur les rencontres : supprimer le refus
+explicite de `IN_PROGRESS` dans `Match.finish`. Avec une date de fin renseignée,
+le constructeur refuse aussi cette incohérence : les tests existants passent
+donc malgré la mutation. Avec **`IN_PROGRESS` et une date absente**, le mutant
+accepterait à tort la clôture et renverrait une nouvelle rencontre en cours.
+
+Le cas `anUnfinishedResultIsRejectedEvenWhenTheEndDateIsMissing` est ajouté pour
+vérifier cette combinaison. Le second PIT confirme qu'il tue précisément ce
+mutant. Aucun changement de code de production, d'attente antérieure, de cible,
+de mutateur ni de seuil.
+
+Résultats finaux :
+
+- **60 cas des rencontres**, dont 36 pour le modèle, 11 avec fake et vrai moteur,
+  13 avec stubs/mocks.
+- `mvn clean verify` : **985 tests réussis**, 0 échec, erreur ou ignoré ; format,
+  Checkstyle et seuils JaCoCo validés. Les 224 tests du moteur restent verts.
+- Rencontres : **44/44 lignes et 21/21 branches couvertes**.
+- PIT des rencontres : **22/22 mutants tués, soit 100 %**.
+- PIT du profil collectif : **235/242 tués (97,11 %)** ; les sept survivants
+  antérieurs du moteur restent [analysés séparément](mutation.md). Aucun mutant
+  non couvert, timeout ou erreur.
+
+```bash
+# Cas de rencontre seuls
+mvn -B -ntp -f backend/pom.xml '-Dtest=fr.tikigaming.games.dame.matches.*Test' test
+# Qualité et suite backend
+mvn -B -ntp -f backend/pom.xml clean verify
+# Mutation, profil collectif inchangé
+mvn -B -ntp -f backend/pom.xml -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
+```
+
+Les rapports locaux sont `backend/target/site/jacoco/index.html` et
+`backend/target/pit-reports/index.html`, générés et non versionnés. Les mesures
+Surefire de la dernière suite complète donnent au plus 2 ms par cas du modèle,
+1 ms avec le fake, et 37 ms pour le plus lent avec Mockito. L'initialisation/JIT
+de la JVM et des doublures intervient dans ces durées : on ne revendique pas
+que chaque cas Mockito respecte déjà strictement le critère de 5 ms du barème.
+
+## Suite à réaliser
+
+La gestion métier est testée avec des doublures ; **aucune rencontre n'est
+encore écrite dans une vraie base ni accessible depuis le navigateur**.
+
+1. Préciser l'accès aux rencontres locales et la garantie contre deux clôtures
+   concurrentes avant le schéma de production.
+2. Ajouter la migration `dame_matches`, RLS et droits explicites, sans appliquer
+   de migration à une base partagée.
+3. Écrire les tests d'intégration sur PostgreSQL réel avec Testcontainers ; le
+   fake ne les remplace pas. Si l'adaptateur utilise PostgREST, tester aussi ce
+   trajet HTTP avec le service réel.
+4. Implémenter l'adaptateur puis raccorder API, SDK et formulaire des deux noms.
+
+Le daemon Docker local était indisponible lors de la préparation. Aucun résultat
+Testcontainers n'est revendiqué dans cette étape unitaire.

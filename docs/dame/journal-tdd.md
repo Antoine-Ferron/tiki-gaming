@@ -230,3 +230,23 @@ Les quatre premières étapes sont reprises en conservant l'auteur et l'ordre, m
 `mvn clean verify` réussit sur cette branche avec **847 cas**, dont **224 métier Dames et 623 collectifs**, zéro échec, erreur ou test ignoré. Checkstyle, Spotless et les seuils JaCoCo passent. Le domaine atteint **187/187 lignes et 128/128 branches (100 %)**. Les seules modifications du pom ajoutent le package et les tests Dames aux cibles du profil PIT existant, en conservant l'authentification, les mutateurs et le seuil de 75 %. Aucune dépendance, migration, API, modification SDK ou frontend dans cette PR.
 
 Le profil PIT complet réussit : **213 mutations tuées sur 220 (96,82 %)**, dont **149/156 pour Dames (95,51 %)** et 64/64 pour l'authentification. Aucun timeout, mutant non couvert ou erreur d'exécution. Les sept survivants du domaine sont documentés dans [mutation.md](mutation.md) : six équivalences argumentées et une limite de sensibilité au message du refus après fin de partie. Aucun seuil, mutateur ou exclusion affaibli. Cette PR ne revendique aucun test d'intégration propre à Dames et référence #18 sans fermer l'issue complète.
+
+## 4 novembre 2026 — rencontres locales, après fusion de #93
+
+À la demande de l'utilisateur, préparer les rencontres avant la persistance et
+faire un commit à chaque sous-étape. Branche `game/dame/rencontres` créée depuis
+`dev` à `e521099`. L'ancien travail API/interface reste conservé sur
+`game/dame/implementation` et les réglages VS Code restent locaux.
+
+- `d7da509` : modèle, port, service encore squelettique et contrat documenté.
+- `cbde5d0` : RED réellement exécuté, **59 cas, 57 échecs attendus, 0 erreur**.
+- `389b891` : GREEN des mêmes 59 cas ; **984 tests backend réussis**.
+- Renforcement après PIT : un cas supplémentaire refuse `IN_PROGRESS` même sans
+  date de fin ; PIT identifie ce nouveau test comme tueur du mutant survivant.
+  État final : **60 cas des rencontres**, **985 tests backend réussis**, JaCoCo
+  des rencontres **100 % lignes/branches**, PIT **22/22 mutants tués**.
+
+Les tests utilisent le vrai moteur, un fake de dépôt, des stubs de réponse/panne
+et des mocks ciblés sur les écritures. Aucun adaptateur de base, endpoint,
+changement frontend ou dépendance n'est ajouté dans cette étape. Détails,
+commandes, limites et suite dans [rencontres.md](rencontres.md).

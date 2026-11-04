@@ -145,6 +145,14 @@ class MatchTest {
     }
 
     @Test
+    void anUnfinishedResultIsRejectedEvenWhenTheEndDateIsMissing() {
+        Match initial = Match.start(ID, "Cherif", "Amadou", START);
+
+        assertThatThrownBy(() -> initial.finish(GameStatus.IN_PROGRESS, null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void cannotFinishWithoutAResult() {
         Match initial = Match.start(ID, "Cherif", "Amadou", START);
 
