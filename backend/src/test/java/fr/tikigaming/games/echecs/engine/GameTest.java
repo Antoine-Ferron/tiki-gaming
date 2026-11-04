@@ -21,6 +21,18 @@ class GameTest {
         assertThat(after.pieceAt(Square.of("e4"))).isEqualTo(Optional.of(new Piece(Color.WHITE, PieceType.PAWN)));
     }
 
+    @Test
+    @DisplayName("après un coup, c'est à l'autre camp de jouer")
+    void apresUnCoupCEstALAutreCampDeJouer() {
+        // Act
+        Position afterWhite = play(START, "e2", "e4");
+        Position afterBlack = Game.play(afterWhite, Square.of("e7"), Square.of("e5"));
+
+        // Assert
+        assertThat(afterWhite.turn()).isEqualTo(Color.BLACK);
+        assertThat(afterBlack.turn()).isEqualTo(Color.WHITE);
+    }
+
     private static Position play(String fen, String from, String to) {
         return Game.play(Fen.parse(fen), Square.of(from), Square.of(to));
     }
