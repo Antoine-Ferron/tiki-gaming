@@ -14,7 +14,17 @@ import game2048 from './game-2048'
  * Pour ajouter un jeu : créer src/games/<slug>/index.ts puis l'ajouter ici
  * (et insérer la ligne correspondante dans public.games via une migration).
  */
-export const games: GameDefinition[] = [clicker, rushHour, sdvCivilisation, mastermind, sudoku, miniGta, yams, echecs, game2048]
+export const games: GameDefinition[] = [
+  clicker,
+  rushHour,
+  sdvCivilisation,
+  mastermind,
+  sudoku,
+  miniGta,
+  yams,
+  echecs,
+  game2048,
+]
 
 export function getGame(slug: string): GameDefinition | undefined {
   return games.find((g) => g.slug === slug)
