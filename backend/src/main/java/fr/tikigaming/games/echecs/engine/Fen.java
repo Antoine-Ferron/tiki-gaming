@@ -59,8 +59,15 @@ public final class Fen {
 
     private static void parseRank(String rankText, int rank, Map<Square, Piece> pieces) {
         int file = 0;
+        boolean previousWasDigit = false;
         for (char c : rankText.toCharArray()) {
-            if (Character.isDigit(c)) {
+            boolean digit = Character.isDigit(c);
+            if (digit && (c < '1' || c > '8' || previousWasDigit)) {
+                throw new IllegalArgumentException(
+                        "Chiffre invalide dans une rangée (1 à 8, jamais deux de suite) : " + rankText);
+            }
+            previousWasDigit = digit;
+            if (digit) {
                 file += c - '0';
             } else {
                 // Une pièce au-delà de la colonne h est refusée par l'invariant de Square.
@@ -82,7 +89,7 @@ public final class Fen {
     }
 
     private static CastlingRights parseCastling(String castling) {
-        if (!castling.equals("-") && !castling.matches("K?Q?k?q?")) {
+        if (!castling.equals("-") && (castling.isEmpty() || !castling.matches("K?Q?k?q?"))) {
             throw new IllegalArgumentException("Droits de roque inconnus : " + castling);
         }
         return new CastlingRights(
@@ -101,6 +108,9 @@ public final class Fen {
     }
 
     private static int parseCounter(String counter, int minimum) {
+        if (!counter.matches("0|[1-9][0-9]*")) {
+            throw new IllegalArgumentException("Compteur invalide (chiffres, sans zéro en tête) : " + counter);
+        }
         int value = Integer.parseInt(counter);
         if (value < minimum) {
             throw new IllegalArgumentException("Compteur invalide : " + counter);
