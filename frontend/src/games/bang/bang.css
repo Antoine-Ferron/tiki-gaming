@@ -51,7 +51,7 @@
     'left center right'
     'bottom bottom hand';
   gap: 1rem;
-  padding: 3rem 4rem;
+  padding: 4.5rem 4rem;
   border-radius: var(--radius);
   background: var(--bang-felt) url('/games/bang/board/plateau.webp') center / cover no-repeat;
   color: var(--bang-cream);
@@ -120,6 +120,17 @@
 
 .bang-mat .bang-card {
   width: 5.5rem;
+}
+
+/* Sur le tapis, le nom de la carte est petit et collé au bas de l'illustration. */
+.bang-mat .bang-face-card figcaption {
+  gap: 0;
+  padding: 0.2rem 0.35rem;
+}
+
+.bang-mat .bang-face-card strong {
+  font-size: 0.7rem;
+  line-height: 1.15;
 }
 
 /* Sur le tapis, une carte ne montre que son nom : l'objectif et le pouvoir restent réservés aux cartes détaillées. */
@@ -232,4 +243,81 @@
     justify-self: stretch;
     align-self: auto;
   }
+}
+
+/* Choisir un BANG ! puis une cible : le bouton reprend l'aspect de la carte, la sélection se voit au contour. */
+.bang-hand li button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.bang-hand li:has(button[aria-pressed='true']) {
+  outline: 2px solid var(--bang-cream);
+  outline-offset: 2px;
+}
+
+.bang-mat header button {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Icônes du tapis : rôle caché, arme et cartes posées. */
+.bang-hidden-role,
+.bang-weapon,
+.bang-played-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bang-hidden-role {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: var(--bang-panel-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.bang-hidden-role img,
+.bang-weapon img,
+.bang-played-slot > img {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.bang-played-slot .bang-played {
+  flex: 1;
+}
+
+/* La pioche devient un bouton quand je dois piocher : elle se met en évidence. */
+.bang-pile {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  cursor: pointer;
+  outline: 3px solid var(--bang-cream);
+  outline-offset: 3px;
+}
+
+.bang-pile:hover,
+.bang-pile:focus-visible {
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bang-pile:hover,
+  .bang-pile:focus-visible {
+    transform: none;
+  }
+}
+
+.bang-hand > button {
+  margin-top: 0.75rem;
 }

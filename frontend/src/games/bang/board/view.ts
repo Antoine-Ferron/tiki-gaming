@@ -15,14 +15,33 @@ export interface ViewPlayer {
   role?: string
 }
 
+export type Phase = 'DRAW' | 'PLAY' | 'DISCARD'
+
 export interface GameView {
   code: string
   seat: number
   currentSeat: number
+  /** Phase du joueur actif. */
+  phase: Phase
   /** Mon rôle, privé. */
   role: string
   hand: ViewCard[]
   players: ViewPlayer[]
+}
+
+/** On ne choisit un BANG ! que pendant sa propre phase de jeu. */
+export function canShoot(view: GameView): boolean {
+  return view.currentSeat === view.seat && view.phase === 'PLAY'
+}
+
+/** Ce que je dois faire maintenant, ou à qui c'est de jouer. */
+export function turnHint(view: GameView): string {
+  if (view.currentSeat !== view.seat) return `Au tour de la place ${view.currentSeat}.`
+  const health = view.players.find((p) => p.seat === view.seat)?.health ?? 0
+  if (view.phase === 'DRAW') return 'À toi de jouer : pioche tes deux cartes.'
+  if (view.phase === 'PLAY') return 'À toi de jouer : choisis un BANG ! et ta cible, ou termine ton tour.'
+  if (view.hand.length > health) return `Tu as trop de cartes : défausse-en jusqu'à ${health}.`
+  return 'Tu as défaussé assez de cartes : finis ton tour.'
 }
 
 export type Position = 'bottom' | 'left' | 'top' | 'right'
