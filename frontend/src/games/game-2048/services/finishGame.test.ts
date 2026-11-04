@@ -4,7 +4,7 @@ import type { ScoreRepository } from '../../ports'
 import { createGameContext } from '../../sdk'
 import { FakeScores, fakeDeps } from '../../testing/fakes'
 import type { GameState } from '../domain/game'
-import { finishGame } from './finishGame'
+import { finishGame, loadRecord } from './finishGame'
 
 const game = { slug: 'game-2048' }
 const player = { id: 'player-1', username: 'evan' }
@@ -133,5 +133,51 @@ describe('finishGame', () => {
     // Assert
     await expect(finishing).rejects.toMatchObject({ code: 'queued' })
     expect(deps.saves.data.get('game-2048')).toEqual({ version: 1, best: 700 })
+  })
+
+  test('une partie à 0 point sans record existant ne crée pas de record', async () => {
+    // Arrange
+    const deps = fakeDeps()
+    const ctx = createGameContext(game, player, deps)
+
+    // Act
+    const result = await finishGame(ctx, finished(0))
+
+    // Assert
+    expect(result).toEqual({ best: 0, improved: false })
+    expect(deps.saves.data.get('game-2048')).toBeUndefined()
+  })
+
+  test('un record non battu n’est pas réécrit (spy sur save)', async () => {
+    // Arrange
+    const deps = fakeDeps()
+    deps.saves.data.set('game-2048', { version: 1, best: 500 })
+    const ctx = createGameContext(game, player, deps)
+    const save = vi.spyOn(ctx, 'save')
+
+    // Act
+    await finishGame(ctx, finished(300))
+
+    // Assert
+    expect(save).not.toHaveBeenCalled()
+  })
+})
+
+describe('loadRecord', () => {
+  test.each([
+    { label: 'sans sauvegarde', saved: undefined, expected: 0 },
+    { label: 'sauvegarde illisible', saved: { record: 'illisible' }, expected: 0 },
+    { label: 'record de 3200', saved: { version: 1, best: 3200 }, expected: 3200 },
+  ])('$label → $expected', async ({ saved, expected }) => {
+    // Arrange
+    const deps = fakeDeps()
+    if (saved) deps.saves.data.set('game-2048', saved)
+    const ctx = createGameContext(game, player, deps)
+
+    // Act
+    const record = await loadRecord(ctx)
+
+    // Assert
+    expect(record).toBe(expected)
   })
 })
