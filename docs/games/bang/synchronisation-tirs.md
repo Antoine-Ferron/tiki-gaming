@@ -130,3 +130,58 @@ refus, secondes tentatives et doublons de réponses laissent expirer la table à
 Authentification, CSRF et refus sur table inconnue/non démarrée sont couverts pour les trois routes.
 **127 tests ciblés** passent, dont un parcours HTTP utilisant le vrai catalogue et la vraie distribution
 (seul le mélange est reproductible), vérifiant que chaque carte existe exactement une fois.
+
+## Intégration finale et vérifications
+
+La récupération finale a apporté `origin/dev` de `41d1b41` à `0505d31` (configuration Docker/Coolify).
+Intégration locale sans conflit dans `044c7f7`, uniquement sur la branche de la #59. Les neuf fichiers
+de déploiement et documentation apportés par l'autre équipe sont conservés tels quels.
+`origin/game/bang/implementation` reste à `94d09ff`.
+
+Le 4 novembre 2026, depuis `backend/`, avec Java 25.0.3 et la cible de compilation Java 21 du dépôt :
+
+| Vérification | Résultat local |
+| --- | --- |
+| `mvn -B -ntp '-Dtest=fr.tikigaming.games.bang.**,OpenApiDocsTest' test` | **323 tests réussis**, zéro échec, erreur ou test ignoré. |
+| `mvn spotless:apply` | Succès, aucun fichier Java restant à reformater. |
+| `mvn clean verify` | **1 441 tests réussis**, zéro échec, erreur ou test ignoré, y compris après l'intégration finale de `dev`. |
+| Contrat fournisseur Pact, inclus dans `verify` | **6 interactions réussies**, aucune ignorée. |
+| Chaos Toxiproxy/Docker, inclus dans `verify` | **4 tests réussis**, aucun ignoré. |
+| Checkstyle, Spotless et JaCoCo | Succès ; couverture globale : **98,98 % des lignes**, **94,43 % des branches**, sans baisse des seuils. |
+| `mvn -B -ntp -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | Succès : **243/250 mutants tués (97 %)**, aucun sans couverture. |
+| `docker compose --env-file .env.production.example config --quiet`, à la racine | Succès, aucun service démarré. |
+
+Pitest garde le périmètre existant du dépôt (authentification, dames et résilience) ;
+les classes BANG! ne figurent pas dans ses cibles. Les 323 cas ciblés sont aussi inclus dans
+les 1 441 tests rejoués après intégration. La nouvelle suite `GameShotHttpTest` comprend **53 cas**.
+
+Les deux contrôles d'ascendance demandés passent sur la branche de travail :
+
+```text
+git merge-base --is-ancestor origin/dev HEAD
+git merge-base --is-ancestor origin/game/bang/implementation HEAD
+```
+
+Les tests frontend, E2E navigateur, k6, ZAP, CodeQL, Sonar et les jobs GitHub ne sont pas exécutés
+pour cette livraison locale. Aucun push, aucune intégration vers la branche commune et aucune
+fermeture d'issue ne sont effectués. L'image Docker de production n'est pas construite ni déployée.
+
+## Commits locaux de la #59
+
+| Commit | Palier stabilisé |
+| --- | --- |
+| `ffcc0d6` | Tir en attente et application de `ShotOutcome`. |
+| `e03b7d1` | Actions du tireur bloquées pendant l'attente. |
+| `07fd2b4` | Esquive autorisée par le compte cible et identifiant du tir. |
+| `aeafe44` | Acceptation des dégâts et refus des doublons. |
+| `8d14c7e` | Compteur conservé dans la table et à la reconnexion. |
+| `fc72fca` | Remise à zéro uniquement au nouveau tour. |
+| `2e661b9` | Refus des tirs hors phase. |
+| `93bc67d` | Raccordement du contrat de distance du personnage cible. |
+| `dedff12` | Courses, réponses anciennes, élimination et vues privées. |
+| `6879c0f` | Expiration contrôlée, sécurité HTTP et composants réels. |
+| `3622177` | Documentation API, conflits, reprise et limites. |
+| `f67f61d` | Validation HTTP du siège cible et normalisation des codes. |
+| `044c7f7` | Intégration du dernier `dev` sur la branche de travail. |
+
+Le commit documentaire final ajoute le présent bilan, sans modification supplémentaire du code.
