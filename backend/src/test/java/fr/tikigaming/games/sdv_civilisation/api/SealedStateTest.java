@@ -47,5 +47,8 @@ class SealedStateTest {
         assertThat(new SealedState(props("another-secret-with-at-least-32-characters"), JSON).unseal(sealed))
                 .isEmpty();
         assertThat(sealer.unseal("pas un sceau")).isEmpty();
+        // Et un sceau trop court pour contenir le vecteur d'initialisation aussi
+        assertThat(sealer.unseal(Base64.getEncoder().encodeToString(new byte[5])))
+                .isEmpty();
     }
 }

@@ -1,11 +1,12 @@
 package fr.tikigaming.games.sdv_civilisation.api;
 
 import fr.tikigaming.config.TikiProperties;
-import java.nio.ByteBuffer;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Optional;
 import javax.crypto.Cipher;
@@ -46,12 +47,11 @@ public class SealedState {
         try {
             Cipher cipher = Cipher.getInstance(CIPHER);
             cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, iv));
-            byte[] sealed = cipher.doFinal(json.writeValueAsBytes(game));
-            return Base64.getEncoder()
-                    .encodeToString(ByteBuffer.allocate(iv.length + sealed.length)
-                            .put(iv)
-                            .put(sealed)
-                            .array());
+            // Vecteur d'initialisation puis texte chiffré, concaténés sans calcul de taille.
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            out.writeBytes(iv);
+            out.writeBytes(cipher.doFinal(json.writeValueAsBytes(game)));
+            return Base64.getEncoder().encodeToString(out.toByteArray());
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("Chiffrement AES-GCM indisponible", e);
         }
@@ -62,8 +62,10 @@ public class SealedState {
         try {
             byte[] bytes = Base64.getDecoder().decode(sealed);
             Cipher cipher = Cipher.getInstance(CIPHER);
-            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, bytes, 0, IV_BYTES));
-            byte[] plain = cipher.doFinal(bytes, IV_BYTES, bytes.length - IV_BYTES);
+            // Un sceau trop court fait échouer le découpage (IllegalArgumentException) : il est ignoré.
+            cipher.init(
+                    Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, Arrays.copyOfRange(bytes, 0, IV_BYTES)));
+            byte[] plain = cipher.doFinal(Arrays.copyOfRange(bytes, IV_BYTES, bytes.length));
             return Optional.of(json.readValue(plain, SavedGame.class));
         } catch (IllegalArgumentException | GeneralSecurityException | JacksonException e) {
             log.warn("Partie enregistrée illisible, ignorée : {}", e.getClass().getSimpleName());
