@@ -96,8 +96,9 @@ function DeleteAccount({ username }: { username: string }) {
       setBusy(false)
       return
     }
-    await refreshSession()
+    // Quitter le profil avant d'oublier la session : sinon la route protégée renvoie vers /login.
     void navigate('/', { replace: true, state: { accountDeleted: true } })
+    await refreshSession()
   }
 
   return (
