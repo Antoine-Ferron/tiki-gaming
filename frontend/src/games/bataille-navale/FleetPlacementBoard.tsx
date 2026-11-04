@@ -112,7 +112,7 @@ export default function FleetPlacementBoard({ onComplete }: FleetPlacementBoardP
           </button>
         </div>
 
-        <button type="button" className="big" disabled={!done} onClick={() => onComplete(placed)}>
+        <button type="button" disabled={!done} onClick={() => onComplete(placed)}>
           Prêt
         </button>
       </div>

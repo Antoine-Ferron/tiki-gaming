@@ -187,9 +187,9 @@ function FiringBoard({ label, disabled, results, radarHints, bonuses, onFire, on
           ))}
         </div>
       )}
-      {armed === 'salvo' && <p className="muted">Choisis encore {3 - selected.length} case(s) pour la salve.</p>}
-      {armed === 'nuke' && <p className="muted">Choisis le centre de la frappe nucléaire.</p>}
-      {armed === 'radar' && <p className="muted">Choisis le centre de la zone à scanner.</p>}
+      {armed === 'salvo' && <p className="notice">Choisis encore {3 - selected.length} case(s) pour la salve.</p>}
+      {armed === 'nuke' && <p className="notice">Choisis le centre de la frappe nucléaire.</p>}
+      {armed === 'radar' && <p className="notice">Choisis le centre de la zone à scanner.</p>}
 
       <div className="bn-grid" role="grid" aria-label={label}>
         {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
@@ -318,7 +318,7 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver 
           L'adversaire a quitté la partie, la connexion a été coupée, ou son appareil a rechargé la page. Il
           faut recommencer une nouvelle partie.
         </p>
-        <button type="button" className="big" onClick={onExit}>
+        <button type="button" onClick={onExit}>
           Retour au menu
         </button>
       </div>
@@ -339,13 +339,17 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver 
   }
 
   const bonuses = availableBonuses(state)
+  const accuracy = state.shotsOnOpponent.size > 0 ? Math.round((state.hitsOnOpponent / state.shotsOnOpponent.size) * 100) : 0
 
   return (
     <div className="bn-online-battle">
       {state.phase === 'over' && (
         <div className="card bn-over">
           <h2>{state.winnerSeat === state.mySeat ? 'Tu as gagné !' : "L'adversaire a gagné."}</h2>
-          <button type="button" className="big" onClick={onExit}>
+          <p className="muted">
+            {state.shotsOnOpponent.size} tir(s) · {state.hitsOnOpponent} touché(s) · {accuracy}% de précision
+          </p>
+          <button type="button" onClick={onExit}>
             Retour au menu
           </button>
           {ctx.isGuest && <p className="muted">Connecte-toi pour apparaître au classement.</p>}
@@ -353,29 +357,33 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver 
       )}
       {state.phase === 'battle' && (
         <div className="card bn-board">
-          <h2>{state.turnSeat === state.mySeat ? 'À toi de tirer' : "Au tour de l'adversaire"}</h2>
-          {state.lastEvent?.kind === 'fire' && (
-            <p className={state.lastEvent.results.includes('hit') ? 'success' : 'muted'}>
-              {describeFireEvent(state.lastEvent.by, state.lastEvent.results, state.lastEvent.sunk, state.mySeat)}
-              {state.lastEvent.by === state.turnSeat && state.lastEvent.results.includes('hit') && ' Rejoue.'}
-            </p>
-          )}
-          <div className="bn-boards">
-            <div>
-              <h3>Flotte adverse</h3>
-              <FiringBoard
-                label="Grille adverse"
-                disabled={state.turnSeat !== state.mySeat}
-                results={state.resultsOnOpponent}
-                radarHints={state.radarRevealsOnOpponent}
-                bonuses={bonuses}
-                onFire={fire}
-                onRadar={useRadar}
-              />
-            </div>
-            <div>
-              <h3>Ta flotte</h3>
-              <OwnBoard fleet={myFleet} shotsOnMe={state.shotsOnMe} />
+          <div className="bn-turn-status">
+            <h2>{state.turnSeat === state.mySeat ? 'À toi de tirer' : "Au tour de l'adversaire"}</h2>
+            {state.lastEvent?.kind === 'fire' && (
+              <p className={state.lastEvent.results.includes('hit') ? 'success' : 'muted'}>
+                {describeFireEvent(state.lastEvent.by, state.lastEvent.results, state.lastEvent.sunk, state.mySeat)}
+                {state.lastEvent.by === state.turnSeat && state.lastEvent.results.includes('hit') && ' Rejoue.'}
+              </p>
+            )}
+          </div>
+          <div className="bn-battle-layout">
+            <div className="bn-battle-boards">
+              <div className="bn-board-column">
+                <h3>Flotte adverse</h3>
+                <FiringBoard
+                  label="Grille adverse"
+                  disabled={state.turnSeat !== state.mySeat}
+                  results={state.resultsOnOpponent}
+                  radarHints={state.radarRevealsOnOpponent}
+                  bonuses={bonuses}
+                  onFire={fire}
+                  onRadar={useRadar}
+                />
+              </div>
+              <div className="bn-board-column">
+                <h3>Ta flotte</h3>
+                <OwnBoard fleet={myFleet} shotsOnMe={state.shotsOnMe} />
+              </div>
             </div>
             <StatusPanel
               myFleet={fleetStatus(myFleet, state.shotsOnMe)}
@@ -605,13 +613,13 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
             Mode augmenté (salve, radar, frappe nucléaire)
           </label>
           <div className="bn-mode-choice">
-            <button type="button" className="big" onClick={startLocal}>
+            <button type="button" onClick={startLocal}>
               Solo (même appareil)
             </button>
             {ctx.isGuest ? (
               <p className="muted">Connecte-toi pour jouer en ligne contre un autre joueur.</p>
             ) : (
-              <button type="button" className="big" onClick={startOnline}>
+              <button type="button" className="secondary" onClick={startOnline}>
                 En ligne
               </button>
             )}
@@ -623,7 +631,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
         <div className="card bn-pass">
           <h2>Passe l'appareil</h2>
           <p>{pass.message}</p>
-          <button type="button" className="big" onClick={pass.onReady}>
+          <button type="button" onClick={pass.onReady}>
             Je suis prêt
           </button>
         </div>
@@ -638,22 +646,29 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
 
       {mode === 'local' && !pass && localPhase === 'battle' && (
         <div className="card bn-board">
-          <h2>Au tour du joueur {current}</h2>
-          {lastShotMessage && <p className="success">{lastShotMessage} Rejoue.</p>}
-          <div className="bn-boards">
-            <FiringBoard
-              label={`Grille du joueur ${current === 1 ? 2 : 1}`}
-              disabled={false}
-              results={players[current].resultsOnOpponent}
-              radarHints={players[current].radarRevealsOnOpponent}
-              bonuses={
-                augmented
-                  ? unlockedBonuses(players[current].shotsOnOpponent.size, players[current].shipsSunk, players[current].usedBonuses)
-                  : []
-              }
-              onFire={localFire}
-              onRadar={localRadar}
-            />
+          <div className="bn-turn-status">
+            <h2>Au tour du joueur {current}</h2>
+            {lastShotMessage && <p className="success">{lastShotMessage} Rejoue.</p>}
+          </div>
+          <div className="bn-battle-layout">
+            <div className="bn-battle-boards">
+              <div className="bn-board-column">
+                <h3>Grille du joueur {current === 1 ? 2 : 1}</h3>
+                <FiringBoard
+                  label={`Grille du joueur ${current === 1 ? 2 : 1}`}
+                  disabled={false}
+                  results={players[current].resultsOnOpponent}
+                  radarHints={players[current].radarRevealsOnOpponent}
+                  bonuses={
+                    augmented
+                      ? unlockedBonuses(players[current].shotsOnOpponent.size, players[current].shipsSunk, players[current].usedBonuses)
+                      : []
+                  }
+                  onFire={localFire}
+                  onRadar={localRadar}
+                />
+              </div>
+            </div>
             <StatusPanel
               myFleet={fleetStatus(players[current].fleet, players[current === 1 ? 2 : 1].shotsOnOpponent)}
               opponentFleet={fleetStatus(players[current === 1 ? 2 : 1].fleet, players[current].shotsOnOpponent)}
@@ -668,6 +683,13 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
       {mode === 'local' && localPhase === 'over' && winner && (
         <div className="card bn-over">
           <h2>Le joueur {winner} a gagné !</h2>
+          <p className="muted">
+            {players[winner].shotsOnOpponent.size} tir(s) · {players[winner].hits} touché(s) ·{' '}
+            {players[winner].shotsOnOpponent.size > 0
+              ? Math.round((players[winner].hits / players[winner].shotsOnOpponent.size) * 100)
+              : 0}
+            % de précision
+          </p>
           <button type="button" className="big" onClick={startLocal}>
             Rejouer
           </button>
@@ -697,13 +719,18 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
               </div>
             </div>
           )}
-          <button type="button" className="big" disabled={onlineBusy} onClick={createOnlineRoom}>
+          <button type="button" disabled={onlineBusy} onClick={createOnlineRoom}>
             Créer une partie
           </button>
           <div className="divider">ou</div>
           <div className="form">
             <label htmlFor="bn-join-code">Code de la partie</label>
-            <input id="bn-join-code" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} />
+            <input
+              id="bn-join-code"
+              placeholder="ex. DAB963DA75A7"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+            />
             <button type="button" disabled={onlineBusy || !joinCode.trim()} onClick={() => joinOnlineRoom(joinCode.trim())}>
               Rejoindre
             </button>

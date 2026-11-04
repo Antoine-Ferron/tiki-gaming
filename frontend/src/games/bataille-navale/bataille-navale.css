@@ -27,6 +27,26 @@
   gap: 0.5rem;
   font-size: 0.9rem;
   color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  width: fit-content;
+}
+
+/* --- En-tête de tour : titre + message, groupés et espacés du reste --- */
+
+.bn-turn-status {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.bn-turn-status h2 {
+  margin: 0;
+}
+
+.bn-turn-status p {
+  margin: 0;
 }
 
 /* --- Grille 10x10, partagée par le placement, le tir et l'affichage de sa propre flotte --- */
@@ -166,6 +186,14 @@
   display: grid;
   gap: 1rem;
   align-content: start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.bn-status-panel h3 {
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 .bn-fleet-status {
@@ -248,10 +276,32 @@
   background: color-mix(in srgb, var(--bn-miss) 50%, transparent);
 }
 
-.bn-boards {
+/* --- Mise en page de la bataille : plateaux à gauche, état de la partie en barre latérale --- */
+
+.bn-battle-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.bn-battle-boards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1.5rem;
+}
+
+.bn-board-column h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+@media (max-width: 700px) {
+  .bn-battle-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* --- Passation, fin de partie --- */
