@@ -1,5 +1,7 @@
 package fr.tikigaming.games.echecs.api;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -66,5 +68,45 @@ class EchecsControllerTest {
         send("moves", "{\"fen\":\"" + START + "\",\"from\":\"e2\",\"to\":\"e4\"}")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fen").value(after));
+    }
+
+    @Test
+    @DisplayName(
+            "le contrôleur transmet la FEN et les cases au service, et rien d'autre (mock : vérification des appels)")
+    void leControleurTransmetLaRequeteAuService() throws Exception {
+        // Arrange
+        when(service.play(START, "g1", "f3")).thenReturn("fen-suivante");
+
+        // Act
+        send("moves", "{\"fen\":\"" + START + "\",\"from\":\"g1\",\"to\":\"f3\"}");
+
+        // Assert : un seul appel, avec exactement ces arguments
+        verify(service).play(START, "g1", "f3");
+        verifyNoMoreInteractions(service);
+    }
+
+    @Test
+    @DisplayName("un coup refusé par le service donne 422 et le message pour le joueur")
+    void unCoupRefuseDonne422() throws Exception {
+        // Arrange : le stub simule un refus des règles
+        when(service.play(START, "e2", "e5"))
+                .thenThrow(new EchecsRejectedException("Case inaccessible pour la pièce en e2 : e5"));
+
+        // Act + Assert
+        send("moves", "{\"fen\":\"" + START + "\",\"from\":\"e2\",\"to\":\"e5\"}")
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.error").value("Coup refusé : Case inaccessible pour la pièce en e2 : e5"));
+    }
+
+    @Test
+    @DisplayName("une entrée invalide signalée par le service donne 400")
+    void uneEntreeInvalideDonne400() throws Exception {
+        // Arrange
+        when(service.destinations("abc", "e2")).thenThrow(new EchecsInvalidInputException("Une FEN a 6 champs : abc"));
+
+        // Act + Assert
+        send("destinations", "{\"fen\":\"abc\",\"from\":\"e2\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Entrée invalide : Une FEN a 6 champs : abc"));
     }
 }
