@@ -1,7 +1,7 @@
 export type Difficulty = 'facile' | 'moyen' | 'difficile'
 
 /** Plages de difficulté selon le minimum de coups (docs/games/rush-hour/regles.md, § 5). */
-export const DIFFICULTY_RANGES: Record<Difficulty, { min: number; max: number }> = {
+const DIFFICULTY_RANGES: Record<Difficulty, { min: number; max: number }> = {
   facile: { min: 3, max: 8 },
   moyen: { min: 9, max: 16 },
   difficile: { min: 17, max: Infinity },

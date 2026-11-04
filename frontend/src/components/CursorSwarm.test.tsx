@@ -56,6 +56,8 @@ describe('CursorSwarm', () => {
     stubBrowser()
     let seed = 1 // aléatoire reproductible (LCG), comme dans swarm.test.ts
     vi.spyOn(Math, 'random').mockImplementation(() => (seed = (seed * 16807) % 2147483647) / 2147483647)
+    // Horloge réelle déjà avancée au montage (environnement chargé) : les images factices arrivent « avant ».
+    vi.spyOn(performance, 'now').mockReturnValue(5000)
     render(<CursorSwarm />)
 
     window.dispatchEvent(new PointerEvent('pointermove', { clientX: 10, clientY: 20 }))

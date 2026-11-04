@@ -2,13 +2,12 @@ import { GameError } from '../../errors'
 import type { GameContext } from '../../types'
 import type { Move } from '../domain/board'
 import { recordResult } from '../domain/progress'
-import { levelScore, totalScore } from '../domain/score'
+import { totalScore } from '../domain/score'
+import type { LevelVerifier } from './levelVerifier'
 import { loadProgress, saveProgress } from './progress'
 
 export interface FinishedLevel {
   level: number
-  /** Nombre minimal de coups du niveau. */
-  optimal: number
   moves: Move[]
   hintsUsed: number
   durationMs: number
@@ -18,8 +17,9 @@ export interface FinishedLevel {
  * Fin d'un niveau : calcule son score et met à jour le record. Seulement si le record change, envoie le score
  * total (colonne score) avec le détail de la partie (metadata), puis sauvegarde la progression.
  */
-export async function completeLevel(ctx: GameContext, run: FinishedLevel) {
-  const score = levelScore({ moves: run.moves.length, optimal: run.optimal, hintsUsed: run.hintsUsed })
+export async function completeLevel(ctx: GameContext, run: FinishedLevel, verify: LevelVerifier) {
+  // Le serveur fait autorité : il rejoue les coups et calcule le score. Une partie refusée s'arrête ici.
+  const { score } = await verify(run.level, { moves: run.moves, hintsUsed: run.hintsUsed })
   const progress = await loadProgress(ctx)
   const { best, improved } = recordResult(progress.best, run.level, score)
 

@@ -1,0 +1,533 @@
+{
+  "description": "Contrat partagé entre le jeu (frontend, TypeScript) et le serveur (backend, Java). Les deux suites de tests lisent ce fichier : un écart entre les deux implémentations fait échouer l'une d'elles. Ne modifier qu'en changeant les deux côtés.",
+  "niveaux": [
+    {
+      "numero": 1,
+      "minimum": 3,
+      "map": [
+        ".FCCA.",
+        ".F..AH",
+        ".XX.AH",
+        "..B..G",
+        "EDB..G",
+        "ED...."
+      ]
+    },
+    {
+      "numero": 2,
+      "minimum": 4,
+      "map": [
+        "....A.",
+        "DD.GAB",
+        ".XXGAB",
+        "...C.E",
+        "FF.C.E",
+        "...C.E"
+      ]
+    },
+    {
+      "numero": 3,
+      "minimum": 5,
+      "map": [
+        "..FFA.",
+        "CC.DAB",
+        ".XXDAB",
+        "......",
+        "...E..",
+        "...E.."
+      ]
+    },
+    {
+      "numero": 4,
+      "minimum": 6,
+      "map": [
+        "..EEA.",
+        "...CAB",
+        ".XXCAB",
+        "HH.II.",
+        "FF.D..",
+        "GG.D.."
+      ]
+    },
+    {
+      "numero": 5,
+      "minimum": 7,
+      "map": [
+        "G.HHA.",
+        "G..CAB",
+        "GXXCAB",
+        "EE.FF.",
+        "......",
+        "...DD."
+      ]
+    },
+    {
+      "numero": 6,
+      "minimum": 8,
+      "map": [
+        "HHGGA.",
+        "...CAB",
+        ".XXCAB",
+        "EE.FFI",
+        ".....I",
+        "...DD."
+      ]
+    },
+    {
+      "numero": 7,
+      "minimum": 9,
+      "map": [
+        "HHGGA.",
+        "...CAB",
+        ".XXCAB",
+        "EE.FFI",
+        ".JJJ.I",
+        "...DD."
+      ]
+    },
+    {
+      "numero": 8,
+      "minimum": 10,
+      "map": [
+        "...A.D",
+        "II.AED",
+        "BXXAED",
+        "B..GG.",
+        "F.CCC.",
+        "F...HH"
+      ]
+    },
+    {
+      "numero": 9,
+      "minimum": 11,
+      "map": [
+        "HH.FF.",
+        "...C..",
+        "XXBCIE",
+        "JJB.IE",
+        ".GAADD",
+        ".G...."
+      ]
+    },
+    {
+      "numero": 10,
+      "minimum": 12,
+      "map": [
+        "JJJA.D",
+        "II.AED",
+        "BXXAED",
+        "B..GG.",
+        "F.CCC.",
+        "F...HH"
+      ]
+    },
+    {
+      "numero": 11,
+      "minimum": 13,
+      "map": [
+        "..EDDD",
+        "..EB..",
+        ".XXB.A",
+        "FFFCGA",
+        "...CG.",
+        ".HH.G."
+      ]
+    },
+    {
+      "numero": 12,
+      "minimum": 14,
+      "map": [
+        "..EDDD",
+        "H.EB..",
+        "HXXB.A",
+        "FFFCGA",
+        "...CGI",
+        "....GI"
+      ]
+    },
+    {
+      "numero": 13,
+      "minimum": 15,
+      "map": [
+        ".IG.CC",
+        ".IGB.E",
+        "XXHBDE",
+        "..H.D.",
+        "..HJFF",
+        "AAAJ.."
+      ]
+    },
+    {
+      "numero": 14,
+      "minimum": 17,
+      "map": [
+        ".EEE..",
+        "...B.A",
+        ".XXBDA",
+        "...BDG",
+        ".IHFFG",
+        ".IHCC."
+      ]
+    },
+    {
+      "numero": 15,
+      "minimum": 18,
+      "map": [
+        ".BBBH.",
+        "..E.HD",
+        "XXECHD",
+        ".F.C.D",
+        "JFACII",
+        "J.AGG."
+      ]
+    },
+    {
+      "numero": 16,
+      "minimum": 19,
+      "map": [
+        "..DDDG",
+        ".II..G",
+        "XXFB.G",
+        ".HFBKK",
+        "EHC.AA",
+        "E.C.JJ"
+      ]
+    },
+    {
+      "numero": 17,
+      "minimum": 20,
+      "map": [
+        "II.EJB",
+        "...EJB",
+        ".XXC.B",
+        ".H.CDD",
+        ".HA.FF",
+        "..AGGG"
+      ]
+    },
+    {
+      "numero": 18,
+      "minimum": 22,
+      "map": [
+        "..FBBB",
+        "..FJCI",
+        ".XXJCI",
+        "KHEAAA",
+        "KHEGG.",
+        ".DD..."
+      ]
+    },
+    {
+      "numero": 19,
+      "minimum": 24,
+      "map": [
+        ".EEE..",
+        "...B.A",
+        "JXXBDA",
+        "J..BDG",
+        "JIHFFG",
+        ".IHCC."
+      ]
+    },
+    {
+      "numero": 20,
+      "minimum": 26,
+      "map": [
+        "..DDDG",
+        ".II.LG",
+        "XXFBLG",
+        ".HFBKK",
+        "EHC.AA",
+        "E.C.JJ"
+      ]
+    }
+  ],
+  "parties": [
+    {
+      "nom": "le camion monte, puis la voiture rouge sort",
+      "map": [
+        "......",
+        "....A.",
+        "XX..A.",
+        "......",
+        "......",
+        "......"
+      ],
+      "coups": [
+        {
+          "vehicule": "A",
+          "delta": -1
+        },
+        {
+          "vehicule": "X",
+          "delta": 4
+        }
+      ],
+      "resultat": {
+        "coups": 2
+      }
+    },
+    {
+      "nom": "glissements successifs du même véhicule = un seul coup (R6)",
+      "map": [
+        "......",
+        "......",
+        "XX....",
+        "......",
+        "......",
+        "......"
+      ],
+      "coups": [
+        {
+          "vehicule": "X",
+          "delta": 1
+        },
+        {
+          "vehicule": "X",
+          "delta": 1
+        },
+        {
+          "vehicule": "X",
+          "delta": 2
+        }
+      ],
+      "resultat": {
+        "coups": 1
+      }
+    },
+    {
+      "nom": "un aller-retour du même véhicule ne compte aucun coup (R6)",
+      "map": [
+        "......",
+        "....A.",
+        "XX..A.",
+        "......",
+        "......",
+        "......"
+      ],
+      "coups": [
+        {
+          "vehicule": "X",
+          "delta": 1
+        },
+        {
+          "vehicule": "X",
+          "delta": -1
+        },
+        {
+          "vehicule": "A",
+          "delta": -1
+        },
+        {
+          "vehicule": "X",
+          "delta": 4
+        }
+      ],
+      "resultat": {
+        "coups": 2
+      }
+    },
+    {
+      "nom": "solution la plus courte du niveau 1",
+      "map": [
+        ".FCCA.",
+        ".F..AH",
+        ".XX.AH",
+        "..B..G",
+        "EDB..G",
+        "ED...."
+      ],
+      "coups": [
+        {
+          "vehicule": "A",
+          "delta": 3
+        },
+        {
+          "vehicule": "H",
+          "delta": -1
+        },
+        {
+          "vehicule": "X",
+          "delta": 3
+        }
+      ],
+      "resultat": {
+        "coups": 3
+      }
+    },
+    {
+      "nom": "traverser un véhicule",
+      "map": [
+        "......",
+        "....A.",
+        "XX..A.",
+        "......",
+        "......",
+        "......"
+      ],
+      "coups": [
+        {
+          "vehicule": "X",
+          "delta": 3
+        }
+      ],
+      "resultat": {
+        "refus": "Déplacement impossible : X de 3"
+      }
+    },
+    {
+      "nom": "sortir du plateau",
+      "map": [
+        "......",
+        "....A.",
+        "XX..A.",
+        "......",
+        "......",
+        "......"
+      ],
+      "coups": [
+        {
+          "vehicule": "X",
+          "delta": -1
+        }
+      ],
+      "resultat": {
+        "refus": "Déplacement impossible : X de -1"
+      }
+    },
+    {
+      "nom": "déplacement nul",
+      "map": [
+        "......",
+        "....A.",
+        "XX..A.",
+        "......",
+        "......",
+        "......"
+      ],
+      "coups": [
+        {
+          "vehicule": "X",
+          "delta": 0
+        }
+      ],
+      "resultat": {
+        "refus": "Déplacement nul"
+      }
+    },
+    {
+      "nom": "véhicule inconnu",
+      "map": [
+        "......",
+        "....A.",
+        "XX..A.",
+        "......",
+        "......",
+        "......"
+      ],
+      "coups": [
+        {
+          "vehicule": "Z",
+          "delta": 1
+        }
+      ],
+      "resultat": {
+        "refus": "Véhicule inconnu : Z"
+      }
+    },
+    {
+      "nom": "la voiture rouge n'est pas sortie",
+      "map": [
+        "......",
+        "....A.",
+        "XX..A.",
+        "......",
+        "......",
+        "......"
+      ],
+      "coups": [
+        {
+          "vehicule": "A",
+          "delta": -1
+        }
+      ],
+      "resultat": {
+        "refus": "La voiture rouge n’est pas sortie"
+      }
+    }
+  ],
+  "bareme": [
+    {
+      "coups": 10,
+      "minimum": 10,
+      "indices": 0,
+      "resultat": {
+        "score": 1000
+      }
+    },
+    {
+      "coups": 11,
+      "minimum": 10,
+      "indices": 0,
+      "resultat": {
+        "score": 950
+      }
+    },
+    {
+      "coups": 10,
+      "minimum": 10,
+      "indices": 1,
+      "resultat": {
+        "score": 800
+      }
+    },
+    {
+      "coups": 12,
+      "minimum": 10,
+      "indices": 2,
+      "resultat": {
+        "score": 500
+      }
+    },
+    {
+      "coups": 29,
+      "minimum": 10,
+      "indices": 0,
+      "resultat": {
+        "score": 50
+      }
+    },
+    {
+      "coups": 30,
+      "minimum": 10,
+      "indices": 0,
+      "resultat": {
+        "score": 0
+      }
+    },
+    {
+      "coups": 31,
+      "minimum": 10,
+      "indices": 0,
+      "resultat": {
+        "score": 0
+      }
+    },
+    {
+      "coups": 9,
+      "minimum": 10,
+      "indices": 0,
+      "resultat": {
+        "refus": "Nombre de coups impossible : 9 pour un minimum de 10"
+      }
+    },
+    {
+      "coups": 10,
+      "minimum": 10,
+      "indices": -1,
+      "resultat": {
+        "refus": "Nombre d’indices impossible : -1"
+      }
+    }
+  ]
+}
