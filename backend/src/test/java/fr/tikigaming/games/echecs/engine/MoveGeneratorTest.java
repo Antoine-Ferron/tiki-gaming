@@ -230,6 +230,16 @@ class MoveGeneratorTest {
                 .contains(Square.of("d8"), Square.of("a4"), Square.of("h8"), Square.of("a7"), Square.of("g1"));
     }
 
+    @Test
+    @DisplayName("un pion blanc avance d'une case vers le haut (règle D7)")
+    void unPionBlancAvanceDUneCase() {
+        // Arrange : pion blanc en e3 (hors de sa rangée de départ)
+        Position position = Fen.parse("k7/8/8/8/8/4P3/8/7K w - - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of("e3"))).isEqualTo(squares("e4"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
