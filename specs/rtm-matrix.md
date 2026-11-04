@@ -105,6 +105,8 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-API-01 | REQ-API-01 | nominal | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › un joueur connecté enregistre le score de sa partie | PASSED | — |
 | TC-API-02 | REQ-API-01 | erreur | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › un score au-dessus du maximum est refusé avec un message pour le joueur | PASSED | — |
 | TC-API-03 | REQ-API-01 | nominal | contrat (Pact, provider) | `backend/src/test/java/fr/tikigaming/contract/PactProviderTest.java` › verifieLeContratDuFront | PASSED | — |
+| TC-API-04 | REQ-API-01 | nominal | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une partie gagnée est rejouée par le serveur, qui renvoie le score, les coups et le minimum | PASSED | — |
+| TC-API-05 | REQ-API-01 | erreur | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une partie truquée est refusée (422) avec un message que le jeu affiche | PASSED | — |
 | TC-RH-01 | REQ-RH-01 | nominal | unitaire | `frontend/src/games/rush-hour/domain/moves.test.ts` › un véhicule plus loin arrête la voiture juste avant lui | PASSED | — |
 | TC-RH-02 | REQ-RH-01 | erreur | unitaire | `frontend/src/games/rush-hour/domain/session.test.ts` › un glissement impossible est refusé et ne compte pas | PASSED | — |
 | TC-RH-03 | REQ-RH-01 | erreur | unitaire (backend, mutation) | `backend/src/test/java/fr/tikigaming/games/rush_hour/SolutionVerifierTest.java` › replayRefusesAVehicleBackingIntoAnother | PASSED | — |
