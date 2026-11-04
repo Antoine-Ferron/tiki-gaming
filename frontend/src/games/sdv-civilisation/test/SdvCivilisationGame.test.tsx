@@ -201,7 +201,7 @@ describe('SdvCivilisationGame', () => {
     click('Voir la cité de IA 1')
     expect(
       within(screen.getByRole('dialog', { name: 'Cité de IA 1' })).getByRole('list', { name: 'Bâtiments de IA 1' }),
-    )
+    ).toBeTruthy()
     click('Fermer')
     click('Voir la cité de IA 2')
     fireEvent.keyDown(document, { key: 'Escape' })

@@ -65,7 +65,7 @@ class PaymentTest {
 
         // Quand elle veut construire l'"Aqueduc" (3 pierres, chaîné depuis les Bains)
         // Alors il est gratuit grâce à la chaîne, sans commerce
-        assertThat(Payments.build(game, ALICE, card("Aqueduc"), trade)).isEqualTo(Payment.CHAIN);
+        assertThat(Payments.build(game, ALICE, card("Aqueduc"), trade)).isEqualTo(Payment.FREE_BY_CHAIN);
         verifyNoMoreInteractions(trade);
     }
 

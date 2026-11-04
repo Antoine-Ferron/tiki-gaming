@@ -17,7 +17,7 @@ public record Payment(
         boolean chain,
         @JsonIgnore Refusal refusal) {
 
-    public static final Payment CHAIN = new Payment(true, 0, 0, 0, true, null);
+    public static final Payment FREE_BY_CHAIN = new Payment(true, 0, 0, 0, true, null);
 
     public static Payment paid(int coins, int toLeft, int toRight) {
         return new Payment(true, coins, toLeft, toRight, false, null);
