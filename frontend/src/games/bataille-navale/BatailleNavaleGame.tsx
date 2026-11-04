@@ -65,6 +65,38 @@ function describeOutcomes(outcomes: VolleyShot[]): string {
   return sunkNames.length ? `${summary} ${sunkNames.join(', ')} coulé(s) !` : summary
 }
 
+/**
+ * Le socle garde une salle ouverte jusqu'à 1 h d'inactivité : si on la quitte sans prévenir (fermeture de
+ * l'onglet, rechargement), créer une nouvelle salle échoue ensuite avec « Tu as déjà une salle ouverte… ».
+ * On retient le dernier code sur cet appareil pour pouvoir la rejoindre — ou la fermer, puisque `joinRoom`
+ * est idempotent pour son créateur et que `close()` quitte déjà proprement la salle côté serveur.
+ */
+const ONLINE_ROOM_KEY = 'tiki:bataille-navale:online-room'
+
+function loadSavedRoomCode(): string | null {
+  try {
+    return localStorage.getItem(ONLINE_ROOM_KEY)
+  } catch {
+    return null
+  }
+}
+
+function saveRoomCode(code: string) {
+  try {
+    localStorage.setItem(ONLINE_ROOM_KEY, code)
+  } catch {
+    // Stockage indisponible : on perd seulement la possibilité de retrouver cette salle après un rechargement.
+  }
+}
+
+function forgetRoomCode() {
+  try {
+    localStorage.removeItem(ONLINE_ROOM_KEY)
+  } catch {
+    // Rien à faire : au pire, le code restera affiché comme « peut-être » ouvert jusqu'à son expiration.
+  }
+}
+
 const BONUS_LABELS: Record<Bonus, string> = {
   salvo: 'Salve (3 tirs)',
   radar: 'Radar (zone 3×3)',
@@ -285,6 +317,9 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver 
         <h2>En attente de l'adversaire</h2>
         <p className="muted">Code de la partie : {connection.code}</p>
         <p>Ta flotte est placée. La bataille commence dès que l'adversaire a placé la sienne.</p>
+        <button type="button" className="link" onClick={onExit}>
+          Quitter cette salle
+        </button>
       </div>
     )
   }
@@ -464,6 +499,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
   const [onlineFleet, setOnlineFleet] = useState<PlacedShip[] | null>(null)
   const [joinCode, setJoinCode] = useState('')
   const [onlineBusy, setOnlineBusy] = useState(false)
+  const [savedRoomCode, setSavedRoomCode] = useState<string | null>(null)
 
   function startOnline() {
     setMode('online')
@@ -471,13 +507,16 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     setOnlineFleet(null)
     setJoinCode('')
     setError(null)
+    setSavedRoomCode(loadSavedRoomCode())
   }
 
   async function createOnlineRoom() {
     setOnlineBusy(true)
     setError(null)
     try {
-      setOnlineConnection(await ctx.realtime.createRoom(2))
+      const connection = await ctx.realtime.createRoom(2)
+      saveRoomCode(connection.code)
+      setOnlineConnection(connection)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -485,11 +524,29 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     }
   }
 
-  async function joinOnlineRoom() {
+  async function joinOnlineRoom(code: string) {
     setOnlineBusy(true)
     setError(null)
     try {
-      setOnlineConnection(await ctx.realtime.joinRoom(joinCode.trim()))
+      const connection = await ctx.realtime.joinRoom(code)
+      saveRoomCode(connection.code)
+      setOnlineConnection(connection)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setOnlineBusy(false)
+    }
+  }
+
+  async function closeSavedRoom() {
+    if (!savedRoomCode) return
+    setOnlineBusy(true)
+    setError(null)
+    try {
+      const connection = await ctx.realtime.joinRoom(savedRoomCode)
+      connection.close()
+      forgetRoomCode()
+      setSavedRoomCode(null)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -499,6 +556,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
 
   function exitOnline() {
     onlineConnection?.close()
+    forgetRoomCode()
     setOnlineConnection(null)
     setOnlineFleet(null)
     setMode(null)
@@ -595,6 +653,22 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
       {mode === 'online' && !onlineConnection && (
         <div className="card">
           <h2>Partie en ligne</h2>
+          {savedRoomCode && (
+            <div className="notice">
+              <p>
+                Tu as peut-être déjà une salle ouverte (code <strong>{savedRoomCode}</strong>). Une salle reste
+                ouverte jusqu'à 1 h d'inactivité : il faut la rejoindre ou la fermer avant d'en créer une autre.
+              </p>
+              <div className="bn-mode-choice">
+                <button type="button" className="small" disabled={onlineBusy} onClick={() => joinOnlineRoom(savedRoomCode)}>
+                  Rejoindre cette salle
+                </button>
+                <button type="button" className="small" disabled={onlineBusy} onClick={closeSavedRoom}>
+                  Fermer cette salle
+                </button>
+              </div>
+            </div>
+          )}
           <button type="button" className="big" disabled={onlineBusy} onClick={createOnlineRoom}>
             Créer une partie
           </button>
@@ -602,7 +676,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
           <div className="form">
             <label htmlFor="bn-join-code">Code de la partie</label>
             <input id="bn-join-code" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} />
-            <button type="button" disabled={onlineBusy || !joinCode.trim()} onClick={joinOnlineRoom}>
+            <button type="button" disabled={onlineBusy || !joinCode.trim()} onClick={() => joinOnlineRoom(joinCode.trim())}>
               Rejoindre
             </button>
           </div>
@@ -620,6 +694,9 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
             Code de la partie : <strong>{onlineConnection.code}</strong> (partage-le pour inviter quelqu'un).
           </p>
           <FleetPlacementBoard onComplete={setOnlineFleet} />
+          <button type="button" className="link" onClick={exitOnline}>
+            Quitter cette salle
+          </button>
         </div>
       )}
 

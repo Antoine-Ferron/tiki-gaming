@@ -21,6 +21,7 @@ const REMOTE_TYPES = ['READY', 'FIRE', 'FIRE_RESULT', 'RADAR', 'RADAR_RESULT', '
 export function useNetGame(connection: RealtimeConnection, myFleet: PlacedShip[], augmented: boolean, ctx: GameContext) {
   const [state, setState] = useState<NetState>(() => createNetState(connection.seat, myFleet, augmented))
   const submittedRef = useRef(false)
+  const sentInitialReadyRef = useRef(false)
 
   const dispatchLocal = useCallback(
     (intent: LocalIntent) => {
@@ -66,7 +67,13 @@ export function useNetGame(connection: RealtimeConnection, myFleet: PlacedShip[]
   // sien (voir le commentaire du cas 'READY'), pour qu'il finisse par arriver quel que soit l'ordre. Un
   // simple envoi réseau, sans mise à jour d'état locale (le réducteur ne change jamais l'état pour ce cas) :
   // appeler `connection.send` directement, plutôt que `dispatchLocal`, évite un rendu superflu dans l'effet.
+  // Le garde par ref (et non un simple effet à dépendances vides) survit au montage-démontage-remontage
+  // que <StrictMode> impose en développement : sans lui, ce READY non marqué `confirm` partirait deux fois,
+  // et sa seconde copie, reçue après que les deux camps ont déjà basculé en bataille, se ferait passer pour
+  // un rechargement de page (voir le cas 'READY' de `network.ts`) alors que la partie vient à peine de commencer.
   useEffect(() => {
+    if (sentInitialReadyRef.current) return
+    sentInitialReadyRef.current = true
     connection.send('READY', { by: connection.seat })
   }, [connection])
 

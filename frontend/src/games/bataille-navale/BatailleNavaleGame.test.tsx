@@ -20,6 +20,7 @@ vi.mock('./logic', async (importOriginal) => {
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  localStorage.clear()
 })
 
 /** Flotte fixe : un navire par ligne (0 à 4), colonnes 0..size-1, horizontale. Laisse les lignes 5-9 vides. */
@@ -212,6 +213,79 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     }
     return buildCtx({ isGuest: false, player: { id: 'u1', username: 'alice' }, realtime })
   }
+
+  test('une salle fraîchement créée est enregistrée pour pouvoir la retrouver après un rechargement', async () => {
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('ROOM-9', 1, 1)
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
+
+    click('En ligne')
+    await act(async () => {
+      click('Créer une partie')
+    })
+
+    expect(localStorage.getItem('tiki:bataille-navale:online-room')).toBe('ROOM-9')
+  })
+
+  test('propose de rejoindre ou de fermer une salle restée ouverte sur cet appareil', async () => {
+    localStorage.setItem('tiki:bataille-navale:online-room', 'STALE-1')
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('STALE-1', 1, 1)
+    const closeSpy = vi.spyOn(connection, 'close')
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
+
+    click('En ligne')
+    expect(screen.getByText(/STALE-1/)).toBeTruthy()
+
+    await act(async () => {
+      click('Fermer cette salle')
+    })
+
+    expect(ctx.realtime.joinRoom).toHaveBeenCalledWith('STALE-1')
+    expect(closeSpy).toHaveBeenCalled()
+    expect(localStorage.getItem('tiki:bataille-navale:online-room')).toBeNull()
+    expect(screen.queryByText(/STALE-1/)).toBeNull()
+    // La fermeture ne doit pas nous faire entrer dans cette salle : toujours sur l'écran de choix.
+    expect(screen.getByRole('button', { name: 'Créer une partie' })).toBeTruthy()
+  })
+
+  test('rejoindre une salle restée ouverte permet de continuer normalement', async () => {
+    localStorage.setItem('tiki:bataille-navale:online-room', 'STALE-2')
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('STALE-2', 1, 1)
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
+
+    click('En ligne')
+    await act(async () => {
+      click('Rejoindre cette salle')
+    })
+
+    expect(ctx.realtime.joinRoom).toHaveBeenCalledWith('STALE-2')
+    expect(await screen.findByText('Place ta flotte')).toBeTruthy()
+  })
+
+  test('quitter la salle pendant le placement en ligne efface le code enregistré', async () => {
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('ROOM-9', 1, 1)
+    const closeSpy = vi.spyOn(connection, 'close')
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
+
+    click('En ligne')
+    await act(async () => {
+      click('Créer une partie')
+    })
+    expect(localStorage.getItem('tiki:bataille-navale:online-room')).toBe('ROOM-9')
+
+    click('Quitter cette salle')
+
+    expect(closeSpy).toHaveBeenCalled()
+    expect(localStorage.getItem('tiki:bataille-navale:online-room')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Solo (même appareil)' })).toBeTruthy()
+  })
 
   test('crée une salle, place sa flotte, envoie READY puis joue un échange de tirs', async () => {
     placeFleetRandomly.mockReturnValue(FIXED_FLEET)

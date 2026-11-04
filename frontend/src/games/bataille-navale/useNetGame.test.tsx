@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { StrictMode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { FakeRealtimeConnection } from '../testing/fakes'
@@ -33,6 +34,30 @@ describe('useNetGame — READY handshake', () => {
     renderHook(() => useNetGame(connection, fleet, false, buildCtx()))
 
     expect(connection.sent).toContainEqual({ type: 'READY', data: { by: 1 }, actionId: undefined })
+  })
+
+  /**
+   * Bug réel observé en développement : l'app est montée sous <StrictMode>, qui rejoue exprès chaque effet
+   * (montage → nettoyage → montage) pour détecter les effets non idempotents. Sans garde, l'effet qui envoie
+   * le premier READY — sans aucun nettoyage — partait donc deux fois.
+   */
+  test('sends the initial READY only once under <StrictMode>, which replays mount effects', () => {
+    const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
+    renderHook(() => useNetGame(connection, fleet, false, buildCtx()), { wrapper: StrictMode })
+
+    expect(connection.sent.filter((a) => a.type === 'READY' && !(a.data as { confirm?: boolean }).confirm)).toHaveLength(1)
+  })
+
+  test('does not flag the game as abandoned by its own StrictMode-replayed initial READY, after both are ready', () => {
+    const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
+    const { result } = renderHook(() => useNetGame(connection, fleet, false, buildCtx()), { wrapper: StrictMode })
+
+    act(() => {
+      connection.emit('READY', { by: 1 })
+      connection.emit('READY', { by: 2 })
+    })
+    expect(result.current.state.phase).toBe('battle')
+    expect(result.current.state.disconnected).toBe(false)
   })
 
   test('sends one extra confirmation the instant both seats are first confirmed, then never again', () => {
