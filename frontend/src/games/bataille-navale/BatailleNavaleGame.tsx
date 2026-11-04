@@ -20,7 +20,7 @@ import {
   type ShotResult,
   type VolleyShot,
 } from './logic'
-import type { Bonus } from './network'
+import { availableBonuses, type Bonus } from './network'
 import { useNetGame } from './useNetGame'
 import './bataille-navale.css'
 
@@ -338,7 +338,7 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver 
     )
   }
 
-  const bonuses = unlockedBonuses(state.shotsOnOpponent.size, state.shipsSunkByMe, state.usedBonuses)
+  const bonuses = availableBonuses(state)
 
   return (
     <div className="bn-online-battle">

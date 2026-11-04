@@ -348,6 +348,38 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     const theirs = within((await screen.findByText('Navires adverses')).closest('div')!)
     expect(theirs.getByText(/^Torpilleur \(coulé\)/)).toBeTruthy()
     expect(theirs.getByText(/^Porte-avions/).closest('li')?.className).not.toContain('sunk')
+    // Le mode augmenté n'a pas été coché au menu : aucun bonus ne doit apparaître, même un navire coulé.
+    expect(screen.queryByRole('button', { name: /^Salve/ })).toBeNull()
+  })
+
+  test('mode augmenté coché au menu : un bonus débloqué apparaît bien en ligne', async () => {
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('ROOM-4', 1, 1)
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Mode augmenté (salve, radar, frappe nucléaire)' }))
+    click('En ligne')
+    await act(async () => {
+      click('Créer une partie')
+    })
+    click('Placer au hasard')
+    click('Prêt')
+    await act(async () => {
+      connection.emit('READY', { by: 1 })
+      connection.emit('READY', { by: 2 })
+    })
+    await act(async () => {
+      connection.emit('FIRE_RESULT', {
+        by: 1,
+        targets: [{ row: 4, col: 0 }, { row: 4, col: 1 }],
+        results: ['hit', 'hit'],
+        sunk: [FLEET[4]],
+        gameOver: false,
+      })
+    })
+
+    expect(await screen.findByRole('button', { name: /^Salve/ })).toBeTruthy()
   })
 
   test('la perte de connexion affiche un message clair, sans reprise', async () => {
