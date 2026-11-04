@@ -1,5 +1,8 @@
 package fr.tikigaming.games.rush_hour;
 
+import static fr.tikigaming.games.rush_hour.Board.RED_CAR;
+import static fr.tikigaming.games.rush_hour.Board.SIZE;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -12,9 +15,6 @@ import java.util.Set;
  * Un coup = un glissement d'un véhicule, quelle que soit la distance. Même algorithme que le front.
  */
 public final class Solver {
-
-    static final int SIZE = 6;
-    static final char RED_CAR = 'X';
 
     private Solver() {}
 
@@ -68,7 +68,7 @@ public final class Solver {
         return result;
     }
 
-    private static int indexOfRedCar(List<Board.Vehicle> vehicles) {
+    static int indexOfRedCar(List<Board.Vehicle> vehicles) {
         for (int i = 0; i < vehicles.size(); i++) {
             if (vehicles.get(i).id() == RED_CAR) {
                 return i;
@@ -77,7 +77,7 @@ public final class Solver {
         throw new IllegalArgumentException("Le plateau n'a pas de voiture rouge");
     }
 
-    private static boolean[] occupancy(List<Board.Vehicle> vehicles, int[] state) {
+    static boolean[] occupancy(List<Board.Vehicle> vehicles, int[] state) {
         boolean[] grid = new boolean[SIZE * SIZE];
         for (int i = 0; i < vehicles.size(); i++) {
             for (int k = 0; k < vehicles.get(i).length(); k++) {
@@ -88,7 +88,7 @@ public final class Solver {
     }
 
     /** Index de la case située à la position `p` de l'axe du véhicule. */
-    private static int cell(Board.Vehicle v, int p) {
+    static int cell(Board.Vehicle v, int p) {
         return v.orientation() == Board.Orientation.HORIZONTAL ? v.row() * SIZE + p : p * SIZE + v.col();
     }
 

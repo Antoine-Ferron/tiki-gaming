@@ -1,16 +1,15 @@
 package fr.tikigaming.games.rush_hour;
 
+import static fr.tikigaming.games.rush_hour.Board.SIZE;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Rejoue côté serveur les coups envoyés par le front, pour n'accepter que les parties réellement gagnées.
+ * Même représentation que le solveur : la position de chaque véhicule sur son axe.
  */
 public final class SolutionVerifier {
-
-    private static final int SIZE = 6;
-    private static final char RED_CAR = 'X';
-    private static final int EXIT_ROW = 2;
 
     private SolutionVerifier() {}
 
@@ -20,7 +19,8 @@ public final class SolutionVerifier {
      * la voiture rouge n'est pas sortie.
      */
     public static int replay(List<String> map, List<Move> moves) {
-        List<Board.Vehicle> vehicles = new ArrayList<>(Board.parse(map).vehicles());
+        List<Board.Vehicle> vehicles = Board.parse(map).vehicles();
+        int[] state = vehicles.stream().mapToInt(Solver::axisPosition).toArray();
         List<Move> counted = new ArrayList<>();
         for (Move move : moves) {
             int index = indexOf(vehicles, move.vehicleId());
@@ -30,14 +30,15 @@ public final class SolutionVerifier {
             if (move.delta() == 0) {
                 throw new IllegalArgumentException("Déplacement nul");
             }
-            if (!canMove(vehicles, index, move.delta())) {
+            if (!canMove(vehicles, state, index, move.delta())) {
                 throw new IllegalArgumentException(
                         "Déplacement impossible : " + move.vehicleId() + " de " + move.delta());
             }
-            vehicles.set(index, shifted(vehicles.get(index), move.delta()));
+            state[index] += move.delta();
             count(counted, move);
         }
-        if (!isSolved(vehicles)) {
+        int red = Solver.indexOfRedCar(vehicles);
+        if (state[red] != SIZE - vehicles.get(red).length()) {
             throw new IllegalArgumentException("La voiture rouge n’est pas sortie");
         }
         return counted.size();
@@ -57,11 +58,6 @@ public final class SolutionVerifier {
         }
     }
 
-    private static boolean isSolved(List<Board.Vehicle> vehicles) {
-        return vehicles.stream()
-                .anyMatch(v -> v.id() == RED_CAR && v.row() == EXIT_ROW && v.col() + v.length() == SIZE);
-    }
-
     private static int indexOf(List<Board.Vehicle> vehicles, char id) {
         for (int i = 0; i < vehicles.size(); i++) {
             if (vehicles.get(i).id() == id) {
@@ -71,44 +67,22 @@ public final class SolutionVerifier {
         return -1;
     }
 
-    /** Le véhicule peut glisser de {@code delta} cases sans sortir du plateau ni traverser un autre véhicule. */
-    private static boolean canMove(List<Board.Vehicle> vehicles, int index, int delta) {
-        if (delta == 0) {
+    /** Le véhicule peut glisser de `delta` cases sans sortir du plateau ni traverser un autre véhicule. */
+    private static boolean canMove(List<Board.Vehicle> vehicles, int[] state, int index, int delta) {
+        Board.Vehicle vehicle = vehicles.get(index);
+        int target = state[index] + delta;
+        if (target < 0 || target + vehicle.length() > SIZE) {
             return false;
         }
-        boolean[][] occupied = new boolean[SIZE][SIZE];
-        for (int i = 0; i < vehicles.size(); i++) {
-            if (i != index) {
-                for (int[] cell : cells(vehicles.get(i))) {
-                    occupied[cell[0]][cell[1]] = true;
-                }
-            }
-        }
-        Board.Vehicle vehicle = vehicles.get(index);
-        int step = Integer.signum(delta);
-        for (int offset = step; offset != delta + step; offset += step) {
-            for (int[] cell : cells(shifted(vehicle, offset))) {
-                boolean inside = cell[0] >= 0 && cell[0] < SIZE && cell[1] >= 0 && cell[1] < SIZE;
-                if (!inside || occupied[cell[0]][cell[1]]) {
-                    return false;
-                }
+        boolean[] occupied = Solver.occupancy(vehicles, state);
+        // Cases à traverser : devant le véhicule, dans le sens du glissement, jusqu'à sa position d'arrivée.
+        int from = delta > 0 ? state[index] + vehicle.length() : target;
+        int to = delta > 0 ? target + vehicle.length() - 1 : state[index] - 1;
+        for (int p = from; p <= to; p++) {
+            if (occupied[Solver.cell(vehicle, p)]) {
+                return false;
             }
         }
         return true;
-    }
-
-    private static Board.Vehicle shifted(Board.Vehicle v, int delta) {
-        return v.orientation() == Board.Orientation.HORIZONTAL
-                ? new Board.Vehicle(v.id(), v.orientation(), v.row(), v.col() + delta, v.length())
-                : new Board.Vehicle(v.id(), v.orientation(), v.row() + delta, v.col(), v.length());
-    }
-
-    private static List<int[]> cells(Board.Vehicle v) {
-        List<int[]> cells = new ArrayList<>();
-        for (int k = 0; k < v.length(); k++) {
-            boolean horizontal = v.orientation() == Board.Orientation.HORIZONTAL;
-            cells.add(new int[] {horizontal ? v.row() : v.row() + k, horizontal ? v.col() + k : v.col()});
-        }
-        return cells;
     }
 }
