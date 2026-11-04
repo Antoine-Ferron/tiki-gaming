@@ -60,6 +60,7 @@ class OpenApiDocsTest {
                     .andExpect(jsonPath("$.paths['/api/auth/password/reset'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/password'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/logout'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/scores'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}/guesses")))
@@ -86,6 +87,7 @@ class OpenApiDocsTest {
                             "$.paths.*.*.tags[*]",
                             everyItem(anyOf(
                                     containsString("Authentification"),
+                                    containsString("Scores"),
                                     containsString("mastermind"),
                                     containsString("bang"),
                                     containsString("sudoku"),
