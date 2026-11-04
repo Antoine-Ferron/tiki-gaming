@@ -87,29 +87,44 @@ public final class MoveGenerator {
      */
     private static Set<Square> pawnDestinations(Position position, Square from, Color color) {
         int forward = color == Color.WHITE ? 1 : -1;
-        int startRank = color == Color.WHITE ? 1 : BOARD_SIZE - 2;
         Set<Square> destinations = new HashSet<>();
+        addPawnPushes(position, from, color, forward, destinations);
+        addPawnCaptures(position, from, color, forward, destinations);
+        return destinations;
+    }
+
+    /** Avance tout droit : une case si elle est libre, puis une seconde depuis la rangée de départ. */
+    private static void addPawnPushes(
+            Position position, Square from, Color color, int forward, Set<Square> destinations) {
+        int startRank = color == Color.WHITE ? 1 : BOARD_SIZE - 2;
         Square oneStep = new Square(from.file(), from.rank() + forward);
-        if (position.pieceAt(oneStep).isEmpty()) {
-            destinations.add(oneStep);
-            if (from.rank() == startRank) {
-                Square twoSteps = new Square(from.file(), from.rank() + 2 * forward);
-                if (position.pieceAt(twoSteps).isEmpty()) {
-                    destinations.add(twoSteps);
+        if (!isEmpty(position, oneStep)) {
+            return; // le pion ne prend pas tout droit et ne saute pas
+        }
+        destinations.add(oneStep);
+        Square twoSteps = new Square(from.file(), from.rank() + 2 * forward);
+        if (from.rank() == startRank && isEmpty(position, twoSteps)) {
+            destinations.add(twoSteps);
+        }
+    }
+
+    /** Prise : une case en diagonale vers l'avant, seulement si une pièce adverse s'y trouve. */
+    private static void addPawnCaptures(
+            Position position, Square from, Color color, int forward, Set<Square> destinations) {
+        int rank = from.rank() + forward;
+        for (int side : new int[] {-1, 1}) {
+            int file = from.file() + side;
+            if (isOnBoard(file, rank)) {
+                Square diagonal = new Square(file, rank);
+                if (!isEmpty(position, diagonal) && !isOccupiedBy(position, diagonal, color)) {
+                    destinations.add(diagonal);
                 }
             }
         }
-        for (int side : new int[] {-1, 1}) {
-            int file = from.file() + side;
-            if (!isOnBoard(file, from.rank() + forward)) {
-                continue;
-            }
-            Square diagonal = new Square(file, from.rank() + forward);
-            if (position.pieceAt(diagonal).isPresent() && !isOccupiedBy(position, diagonal, color)) {
-                destinations.add(diagonal);
-            }
-        }
-        return destinations;
+    }
+
+    private static boolean isEmpty(Position position, Square square) {
+        return position.pieceAt(square).isEmpty();
     }
 
     private static boolean isOnBoard(int file, int rank) {
