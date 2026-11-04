@@ -32,3 +32,292 @@
 .bang-face-card strong {
   font-size: 0.95rem;
 }
+
+/* Plateau et tapis (#60). Couleurs propres au jeu, déclarées une fois sur la racine. */
+.bang {
+  --bang-felt: #1b6a6e;
+  --bang-panel: #164f53;
+  --bang-panel-dark: #3b2236;
+  --bang-cream: #fdebc9;
+  --bang-ink: #2a1a22;
+  --bang-line: rgb(253 235 201 / 0.3);
+}
+
+.bang-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-areas:
+    'top top top'
+    'left center right'
+    'bottom bottom hand';
+  gap: 1rem;
+  padding: 4.5rem 4rem;
+  border-radius: var(--radius);
+  background: var(--bang-felt) url('/games/bang/board/plateau.webp') center / cover no-repeat;
+  color: var(--bang-cream);
+}
+
+.bang-top {
+  grid-area: top;
+  justify-self: center;
+}
+
+.bang-left {
+  grid-area: left;
+  justify-self: start;
+  align-self: center;
+}
+
+.bang-right {
+  grid-area: right;
+  justify-self: end;
+  align-self: center;
+}
+
+.bang-bottom {
+  grid-area: bottom;
+}
+
+.bang-mat {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--bang-line);
+  border-radius: var(--radius);
+  background: var(--bang-panel);
+}
+
+.bang-mat header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+
+.bang-mat h3,
+.bang-hand h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.bang-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.bang-stat img,
+.bang-center figcaption img {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.bang-mat-cards {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.bang-mat .bang-card {
+  width: 5.5rem;
+}
+
+/* Sur le tapis, le nom de la carte est petit et collé au bas de l'illustration. */
+.bang-mat .bang-face-card figcaption {
+  gap: 0;
+  padding: 0.2rem 0.35rem;
+}
+
+.bang-mat .bang-face-card strong {
+  font-size: 0.7rem;
+  line-height: 1.15;
+}
+
+/* Sur le tapis, une carte ne montre que son nom : l'objectif et le pouvoir restent réservés aux cartes détaillées. */
+.bang-mat figcaption span {
+  display: none;
+}
+
+.bang-label {
+  display: inline-block;
+  margin: 0 0 0.25rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  background: var(--bang-panel-dark);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.bang-weapon {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.bang-played {
+  display: flex;
+  gap: 0.25rem;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  border: 1px dashed var(--bang-line);
+  border-radius: 6px;
+}
+
+.bang-played li,
+.bang-hand li {
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: var(--bang-cream);
+  color: var(--bang-ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.bang-center {
+  grid-area: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.bang-center figure {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  justify-items: center;
+}
+
+.bang-center .bang-card {
+  width: 5.5rem;
+}
+
+.bang-center figcaption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  background: var(--bang-panel-dark);
+  font-size: 0.8rem;
+}
+
+.bang-discard {
+  box-sizing: border-box;
+  border: 2px dashed var(--bang-line);
+}
+
+.bang-hand {
+  grid-area: hand;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  background: var(--bang-panel-dark);
+}
+
+.bang-hand h3 span {
+  margin-left: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.bang-hand ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 52rem) {
+  .bang-board {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'top' 'left' 'right' 'center' 'bottom' 'hand';
+    padding: 1.5rem 1rem;
+  }
+
+  .bang-top,
+  .bang-left,
+  .bang-right {
+    justify-self: stretch;
+    align-self: auto;
+  }
+}
+
+/* Choisir un BANG ! puis une cible : le bouton reprend l'aspect de la carte, la sélection se voit au contour. */
+.bang-hand li button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.bang-hand li:has(button[aria-pressed='true']) {
+  outline: 2px solid var(--bang-cream);
+  outline-offset: 2px;
+}
+
+.bang-mat header button {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Icônes du tapis : rôle caché, arme et cartes posées. */
+.bang-hidden-role,
+.bang-weapon,
+.bang-played-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bang-hidden-role {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: var(--bang-panel-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.bang-hidden-role img,
+.bang-weapon img,
+.bang-played-slot > img {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.bang-played-slot .bang-played {
+  flex: 1;
+}
+
+/* La pioche devient un bouton quand je dois piocher : elle se met en évidence. */
+.bang-pile {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  cursor: pointer;
+  outline: 3px solid var(--bang-cream);
+  outline-offset: 3px;
+}
+
+.bang-pile:hover,
+.bang-pile:focus-visible {
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bang-pile:hover,
+  .bang-pile:focus-visible {
+    transform: none;
+  }
+}
+
+.bang-hand > button {
+  margin-top: 0.75rem;
+}
