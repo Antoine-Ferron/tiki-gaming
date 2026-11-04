@@ -70,6 +70,28 @@ class ShotRulesTest {
         assertThatThrownBy(() -> rules.fire(before, 1, "bang-1", 3, 0)).isInstanceOf(IllegalStateException.class);
 
         assertThat(seat(before, 1).hand()).containsExactly(bang);
+        assertThat(before).isEqualTo(table());
+    }
+
+    @Test
+    void playingACardKeepsTheOtherCardsInHand() {
+        CardInstance otherBang = new CardInstance("bang-2", CardType.BANG);
+        GameState state = state(
+                1,
+                player(1, BangCharacter.BART_CASSIDY, 4, bang, otherBang, missed),
+                player(2, BangCharacter.BART_CASSIDY, 4));
+
+        ShotOutcome outcome = rules.fire(state, 1, "bang-1", 2, 0);
+
+        assertThat(seat(outcome.state(), 1).hand()).containsExactly(otherBang, missed);
+        assertThat(outcome.discarded()).containsExactly(bang);
+    }
+
+    @Test
+    void shootingAtAnUnknownSeatIsRefused() {
+        GameState state = table();
+
+        assertThatThrownBy(() -> rules.fire(state, 1, "bang-1", 9, 0)).isInstanceOf(IllegalArgumentException.class);
     }
 
     // --- Un seul BANG ! par tour, sauf pouvoir de Willy le Kid ---
