@@ -92,6 +92,26 @@ class GameTest {
         assertThat(after.fullmoveNumber()).isEqualTo(fullmove);
     }
 
+    @ParameterizedTest(name = "{0} : {1} → {2} laisse les droits « {3} »")
+    @CsvSource({
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', e1, e2, kq", // le roi blanc bouge : plus de roque blanc
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', h1, g1, Qkq", // la tour h1 bouge : plus de petit roque blanc
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', a1, b1, Kkq", // la tour a1 bouge : plus de grand roque blanc
+        "'r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1', e8, d8, KQ", // le roi noir bouge
+        "'r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1', a8, b8, KQk", // la tour a8 bouge
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', h1, h8, Qq", // la tour h1 prend la tour h8 : les deux petits roques
+        // tombent
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', e1, f1, kq" // le roi blanc va en f1
+    })
+    @DisplayName("les droits de roque se perdent quand le roi ou une tour bouge, ou quand une tour est prise")
+    void lesDroitsDeRoqueSePerdent(String fen, String from, String to, String expected) {
+        // Act
+        Position after = play(fen, from, to);
+
+        // Assert : 3ᵉ champ de la FEN
+        assertThat(Fen.toFen(after).split(" ")[2]).isEqualTo(expected);
+    }
+
     private static Position play(String fen, String from, String to) {
         return Game.play(Fen.parse(fen), Square.of(from), Square.of(to));
     }
