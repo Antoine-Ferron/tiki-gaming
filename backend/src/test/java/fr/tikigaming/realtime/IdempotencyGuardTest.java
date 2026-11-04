@@ -45,6 +45,22 @@ class IdempotencyGuardTest {
     }
 
     @Test
+    void thePeriodicCleanupDoesNotRunOnEveryCall() {
+        guard.isFirst("room-1", "action-1");
+        assertThat(guard.purgeRuns()).isZero();
+
+        clock.advance(Duration.ofSeconds(1));
+        guard.isFirst("room-1", "action-2");
+        assertThat(guard.purgeRuns())
+                .as("un appel rapproché ne redéclenche pas le nettoyage")
+                .isZero();
+
+        clock.advance(IdempotencyGuard.PURGE_INTERVAL);
+        guard.isFirst("room-1", "action-3");
+        assertThat(guard.purgeRuns()).isOne();
+    }
+
+    @Test
     void onlyOneOfManyConcurrentIdenticalActionsIsFirst() throws Exception {
         int contenders = 16;
         List<Boolean> results = new CopyOnWriteArrayList<>();

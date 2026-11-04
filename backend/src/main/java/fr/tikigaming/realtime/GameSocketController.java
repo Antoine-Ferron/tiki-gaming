@@ -2,6 +2,8 @@ package fr.tikigaming.realtime;
 
 import java.security.Principal;
 import java.time.Instant;
+import java.util.function.BiFunction;
+import org.springframework.http.HttpStatus;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -27,19 +29,18 @@ public class GameSocketController {
 
     @MessageMapping("/rooms/{slug}/create")
     public void create(@DestinationVariable String slug, CreateRoomRequest request, Principal principal) {
-        try {
-            RoomView view = rooms.createRoom(slug, principal.getName(), request.maxPlayers());
-            respond(slug, principal, view);
-            broadcastRoomUpdated(slug, view);
-        } catch (GameRoomException e) {
-            sendError(slug, principal, e);
-        }
+        handle(slug, principal, (s, accountId) -> rooms.createRoom(s, accountId, request.maxPlayers()));
     }
 
     @MessageMapping("/rooms/{slug}/join")
     public void join(@DestinationVariable String slug, JoinRoomRequest request, Principal principal) {
+        handle(slug, principal, (s, accountId) -> rooms.joinRoom(s, request.code(), accountId));
+    }
+
+    /** Crée ou rejoint une salle : même réponse au demandeur et même diffusion dans les deux cas. */
+    private void handle(String slug, Principal principal, BiFunction<String, String, RoomView> action) {
         try {
-            RoomView view = rooms.joinRoom(slug, request.code(), principal.getName());
+            RoomView view = action.apply(slug, principal.getName());
             respond(slug, principal, view);
             broadcastRoomUpdated(slug, view);
         } catch (GameRoomException e) {
@@ -49,9 +50,9 @@ public class GameSocketController {
 
     @MessageMapping("/rooms/{slug}/leave")
     public void leave(@DestinationVariable String slug, JoinRoomRequest request, Principal principal) {
-        rooms.leaveRoom(slug, request.code(), principal.getName());
-        messaging.convertAndSend(
-                topic(slug, request.code()), new RoomEvent<Void>("PLAYER_LEFT", null, request.code(), Instant.now()));
+        rooms.leaveRoom(slug, request.code(), principal.getName())
+                .ifPresent(code -> messaging.convertAndSend(
+                        topic(slug, code), new RoomEvent<Void>(RoomEventTypes.PLAYER_LEFT, null, code, Instant.now())));
     }
 
     @MessageMapping("/rooms/{slug}/{code}/actions")
@@ -60,15 +61,24 @@ public class GameSocketController {
             @DestinationVariable String code,
             RoomAction action,
             Principal principal) {
+        if (RoomEventTypes.isReserved(action.type())) {
+            sendError(
+                    slug,
+                    principal,
+                    new GameRoomException(HttpStatus.BAD_REQUEST, "« " + action.type() + " » est réservé au socle."));
+            return;
+        }
+        RoomView membership;
         try {
-            rooms.requireMembership(slug, code, principal.getName());
+            membership = rooms.requireMembership(slug, code, principal.getName());
         } catch (GameRoomException e) {
             sendError(slug, principal, e);
             return;
         }
-        if (idempotency.isFirst(slug + ":" + code, action.actionId())) {
+        if (idempotency.isFirst(slug + ":" + membership.code(), action.actionId())) {
             messaging.convertAndSend(
-                    topic(slug, code), new RoomEvent<>(action.type(), action.data(), code, Instant.now()));
+                    topic(slug, membership.code()),
+                    new RoomEvent<>(action.type(), action.data(), membership.code(), Instant.now()));
         }
     }
 
@@ -78,7 +88,8 @@ public class GameSocketController {
 
     private void broadcastRoomUpdated(String slug, RoomView view) {
         messaging.convertAndSend(
-                topic(slug, view.code()), new RoomEvent<>("ROOM_UPDATED", view, view.code(), Instant.now()));
+                topic(slug, view.code()),
+                new RoomEvent<>(RoomEventTypes.ROOM_UPDATED, view, view.code(), Instant.now()));
     }
 
     private void sendError(String slug, Principal principal, GameRoomException e) {

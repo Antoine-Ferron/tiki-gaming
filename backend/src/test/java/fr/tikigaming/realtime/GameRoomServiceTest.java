@@ -10,6 +10,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -28,6 +29,15 @@ class GameRoomServiceTest {
 
     private final MutableClock clock = new MutableClock();
     private final GameRoomService rooms = new GameRoomService(clock);
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1})
+    void refusesToCreateARoomWithFewerThanOnePlayer(int maxPlayers) {
+        assertThatThrownBy(() -> rooms.createRoom(SLUG, "creator", maxPlayers))
+                .isInstanceOfSatisfying(
+                        GameRoomException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
 
     @Test
     void createsARoomWithAShareableCodeAndTheCreatorsSeat() {
@@ -119,6 +129,16 @@ class GameRoomServiceTest {
     }
 
     @Test
+    void leavingReturnsTheCanonicalCodeOnlyWhenAccountWasActuallySeated() {
+        String code = rooms.createRoom(SLUG, "creator", 4).code();
+
+        assertThat(rooms.leaveRoom(SLUG, code.toLowerCase(Locale.ROOT), "creator"))
+                .contains(code);
+        assertThat(rooms.leaveRoom(SLUG, code, "creator")).isEmpty();
+        assertThat(rooms.leaveRoom(SLUG, "UNKNOWN", "creator")).isEmpty();
+    }
+
+    @Test
     void leavingAnUnknownRoomOrSeatIsANoOp() {
         rooms.leaveRoom(SLUG, "UNKNOWN", "player");
 
@@ -126,6 +146,22 @@ class GameRoomServiceTest {
         rooms.leaveRoom(SLUG, code, "never-seated");
 
         assertThat(rooms.joinRoom(SLUG, code, "creator")).isEqualTo(new RoomView(SLUG, code, 1, 1, 4));
+    }
+
+    @Test
+    void whenTheFirstSeatLeavesTheNextPlayerInheritsTheCreatorRestriction() {
+        String code = rooms.createRoom(SLUG, "creator", 4).code();
+        rooms.joinRoom(SLUG, code, "second");
+
+        rooms.leaveRoom(SLUG, code, "creator");
+
+        // "second" occupe maintenant le premier siège : il ne peut pas ouvrir une deuxième salle pour ce jeu...
+        assertThatThrownBy(() -> rooms.createRoom(SLUG, "second", 4))
+                .isInstanceOfSatisfying(
+                        GameRoomException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT));
+        // ...tandis que l'ancien créateur, parti, peut désormais en ouvrir une nouvelle.
+        assertThat(rooms.createRoom(SLUG, "creator", 4).code()).isNotEqualTo(code);
     }
 
     @Test

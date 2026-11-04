@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -25,6 +26,9 @@ public class GameRoomService {
     static final Duration INACTIVITY_TIMEOUT = Duration.ofHours(1);
 
     private final Map<String, Room> rooms = new HashMap<>();
+    // Index inverse du premier siège de chaque salle (gameSlug+compte -> code), pour vérifier en O(1) qu'un compte
+    // n'a pas déjà une salle ouverte, au lieu de parcourir toutes les salles de tous les jeux à chaque création.
+    private final Map<String, String> openRoomByFirstSeat = new HashMap<>();
     private final Clock clock;
 
     public GameRoomService() {
@@ -36,11 +40,12 @@ public class GameRoomService {
     }
 
     public synchronized RoomView createRoom(String gameSlug, String accountId, int maxPlayers) {
+        if (maxPlayers < 1) {
+            throw new GameRoomException(HttpStatus.BAD_REQUEST, "Le nombre de joueurs doit être d'au moins 1.");
+        }
         purgeInactive();
-        boolean alreadyOpen = rooms.values().stream()
-                .anyMatch(room -> room.gameSlug.equals(gameSlug)
-                        && room.players.getFirst().equals(accountId));
-        if (alreadyOpen) {
+        String firstSeatKey = firstSeatKey(gameSlug, accountId);
+        if (openRoomByFirstSeat.containsKey(firstSeatKey)) {
             throw new GameRoomException(HttpStatus.CONFLICT, "Tu as déjà une salle ouverte pour ce jeu.");
         }
         if (rooms.size() >= MAX_ROOMS) {
@@ -55,6 +60,7 @@ public class GameRoomService {
                     .toUpperCase(Locale.ROOT);
         } while (rooms.containsKey(code));
         rooms.put(code, new Room(gameSlug, accountId, maxPlayers, clock.instant()));
+        openRoomByFirstSeat.put(firstSeatKey, code);
         return new RoomView(gameSlug, code, 1, 1, maxPlayers);
     }
 
@@ -74,16 +80,26 @@ public class GameRoomService {
         return view(gameSlug, normalized, room, players.size());
     }
 
-    public synchronized void leaveRoom(String gameSlug, String code, String accountId) {
+    /** Renvoie le code canonique de la salle si le compte en a bien été retiré (sinon vide, sans rien changer). */
+    public synchronized Optional<String> leaveRoom(String gameSlug, String code, String accountId) {
         Room room = findRoom(gameSlug, code);
-        if (room == null) return;
-        room.players.remove(accountId);
-        if (room.players.isEmpty()) rooms.remove(normalize(code));
+        if (room == null) return Optional.empty();
+        int seat = room.players.indexOf(accountId);
+        if (seat < 0) return Optional.empty();
+        room.players.remove(seat);
+        String normalized = normalize(code);
+        if (room.players.isEmpty()) {
+            rooms.remove(normalized);
+            openRoomByFirstSeat.remove(firstSeatKey(gameSlug, accountId));
+        } else if (seat == 0) {
+            openRoomByFirstSeat.remove(firstSeatKey(gameSlug, accountId));
+            openRoomByFirstSeat.put(firstSeatKey(gameSlug, room.players.getFirst()), normalized);
+        }
+        return Optional.of(normalized);
     }
 
     /** Vérifie qu'un compte est bien assis dans cette salle, avant de lui laisser envoyer une action. */
     public synchronized RoomView requireMembership(String gameSlug, String code, String accountId) {
-        purgeInactive();
         Room room = findRoom(gameSlug, code);
         if (room == null) throw new GameRoomException(HttpStatus.NOT_FOUND, "Code de salle inconnu.");
         int seat = room.players.indexOf(accountId);
@@ -110,13 +126,25 @@ public class GameRoomService {
         return code == null ? null : code.trim().toUpperCase(Locale.ROOT);
     }
 
+    private static String firstSeatKey(String gameSlug, String accountId) {
+        return gameSlug + '\u0000' + accountId;
+    }
+
     private static RoomView view(String gameSlug, String code, Room room, int seat) {
         return new RoomView(gameSlug, code, seat, room.players.size(), room.maxPlayers);
     }
 
     private void purgeInactive() {
         Instant cutoff = clock.instant().minus(INACTIVITY_TIMEOUT);
-        rooms.values().removeIf(room -> !room.lastActivity.isAfter(cutoff));
+        Iterator<Map.Entry<String, Room>> it = rooms.entrySet().iterator();
+        while (it.hasNext()) {
+            Room room = it.next().getValue();
+            if (room.lastActivity.isAfter(cutoff)) continue;
+            it.remove();
+            if (!room.players.isEmpty()) {
+                openRoomByFirstSeat.remove(firstSeatKey(room.gameSlug, room.players.getFirst()));
+            }
+        }
     }
 
     private static final class Room {

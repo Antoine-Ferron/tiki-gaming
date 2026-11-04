@@ -126,6 +126,79 @@ class GameSocketControllerIntegrationTest {
         creatorSession.disconnect();
     }
 
+    @Test
+    void leavingNotifiesTheRemainingPlayerAndFreesTheSeat() throws Exception {
+        StompSession creatorSession = connect("leave-creator");
+        BlockingQueue<RoomView> creatorResponses = subscribeToResponses(creatorSession);
+        creatorSession.send("/app/rooms/" + SLUG + "/create", new CreateRoomRequest(4));
+        RoomView created = creatorResponses.poll(5, TimeUnit.SECONDS);
+        assertThat(created).isNotNull();
+
+        StompSession secondSession = connect("leave-second");
+        BlockingQueue<RoomView> secondResponses = subscribeToResponses(secondSession);
+        BlockingQueue<RoomEvent<?>> secondTopicEvents = subscribeToTopic(secondSession, created.code());
+        secondSession.send("/app/rooms/" + SLUG + "/join", new JoinRoomRequest(created.code()));
+        assertThat(secondResponses.poll(5, TimeUnit.SECONDS)).isNotNull();
+        secondTopicEvents.poll(1, TimeUnit.SECONDS); // ignore le ROOM_UPDATED de sa propre jonction
+
+        creatorSession.send("/app/rooms/" + SLUG + "/leave", new JoinRoomRequest(created.code()));
+
+        RoomEvent<?> playerLeft = secondTopicEvents.poll(5, TimeUnit.SECONDS);
+        assertThat(playerLeft).isNotNull();
+        assertThat(playerLeft.type()).isEqualTo(RoomEventTypes.PLAYER_LEFT);
+
+        // Le siège est bien libéré côté serveur : le créateur peut rouvrir une salle pour ce jeu.
+        BlockingQueue<RoomView> newResponses = subscribeToResponses(creatorSession);
+        creatorSession.send("/app/rooms/" + SLUG + "/create", new CreateRoomRequest(4));
+        RoomView recreated = newResponses.poll(5, TimeUnit.SECONDS);
+        assertThat(recreated).isNotNull();
+        assertThat(recreated.code()).isNotEqualTo(created.code());
+
+        creatorSession.disconnect();
+        secondSession.disconnect();
+    }
+
+    @Test
+    void creatingARoomWithFewerThanOnePlayerIsRefused() throws Exception {
+        StompSession session = connect("invalid-max-players");
+        BlockingQueue<RoomErrorMessage> errors = new LinkedBlockingQueue<>();
+        session.subscribe(
+                "/user/queue/rooms/" + SLUG + "/errors", new JsonFrameHandler<>(RoomErrorMessage.class, errors));
+
+        session.send("/app/rooms/" + SLUG + "/create", new CreateRoomRequest(0));
+
+        RoomErrorMessage error = errors.poll(5, TimeUnit.SECONDS);
+        assertThat(error).isNotNull();
+        assertThat(error.status()).isEqualTo(400);
+
+        session.disconnect();
+    }
+
+    @Test
+    void anActionNamedAfterAReservedTypeIsRefusedAndNeverBroadcast() throws Exception {
+        StompSession session = connect("reserved-type-player");
+        BlockingQueue<RoomView> responses = subscribeToResponses(session);
+        session.send("/app/rooms/" + SLUG + "/create", new CreateRoomRequest(4));
+        RoomView created = responses.poll(5, TimeUnit.SECONDS);
+        assertThat(created).isNotNull();
+
+        BlockingQueue<RoomEvent<?>> topicEvents = subscribeToTopic(session, created.code());
+        topicEvents.poll(1, TimeUnit.SECONDS); // ignore le ROOM_UPDATED de la création
+
+        BlockingQueue<RoomErrorMessage> errors = new LinkedBlockingQueue<>();
+        session.subscribe(
+                "/user/queue/rooms/" + SLUG + "/errors", new JsonFrameHandler<>(RoomErrorMessage.class, errors));
+        String destination = "/app/rooms/" + SLUG + "/" + created.code() + "/actions";
+        session.send(destination, new RoomAction(RoomEventTypes.ROOM_UPDATED, "action-1", Map.of()));
+
+        RoomErrorMessage error = errors.poll(5, TimeUnit.SECONDS);
+        assertThat(error).isNotNull();
+        assertThat(error.status()).isEqualTo(400);
+        assertThat(topicEvents.poll(1, TimeUnit.SECONDS)).isNull();
+
+        session.disconnect();
+    }
+
     private BlockingQueue<RoomView> subscribeToResponses(StompSession session) {
         BlockingQueue<RoomView> queue = new LinkedBlockingQueue<>();
         session.subscribe("/user/queue/rooms/" + SLUG + "/response", new JsonFrameHandler<>(RoomView.class, queue));
