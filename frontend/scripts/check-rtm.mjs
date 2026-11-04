@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Vérifie la matrice de traçabilité specs/rtm-matrix.md (CI, job Frontend) : zéro rupture de chaîne tolérée.
+// Vérifie la matrice de traçabilité specs/rtm-matrix.md (CI, job Traçabilité (RTM)) : zéro rupture de chaîne tolérée.
 //   npm run rtm:check
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
