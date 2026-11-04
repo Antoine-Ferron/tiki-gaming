@@ -36,6 +36,19 @@ class MoveGeneratorTest {
         assertThat(destinations).isEqualTo(squares("b3", "c2"));
     }
 
+    @Test
+    @DisplayName("un cavalier au bord (a4) a 4 cases possibles")
+    void unCavalierAuBordA4Cases() {
+        // Arrange
+        Position position = Fen.parse("4k3/8/8/8/N7/8/8/4K3 w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("a4"));
+
+        // Assert
+        assertThat(destinations).isEqualTo(squares("b2", "b6", "c3", "c5"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
