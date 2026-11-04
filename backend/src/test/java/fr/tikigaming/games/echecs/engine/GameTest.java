@@ -33,6 +33,17 @@ class GameTest {
         assertThat(afterBlack.turn()).isEqualTo(Color.WHITE);
     }
 
+    @Test
+    @DisplayName("une prise remplace la pièce adverse par la pièce jouée")
+    void unePriseRemplaceLaPieceAdverse() {
+        // Arrange : pion blanc en e4, cavalier noir en d5
+        Position after = play("k7/8/8/3n4/4P3/8/8/7K w - - 0 1", "e4", "d5");
+
+        // Assert : un seul occupant en d5, le pion blanc ; le cavalier a disparu
+        assertThat(after.pieceAt(Square.of("d5"))).isEqualTo(Optional.of(new Piece(Color.WHITE, PieceType.PAWN)));
+        assertThat(after.pieces()).hasSize(3);
+    }
+
     private static Position play(String fen, String from, String to) {
         return Game.play(Fen.parse(fen), Square.of(from), Square.of(to));
     }
