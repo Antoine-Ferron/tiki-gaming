@@ -10,6 +10,11 @@ const saveSchema = z.object({
   best: z.number(),
 })
 
+/** Meilleur score sauvegardé du joueur, 0 s'il n'en a pas encore. */
+export async function loadRecord(ctx: GameContext) {
+  return (await ctx.loadSave(saveSchema))?.best ?? 0
+}
+
 /**
  * Fin d'une partie : envoie le score au classement, puis garde le record s'il est battu (S3 à S7).
  * Le score part avant la sauvegarde : s'il est refusé, le record n'est pas gardé. Exception : une coupure
