@@ -34,7 +34,7 @@ public class ShotRules {
         if (shotsThisTurn >= shooter.character().maxBangsPerTurn()) {
             throw new IllegalStateException("Un seul BANG ! par tour");
         }
-        if (distance.applyAsInt(shooterSeat, targetSeat) > BASE_RANGE) {
+        if (target.character().distanceAsTarget(distance.applyAsInt(shooterSeat, targetSeat)) > BASE_RANGE) {
             throw new IllegalStateException("La cible est hors de portée");
         }
         return discard(state, shooter, usableAs(shooter, cardId, CardType.BANG));

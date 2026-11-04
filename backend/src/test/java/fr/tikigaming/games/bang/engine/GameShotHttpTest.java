@@ -249,6 +249,18 @@ class GameShotHttpTest {
         command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
     }
 
+    @Test
+    void paulRegretsDistancePowerIsAppliedByTheRealShotRules() throws Exception {
+        String code =
+                startedTable(preparedGame(BangCharacter.BART_CASSIDY, BangCharacter.PAUL_REGRET, GameState.Phase.PLAY));
+        GameState before = tables.game(code);
+
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isConflict());
+
+        assertThat(tables.game(code)).isSameAs(before);
+        view(code, 1).andExpect(jsonPath("$.pendingShot").doesNotExist());
+    }
+
     private String pendingId(String code) throws Exception {
         return json.readTree(view(code, 2)
                         .andExpect(status().isOk())

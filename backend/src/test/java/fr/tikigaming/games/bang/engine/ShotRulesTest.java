@@ -57,6 +57,19 @@ class ShotRulesTest {
     // --- Tirer : BANG ! à portée, pendant son tour ---
 
     @Test
+    void paulRegretsPowerIncreasesHisDistanceOnlyAsATarget() {
+        GameState paulAsTarget =
+                state(1, player(1, BangCharacter.BART_CASSIDY, 4, bang), player(2, BangCharacter.PAUL_REGRET, 3));
+        assertThatThrownBy(() -> rules.fire(paulAsTarget, 1, "bang-1", 2, 0))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("La cible est hors de portée");
+
+        GameState paulAsShooter =
+                state(1, player(1, BangCharacter.PAUL_REGRET, 3, bang), player(2, BangCharacter.BART_CASSIDY, 4));
+        assertThat(rules.fire(paulAsShooter, 1, "bang-1", 2, 0).discarded()).containsExactly(bang);
+    }
+
+    @Test
     void bangAtANeighbourLeavesTheHandAndGoesToTheDiscardOnce() {
         ShotOutcome outcome = rules.fire(table(), 1, "bang-1", 2, 0);
 
