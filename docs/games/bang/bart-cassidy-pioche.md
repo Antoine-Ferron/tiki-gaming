@@ -20,6 +20,36 @@ inclus un mécanisme commun au bonus et à la pioche de tour, y compris une pioc
 cartes à cheval sur l'ancienne pioche et la défausse mélangée. Un total inférieur à deux
 cartes continue de faire refuser la pioche de tour sans mutation.
 
+## Comportements livrés
+
+- `ShotRules.respond` calcule les PV réellement perdus et appelle le contrat du personnage
+  seulement si la cible reste vivante. Bart reçoit une carte existante par PV perdu ;
+  une esquive, une absence de perte de PV, un autre personnage ou des dégâts mortels
+  ne provoquent aucune pioche bonus. La carte n'est jamais ajoutée à la défausse par le bonus.
+- `CardDraw` prend d'abord les cartes restantes dans leur ordre. S'il lui manque une carte,
+  il mélange une copie de la défausse, la transfère dans la pioche, vide la défausse puis poursuit.
+  Le mélange est contrôlable dans les tests ; la production utilise `Collections.shuffle`.
+  Aucune carte ni aucun identifiant n'est créé, et l'état d'entrée demeure inchangé.
+- La pioche normale de deux cartes et le bonus utilisent le même mécanisme. Une pioche
+  de tour avec moins de deux cartes au total dans les deux piles est refusée avant tout
+  mélange ou transfert. Avec une carte dans chaque pile, les deux sont reçues.
+- Un tir légal a déjà déposé sa carte dans la défausse avant la réponse. Même si les deux
+  piles étaient vides avant le tir, Bart peut donc subir les dégâts et recevoir cette carte
+  grâce au recyclage : aucun refus ne le rend invulnérable à cause d'une pioche vide.
+- Dégâts, bonus, piles et résolution sont appliqués sous le verrou existant. Les doublons
+  et anciennes réponses ne rejouent ni dégâts ni bonus ; une seule réponse concurrente gagne.
+  Le siège actif, la phase, le compteur de tirs et la pioche normale de Bart sont préservés.
+- La nouvelle session de Bart retrouve sa carte dans sa main privée. Les autres comptes
+  voient ses PV et son nombre de cartes, sans recevoir l'identifiant ou le type de sa carte.
+
+Le bonus ne nécessite aucune nouvelle route ni aucun nouveau champ JSON. Les réponses HTTP,
+l'authentification, le CSRF et les règles d'expiration de la #59 sont conservés ; une réponse
+acceptée renouvelle l'activité une seule fois, et un refus ou une lecture ne la renouvelle pas.
+
+Les cartes Bière, les autres effets de cartes, la victoire, l'interface de plateau et la survie
+au redémarrage restent hors périmètre. Le cas de la pioche vide est traité par le recyclage,
+sans règle de remplacement supplémentaire ni historique de commandes.
+
 ## Preuves TDD outside-in
 
 La distribution est un double contrôlable, mais les cartes, états, contrôleur, sécurité,
@@ -63,3 +93,7 @@ quatre vues privées. Chaque variante vérifie la partition des cartes entre mai
 Le bonus ne consomme pas la pioche normale de Bart et ne réinitialise pas le compteur de tirs.
 Un parcours avec le vrai catalogue et la vraie distribution conserve exactement les 37 cartes.
 Ces comportements déjà assurés par le verrou et le tir identifié ne donnent pas lieu à un rouge artificiel.
+
+Swagger donne ensuite un rouge de documentation : le contrat attend le bonus conditionné
+à la survie, mais la description l'annonce encore absent. Après mise à jour de Swagger et des
+documents BANG!, **356 tests ciblés BANG!/Swagger passent**, sans échec ni test ignoré.

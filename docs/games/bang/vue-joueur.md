@@ -40,3 +40,5 @@ une vue ou envoyer une action refusée ne renouvelle pas ce délai.
 
 Les commandes et transitions sont décrites dans [Déroulement des tours](deroulement-tours.md).
 Les actions et conflits de tir sont décrits dans [Synchronisation des tirs](synchronisation-tirs.md).
+La carte reçue grâce au bonus de Bart fait partie de sa main privée et reste présente à la
+reconnexion ; les autres comptes ne voient que son nombre de cartes et ses PV actualisés.

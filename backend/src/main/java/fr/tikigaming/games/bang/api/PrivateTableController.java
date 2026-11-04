@@ -164,7 +164,8 @@ public class PrivateTableController {
     @Operation(
             summary = "Piocher les deux cartes du début de son tour",
             description = "Seul le joueur actif peut piocher, une fois par tour. "
-                    + "Le recyclage de la défausse n'est pas encore pris en charge. "
+                    + "Si la pioche s'épuise, la défausse est mélangée pour la reconstituer, y compris entre les deux cartes. "
+                    + "Moins de deux cartes au total dans la pioche et la défausse provoque un refus sans mutation. "
                     + "La casse et les espaces autour du code sont ignorés. "
                     + "Une action acceptée renouvelle l'activité de la table ; un refus ne la renouvelle pas.")
     @ApiResponse(responseCode = "204", description = "Deux cartes piochées ; la phase de jeu commence")
@@ -185,7 +186,8 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "409",
-            description = "Partie non démarrée, mauvaise phase ou pioche insuffisante",
+            description =
+                    "Partie non démarrée, mauvaise phase ou moins de deux cartes au total dans la pioche et la défausse",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> draw(@PathVariable String code, HttpServletRequest request) {
         tables.draw(code, connectedAccountId(request));
@@ -355,7 +357,9 @@ public class PrivateTableController {
                     "Seul le compte cible en session peut accepter le tir identifié par shotId. "
                             + "Les règles appliquent la perte de 1 PV, puis l'attente est supprimée et le tireur reprend son tour. "
                             + "Une réponse répétée ou retardée ne rejoue aucun effet et ne résout jamais un nouveau tir. "
-                            + "Le bonus de pioche de Bart Cassidy n'est pas encore raccordé. "
+                            + "Bart Cassidy reçoit une carte par PV réellement perdu s'il reste vivant, sans consommer sa pioche de début de tour. "
+                            + "La défausse est mélangée pour reconstituer une pioche vide ; les identifiants des cartes sont conservés. "
+                            + "Le bonus et les dégâts sont appliqués une seule fois ; une nouvelle session retrouve la carte dans la main privée. "
                             + "La casse et les espaces autour du code sont ignorés. Seule une réponse acceptée renouvelle l'activité.")
     @ApiResponse(responseCode = "204", description = "Tir accepté et dégâts appliqués une fois")
     @ApiResponse(

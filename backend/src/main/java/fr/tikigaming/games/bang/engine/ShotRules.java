@@ -46,7 +46,7 @@ public class ShotRules {
         return discard(state, shooter, usableAs(shooter, cardId, CardType.BANG));
     }
 
-    /** La cible joue un Raté ! ({@code missedCardId}) ou, si {@code null}, accepte le tir et perd 1 PV. */
+    /** La cible esquive ou perd 1 PV ; son contrat de personnage détermine le bonus de pioche si elle survit. */
     public ShotOutcome respond(GameState state, int targetSeat, String missedCardId) {
         GameState.Player target = player(state, targetSeat);
         if (missedCardId != null) {

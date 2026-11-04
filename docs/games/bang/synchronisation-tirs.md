@@ -15,7 +15,7 @@ sont ignorés.
 | --- | --- |
 | `/shots/{cardId}/targets/{targetSeat}` | En `PLAY`, le joueur actif joue une carte autorisée par son personnage sur une cible vivante à portée. La carte quitte sa main, rejoint la défausse et un unique tir en attente est créé. |
 | `/shots/{shotId}/dodge/{cardId}` | Seul le compte cible peut jouer une esquive autorisée pour **ce tir**. Sa carte rejoint la défausse ; ses PV sont conservés. |
-| `/shots/{shotId}/accept` | Seul le compte cible peut accepter **ce tir**, sans carte : les règles retirent 1 PV, sans descendre sous zéro. |
+| `/shots/{shotId}/accept` | Seul le compte cible peut accepter **ce tir**, sans carte : les règles retirent 1 PV, sans descendre sous zéro. Bart reçoit une carte de la pioche commune s'il reste vivant. |
 
 Un succès renvoie `204` sans corps. Lire ensuite `GET …/state` avec sa session pour récupérer
 sa [vue privée](vue-joueur.md). Pendant l'attente, elle contient ce fragment public :
@@ -88,10 +88,16 @@ Les contrats de Colleen sont utilisés pour les substitutions de Calamity Janet,
 de tirs, l'exception de Willy et le modificateur de Paul Regret. Les dégâts restent ceux
 de `ShotRules.respond`.
 
-**Pouvoir non raccordé : Bart Cassidy.** Son contrat `cardsDrawnOnLifeLost` est conservé
-inchangé, mais `ShotRules.respond` ne l'appelle pas : accepter un tir lui retire 1 PV sans
-piocher sa carte de pouvoir. La #59 ne réécrit pas ce travail. Le recyclage de la défausse,
-les autres cartes/armes et la victoire ne sont pas ajoutés ici.
+Le [bonus de Bart Cassidy](bart-cassidy-pioche.md) est désormais raccordé dans `ShotRules.respond`
+au contrat inchangé `cardsDrawnOnLifeLost`. Bart reçoit la première carte de la pioche pour
+chaque PV réellement perdu s'il reste vivant. Une esquive ou la perte du dernier PV ne donne
+aucun bonus. La carte conserve son identifiant et rejoint uniquement sa main privée.
+
+`CardDraw` est commun au bonus et aux deux cartes du début de tour : lorsque la pioche
+s'épuise, il mélange la défausse pour la reconstituer. Les dégâts, le bonus, les deux piles et
+la résolution restent atomiques. Le bonus ne consomme pas la pioche normale, ne change
+pas la phase ou le joueur actif et ne réinitialise pas le compteur de tirs.
+Le sauvetage par une Bière, les autres cartes/armes et la victoire ne sont pas ajoutés ici.
 
 Le stockage est en mémoire, limité à la durée de vie du serveur. La survie au redémarrage,
 le plateau et la démonstration dans quatre navigateurs restent hors périmètre. Les joueurs

@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
-/** Transfert des cartes existantes de la pioche vers une main, sans modifier l'état fourni. */
+/** Pioche commune aux tours et aux pouvoirs, avec recyclage de la défausse, sans modifier l'état fourni. */
 final class CardDraw {
     private final Consumer<List<CardInstance>> shuffle;
 

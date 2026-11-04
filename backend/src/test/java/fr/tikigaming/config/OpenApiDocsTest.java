@@ -177,6 +177,21 @@ class OpenApiDocsTest {
         }
 
         @Test
+        void documentsBartsSurvivalBonusAndSharedDiscardRecycling() throws Exception {
+            String accept = "$.paths['/api/games/bang/tables/{code}/shots/{shotId}/accept'].post";
+            String draw = "$.paths['/api/games/bang/tables/{code}/turn/draw'].post";
+            mvc.perform(get("/v3/api-docs"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath(accept + ".description", containsString("reste vivant")))
+                    .andExpect(jsonPath(accept + ".description", containsString("Bart Cassidy")))
+                    .andExpect(jsonPath(accept + ".description", not(containsString("n'est pas encore raccordé"))))
+                    .andExpect(jsonPath(draw + ".description", containsString("défausse est mélangée")))
+                    .andExpect(
+                            jsonPath(draw + ".responses['409'].description", containsString("pioche et la défausse")))
+                    .andExpect(jsonPath("$.components.schemas.BangCard.properties", aMapWithSize(2)));
+        }
+
+        @Test
         void hidesServletAndCsrfParameters() throws Exception {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
