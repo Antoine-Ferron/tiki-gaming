@@ -126,7 +126,10 @@ class TicTacToeGameTest {
     }
 
     private static void play(TicTacToeGame game, int... coordinates) {
-        for (int index = 0; index < coordinates.length; index += 2) {
+        if (coordinates.length % 2 != 0) {
+            throw new IllegalArgumentException("Chaque coup doit fournir une ligne et une colonne.");
+        }
+        for (int index = 0; index + 1 < coordinates.length; index += 2) {
             game.place(coordinates[index], coordinates[index + 1]);
         }
     }
