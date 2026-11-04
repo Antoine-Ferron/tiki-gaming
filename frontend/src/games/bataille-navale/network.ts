@@ -106,6 +106,7 @@ export type RemoteEvent =
   | { type: 'RADAR'; payload: RadarPayload }
   | { type: 'RADAR_RESULT'; payload: RadarResultPayload }
   | { type: 'PLAYER_LEFT'; payload: unknown }
+  | { type: 'GAME_ABANDONED'; payload: unknown }
 
 type Transition = { state: NetState; outbox: OutgoingEvent[] }
 
@@ -140,9 +141,23 @@ export function applyLocalIntent(state: NetState, intent: LocalIntent): Transiti
 export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transition {
   switch (event.type) {
     case 'READY': {
+      if (state.phase !== 'placement') {
+        // L'adversaire annonce qu'il est prêt alors que la bataille est déjà en cours ou terminée chez
+        // moi : son client est reparti de zéro (page rechargée). Aucune reprise n'est prise en charge
+        // (voir l'en-tête) : cette partie ne peut plus continuer, des deux côtés.
+        return { state: { ...state, disconnected: true }, outbox: [{ type: 'GAME_ABANDONED', data: null }] }
+      }
       const readySeats = new Set(state.readySeats).add(event.payload.by)
-      const phase = state.phase === 'placement' && readySeats.size >= 2 ? 'battle' : state.phase
-      return { state: { ...state, readySeats, phase }, outbox: [] }
+      const reachesBattle = readySeats.size >= 2 && state.readySeats.size < 2
+      // Le socle ne rediffuse qu'aux comptes déjà abonnés, sans historique : si mon propre premier READY
+      // est parti avant que l'adversaire n'ait rejoint la salle, il est perdu pour toujours de son côté.
+      // Dès que CE message me fait passer à deux sièges prêts, je sais que l'adversaire vient de m'envoyer
+      // le sien à l'instant (donc qu'il est bien abonné) : je renvoie le mien une dernière fois, pour qu'il
+      // le reçoive même s'il avait raté le tout premier envoi. Sans condition de délai ni de répétition en
+      // boucle : une seule confirmation, exactement quand elle sert, jamais après coup.
+      const outbox: OutgoingEvent[] = reachesBattle ? [{ type: 'READY', data: { by: state.mySeat } }] : []
+      const phase = readySeats.size >= 2 ? 'battle' : state.phase
+      return { state: { ...state, readySeats, phase }, outbox }
     }
 
     case 'FIRE': {
@@ -220,6 +235,7 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
     }
 
     case 'PLAYER_LEFT':
+    case 'GAME_ABANDONED':
       return { state: { ...state, disconnected: true }, outbox: [] }
   }
 }

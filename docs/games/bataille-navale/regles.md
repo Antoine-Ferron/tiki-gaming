@@ -27,7 +27,7 @@ on tire à tour de rôle sur la grille de l'autre.
 | Connexion | Pas de compte requis | Compte requis (socle WebSocket, authentifié par la session HTTP) |
 | Placement | Chaque joueur place sa flotte, l'appareil passe de main en main | Chaque joueur place la sienne en privé, sur son propre appareil |
 | Code de partie | — | Un code à partager pour rejoindre la partie (créer/rejoindre, voir `ctx.realtime`) |
-| Coupure réseau | — | Termine la partie immédiatement (« Connexion perdue »), **sans reprise** : il faut recommencer |
+| Coupure réseau ou rechargement de page | — | Termine la partie immédiatement (l'autre camp en est informé), **sans reprise** : il faut recommencer |
 
 Le protocole en ligne est entièrement décentralisé : **aucune flotte ne quitte jamais le navigateur de
 son propriétaire**. Un tir diffuse seulement la case visée ; seul le joueur visé (qui connaît sa propre

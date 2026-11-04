@@ -244,3 +244,31 @@ describe('PLAYER_LEFT', () => {
     expect(outbox).toEqual([])
   })
 })
+
+describe('READY received after my own battle has already started', () => {
+  it('flags the game as unable to continue and tells the other side, instead of hanging forever', () => {
+    // Un READY qui arrive alors que je ne suis plus en placement ne peut venir que d'un adversaire dont le
+    // client est reparti de zéro (page rechargée) : aucune reprise n'est prise en charge, la partie ne peut
+    // plus continuer. Sans ça, l'adversaire resterait bloqué indéfiniment sur son écran d'attente.
+    const state = battleState({ turnSeat: 1 })
+    const { state: next, outbox } = applyRemoteEvent(state, { type: 'READY', payload: { by: 2 } })
+    expect(next.disconnected).toBe(true)
+    expect(outbox).toEqual([{ type: 'GAME_ABANDONED', data: null }])
+  })
+
+  it('does not end the game while still in placement: a normal READY handshake is unaffected', () => {
+    const state = createNetState(1, myFleet, false)
+    const { state: next, outbox } = applyRemoteEvent(state, { type: 'READY', payload: { by: 2 } })
+    expect(next.disconnected).toBe(false)
+    expect(outbox).toEqual([])
+  })
+})
+
+describe('GAME_ABANDONED', () => {
+  it('ends the game on the receiving side too (the reloading player, catching up)', () => {
+    const state = createNetState(2, myFleet, false) // toujours en placement : c'est le joueur qui a rechargé
+    const { state: next, outbox } = applyRemoteEvent(state, { type: 'GAME_ABANDONED', payload: null })
+    expect(next.disconnected).toBe(true)
+    expect(outbox).toEqual([])
+  })
+})

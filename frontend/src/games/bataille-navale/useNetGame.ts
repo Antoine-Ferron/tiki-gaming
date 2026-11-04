@@ -11,7 +11,7 @@ import {
   type RemoteEvent,
 } from './network'
 
-const REMOTE_TYPES = ['READY', 'FIRE', 'FIRE_RESULT', 'RADAR', 'RADAR_RESULT'] as const
+const REMOTE_TYPES = ['READY', 'FIRE', 'FIRE_RESULT', 'RADAR', 'RADAR_RESULT', 'GAME_ABANDONED'] as const
 
 /**
  * Câble le réducteur pur de `network.ts` sur une `RealtimeConnection` : vide son `outbox` vers `connection.send`,
@@ -61,9 +61,17 @@ export function useNetGame(connection: RealtimeConnection, myFleet: PlacedShip[]
     ctx.submitScore(computeScore(shots, hits), { shots, hits, winner: state.mySeat })
   }, [ctx, state.mySeat, state.pendingSubmit])
 
+  // Envoyé une seule fois, au montage : ma flotte est déjà placée à ce stade. S'il arrive avant que
+  // l'adversaire n'ait rejoint la salle, `network.ts` le renvoie une dernière fois dès qu'il reçoit le
+  // sien (voir le commentaire du cas 'READY'), pour qu'il finisse par arriver quel que soit l'ordre. Un
+  // simple envoi réseau, sans mise à jour d'état locale (le réducteur ne change jamais l'état pour ce cas) :
+  // appeler `connection.send` directement, plutôt que `dispatchLocal`, évite un rendu superflu dans l'effet.
+  useEffect(() => {
+    connection.send('READY', { by: connection.seat })
+  }, [connection])
+
   return {
     state,
-    ready: () => dispatchLocal({ kind: 'READY' }),
     fire: (targets: Coord[], bonus?: 'salvo' | 'nuke') => dispatchLocal({ kind: 'FIRE', targets, bonus }),
     useRadar: (zone: Coord[]) => dispatchLocal({ kind: 'RADAR', zone }),
   }

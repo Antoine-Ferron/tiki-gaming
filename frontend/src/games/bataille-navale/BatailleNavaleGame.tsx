@@ -258,13 +258,7 @@ type OnlineBattleProps = {
 }
 
 function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver }: OnlineBattleProps) {
-  const { state, ready, fire, useRadar } = useNetGame(connection, myFleet, augmented, ctx)
-
-  useEffect(() => {
-    ready()
-    // Envoyé une seule fois, au montage : ma flotte est déjà placée à ce stade.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const { state, fire, useRadar } = useNetGame(connection, myFleet, augmented, ctx)
 
   useEffect(() => {
     if (state.phase === 'over') onGameOver()
@@ -273,8 +267,11 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver 
   if (state.disconnected) {
     return (
       <div className="card bn-over">
-        <h2>Connexion perdue</h2>
-        <p className="error">L'adversaire a quitté la partie, ou la connexion a été coupée.</p>
+        <h2>La partie ne peut plus continuer</h2>
+        <p className="error">
+          L'adversaire a quitté la partie, la connexion a été coupée, ou son appareil a rechargé la page. Il
+          faut recommencer une nouvelle partie.
+        </p>
         <button type="button" className="big" onClick={onExit}>
           Retour au menu
         </button>

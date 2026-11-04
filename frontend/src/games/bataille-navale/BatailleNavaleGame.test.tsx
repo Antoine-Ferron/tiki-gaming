@@ -295,8 +295,36 @@ describe('BatailleNavaleGame — mode en ligne', () => {
       connection.emit('PLAYER_LEFT', {})
     })
 
-    expect(await screen.findByText('Connexion perdue')).toBeTruthy()
+    expect(await screen.findByText('La partie ne peut plus continuer')).toBeTruthy()
     click('Retour au menu')
     expect(screen.getByRole('button', { name: 'Solo (même appareil)' })).toBeTruthy()
+  })
+
+  test("le rechargement de la page d'un adversaire déjà en bataille termine la partie, des deux côtés", async () => {
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('ROOM-3', 1, 1)
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
+
+    click('En ligne')
+    await act(async () => {
+      click('Créer une partie')
+    })
+    click('Placer au hasard')
+    click('Prêt')
+    await act(async () => {
+      connection.emit('READY', { by: 1 })
+      connection.emit('READY', { by: 2 })
+    })
+    expect(await screen.findByText('À toi de tirer')).toBeTruthy()
+
+    // L'adversaire a rechargé sa page : son client reparti de zéro renvoie un READY, qu'on reçoit alors
+    // que la bataille est déjà en cours ici.
+    await act(async () => {
+      connection.emit('READY', { by: 2 })
+    })
+
+    expect(await screen.findByText('La partie ne peut plus continuer')).toBeTruthy()
+    expect(connection.sent).toContainEqual({ type: 'GAME_ABANDONED', data: null, actionId: undefined })
   })
 })
