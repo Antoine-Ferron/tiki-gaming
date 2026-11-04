@@ -13,9 +13,11 @@ import fr.tikigaming.games.sdv_civilisation.Engine;
 import fr.tikigaming.games.sdv_civilisation.FakeClock;
 import fr.tikigaming.games.sdv_civilisation.FixedShuffler;
 import fr.tikigaming.games.sdv_civilisation.GameRuleException;
+import fr.tikigaming.games.sdv_civilisation.GameState;
 import fr.tikigaming.games.sdv_civilisation.InactivityReport;
 import fr.tikigaming.games.sdv_civilisation.Refusal;
 import fr.tikigaming.games.sdv_civilisation.StandardTrade;
+import fr.tikigaming.games.sdv_civilisation.Tables;
 import fr.tikigaming.games.sdv_civilisation.TurnTimer;
 import org.junit.jupiter.api.Test;
 
@@ -252,5 +254,22 @@ class SdvCivilisationServiceTest {
         // Alors la carte est refusée (déjà construite), sans ressource à acheter affichée
         assertThat(atelier.build().refusal()).isEqualTo(Refusal.BUILT);
         assertThat(atelier.needs()).isEmpty();
+    }
+
+    @Test
+    void aCardFreeByChainShowsNoResourceToBuy() {
+        // Étant donné "alice" qui a construit les "Bains" et qui a l'"Aqueduc" (chaîné depuis les Bains) en main
+        GameState state = Tables.hand(
+                Tables.player(Tables.start("Citadelle d’Orkan"), Engine.PLAYER, Tables.built("Bains")),
+                Engine.PLAYER,
+                "Aqueduc");
+
+        // Quand le serveur prépare la vue de sa main
+        GameView view = GameView.of(new SavedGame(1, 61_000, state), 1_000, new StandardTrade());
+
+        // Alors l'Aqueduc est gratuit par chaîne, sans ressource à acheter affichée
+        GameView.HandCard aqueduct = view.hand().getFirst();
+        assertThat(aqueduct.build().chain()).isTrue();
+        assertThat(aqueduct.needs()).isEmpty();
     }
 }
