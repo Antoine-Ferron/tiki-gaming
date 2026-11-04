@@ -94,6 +94,7 @@ export function OnlineTable() {
           onDraw={() => void run(() => api.draw(code))}
           onEnd={() => void run(() => api.endTurn(code))}
           onDiscard={(cardId) => void run(() => api.discard(code, cardId))}
+          onShoot={(cardId, targetSeat) => void run(() => api.fire(code, cardId, targetSeat))}
         />
       )}
     </div>
