@@ -17,6 +17,7 @@ import {
   type FleetStatus,
   type PlacedShip,
   type Ship,
+  type ShotResult,
   type VolleyShot,
 } from './logic'
 import type { Bonus } from './network'
@@ -62,6 +63,19 @@ function describeOutcomes(outcomes: VolleyShot[]): string {
   }
   const hits = outcomes.filter((o) => o.result === 'hit').length
   const summary = `${hits} touché(s) sur ${outcomes.length}.`
+  return sunkNames.length ? `${summary} ${sunkNames.join(', ')} coulé(s) !` : summary
+}
+
+/** Décrit le dernier tir en ligne pour les deux camps : qui a tiré, touché, et éventuellement coulé. */
+function describeFireEvent(by: number, results: ShotResult[], sunk: Ship[], mySeat: number): string {
+  const subject = by === mySeat ? 'Tu as' : "L'adversaire a"
+  const sunkNames = sunk.map((s) => s.name)
+  if (results.length === 1) {
+    if (results[0] !== 'hit') return `${subject} tiré à l'eau.`
+    return sunkNames.length ? `${subject} coulé le ${sunkNames[0]} !` : `${subject} touché !`
+  }
+  const hits = results.filter((r) => r === 'hit').length
+  const summary = `${subject} touché ${hits} fois sur ${results.length}.`
   return sunkNames.length ? `${summary} ${sunkNames.join(', ')} coulé(s) !` : summary
 }
 
@@ -340,6 +354,12 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver 
       {state.phase === 'battle' && (
         <div className="card bn-board">
           <h2>{state.turnSeat === state.mySeat ? 'À toi de tirer' : "Au tour de l'adversaire"}</h2>
+          {state.lastEvent?.kind === 'fire' && (
+            <p className={state.lastEvent.results.includes('hit') ? 'success' : 'muted'}>
+              {describeFireEvent(state.lastEvent.by, state.lastEvent.results, state.lastEvent.sunk, state.mySeat)}
+              {state.lastEvent.by === state.turnSeat && state.lastEvent.results.includes('hit') && ' Rejoue.'}
+            </p>
+          )}
           <div className="bn-boards">
             <div>
               <h3>Flotte adverse</h3>
@@ -394,6 +414,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
   const [winner, setWinner] = useState<Seat | null>(null)
   const [players, setPlayers] = useState<Record<Seat, PlayerState>>({ 1: emptyPlayerState(), 2: emptyPlayerState() })
   const [pass, setPass] = useState<{ message: string; onReady: () => void } | null>(null)
+  const [lastShotMessage, setLastShotMessage] = useState<string | null>(null)
 
   function startLocal() {
     setMode('local')
@@ -403,6 +424,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     setCurrent(1)
     setWinner(null)
     setPass(null)
+    setLastShotMessage(null)
     setError(null)
   }
 
@@ -421,6 +443,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
         message: 'Passe l’appareil pour commencer la bataille.',
         onReady: () => {
           setPass(null)
+          setLastShotMessage(null)
           setLocalPhase('battle')
         },
       })
@@ -432,6 +455,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
       message,
       onReady: () => {
         setPass(null)
+        setLastShotMessage(null)
         setCurrent(target)
       },
     })
@@ -468,6 +492,9 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
         setWinner(shooter)
         setLocalPhase('over')
         refreshLeaderboard()
+      } else if (newHits > 0) {
+        // Un tir qui touche fait rejouer le même joueur : pas de passation, juste le résultat affiché.
+        setLastShotMessage(describeOutcomes(outcomes))
       } else {
         passToNext(target, describeOutcomes(outcomes))
       }
@@ -612,6 +639,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
       {mode === 'local' && !pass && localPhase === 'battle' && (
         <div className="card bn-board">
           <h2>Au tour du joueur {current}</h2>
+          {lastShotMessage && <p className="success">{lastShotMessage} Rejoue.</p>}
           <div className="bn-boards">
             <FiringBoard
               label={`Grille du joueur ${current === 1 ? 2 : 1}`}

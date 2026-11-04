@@ -202,6 +202,8 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
       const sunkOpponentShips = iAmShooter
         ? new Set([...state.sunkOpponentShips, ...sunk.map((s) => s.name)])
         : state.sunkOpponentShips
+      // Un tir qui touche fait rejouer le même camp ; seul un tir entièrement à l'eau passe la main.
+      const anyHit = results.includes('hit')
       const next: NetState = {
         ...state,
         shotsOnOpponent: iAmShooter ? shots : state.shotsOnOpponent,
@@ -210,7 +212,7 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
         hitsOnOpponent,
         shipsSunkByMe,
         sunkOpponentShips,
-        turnSeat: gameOver ? state.turnSeat : otherSeat(by),
+        turnSeat: gameOver ? state.turnSeat : anyHit ? by : otherSeat(by),
         phase: gameOver ? 'over' : state.phase,
         winnerSeat: gameOver ? by : state.winnerSeat,
         pendingSubmit: gameOver && iAmShooter ? { shots: shots.size, hits: hitsOnOpponent } : state.pendingSubmit,

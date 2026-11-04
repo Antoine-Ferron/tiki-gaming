@@ -17,6 +17,7 @@ on tire à tour de rôle sur la grille de l'autre.
 | R3 | Un navire est posé à l'horizontale ou à la verticale, sans déborder de la grille ni chevaucher un autre navire. |
 | R4 | Placement **au hasard** (un clic) ou **manuel** (clic pour poser, bouton pour tourner l'orientation). |
 | R5 | Les deux flottes placées, on tire à tour de rôle sur la grille adverse. Une case déjà tirée ne compte pas deux fois. |
+| R5bis | **Un tir qui touche fait rejouer le même joueur** ; la main ne passe que sur un tir entièrement à l'eau. Pour une salve ou une frappe (mode augmenté, §4), il suffit qu'une seule case touche. |
 | R6 | Un navire est **coulé** quand toutes ses cases ont été touchées. |
 | R7 | **Victoire** : couler tous les navires adverses. Le score tient compte du nombre de tirs et de touches (voir `computeScore`). |
 

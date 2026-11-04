@@ -116,32 +116,25 @@ describe('BatailleNavaleGame — mode local', () => {
     expect(screen.getByText('Au tour du joueur 2')).toBeTruthy()
   })
 
-  test('un tir qui touche sans couler annonce « Touché ! »', async () => {
+  test('un tir qui touche sans couler annonce « Touché ! » et fait rejouer le même joueur', async () => {
     startLocalGame()
 
     click(cellName({ row: 0, col: 0 })) // Porte-avions (taille 5) : une seule case touchée
 
-    expect(await screen.findByText('Touché !')).toBeTruthy()
+    expect(await screen.findByText(/^Touché !/)).toBeTruthy()
+    // Pas de passation : toujours le joueur 1, la grille de tir est donc toujours affichée.
+    expect(screen.getByText('Au tour du joueur 1')).toBeTruthy()
   })
 
-  test('couler un navire sur deux tours distincts annonce le navire coulé', async () => {
+  test('couler un navire annonce le navire coulé, sans passer la main (un tir qui touche fait rejouer)', async () => {
     startLocalGame()
 
     click(cellName({ row: 4, col: 0 })) // Torpilleur (taille 2), 1ère case
-    await screen.findByText('Touché !')
-    click('Je suis prêt')
+    expect(await screen.findByText(/^Touché !/)).toBeTruthy()
 
-    click(cellName({ row: 9, col: 9 })) // joueur 2 : tir sans danger
-    await screen.findByText("À l'eau.")
-    click('Je suis prêt')
-
-    click(cellName({ row: 4, col: 1 })) // Torpilleur, 2e et dernière case
-    expect(await screen.findByText('Torpilleur coulé !')).toBeTruthy()
-
-    click('Je suis prêt') // passe au joueur 2
-    click(cellName({ row: 9, col: 8 }))
-    await screen.findByText(/^(Touché !|À l'eau\.)$/)
-    click('Je suis prêt') // revient au joueur 1 : le panneau doit refléter le Torpilleur coulé
+    click(cellName({ row: 4, col: 1 })) // Torpilleur, 2e et dernière case : coule, le joueur 1 garde la main
+    expect(await screen.findByText(/^Torpilleur coulé !/)).toBeTruthy()
+    expect(screen.getByText('Au tour du joueur 1')).toBeTruthy()
 
     const theirs = within(screen.getByText('Navires adverses').closest('div')!)
     expect(theirs.getByText(/^Torpilleur \(coulé\)/)).toBeTruthy()
@@ -150,12 +143,15 @@ describe('BatailleNavaleGame — mode local', () => {
 
   test('au tour suivant du même joueur, ses tirs précédents restent marqués et désactivés', async () => {
     startLocalGame()
-    click(cellName({ row: 0, col: 0 }))
-    await screen.findByText('Touché !')
+    click(cellName({ row: 0, col: 0 })) // touché, mais ne coule pas : le joueur 1 garde la main
+    await screen.findByText(/^Touché !/)
+
+    click(cellName({ row: 9, col: 9 })) // à l'eau : passe la main
+    await screen.findByText("À l'eau.")
     click('Je suis prêt')
 
-    click(cellName({ row: 9, col: 9 }))
-    await screen.findByText("À l'eau.")
+    click(cellName({ row: 8, col: 8 })) // joueur 2 : tir sans danger, passe la main à son tour
+    await screen.findByText(/^(Touché !|À l'eau\.)/)
     click('Je suis prêt')
 
     expect(screen.getByText('Au tour du joueur 1')).toBeTruthy()
@@ -164,25 +160,13 @@ describe('BatailleNavaleGame — mode local', () => {
     expect(firstCell.className).toContain('hit')
   })
 
-  /** Le joueur 1 coule toute la flotte adverse (fixe) ; le joueur 2 ne fait que des tirs sans danger. */
+  /** Le joueur 1 coule toute la flotte adverse (fixe) : chaque tir touche, donc il ne passe jamais la main. */
   async function sinkWholeOpponentFleet() {
-    const player1Targets = FIXED_FLEET.flatMap((p) => p.coords) // 17 cases au total
-    const player2SafeCells: Coord[] = []
-    for (let row = 5; row < GRID_SIZE && player2SafeCells.length < player1Targets.length; row++) {
-      for (let col = 0; col < GRID_SIZE && player2SafeCells.length < player1Targets.length; col++) {
-        player2SafeCells.push({ row, col })
-      }
-    }
-
-    for (let i = 0; i < player1Targets.length; i++) {
-      click(cellName(player1Targets[i]))
-      if (i === player1Targets.length - 1) break
-      await screen.findByRole('button', { name: 'Je suis prêt' })
-      click('Je suis prêt')
-
-      click(cellName(player2SafeCells[i]))
-      await screen.findByRole('button', { name: 'Je suis prêt' })
-      click('Je suis prêt')
+    const player1Targets = FIXED_FLEET.flatMap((p) => p.coords) // 17 cases au total, toutes des touches
+    for (const target of player1Targets) {
+      await act(async () => {
+        click(cellName(target))
+      })
     }
   }
 
@@ -334,6 +318,21 @@ describe('BatailleNavaleGame — mode en ligne', () => {
 
     await act(async () => {
       connection.emit('FIRE_RESULT', { by: 2, targets: [{ row: 0, col: 0 }], results: ['hit'], sunk: [], gameOver: false })
+    })
+    // Touché : l'adversaire garde la main (un tir qui touche fait rejouer le même camp).
+    expect(await screen.findByText("Au tour de l'adversaire")).toBeTruthy()
+
+    await act(async () => {
+      connection.emit('FIRE', { by: 2, targets: [{ row: 1, col: 5 }] }) // case vide de ma flotte fixe : à l'eau
+    })
+    expect(connection.sent).toContainEqual({
+      type: 'FIRE_RESULT',
+      data: { by: 2, targets: [{ row: 1, col: 5 }], results: ['miss'], sunk: [], gameOver: false },
+      actionId: undefined,
+    })
+
+    await act(async () => {
+      connection.emit('FIRE_RESULT', { by: 2, targets: [{ row: 1, col: 5 }], results: ['miss'], sunk: [], gameOver: false })
     })
     expect(await screen.findByText('À toi de tirer')).toBeTruthy()
 

@@ -92,7 +92,7 @@ describe('FIRE — I am the target, I compute and reply', () => {
 })
 
 describe('FIRE_RESULT — applied identically by both sides', () => {
-  it('as the shooter: records the hit on my view of the opponent, flips the turn to them', () => {
+  it('as the shooter: records the hit on my view of the opponent, and keeps my turn (a hit plays again)', () => {
     const state = battleState({ turnSeat: 1 })
     const event: RemoteEvent = {
       type: 'FIRE_RESULT',
@@ -101,11 +101,11 @@ describe('FIRE_RESULT — applied identically by both sides', () => {
     const { state: next } = applyRemoteEvent(state, event)
     expect(next.shotsOnOpponent.has(coordKey({ row: 3, col: 3 }))).toBe(true)
     expect(next.hitsOnOpponent).toBe(1)
-    expect(next.turnSeat).toBe(2)
+    expect(next.turnSeat).toBe(1)
     expect(next.shotsOnMe.size).toBe(0)
   })
 
-  it('as the target (my own echo of the result I computed): records it on my own board, flips the turn to me', () => {
+  it('as the target (my own echo of the result I computed): records it on my own board, turn stays with the shooter', () => {
     const state = battleState({ turnSeat: 2 })
     const event: RemoteEvent = {
       type: 'FIRE_RESULT',
@@ -115,6 +115,32 @@ describe('FIRE_RESULT — applied identically by both sides', () => {
     expect(next.shotsOnMe.has(coordKey({ row: 0, col: 0 }))).toBe(true)
     expect(next.shotsOnOpponent.size).toBe(0)
     expect(next.hitsOnOpponent).toBe(0) // ce n'est pas moi qui ai tiré : mon compteur de touches ne bouge pas
+    expect(next.turnSeat).toBe(2)
+  })
+
+  it('passes the turn to the other seat only when the shot entirely misses', () => {
+    const state = battleState({ turnSeat: 1 })
+    const event: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: { by: 1, targets: [{ row: 9, col: 9 }], results: ['miss'], sunk: [], gameOver: false },
+    }
+    const { state: next } = applyRemoteEvent(state, event)
+    expect(next.turnSeat).toBe(2)
+  })
+
+  it('keeps the turn after a volley with at least one hit, even if some cells missed', () => {
+    const state = battleState({ turnSeat: 1 })
+    const event: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: {
+        by: 1,
+        targets: [{ row: 3, col: 3 }, { row: 9, col: 9 }],
+        results: ['hit', 'miss'],
+        sunk: [],
+        gameOver: false,
+      },
+    }
+    const { state: next } = applyRemoteEvent(state, event)
     expect(next.turnSeat).toBe(1)
   })
 
