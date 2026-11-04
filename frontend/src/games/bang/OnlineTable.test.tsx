@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { OnlineTable } from './OnlineTable'
 import { fourPlayerView } from './features/vue-fixture'
@@ -128,4 +128,32 @@ test('accepter applique uniquement la vue reçue, avec les dégâts et le bonus 
   expect(mat.getByText('3/4 PV')).toBeTruthy()
   expect(mat.getByText('4 en main')).toBeTruthy()
   expect(within(screen.getByRole('region', { name: 'Ta main' })).getAllByText('Raté !')).toHaveLength(2)
+})
+
+test('deux clics sur accepter pendant la même requête ne lancent qu’une réponse', async () => {
+  const view: GameView = {
+    ...fourPlayerView(),
+    currentSeat: 4,
+    pendingShot: { id: 'tir-courant', shooterSeat: 4, targetSeat: 1 },
+  }
+  let finish!: (response: Response) => void
+  const reply = new Promise<Response>((resolve) => {
+    finish = resolve
+  })
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/state')) return Response.json(view)
+    if (url.endsWith('/accept')) return reply
+    return Response.json({ code: view.code, seat: 1, playerCount: 4 })
+  })
+  vi.stubGlobal('fetch', fetch)
+  render(<OnlineTable />)
+  fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  const accept = await screen.findByRole('button', { name: 'Accepter le tir' })
+  fireEvent.click(accept)
+  fireEvent.click(accept)
+  const replies = fetch.mock.calls.filter(([url]) => url.endsWith('/accept'))
+  await act(async () => {
+    finish(new Response(null, { status: 204 }))
+  })
+  expect(replies).toHaveLength(1)
 })
