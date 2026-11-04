@@ -12,6 +12,9 @@ public final class Game {
     public static Position play(Position position, Square from, Square to) {
         Map<Square, Piece> pieces = new HashMap<>(position.pieces());
         Piece moving = pieces.remove(from);
+        if (moving == null) {
+            throw new IllegalArgumentException("Aucune pièce à jouer : la case " + from + " est vide");
+        }
         if (moving.color() != position.turn()) {
             throw new IllegalArgumentException("Ce n'est pas le trait de cette pièce : " + from);
         }
