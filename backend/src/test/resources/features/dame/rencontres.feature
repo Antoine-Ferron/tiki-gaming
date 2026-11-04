@@ -39,7 +39,8 @@ Fonctionnalité: Garder le résultat d'une rencontre locale de dames
     Et la rencontre reste en cours sans gagnant
 
   Scénario: Préserver le résultat d'une rencontre déjà terminée
-    Étant donné une rencontre terminée dont le gagnant est "Cherif"
+    Étant donné une rencontre en cours avec "Cherif" aux blancs et "Amadou" aux noirs
+    Et que "Cherif" a remporté cette rencontre
     Quand on tente de remplacer son gagnant par "Amadou"
     Alors la modification est refusée
     Et le gagnant reste "Cherif"

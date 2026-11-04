@@ -39,3 +39,18 @@ Après cette relecture, relier les étapes au domaine Java et publier leur rappo
 d'exécution en CI. Le runner Gherkin existant côté frontend sert ici uniquement à
 vérifier la lecture des fichiers français ; le moteur Dames ne sera pas réécrit
 en TypeScript pour ces tests.
+
+## Préparation du runner Java — RED
+
+Cucumber Java et son moteur JUnit Platform, tous deux en version 8.0.4 et de portée
+`test`, sont ajoutés avec la suite JUnit Platform gérée par Spring Boot.
+`DameBddTest` sélectionne les deux fichiers `features/dame` et produit les rapports
+HTML, JSON et JUnit XML dans `backend/target/cucumber`. La découverte directe de
+Cucumber est désactivée dans Surefire pour éviter une exécution en double hors
+de la suite. Aucun test existant ni seuil n'est désactivé.
+
+Avant les bindings, `mvn -f backend/pom.xml -Dtest=DameBddTest test` découvre bien
+**12 cas et échoue sur 12 `UndefinedStepException`**, aucun cas ignoré. C'est un
+RED de raccordement : le métier existe déjà, les étapes manquent encore.
+Le scénario de résultat immuable précise désormais les deux participants pour
+que toutes les valeurs utiles viennent du Gherkin.

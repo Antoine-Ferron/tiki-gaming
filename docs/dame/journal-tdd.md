@@ -287,3 +287,12 @@ le parseur déjà installé dans le dépôt, sans nouvelle dépendance. Ils ne s
 pas encore liés à des étapes Java et ne sont pas comptés comme tests verts.
 La prochaine étape sera la relecture des exemples puis leur automatisation
 sur le domaine et ses fakes ; voir [bdd.md](bdd.md).
+
+## 4 novembre 2026 — raccordement Gherkin, RED du runner
+
+À la demande de l'utilisateur, ajout du runner Cucumber Java/JUnit Platform et
+de ses seules dépendances de test. La suite lit les deux vrais fichiers et leurs
+tableaux : **12 cas découverts, 12 erreurs `UndefinedStepException`, 0 ignoré**
+avant l'écriture des étapes. Ce RED concerne les bindings absents, pas une nouvelle
+règle métier. Le scénario de résultat immuable précise les participants sans
+changer son comportement attendu. Rapports dans `backend/target/cucumber`.
