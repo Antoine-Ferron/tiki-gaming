@@ -1,6 +1,6 @@
 import { describeFeature, loadFeature } from '@amiceli/vitest-cucumber'
 import { expect } from 'vitest'
-import { fireAndSubmitIfOver, type PlacedShip, type Ship, type ShotResult } from './logic'
+import { fireVolleyAndSubmitIfOver, type PlacedShip, type Ship, type ShotResult } from './logic'
 
 // Étapes liées directement au domaine du jeu (logic.ts) : aucune dépendance à l'interface.
 const feature = await loadFeature('src/games/bataille-navale/bataille-navale.feature', { language: 'fr' })
@@ -23,10 +23,16 @@ describeFeature(feature, ({ Background, Scenario }) => {
   let outcome: { result: ShotResult; sunk?: Ship; gameOver: boolean }
 
   async function fireAt(coord: string) {
-    outcome = await fireAndSubmitIfOver(fleet, shots, parseCoord(coord), async (score, metadata) => {
-      submittedScores.push({ score, metadata })
-      return true
-    })
+    const { outcomes, gameOver } = await fireVolleyAndSubmitIfOver(
+      fleet,
+      shots,
+      [parseCoord(coord)],
+      async (score, metadata) => {
+        submittedScores.push({ score, metadata })
+        return true
+      },
+    )
+    outcome = { ...outcomes[0], gameOver }
   }
 
   Background(({ Given }) => {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
-import type { RealtimeConnection } from '../ports'
+import { browserStorage } from '../adapters/local'
+import { ROOM_EVENT_TYPES, type RealtimeConnection } from '../ports'
 import type { GameContext, GameProps, LeaderboardEntry } from '../types'
 import FleetPlacementBoard from './FleetPlacementBoard'
 import {
@@ -96,7 +97,7 @@ const ONLINE_ROOM_KEY = 'tiki:bataille-navale:online-room'
 
 function loadSavedRoomCode(): string | null {
   try {
-    return localStorage.getItem(ONLINE_ROOM_KEY)
+    return browserStorage()?.getItem(ONLINE_ROOM_KEY) ?? null
   } catch {
     return null
   }
@@ -104,7 +105,7 @@ function loadSavedRoomCode(): string | null {
 
 function saveRoomCode(code: string) {
   try {
-    localStorage.setItem(ONLINE_ROOM_KEY, code)
+    browserStorage()?.setItem(ONLINE_ROOM_KEY, code)
   } catch {
     // Stockage indisponible : on perd seulement la possibilité de retrouver cette salle après un rechargement.
   }
@@ -112,7 +113,7 @@ function saveRoomCode(code: string) {
 
 function forgetRoomCode() {
   try {
-    localStorage.removeItem(ONLINE_ROOM_KEY)
+    browserStorage()?.removeItem(ONLINE_ROOM_KEY)
   } catch {
     // Rien à faire : au pire, le code restera affiché comme « peut-être » ouvert jusqu'à son expiration.
   }
@@ -132,7 +133,7 @@ type SavedOnlineGame = { code: string; net: SerializedNetState }
 /** `null` si rien n'est sauvegardé, si la sauvegarde ne correspond pas à cette salle/ce siège, ou est corrompue. */
 function loadSavedOnlineGame(code: string, mySeat: number): NetState | null {
   try {
-    const raw = localStorage.getItem(ONLINE_GAME_KEY)
+    const raw = browserStorage()?.getItem(ONLINE_GAME_KEY)
     if (!raw) return null
     const saved = JSON.parse(raw) as SavedOnlineGame
     if (saved.code !== code || saved.net.mySeat !== mySeat) return null
@@ -145,7 +146,7 @@ function loadSavedOnlineGame(code: string, mySeat: number): NetState | null {
 function saveOnlineGame(code: string, state: NetState) {
   try {
     const saved: SavedOnlineGame = { code, net: serializeNetState(state) }
-    localStorage.setItem(ONLINE_GAME_KEY, JSON.stringify(saved))
+    browserStorage()?.setItem(ONLINE_GAME_KEY, JSON.stringify(saved))
   } catch {
     // Stockage indisponible : on perd seulement la possibilité de reprendre après un rechargement.
   }
@@ -153,7 +154,7 @@ function saveOnlineGame(code: string, state: NetState) {
 
 function forgetOnlineGame() {
   try {
-    localStorage.removeItem(ONLINE_GAME_KEY)
+    browserStorage()?.removeItem(ONLINE_GAME_KEY)
   } catch {
     // Rien à faire : au pire, une reprise obsolète restera proposée jusqu'à son remplacement ou son expiration.
   }
@@ -202,6 +203,7 @@ function FiringBoard({ label, disabled, results, radarHints, bonuses, onFire, on
       return
     }
     if (armed === 'salvo') {
+      if (selected.some((c) => coordKey(c) === coordKey(cell))) return // déjà choisie pour cette salve
       const next = [...selected, cell]
       if (next.length >= 3) {
         onFire(next, 'salvo')
@@ -353,7 +355,7 @@ type OnlineBattleProps = {
 }
 
 function OnlineBattle({ connection, myFleet, augmented, ctx, resume, onExit, onGameOver }: OnlineBattleProps) {
-  const { state, fire, useRadar } = useNetGame(connection, myFleet, augmented, ctx, resume ?? undefined)
+  const { state, submitSettled, fire, useRadar } = useNetGame(connection, myFleet, augmented, ctx, resume ?? undefined)
 
   useEffect(() => {
     if (state.phase === 'over') onGameOver()
@@ -361,15 +363,21 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, resume, onExit, onG
 
   // Rien à reprendre une fois la partie finie ou devenue impossible à continuer : on efface la sauvegarde
   // pour ne plus proposer de reprise obsolète. Sinon, on l'écrit à chaque évolution de l'état (c'est elle
-  // qu'un rechargement relira pour repartir exactement d'où on en était, voir `BatailleNavaleGame`).
+  // qu'un rechargement relira pour repartir exactement d'où on en était, voir `BatailleNavaleGame`). À la
+  // victoire, la soumission du score est tentée en tâche de fond (voir `useNetGame`) : tant qu'elle n'est pas
+  // réglée, on continue d'écrire la sauvegarde plutôt que de l'effacer tout de suite, pour qu'un onglet fermé
+  // entre l'envoi et sa résolution puisse réessayer au rechargement plutôt que de perdre le score pour de bon.
   useEffect(() => {
-    if (state.phase === 'over' || state.disconnected) {
+    if (state.disconnected) {
+      forgetOnlineGame()
+      forgetRoomCode()
+    } else if (state.phase === 'over' && submitSettled) {
       forgetOnlineGame()
       forgetRoomCode()
     } else {
       saveOnlineGame(connection.code, state)
     }
-  }, [connection.code, state])
+  }, [connection.code, state, submitSettled])
 
   if (state.disconnected) {
     return (
@@ -485,6 +493,9 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
   const [players, setPlayers] = useState<Record<Seat, PlayerState>>({ 1: emptyPlayerState(), 2: emptyPlayerState() })
   const [pass, setPass] = useState<{ message: string; onReady: () => void } | null>(null)
   const [lastShotMessage, setLastShotMessage] = useState<string | null>(null)
+  // Un tir est en cours (encore dans son `await`) : désactive la grille pour empêcher un second clic de
+  // partir pendant que le premier n'a pas encore mis à jour `players`, ce qui écraserait son résultat.
+  const [firing, setFiring] = useState(false)
 
   function startLocal() {
     setMode('local')
@@ -495,6 +506,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     setWinner(null)
     setPass(null)
     setLastShotMessage(null)
+    setFiring(false)
     setError(null)
   }
 
@@ -535,6 +547,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     const shooter = current
     const target: Seat = shooter === 1 ? 2 : 1
     const shots = new Set(players[shooter].shotsOnOpponent)
+    setFiring(true)
     try {
       const { outcomes, gameOver } = await fireVolleyAndSubmitIfOver(
         players[target].fleet,
@@ -573,6 +586,8 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
       }
     } catch (e) {
       setError((e as Error).message)
+    } finally {
+      setFiring(false)
     }
   }
 
@@ -603,6 +618,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
   const [joinCode, setJoinCode] = useState('')
   const [onlineBusy, setOnlineBusy] = useState(false)
   const [savedRoomCode, setSavedRoomCode] = useState<string | null>(null)
+  const [placementOpponentLeft, setPlacementOpponentLeft] = useState(false)
 
   function startOnline() {
     setMode('online')
@@ -611,8 +627,18 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     setResumeNet(null)
     setJoinCode('')
     setError(null)
+    setPlacementOpponentLeft(false)
     setSavedRoomCode(loadSavedRoomCode())
   }
+
+  // Avant que `onlineFleet` ne soit posé, `OnlineBattle` (et donc `useNetGame`) n'est pas encore monté : rien
+  // n'écoute alors PLAYER_LEFT, qui serait silencieusement perdu (le socle ne rediffuse qu'aux abonnés déjà
+  // présents, sans historique). Une fois la flotte placée, `useNetGame` prend le relais — voir son propre
+  // abonnement — d'où la dépendance à `onlineFleet` pour ne couvrir que ce trou.
+  useEffect(() => {
+    if (mode !== 'online' || !onlineConnection || onlineFleet) return
+    return onlineConnection.on(ROOM_EVENT_TYPES.PLAYER_LEFT, () => setPlacementOpponentLeft(true))
+  }, [mode, onlineConnection, onlineFleet])
 
   async function createOnlineRoom() {
     setOnlineBusy(true)
@@ -673,6 +699,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     setOnlineConnection(null)
     setOnlineFleet(null)
     setResumeNet(null)
+    setPlacementOpponentLeft(false)
     setMode(null)
   }
 
@@ -735,7 +762,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
                 <h3>Grille du joueur {current === 1 ? 2 : 1}</h3>
                 <FiringBoard
                   label={`Grille du joueur ${current === 1 ? 2 : 1}`}
-                  disabled={false}
+                  disabled={firing}
                   results={players[current].resultsOnOpponent}
                   radarHints={players[current].radarRevealsOnOpponent}
                   bonuses={
@@ -834,7 +861,19 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
         </div>
       )}
 
-      {mode === 'online' && onlineConnection && !onlineFleet && (
+      {mode === 'online' && onlineConnection && !onlineFleet && placementOpponentLeft && (
+        <div className="card bn-over">
+          <h2>La partie ne peut plus continuer</h2>
+          <p className="error">
+            L'adversaire a quitté la partie avant le début de la bataille. Il faut recommencer une nouvelle partie.
+          </p>
+          <button type="button" onClick={exitOnline}>
+            Retour au menu
+          </button>
+        </div>
+      )}
+
+      {mode === 'online' && onlineConnection && !onlineFleet && !placementOpponentLeft && (
         <div className="card">
           <h2>Place ta flotte</h2>
           <p className="muted">

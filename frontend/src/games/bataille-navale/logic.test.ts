@@ -6,7 +6,6 @@ import {
   computeScore,
   computeUnlocks,
   coordKey,
-  fireAndSubmitIfOver,
   fireShot,
   fireVolley,
   fireVolleyAndSubmitIfOver,
@@ -172,42 +171,6 @@ describe('placeFleetRandomly (stub déterministe)', () => {
   })
 })
 
-describe('fireAndSubmitIfOver', () => {
-  it('soumet le score une seule fois quand le tir coule le dernier navire', async () => {
-    const fleet = buildFleetAt({ row: 0, col: 0 }) // Torpilleur, taille 2 : (0,0) et (0,1)
-    const shots = new Set([coordKey({ row: 0, col: 0 })])
-    const submitScore = vi.fn().mockResolvedValue(true)
-
-    const outcome = await fireAndSubmitIfOver(fleet, shots, { row: 0, col: 1 }, submitScore)
-
-    expect(outcome.gameOver).toBe(true)
-    expect(submitScore).toHaveBeenCalledTimes(1)
-    expect(submitScore).toHaveBeenCalledWith(computeScore(2, 2), { shots: 2, hits: 2 })
-  })
-
-  it("ne soumet aucun score tant que la flotte adverse n'est pas entièrement coulée", async () => {
-    const fleet = buildFleetAt({ row: 0, col: 0 })
-    const shots = new Set<string>()
-    const submitScore = vi.fn().mockResolvedValue(true)
-
-    const outcome = await fireAndSubmitIfOver(fleet, shots, { row: 0, col: 0 }, submitScore)
-
-    expect(outcome.gameOver).toBe(false)
-    expect(submitScore).not.toHaveBeenCalled()
-  })
-
-  it('ne soumet pas de nouveau score sur un tir répété après la victoire', async () => {
-    const fleet = buildFleetAt({ row: 0, col: 0 })
-    const shots = new Set(fleet.flatMap((p) => p.coords.map(coordKey)))
-    const submitScore = vi.fn().mockResolvedValue(true)
-
-    const outcome = await fireAndSubmitIfOver(fleet, shots, { row: 0, col: 0 }, submitScore)
-
-    expect(outcome.result).toBe('repeat')
-    expect(submitScore).not.toHaveBeenCalled()
-  })
-})
-
 describe('zoneCoords', () => {
   it('builds a 3x3 block centered on the given cell', () => {
     expect(zoneCoords({ row: 5, col: 5 })).toHaveLength(9)
@@ -255,6 +218,19 @@ describe('fireVolley', () => {
       { row: 0, col: 0 },
     ])
     expect(outcomes.map((o) => o.result)).toEqual(['hit', 'repeat'])
+  })
+
+  it('stops counting real shots once the fleet is sunk mid-volley: the rest is reported as repeat', () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 }) // Torpilleur, taille 2 : (0,0) et (0,1)
+    const shots = new Set<string>()
+    const outcomes = fireVolley(fleet, shots, [
+      { row: 0, col: 0 }, // coule encore rien
+      { row: 0, col: 1 }, // coule le Torpilleur : dernier navire de la flotte
+      { row: 5, col: 5 }, // tirée après la victoire : ne doit pas compter comme un vrai tir
+    ])
+    expect(outcomes.map((o) => o.result)).toEqual(['hit', 'hit', 'repeat'])
+    expect(shots.has(coordKey({ row: 5, col: 5 }))).toBe(false)
+    expect(shots.size).toBe(2)
   })
 })
 
@@ -347,6 +323,29 @@ describe('fireVolleyAndSubmitIfOver', () => {
 
     expect(gameOver).toBe(false)
     expect(submitScore).not.toHaveBeenCalled()
+  })
+
+  it('ne soumet pas de nouveau score sur un tir répété après la victoire', async () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 })
+    const shots = new Set(fleet.flatMap((p) => p.coords.map(coordKey)))
+    const submitScore = vi.fn().mockResolvedValue(true)
+
+    const { outcomes } = await fireVolleyAndSubmitIfOver(fleet, shots, [{ row: 0, col: 0 }], submitScore)
+
+    expect(outcomes[0].result).toBe('repeat')
+    expect(submitScore).not.toHaveBeenCalled()
+  })
+
+  it('la victoire reste acquise même si la soumission du score échoue', async () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 })
+    const shots = new Set([coordKey({ row: 0, col: 0 })])
+    const submitScore = vi.fn().mockRejectedValue(new Error('réseau indisponible'))
+
+    const { outcomes, gameOver } = await fireVolleyAndSubmitIfOver(fleet, shots, [{ row: 0, col: 1 }], submitScore)
+
+    expect(gameOver).toBe(true)
+    expect(outcomes[0].result).toBe('hit')
+    expect(submitScore).toHaveBeenCalledTimes(1)
   })
 })
 

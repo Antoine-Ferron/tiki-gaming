@@ -187,6 +187,32 @@ describe('BatailleNavaleGame — mode local', () => {
 
     expect(await screen.findByText(/Connecte-toi pour apparaître au classement/)).toBeTruthy()
   })
+
+  test('recliquer la même case pendant la sélection de la salve ne la compte pas deux fois', async () => {
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    render(<BatailleNavaleGame ctx={buildCtx()} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Mode augmenté (salve, radar, frappe nucléaire)' }))
+    click('Solo (même appareil)')
+    click('Placer au hasard')
+    click('Prêt')
+    click('Je suis prêt')
+    click('Placer au hasard')
+    click('Prêt')
+    click('Je suis prêt')
+
+    // Coule le Torpilleur (2 touches) pour débloquer la salve, sans jamais passer la main.
+    await act(async () => click(cellName({ row: 4, col: 0 })))
+    await act(async () => click(cellName({ row: 4, col: 1 })))
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Salve/ }))
+    click(cellName({ row: 9, col: 9 })) // 1ère case choisie
+    click(cellName({ row: 9, col: 9 })) // reclic sur la même case : ne doit pas compter pour une 2e
+    click(cellName({ row: 9, col: 8 })) // 2e case, réellement distincte
+
+    // Sans le correctif, le reclic aurait compté comme un 2e choix, et cette 3e case aurait aussitôt
+    // déclenché l'envoi de la salve (3 choix atteints, dont un doublon qui résout en « repeat »).
+    expect(screen.getByText('Choisis encore 1 case(s) pour la salve.')).toBeTruthy()
+  })
 })
 
 describe('BatailleNavaleGame — mode en ligne', () => {
@@ -287,7 +313,11 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     click('Prêt')
 
     await screen.findByText("En attente de l'adversaire")
-    expect(connection.sent).toContainEqual({ type: 'READY', data: { by: 1 }, actionId: undefined })
+    expect(connection.sent).toContainEqual({
+      type: 'READY',
+      data: { by: 1, augmented: false },
+      actionId: 'ready:1',
+    })
 
     await act(async () => {
       connection.emit('READY', { by: 1 }) // écho de mon propre envoi : le serveur me le renvoie aussi
@@ -299,7 +329,7 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     expect(connection.sent).toContainEqual({
       type: 'FIRE',
       data: { by: 1, targets: [{ row: 9, col: 9 }] },
-      actionId: undefined,
+      actionId: 'fire:1:1:9,9',
     })
 
     await act(async () => {
@@ -319,7 +349,7 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     expect(connection.sent).toContainEqual({
       type: 'FIRE_RESULT',
       data: { by: 2, targets: [{ row: 0, col: 0 }], results: ['hit'], sunk: [], gameOver: false },
-      actionId: undefined,
+      actionId: 'fire-result:1:2:0,0',
     })
 
     await act(async () => {
@@ -340,7 +370,7 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     expect(connection.sent).toContainEqual({
       type: 'FIRE_RESULT',
       data: { by: 2, targets: [{ row: 1, col: 5 }], results: ['miss'], sunk: [], gameOver: false },
-      actionId: undefined,
+      actionId: 'fire-result:1:2:1,5',
     })
 
     await act(async () => {
@@ -454,7 +484,7 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     })
 
     expect(await screen.findByText('La partie ne peut plus continuer')).toBeTruthy()
-    expect(connection.sent).toContainEqual({ type: 'GAME_ABANDONED', data: null, actionId: undefined })
+    expect(connection.sent).toContainEqual({ type: 'GAME_ABANDONED', data: null, actionId: 'abandoned:1' })
   })
 
   test('un rechargement en pleine bataille reprend exactement là où on en était, sans repasser par le placement', async () => {
@@ -506,5 +536,66 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     expect(screen.getByText('Touchés').nextElementSibling?.textContent).toBe('1')
     // Aucun READY reparti pour cette reprise : ce serait pris pour un rechargement adverse (voir le test ci-dessus).
     expect(connection.sent.filter((a) => a.type === 'READY')).toHaveLength(2) // les deux de la toute première partie
+  })
+
+  test("le départ de l'adversaire pendant le placement (avant même d'être prêt) affiche un message clair", async () => {
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('ROOM-6', 1, 1)
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
+
+    click('En ligne')
+    await act(async () => {
+      click('Créer une partie')
+    })
+    expect(await screen.findByText('Place ta flotte')).toBeTruthy()
+
+    // Avant que je n'aie fini de placer ma flotte, `OnlineBattle` (et donc `useNetGame`, qui écoute
+    // normalement PLAYER_LEFT) n'est pas encore monté : sans un abonnement dédié à cette fenêtre, cet
+    // évènement serait perdu pour de bon (le socle ne le rediffuse pas).
+    await act(async () => {
+      connection.emit('PLAYER_LEFT', {})
+    })
+
+    expect(await screen.findByText('La partie ne peut plus continuer')).toBeTruthy()
+    click('Retour au menu')
+    expect(screen.getByRole('button', { name: 'Solo (même appareil)' })).toBeTruthy()
+  })
+
+  test('adopte le mode augmenté du créateur de la salle même sans avoir coché la case en la rejoignant', async () => {
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('ROOM-7', 2, 2)
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
+
+    click('En ligne')
+    fireEvent.change(screen.getByLabelText('Code de la partie'), { target: { value: 'ROOM-7' } })
+    await act(async () => {
+      click('Rejoindre')
+    })
+    click('Placer au hasard')
+    click('Prêt')
+
+    // Le créateur (siège 1) avait coché « Mode augmenté » ; je ne l'ai pas fait moi-même en rejoignant.
+    await act(async () => {
+      connection.emit('READY', { by: 1, augmented: true })
+      connection.emit('READY', { by: 2, augmented: false })
+    })
+
+    await act(async () => {
+      connection.emit('FIRE_RESULT', {
+        by: 2,
+        targets: [
+          { row: 4, col: 0 },
+          { row: 4, col: 1 },
+        ],
+        results: ['hit', 'hit'],
+        sunk: [FLEET[4]],
+        gameOver: false,
+      })
+    })
+
+    // Le bonus apparaît malgré tout : mon client a adopté le choix du créateur de la salle, pas le mien.
+    expect(await screen.findByRole('button', { name: /^Salve/ })).toBeTruthy()
   })
 })

@@ -34,7 +34,11 @@ describe('useNetGame — READY handshake', () => {
     const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
     renderHook(() => useNetGame(connection, fleet, false, buildCtx()))
 
-    expect(connection.sent).toContainEqual({ type: 'READY', data: { by: 1 }, actionId: undefined })
+    expect(connection.sent).toContainEqual({
+      type: 'READY',
+      data: { by: 1, augmented: false },
+      actionId: 'ready:1',
+    })
   })
 
   /**
@@ -252,7 +256,11 @@ describe('useNetGame — reprise après rechargement (resume)', () => {
     const resume = createNetState(1, fleet, false) // phase 'placement' : ma flotte était déjà posée, READY déjà envoyé avant
     renderHook(() => useNetGame(connection, fleet, false, buildCtx(), resume))
 
-    expect(connection.sent).toContainEqual({ type: 'READY', data: { by: 1 }, actionId: undefined })
+    expect(connection.sent).toContainEqual({
+      type: 'READY',
+      data: { by: 1, augmented: false },
+      actionId: 'ready:1',
+    })
   })
 })
 
@@ -272,6 +280,6 @@ describe('useNetGame — fin de partie partagée après un rechargement', () => 
     })
 
     expect(result.current.state.disconnected).toBe(true)
-    expect(connection.sent).toContainEqual({ type: 'GAME_ABANDONED', data: null, actionId: undefined })
+    expect(connection.sent).toContainEqual({ type: 'GAME_ABANDONED', data: null, actionId: 'abandoned:1' })
   })
 })

@@ -28,12 +28,17 @@ export function useNetGame(
   const [state, setState] = useState<NetState>(() => resume ?? createNetState(connection.seat, myFleet, augmented))
   const submittedRef = useRef(false)
   const sentInitialReadyRef = useRef(false)
+  // Vrai tant qu'aucune soumission de score n'est en cours (rien à attendre) ou qu'elle vient de se régler
+  // (succès ou échec) : voir l'effet de soumission plus bas, et BatailleNavaleGame.tsx qui attend ce signal
+  // avant d'effacer la sauvegarde de reprise — sinon un onglet fermé entre l'envoi et sa résolution perdrait
+  // le score pour de bon.
+  const [submitSettled, setSubmitSettled] = useState(true)
 
   const dispatchLocal = useCallback(
     (intent: LocalIntent) => {
       setState((prev) => {
         const { state: next, outbox } = applyLocalIntent(prev, intent)
-        for (const event of outbox) connection.send(event.type, event.data)
+        for (const event of outbox) connection.send(event.type, event.data, event.actionId)
         return next
       })
     },
@@ -47,7 +52,7 @@ export function useNetGame(
           // Frontière réseau : le serveur ne connaît pas la forme des actions d'un jeu, non typée ici.
           const remoteEvent = { type, payload: event.payload } as RemoteEvent
           const { state: next, outbox } = applyRemoteEvent(prev, remoteEvent)
-          for (const out of outbox) connection.send(out.type, out.data)
+          for (const out of outbox) connection.send(out.type, out.data, out.actionId)
           return next
         })
       }),
@@ -64,10 +69,14 @@ export function useNetGame(
   useEffect(() => {
     if (!state.pendingSubmit || submittedRef.current) return
     submittedRef.current = true
+    setSubmitSettled(false)
     const { shots, hits } = state.pendingSubmit
     // Au mieux : la victoire reste acquise localement même si la soumission échoue (pas de réseau, compte
     // invité...), rien d'autre à faire ici (voir le même choix pour la sauvegarde best-effort de mini-gta).
-    ctx.submitScore(computeScore(shots, hits), { shots, hits, winner: state.mySeat }).catch(() => {})
+    ctx
+      .submitScore(computeScore(shots, hits), { shots, hits, winner: state.mySeat })
+      .catch(() => {})
+      .finally(() => setSubmitSettled(true))
   }, [ctx, state.mySeat, state.pendingSubmit])
 
   // Envoyé une seule fois, au montage : ma flotte est déjà placée à ce stade. S'il arrive avant que
@@ -91,12 +100,13 @@ export function useNetGame(
     if (sentInitialReadyRef.current) return
     sentInitialReadyRef.current = true
     if (resume && resume.phase !== 'placement') return
-    connection.send('READY', { by: connection.seat })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `resume` n'est lu qu'à ce tout premier montage (garde par ref).
+    connection.send('READY', { by: connection.seat, augmented: state.augmented }, `ready:${connection.seat}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `resume`/`state` ne sont lus qu'à ce tout premier montage (garde par ref).
   }, [connection])
 
   return {
     state,
+    submitSettled,
     fire: (targets: Coord[], bonus?: 'salvo' | 'nuke') => dispatchLocal({ kind: 'FIRE', targets, bonus }),
     useRadar: (zone: Coord[]) => dispatchLocal({ kind: 'RADAR', zone }),
   }

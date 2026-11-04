@@ -41,12 +41,16 @@ export type NetState = {
   readonly resultsOnOpponent: ReadonlyMap<string, 'hit' | 'miss'>
   /** Cases adverses révélées occupées par un radar, jamais marquées comme tirées. */
   readonly radarRevealsOnOpponent: ReadonlySet<string>
+  /** Sièges dont le RADAR_RESULT a déjà été appliqué (la main déjà passée) : une redélivrance ne la repasse pas. */
+  readonly radarResolvedBy: ReadonlySet<number>
   readonly hitsOnOpponent: number
   readonly shipsSunkByMe: number
   /** Noms des navires adverses coulés (la composition de FLEET est publique, seul leur placement est secret). */
   readonly sunkOpponentShips: ReadonlySet<string>
   readonly usedBonuses: ReadonlySet<Bonus>
   readonly augmented: boolean
+  /** Un tir/radar est parti, sa réponse pas encore reçue : bloque un second envoi avant la fin de l'aller-retour. */
+  readonly awaitingResult: boolean
   readonly winnerSeat: number | null
   readonly disconnected: boolean
   readonly pendingSubmit: { shots: number; hits: number } | null
@@ -64,11 +68,13 @@ export function createNetState(mySeat: number, myFleet: PlacedShip[], augmented:
     shotsOnOpponent: new Set(),
     resultsOnOpponent: new Map(),
     radarRevealsOnOpponent: new Set(),
+    radarResolvedBy: new Set(),
     hitsOnOpponent: 0,
     shipsSunkByMe: 0,
     sunkOpponentShips: new Set(),
     usedBonuses: new Set(),
     augmented,
+    awaitingResult: false,
     winnerSeat: null,
     disconnected: false,
     pendingSubmit: null,
@@ -94,11 +100,13 @@ export type SerializedNetState = {
   shotsOnOpponent: string[]
   resultsOnOpponent: [string, 'hit' | 'miss'][]
   radarRevealsOnOpponent: string[]
+  radarResolvedBy: number[]
   hitsOnOpponent: number
   shipsSunkByMe: number
   sunkOpponentShips: string[]
   usedBonuses: Bonus[]
   augmented: boolean
+  awaitingResult: boolean
   winnerSeat: number | null
   disconnected: boolean
   pendingSubmit: { shots: number; hits: number } | null
@@ -122,11 +130,13 @@ export function serializeNetState(state: NetState): SerializedNetState {
     shotsOnOpponent: [...state.shotsOnOpponent],
     resultsOnOpponent: [...state.resultsOnOpponent],
     radarRevealsOnOpponent: [...state.radarRevealsOnOpponent],
+    radarResolvedBy: [...state.radarResolvedBy],
     hitsOnOpponent: state.hitsOnOpponent,
     shipsSunkByMe: state.shipsSunkByMe,
     sunkOpponentShips: [...state.sunkOpponentShips],
     usedBonuses: [...state.usedBonuses],
     augmented: state.augmented,
+    awaitingResult: state.awaitingResult,
     winnerSeat: state.winnerSeat,
     disconnected: state.disconnected,
     pendingSubmit: state.pendingSubmit,
@@ -145,11 +155,13 @@ export function deserializeNetState(s: SerializedNetState): NetState {
     shotsOnOpponent: new Set(s.shotsOnOpponent),
     resultsOnOpponent: new Map(s.resultsOnOpponent),
     radarRevealsOnOpponent: new Set(s.radarRevealsOnOpponent),
+    radarResolvedBy: new Set(s.radarResolvedBy),
     hitsOnOpponent: s.hitsOnOpponent,
     shipsSunkByMe: s.shipsSunkByMe,
     sunkOpponentShips: new Set(s.sunkOpponentShips),
     usedBonuses: new Set(s.usedBonuses),
     augmented: s.augmented,
+    awaitingResult: s.awaitingResult,
     winnerSeat: s.winnerSeat,
     disconnected: s.disconnected,
     pendingSubmit: s.pendingSubmit,
@@ -164,14 +176,14 @@ function otherSeat(seat: number): number {
 export type LocalIntent =
   { kind: 'READY' } | { kind: 'FIRE'; targets: Coord[]; bonus?: 'salvo' | 'nuke' } | { kind: 'RADAR'; zone: Coord[] }
 
-export type OutgoingEvent = { type: string; data: unknown }
+export type OutgoingEvent = { type: string; data: unknown; actionId: string }
 
 type FirePayload = { by: number; targets: Coord[] }
 type FireResultPayload = { by: number; targets: Coord[]; results: ShotResult[]; sunk: Ship[]; gameOver: boolean }
 type RadarPayload = { by: number; zone: Coord[] }
 type RadarResultPayload = { by: number; zone: Coord[]; occupied: Coord[] }
 
-type ReadyPayload = { by: number; confirm?: boolean }
+type ReadyPayload = { by: number; confirm?: boolean; augmented?: boolean }
 
 export type RemoteEvent =
   | { type: 'READY'; payload: ReadyPayload }
@@ -184,28 +196,51 @@ export type RemoteEvent =
 
 type Transition = { state: NetState; outbox: OutgoingEvent[] }
 
+/**
+ * Identifiant stable d'une action : `RealtimeConnection.send` le réutilise tel quel pour qu'une retentative
+ * (double-envoi de <StrictMode>, redélivrance réseau) soit ignorée côté serveur plutôt que rejouée. Dérivé du
+ * contenu de l'action elle-même : deux appels identiques (même siège, même tour, mêmes cases) produisent donc
+ * toujours le même identifiant, et une action réellement différente (tour suivant, autres cases) un autre.
+ */
+function actionId(...parts: (string | number)[]): string {
+  return parts.join(':')
+}
+
 /** Une intention locale (mon clic) : jamais de mutation d'état décisive ici hors marquage d'un bonus utilisé. */
 export function applyLocalIntent(state: NetState, intent: LocalIntent): Transition {
-  const myTurn = state.phase === 'battle' && state.turnSeat === state.mySeat
+  const myTurn = state.phase === 'battle' && state.turnSeat === state.mySeat && !state.awaitingResult
   switch (intent.kind) {
     case 'READY':
       if (state.phase !== 'placement') return { state, outbox: [] }
-      return { state, outbox: [{ type: 'READY', data: { by: state.mySeat } }] }
+      return {
+        state,
+        outbox: [
+          {
+            type: 'READY',
+            data: { by: state.mySeat, augmented: state.augmented } satisfies ReadyPayload,
+            actionId: actionId('ready', state.mySeat),
+          },
+        ],
+      }
 
     case 'FIRE': {
       if (!myTurn) return { state, outbox: [] }
       const usedBonuses = intent.bonus ? new Set(state.usedBonuses).add(intent.bonus) : state.usedBonuses
+      const id = actionId('fire', state.mySeat, state.turnSeat, intent.targets.map(coordKey).join('|'))
       return {
-        state: { ...state, usedBonuses },
-        outbox: [{ type: 'FIRE', data: { by: state.mySeat, targets: intent.targets } satisfies FirePayload }],
+        state: { ...state, usedBonuses, awaitingResult: true },
+        outbox: [
+          { type: 'FIRE', data: { by: state.mySeat, targets: intent.targets } satisfies FirePayload, actionId: id },
+        ],
       }
     }
 
     case 'RADAR': {
       if (!myTurn) return { state, outbox: [] }
+      const id = actionId('radar', state.mySeat, state.turnSeat, intent.zone.map(coordKey).join('|'))
       return {
-        state: { ...state, usedBonuses: new Set(state.usedBonuses).add('radar') },
-        outbox: [{ type: 'RADAR', data: { by: state.mySeat, zone: intent.zone } satisfies RadarPayload }],
+        state: { ...state, usedBonuses: new Set(state.usedBonuses).add('radar'), awaitingResult: true },
+        outbox: [{ type: 'RADAR', data: { by: state.mySeat, zone: intent.zone } satisfies RadarPayload, actionId: id }],
       }
     }
   }
@@ -221,7 +256,10 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
         // que l'adversaire est reparti de zéro (page rechargée) : aucune reprise n'est prise en charge
         // (voir l'en-tête), cette partie ne peut plus continuer, des deux côtés.
         if (event.payload.by === state.mySeat || event.payload.confirm) return { state, outbox: [] }
-        return { state: { ...state, disconnected: true }, outbox: [{ type: 'GAME_ABANDONED', data: null }] }
+        return {
+          state: { ...state, disconnected: true },
+          outbox: [{ type: 'GAME_ABANDONED', data: null, actionId: actionId('abandoned', state.mySeat) }],
+        }
       }
       const readySeats = new Set(state.readySeats).add(event.payload.by)
       const reachesBattle = readySeats.size >= 2 && state.readySeats.size < 2
@@ -234,14 +272,27 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
       // signal d'abandon par qui la reçoit. Sans condition de délai ni de répétition en boucle : une seule
       // confirmation, exactement quand elle sert, jamais après coup.
       const outbox: OutgoingEvent[] = reachesBattle
-        ? [{ type: 'READY', data: { by: state.mySeat, confirm: true } satisfies ReadyPayload }]
+        ? [
+            {
+              type: 'READY',
+              data: { by: state.mySeat, confirm: true, augmented: state.augmented } satisfies ReadyPayload,
+              actionId: actionId('ready-confirm', state.mySeat),
+            },
+          ]
         : []
       const phase = readySeats.size >= 2 ? 'battle' : state.phase
-      return { state: { ...state, readySeats, phase }, outbox }
+      // Siège 1 (créateur de la salle) fait autorité sur le mode augmenté : sans ça, chacun garde sa propre
+      // case à cocher, et un camp peut se retrouver avec des bonus que l'autre n'a jamais acceptés.
+      const augmented =
+        event.payload.by === 1 && event.payload.augmented !== undefined ? event.payload.augmented : state.augmented
+      return { state: { ...state, readySeats, phase, augmented }, outbox }
     }
 
     case 'FIRE': {
       if (event.payload.by === state.mySeat) return { state, outbox: [] } // écho de mon propre tir : rien à faire
+      // Un FIRE ne peut légitimement arriver qu'une fois les deux camps en bataille ; un message reçu hors de
+      // cette phase (reconnexion manquée, évènement hors ordre) ne doit pas être calculé contre ma flotte.
+      if (state.phase !== 'battle') return { state, outbox: [] }
       const shots = new Set(state.shotsOnMe)
       const outcomes = fireVolley(state.myFleet, shots, event.payload.targets)
       const sunk = outcomes.flatMap((o) => (o.sunk ? [o.sunk] : []))
@@ -253,7 +304,8 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
         sunk,
         gameOver,
       }
-      return { state, outbox: [{ type: 'FIRE_RESULT', data: result }] }
+      const id = actionId('fire-result', state.mySeat, event.payload.by, event.payload.targets.map(coordKey).join('|'))
+      return { state, outbox: [{ type: 'FIRE_RESULT', data: result, actionId: id }] }
     }
 
     case 'FIRE_RESULT': {
@@ -296,6 +348,7 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
         turnSeat: gameOver ? state.turnSeat : anyHit ? by : otherSeat(by),
         phase: gameOver ? 'over' : state.phase,
         winnerSeat: gameOver ? by : state.winnerSeat,
+        awaitingResult: iAmShooter ? false : state.awaitingResult,
         pendingSubmit: gameOver && iAmShooter ? { shots: shots.size, hits: hitsOnOpponent } : state.pendingSubmit,
         lastEvent: { kind: 'fire', by, targets, results, sunk },
       }
@@ -304,13 +357,20 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
 
     case 'RADAR': {
       if (event.payload.by === state.mySeat) return { state, outbox: [] } // écho de mon propre radar
+      if (state.phase !== 'battle') return { state, outbox: [] }
       const occupied = scanZone(state.myFleet, event.payload.zone)
       const result: RadarResultPayload = { by: event.payload.by, zone: event.payload.zone, occupied }
-      return { state, outbox: [{ type: 'RADAR_RESULT', data: result }] }
+      const id = actionId('radar-result', state.mySeat, event.payload.by, event.payload.zone.map(coordKey).join('|'))
+      return { state, outbox: [{ type: 'RADAR_RESULT', data: result, actionId: id }] }
     }
 
     case 'RADAR_RESULT': {
       const { by, zone, occupied } = event.payload
+      // Radar est un bonus à usage unique par siège (voir `computeUnlocks`/`usedBonuses`) : au plus un
+      // RADAR_RESULT par `by` sur toute la partie. Une redélivrance (StrictMode, reconnexion) du même message
+      // ne doit donc pas repasser la main une seconde fois — contrairement à `state.turnSeat`, qui peut être
+      // revenu entre-temps à `by` après un tour complet de l'adversaire, ce marqueur ne peut pas y rejouer.
+      if (state.radarResolvedBy.has(by)) return { state, outbox: [] }
       const iAmShooter = by === state.mySeat
       const radarRevealsOnOpponent = new Set(state.radarRevealsOnOpponent)
       if (iAmShooter) for (const c of occupied) radarRevealsOnOpponent.add(coordKey(c))
@@ -318,7 +378,9 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
         state: {
           ...state,
           radarRevealsOnOpponent,
+          radarResolvedBy: new Set(state.radarResolvedBy).add(by),
           turnSeat: otherSeat(by),
+          awaitingResult: iAmShooter ? false : state.awaitingResult,
           lastEvent: { kind: 'radar', by, zone, occupied },
         },
         outbox: [],

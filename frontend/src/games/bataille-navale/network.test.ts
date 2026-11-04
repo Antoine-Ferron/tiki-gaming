@@ -32,7 +32,7 @@ describe('READY handshake', () => {
   it('sends my own READY without touching readySeats yet', () => {
     const state = createNetState(1, myFleet, false)
     const { state: next, outbox } = applyLocalIntent(state, { kind: 'READY' })
-    expect(outbox).toEqual([{ type: 'READY', data: { by: 1 } }])
+    expect(outbox).toEqual([{ type: 'READY', data: { by: 1, augmented: false }, actionId: 'ready:1' }])
     expect(next.readySeats.size).toBe(0)
   })
 
@@ -44,7 +44,9 @@ describe('READY handshake', () => {
     expect(next.phase).toBe('battle')
     // Confirmation envoyée à l'instant où je découvre que les deux sièges sont prêts : voir le test
     // « late-joining » dans useNetGame.test.tsx pour la raison d'être de cette confirmation.
-    expect(outbox).toEqual([{ type: 'READY', data: { by: 1, confirm: true } }])
+    expect(outbox).toEqual([
+      { type: 'READY', data: { by: 1, confirm: true, augmented: false }, actionId: 'ready-confirm:1' },
+    ])
   })
 
   it('does nothing once placement is already done', () => {
@@ -78,6 +80,7 @@ describe('FIRE — I am the target, I compute and reply', () => {
       {
         type: 'FIRE_RESULT',
         data: { by: 2, targets: [{ row: 5, col: 5 }], results: ['miss'], sunk: [], gameOver: false },
+        actionId: 'fire-result:1:2:5,5',
       },
     ])
   })
@@ -93,6 +96,16 @@ describe('FIRE — I am the target, I compute and reply', () => {
     const state = battleState()
     const { state: next } = applyRemoteEvent(state, { type: 'FIRE', payload: { by: 2, targets: [{ row: 0, col: 0 }] } })
     expect(next.shotsOnMe.size).toBe(0)
+  })
+
+  it('ignores a FIRE arriving before battle has started on my side (missed reconnect, out-of-order delivery)', () => {
+    const state = createNetState(1, myFleet, false) // toujours en placement
+    const { state: next, outbox } = applyRemoteEvent(state, {
+      type: 'FIRE',
+      payload: { by: 2, targets: [{ row: 0, col: 0 }] },
+    })
+    expect(outbox).toEqual([])
+    expect(next).toBe(state)
   })
 })
 
@@ -257,13 +270,33 @@ describe('FIRE — turn guard', () => {
       { row: 3, col: 3 },
     ]
     const { outbox } = applyLocalIntent(state, { kind: 'FIRE', targets, bonus: 'salvo' })
-    expect(outbox).toEqual([{ type: 'FIRE', data: { by: 1, targets } }])
+    expect(outbox).toEqual([{ type: 'FIRE', data: { by: 1, targets }, actionId: 'fire:1:1:1,1|2,2|3,3' }])
   })
 
   it('marks the bonus as used immediately, locally, without waiting for a network round-trip', () => {
     const state = battleState({ turnSeat: 1 })
     const { state: next } = applyLocalIntent(state, { kind: 'FIRE', targets: [{ row: 1, col: 1 }], bonus: 'nuke' })
     expect(next.usedBonuses.has('nuke')).toBe(true)
+  })
+
+  it('marks a shot in flight so a second FIRE cannot be sent before its result comes back', () => {
+    const state = battleState({ turnSeat: 1 })
+    const { state: afterFirst } = applyLocalIntent(state, { kind: 'FIRE', targets: [{ row: 1, col: 1 }] })
+    expect(afterFirst.awaitingResult).toBe(true)
+
+    // Toujours mon tour (turnSeat inchangé tant que le résultat n'est pas revenu) : sans le garde, ce second
+    // tir serait accepté et partirait pour la même volée, avant même que le premier n'ait eu de réponse.
+    const { outbox } = applyLocalIntent(afterFirst, { kind: 'FIRE', targets: [{ row: 2, col: 2 }] })
+    expect(outbox).toEqual([])
+  })
+
+  it('clears the in-flight flag once my own FIRE_RESULT comes back, allowing the next shot', () => {
+    const state = { ...battleState({ turnSeat: 1 }), awaitingResult: true }
+    const { state: next } = applyRemoteEvent(state, {
+      type: 'FIRE_RESULT',
+      payload: { by: 1, targets: [{ row: 1, col: 1 }], results: ['miss'], sunk: [], gameOver: false },
+    })
+    expect(next.awaitingResult).toBe(false)
   })
 })
 
@@ -294,8 +327,16 @@ describe('RADAR', () => {
             { row: 0, col: 1 },
           ],
         },
+        actionId: 'radar-result:1:2:0,0|0,1|9,9',
       },
     ])
+  })
+
+  it('ignores a RADAR arriving before battle has started on my side', () => {
+    const state = createNetState(1, myFleet, false)
+    const { state: next, outbox } = applyRemoteEvent(state, { type: 'RADAR', payload: { by: 2, zone: [] } })
+    expect(outbox).toEqual([])
+    expect(next).toBe(state)
   })
 
   it('as the scanner, records the revealed cells and the turn passes on', () => {
@@ -313,6 +354,36 @@ describe('RADAR', () => {
     const state = battleState({ turnSeat: 1 })
     const { state: next } = applyLocalIntent(state, { kind: 'RADAR', zone: [{ row: 0, col: 0 }] })
     expect(next.usedBonuses.has('radar')).toBe(true)
+  })
+
+  it('marks a radar in flight so a second one cannot be sent before its result comes back', () => {
+    const state = battleState({ turnSeat: 1 })
+    const { state: afterFirst } = applyLocalIntent(state, { kind: 'RADAR', zone: [{ row: 0, col: 0 }] })
+    expect(afterFirst.awaitingResult).toBe(true)
+    const { outbox } = applyLocalIntent(afterFirst, { kind: 'RADAR', zone: [{ row: 5, col: 5 }] })
+    expect(outbox).toEqual([])
+  })
+
+  it('does not re-flip the turn on a redelivered RADAR_RESULT (StrictMode double-send, network retry)', () => {
+    // Même bug que pour FIRE_RESULT (voir son test de redélivrance) : <StrictMode> peut envoyer le même
+    // RADAR deux fois. Sans garde, la seconde copie — reçue après que l'adversaire a déjà rejoué et rendu la
+    // main — la redonnerait à tort au scanneur.
+    const state = battleState({ turnSeat: 1 })
+    const occupied = [{ row: 4, col: 4 }]
+    const event: RemoteEvent = { type: 'RADAR_RESULT', payload: { by: 1, zone: occupied, occupied } }
+    const afterRadar = applyRemoteEvent(state, event).state
+    expect(afterRadar.turnSeat).toBe(2)
+
+    // L'adversaire joue son tour et tire à l'eau : la main me revient.
+    const afterOpponentMiss = applyRemoteEvent(afterRadar, {
+      type: 'FIRE_RESULT',
+      payload: { by: 2, targets: [{ row: 9, col: 9 }], results: ['miss'], sunk: [], gameOver: false },
+    }).state
+    expect(afterOpponentMiss.turnSeat).toBe(1)
+
+    // Le même RADAR_RESULT, redélivré après coup : ne doit pas renvoyer la main à l'adversaire.
+    const { state: next } = applyRemoteEvent(afterOpponentMiss, event)
+    expect(next.turnSeat).toBe(1)
   })
 })
 
@@ -365,7 +436,7 @@ describe('READY received after my own battle has already started', () => {
     const state = battleState({ turnSeat: 1 })
     const { state: next, outbox } = applyRemoteEvent(state, { type: 'READY', payload: { by: 2 } })
     expect(next.disconnected).toBe(true)
-    expect(outbox).toEqual([{ type: 'GAME_ABANDONED', data: null }])
+    expect(outbox).toEqual([{ type: 'GAME_ABANDONED', data: null, actionId: 'abandoned:1' }])
   })
 
   it('does not end the game while still in placement: a normal READY handshake is unaffected', () => {

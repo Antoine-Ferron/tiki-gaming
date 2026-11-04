@@ -98,9 +98,24 @@ export function scanZone(fleet: PlacedShip[], zone: Coord[]): Coord[] {
 
 export type VolleyShot = { target: Coord; result: ShotResult; sunk?: Ship }
 
-/** Applique `fireShot` à chaque case, dans l'ordre. Une case déjà tirée (même dans cette volée) est « repeat ». */
+/**
+ * Applique `fireShot` à chaque case, dans l'ordre. Une case déjà tirée (même dans cette volée) est « repeat ».
+ * Dès que la flotte est entièrement coulée en cours de volée (frappe nucléaire, salve), les cases restantes ne
+ * sont plus de vrais tirs : les compter aurait gonflé `shots` pour rien et fait baisser le score du vainqueur.
+ */
 export function fireVolley(fleet: PlacedShip[], shots: Set<string>, targets: Coord[]): VolleyShot[] {
-  return targets.map((target) => ({ target, ...fireShot(fleet, shots, target) }))
+  const outcomes: VolleyShot[] = []
+  let over = isFleetSunk(fleet, shots)
+  for (const target of targets) {
+    if (over) {
+      outcomes.push({ target, result: 'repeat' })
+      continue
+    }
+    const outcome = fireShot(fleet, shots, target)
+    outcomes.push({ target, ...outcome })
+    if (outcome.result === 'hit') over = isFleetSunk(fleet, shots)
+  }
+  return outcomes
 }
 
 export function sunkShips(fleet: PlacedShip[], shots: Set<string>): Ship[] {
@@ -140,39 +155,24 @@ export function computeUnlocks(shotsFired: number, shipsSunk: number): Unlocks {
 export type SubmitScore = (score: number, metadata: { shots: number; hits: number }) => Promise<boolean>
 
 /**
- * Tire sur la flotte adverse puis, si ce tir coule son dernier navire, calcule le score et le
- * soumet via la fonction injectée. `submitScore` n'est jamais appelé pour un tir répété ni tant
- * que la flotte adverse n'est pas entièrement coulée.
+ * Tire sur la flotte adverse (une ou plusieurs cases à la fois : un tir simple est une volée d'une seule case)
+ * puis, si la volée coule son dernier navire, calcule le score et le soumet via la fonction injectée.
+ * `submitScore` n'est jamais appelé pour une volée qui ne coule rien, ni une deuxième fois après la victoire.
+ * Une soumission qui échoue (réseau, compte invité…) ne doit jamais empêcher la victoire d'être enregistrée
+ * localement : voir le même choix pour la soumission best-effort du mode en ligne dans `useNetGame.ts`.
  */
-export async function fireAndSubmitIfOver(
-  fleet: PlacedShip[],
-  shots: Set<string>,
-  target: Coord,
-  submitScore: SubmitScore,
-): Promise<{ result: ShotResult; sunk?: Ship; gameOver: boolean }> {
-  const outcome = fireShot(fleet, shots, target)
-  if (outcome.result === 'repeat') return { ...outcome, gameOver: false }
-
-  const gameOver = isFleetSunk(fleet, shots)
-  if (gameOver) {
-    const hits = countHits(fleet, shots)
-    await submitScore(computeScore(shots.size, hits), { shots: shots.size, hits })
-  }
-  return { ...outcome, gameOver }
-}
-
-/** Équivalent de `fireAndSubmitIfOver` pour plusieurs cases à la fois (salve, frappe nucléaire). */
 export async function fireVolleyAndSubmitIfOver(
   fleet: PlacedShip[],
   shots: Set<string>,
   targets: Coord[],
   submitScore: SubmitScore,
 ): Promise<{ outcomes: VolleyShot[]; gameOver: boolean }> {
+  const alreadyOver = isFleetSunk(fleet, shots)
   const outcomes = fireVolley(fleet, shots, targets)
   const gameOver = isFleetSunk(fleet, shots)
-  if (gameOver) {
+  if (gameOver && !alreadyOver) {
     const hits = countHits(fleet, shots)
-    await submitScore(computeScore(shots.size, hits), { shots: shots.size, hits })
+    await submitScore(computeScore(shots.size, hits), { shots: shots.size, hits }).catch(() => {})
   }
   return { outcomes, gameOver }
 }
