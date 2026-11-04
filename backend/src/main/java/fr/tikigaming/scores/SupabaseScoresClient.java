@@ -2,10 +2,16 @@ package fr.tikigaming.scores;
 
 import fr.tikigaming.config.ApiException;
 import fr.tikigaming.config.TikiProperties;
+import fr.tikigaming.resilience.CircuitBreaker;
+import fr.tikigaming.resilience.CircuitOpenException;
 import java.io.InputStream;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
@@ -19,6 +25,10 @@ import tools.jackson.databind.ObjectMapper;
  * Insertion des scores dans public.scores via PostgREST, avec la clé service_role : c'est le seul chemin d'écriture
  * (les joueurs n'ont plus le droit d'insérer). Les règles du catalogue sont vérifiées en base par le trigger
  * scores_check_allowed ; ses refus sont traduits en messages pour le joueur.
+ *
+ * <p>Résilience : les timeouts de connexion et de lecture viennent de {@code spring.http.clients.*}
+ * (application.yml) ; un disjoncteur s'ouvre après plusieurs pannes consécutives et répond alors 503 tout de suite,
+ * sans attendre Supabase. Côté front, un score refusé pour panne est gardé sur l'appareil (scoreQueue).
  */
 @Component
 public class SupabaseScoresClient {
@@ -31,8 +41,25 @@ public class SupabaseScoresClient {
     private static final Logger log = LoggerFactory.getLogger(SupabaseScoresClient.class);
 
     private final RestClient rest;
+    private final CircuitBreaker breaker;
 
-    public SupabaseScoresClient(RestClient.Builder builder, TikiProperties props, ObjectMapper mapper) {
+    @Autowired
+    public SupabaseScoresClient(
+            RestClient.Builder builder,
+            TikiProperties props,
+            ObjectMapper mapper,
+            @Value("${tiki.resilience.scores.failure-threshold:5}") int failureThreshold,
+            @Value("${tiki.resilience.scores.open-duration:30s}") Duration openDuration) {
+        this(
+                builder,
+                props,
+                mapper,
+                new CircuitBreaker(failureThreshold, openDuration, Clock.systemUTC(), SupabaseScoresClient::isOutage));
+    }
+
+    SupabaseScoresClient(
+            RestClient.Builder builder, TikiProperties props, ObjectMapper mapper, CircuitBreaker breaker) {
+        this.breaker = breaker;
         String serviceRoleKey = props.supabase().serviceRoleKey();
         this.rest = builder.baseUrl(props.supabase().url())
                 .defaultHeaders(h -> {
@@ -47,12 +74,29 @@ public class SupabaseScoresClient {
 
     public void insert(String userId, String gameSlug, long score, JsonNode metadata) {
         try {
+            breaker.call(() -> post(userId, gameSlug, score, metadata));
+        } catch (CircuitOpenException e) {
+            log.warn(
+                    "Disjoncteur des scores ouvert : score refusé sans appeler Supabase (essai dans {})",
+                    e.retryAfter());
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, UNAVAILABLE);
+        }
+    }
+
+    /** Panne de Supabase (injoignable, timeout, 5xx), par opposition à un refus métier du score. */
+    static boolean isOutage(RuntimeException e) {
+        return e instanceof ApiException api && api.status() == HttpStatus.BAD_GATEWAY;
+    }
+
+    private Void post(String userId, String gameSlug, long score, JsonNode metadata) {
+        try {
             rest.post()
                     .uri("/rest/v1/scores")
                     .header("Prefer", "return=minimal")
                     .body(Map.of("user_id", userId, "game_slug", gameSlug, "score", score, "metadata", metadata))
                     .retrieve()
                     .toBodilessEntity();
+            return null;
         } catch (ResourceAccessException e) {
             log.error("Supabase injoignable pendant l'envoi d'un score", e);
             throw new ApiException(HttpStatus.BAD_GATEWAY, UNAVAILABLE);

@@ -92,9 +92,10 @@ accepté), sinon un compte est créé.
 | `POST /api/auth/password/reset`   | Nouveau mot de passe via le jeton du lien                      |
 | `POST /api/auth/password`         | Changement de mot de passe (connecté)                          |
 | `POST /api/auth/logout`           | Déconnexion                                                    |
+| `DELETE /api/auth/account`        | Suppression définitive du compte (RGPD) : profil, scores et sauvegardes suivent par cascade |
 | `POST /api/scores`                | Enregistre le score du joueur connecté (seul chemin d'écriture) |
 
-Les `POST` exigent l'en-tête `X-XSRF-TOKEN` (copie du cookie `XSRF-TOKEN`), ajouté par
+Les `POST` et `DELETE` exigent l'en-tête `X-XSRF-TOKEN` (copie du cookie `XSRF-TOKEN`), ajouté par
 `frontend/src/lib/api.ts`. Les erreurs sont renvoyées sous la forme `{ "error": "message" }`.
 
 ### Swagger (OpenAPI)
