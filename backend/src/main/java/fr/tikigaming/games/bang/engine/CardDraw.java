@@ -34,6 +34,11 @@ final class CardDraw {
                 discarded.clear();
             }
             drawn.add(pile.removeFirst());
+            if (pile.isEmpty() && !discarded.isEmpty()) {
+                shuffle.accept(discarded);
+                pile.addAll(discarded);
+                discarded.clear();
+            }
         }
         List<GameState.Player> players = state.players().stream()
                 .map(player -> {

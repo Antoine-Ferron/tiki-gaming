@@ -26,8 +26,9 @@ cartes continue de faire refuser la pioche de tour sans mutation.
   seulement si la cible reste vivante. Bart reçoit une carte existante par PV perdu ;
   une esquive, une absence de perte de PV, un autre personnage ou des dégâts mortels
   ne provoquent aucune pioche bonus. La carte n'est jamais ajoutée à la défausse par le bonus.
-- `CardDraw` prend d'abord les cartes restantes dans leur ordre. S'il lui manque une carte,
-  il mélange une copie de la défausse, la transfère dans la pioche, vide la défausse puis poursuit.
+- `CardDraw` reconstitue une pioche initialement vide, puis prend les cartes dans leur ordre.
+  Dès qu'une carte piochée vide la pioche, il mélange immédiatement la défausse disponible
+  pour la reconstituer, même après la dernière carte demandée. Une défausse vide n'est pas mélangée.
   Le mélange est contrôlable dans les tests ; la production utilise `Collections.shuffle`.
   Aucune carte ni aucun identifiant n'est créé, et l'état d'entrée demeure inchangé.
 - La pioche normale de deux cartes et le bonus utilisent le même mécanisme. Une pioche
@@ -147,3 +148,25 @@ Aucun push, aucune intégration vers la branche commune et aucune fermeture d'is
 | `9a817e1` | Swagger et documentation du pouvoir et du recyclage. |
 
 Le commit documentaire final ajoute ce bilan de validation, sans nouveau changement du moteur.
+
+## Correction du recyclage immédiat — revue de `76bbc60`
+
+Les [règles officielles, phase de pioche p. 3](https://bang.dvgiochi.com/content/1/docs/01_bang_rules_EN.pdf#page=3)
+imposent de reconstituer la pioche dès qu'elle se vide. Le contrôle après chaque retrait
+corrige le délai introduit par le seul contrôle avant la prochaine carte.
+
+| Preuve TDD outside-in | Résultat réellement observé |
+| --- | --- |
+| Régression HTTP/service : deux dernières cartes, ancienne défausse, puis tir sur Bart | Rouge avant correction : pioche vide au lieu de l'ancienne carte immédiatement recyclée. |
+| `CardDraw`, dernière carte d'une demande de une ou deux cartes | Deux échecs d'assertion avant correction ; huit autres cas déjà verts. Le double de mélange inverse la défausse pour vérifier son ordre exact. |
+| Correction et tests de tours, tirs et règles concernés | **138 réussis**, zéro échec, erreur ou test ignoré. |
+
+La régression HTTP prépare une seule ancienne carte en défausse. Elle vérifie la reconstitution
+avant le tir, puis la carte exacte dans la main privée de Bart : elle ne dépend jamais du hasard.
+Le BANG! joué plus tard ne rejoint la pioche qu'après le bonus dans ce scénario. La conservation
+des exemplaires et l'immutabilité de l'état initial sont vérifiées.
+
+Le test qui attendait l'absence de mélange à la dernière carte a été corrigé. Les attentes
+de piles après le dernier bonus de Bart ont été actualisées sans supprimer leurs assertions.
+Le contrôle de quantité insuffisante, la demande de zéro carte, la pioche initialement vide
+et la pioche traversant les deux piles restent couverts.

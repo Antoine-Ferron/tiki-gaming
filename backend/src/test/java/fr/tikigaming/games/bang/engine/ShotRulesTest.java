@@ -300,10 +300,12 @@ class ShotRulesTest {
         ShotOutcome accepted = rules.respond(before, 2, null);
         assertThat(accepted.state().phase()).isEqualTo(phase);
         assertThat(accepted.state().currentSeat()).isEqualTo(1);
-        assertThat(accepted.state().drawPile()).isEmpty();
-        assertThat(accepted.state().discardPile()).containsExactly(discarded);
+        assertThat(accepted.state().drawPile()).containsExactly(discarded);
+        assertThat(accepted.state().discardPile()).isEmpty();
         assertThat(seat(accepted.state(), 2).health()).isEqualTo(3);
         assertThat(seat(accepted.state(), 2).hand()).containsExactly(missed, draw);
         assertThat(accepted.discarded()).isEmpty();
+        assertThat(before.drawPile()).containsExactly(draw);
+        assertThat(before.discardPile()).containsExactly(discarded);
     }
 }

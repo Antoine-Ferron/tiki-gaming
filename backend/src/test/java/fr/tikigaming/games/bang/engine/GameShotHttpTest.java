@@ -655,10 +655,17 @@ class GameShotHttpTest {
                 .andExpect(jsonPath("$.pendingShot").doesNotExist());
         GameState after = tables.game(code);
         assertThat(after.players().get(1).hand()).containsExactly(card("missed-2", CardType.MISSED), bonus);
-        assertThat(after.drawPile())
-                .containsExactlyElementsOf(
-                        before.drawPile().subList(1, before.drawPile().size()));
-        assertThat(after.discardPile()).containsExactly(card("old", CardType.MISSED), card("bang-1", CardType.BANG));
+        if (remaining == 1) {
+            assertThat(after.drawPile())
+                    .containsExactlyInAnyOrder(card("old", CardType.MISSED), card("bang-1", CardType.BANG));
+            assertThat(after.discardPile()).isEmpty();
+        } else {
+            assertThat(after.drawPile())
+                    .containsExactlyElementsOf(
+                            before.drawPile().subList(1, before.drawPile().size()));
+            assertThat(after.discardPile())
+                    .containsExactly(card("old", CardType.MISSED), card("bang-1", CardType.BANG));
+        }
         assertThat(before.players().get(1).hand()).containsExactly(card("missed-2", CardType.MISSED));
         assertThat(before.drawPile()).hasSize(remaining);
         assertAllCardsPreserved(before, after);
@@ -875,6 +882,37 @@ class GameShotHttpTest {
         assertAllCardsPreserved(initial, after);
         command(code, "shots/" + shot + "/accept", 2).andExpect(status().isConflict());
         assertThat(tables.game(code)).isSameAs(after);
+    }
+
+    @Test
+    void exhaustingTheTurnDrawRecyclesBeforeALaterBangAndBartsBonus() throws Exception {
+        GameState prepared =
+                preparedGame(BangCharacter.CALAMITY_JANET, BangCharacter.BART_CASSIDY, GameState.Phase.DRAW);
+        CardInstance oldDiscard = card("old", CardType.MISSED);
+        List<CardInstance> lastCards = List.of(card("last-1", CardType.BANG), card("last-2", CardType.MISSED));
+        GameState initial = new GameState(prepared.players(), lastCards, List.of(oldDiscard), 1, GameState.Phase.DRAW);
+        String code = startedTable(initial);
+
+        command(code, "turn/draw", 1).andExpect(status().isNoContent());
+
+        GameState afterDraw = tables.game(code);
+        assertThat(afterDraw.drawPile()).containsExactly(oldDiscard);
+        assertThat(afterDraw.discardPile()).isEmpty();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        command(code, "shots/" + pendingId(code) + "/accept", 2).andExpect(status().isNoContent());
+
+        GameState after = tables.game(code);
+        view(code, 2)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.players[1].health").value(3))
+                .andExpect(jsonPath("$.hand[1].id").value(oldDiscard.id()))
+                .andExpect(jsonPath("$.pendingShot").doesNotExist());
+        assertThat(after.players().get(1).hand()).containsExactly(card("missed-2", CardType.MISSED), oldDiscard);
+        assertThat(after.drawPile()).containsExactly(card("bang-1", CardType.BANG));
+        assertThat(after.discardPile()).isEmpty();
+        assertThat(initial.drawPile()).containsExactlyElementsOf(lastCards);
+        assertThat(initial.discardPile()).containsExactly(oldDiscard);
+        assertAllCardsPreserved(initial, after);
     }
 
     private static void assertAllCardsPreserved(GameState before, GameState after) {

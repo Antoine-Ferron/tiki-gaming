@@ -15,6 +15,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class CardDrawTest {
     private final CardInstance held = new CardInstance("held", CardType.MISSED);
@@ -60,15 +61,37 @@ class CardDrawTest {
         assertThat(before.discardPile()).containsExactly(second, third);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2})
+    void drawingTheLastRequestedCardImmediatelyShufflesTheAvailableDiscard(int count) {
+        List<CardInstance> deck = List.of(first, second).subList(0, count);
+        List<CardInstance> discard = count == 1 ? List.of(second, third) : List.of(third);
+        GameState before = game(deck, discard);
+
+        GameState after = draw.draw(before, 2, count);
+
+        List<CardInstance> expectedHand = new ArrayList<>(List.of(held));
+        expectedHand.addAll(deck);
+        List<CardInstance> expectedPile = new ArrayList<>(discard);
+        Collections.reverse(expectedPile);
+        assertThat(after.players().get(1).hand()).containsExactlyElementsOf(expectedHand);
+        assertThat(after.drawPile()).containsExactlyElementsOf(expectedPile);
+        assertThat(after.discardPile()).isEmpty();
+        assertThat(shuffled).containsExactly(discard);
+        assertThat(before.drawPile()).containsExactlyElementsOf(deck);
+        assertThat(before.discardPile()).containsExactlyElementsOf(discard);
+        assertThat(before.players().get(1).hand()).containsExactly(held);
+    }
+
     @Test
-    void drawingTheLastAvailableCardDoesNotShuffleAnUnusedDiscard() {
-        GameState before = game(List.of(first), List.of(second, third));
+    void drawingTheOnlyCardWithAnEmptyDiscardDoesNotShuffle() {
+        GameState before = game(List.of(first), List.of());
 
         GameState after = draw.draw(before, 2, 1);
 
         assertThat(after.players().get(1).hand()).containsExactly(held, first);
         assertThat(after.drawPile()).isEmpty();
-        assertThat(after.discardPile()).containsExactly(second, third);
+        assertThat(after.discardPile()).isEmpty();
         assertThat(shuffled).isEmpty();
     }
 
