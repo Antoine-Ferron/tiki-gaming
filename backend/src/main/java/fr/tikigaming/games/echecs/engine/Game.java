@@ -15,6 +15,9 @@ public final class Game {
         if (moving.color() != position.turn()) {
             throw new IllegalArgumentException("Ce n'est pas le trait de cette pièce : " + from);
         }
+        if (!MoveGenerator.destinations(position, from).contains(to)) {
+            throw new IllegalArgumentException("Case inaccessible pour la pièce en " + from + " : " + to);
+        }
         pieces.put(to, moving);
         return new Position(
                 pieces,
