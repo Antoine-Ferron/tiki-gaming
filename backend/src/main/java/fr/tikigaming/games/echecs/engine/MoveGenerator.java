@@ -17,14 +17,15 @@ public final class MoveGenerator {
         {1, 2}, {2, 1}, {2, -1}, {1, -2}, {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}
     };
 
-    /** Le roi : 1 case dans les 8 directions. */
-    private static final int[][] KING_OFFSETS = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
-
     /** La tour : en ligne droite sur sa colonne et sa rangée. */
     private static final int[][] ROOK_DIRECTIONS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
     /** Le fou : en diagonale. */
     private static final int[][] BISHOP_DIRECTIONS = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+
+    /** Le roi et la dame : les 8 directions (lignes droites + diagonales). */
+    private static final int[][] ALL_DIRECTIONS = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}
+    };
 
     private MoveGenerator() {}
 
@@ -35,37 +36,13 @@ public final class MoveGenerator {
             return Set.of();
         }
         Piece piece = moving.get();
-        if (piece.type() == PieceType.ROOK) {
-            return slidingDestinations(position, from, piece.color(), ROOK_DIRECTIONS);
-        }
-        if (piece.type() == PieceType.BISHOP) {
-            return slidingDestinations(position, from, piece.color(), BISHOP_DIRECTIONS);
-        }
-        if (piece.type() == PieceType.QUEEN) {
-            Set<Square> destinations = slidingDestinations(position, from, piece.color(), ROOK_DIRECTIONS);
-            destinations.addAll(slidingDestinations(position, from, piece.color(), BISHOP_DIRECTIONS));
-            return destinations;
-        }
-        int[][] offsets = piece.type() == PieceType.KING ? KING_OFFSETS : KNIGHT_OFFSETS;
-        return jumpDestinations(position, from, piece.color(), offsets);
-    }
-
-    /** Pièces « glissantes » : avancent case après case dans chaque direction, jusqu'au bord. */
-    private static Set<Square> slidingDestinations(Position position, Square from, Color color, int[][] directions) {
-        Set<Square> destinations = new HashSet<>();
-        for (int[] direction : directions) {
-            int file = from.file() + direction[0];
-            int rank = from.rank() + direction[1];
-            while (isOnBoard(file, rank) && !isOccupiedBy(position, new Square(file, rank), color)) {
-                destinations.add(new Square(file, rank));
-                if (position.pieceAt(new Square(file, rank)).isPresent()) {
-                    break; // pièce adverse : prise possible, mais on ne va pas plus loin
-                }
-                file += direction[0];
-                rank += direction[1];
-            }
-        }
-        return destinations;
+        return switch (piece.type()) {
+            case KING -> jumpDestinations(position, from, piece.color(), ALL_DIRECTIONS);
+            case ROOK -> slidingDestinations(position, from, piece.color(), ROOK_DIRECTIONS);
+            case BISHOP -> slidingDestinations(position, from, piece.color(), BISHOP_DIRECTIONS);
+            case QUEEN -> slidingDestinations(position, from, piece.color(), ALL_DIRECTIONS);
+            default -> jumpDestinations(position, from, piece.color(), KNIGHT_OFFSETS);
+        };
     }
 
     /** Pièces « à sauts » (cavalier, roi) : chaque décalage donne au plus une case. */
@@ -76,6 +53,28 @@ public final class MoveGenerator {
             int rank = from.rank() + offset[1];
             if (isOnBoard(file, rank) && !isOccupiedBy(position, new Square(file, rank), color)) {
                 destinations.add(new Square(file, rank));
+            }
+        }
+        return destinations;
+    }
+
+    /**
+     * Pièces « glissantes » (tour, fou, dame) : avancent case après case dans chaque direction ; s'arrêtent avant une
+     * pièce de leur camp, ou sur une pièce adverse (prise).
+     */
+    private static Set<Square> slidingDestinations(Position position, Square from, Color color, int[][] directions) {
+        Set<Square> destinations = new HashSet<>();
+        for (int[] direction : directions) {
+            int file = from.file() + direction[0];
+            int rank = from.rank() + direction[1];
+            while (isOnBoard(file, rank) && !isOccupiedBy(position, new Square(file, rank), color)) {
+                Square to = new Square(file, rank);
+                destinations.add(to);
+                if (position.pieceAt(to).isPresent()) {
+                    break; // pièce adverse : prise possible, mais on ne va pas plus loin
+                }
+                file += direction[0];
+                rank += direction[1];
             }
         }
         return destinations;
