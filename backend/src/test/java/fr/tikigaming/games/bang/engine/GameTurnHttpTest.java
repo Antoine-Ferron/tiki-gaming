@@ -348,6 +348,42 @@ class GameTurnHttpTest {
     }
 
     @Test
+    void discardingAtTheHealthLimitIsRefusedAndTheTurnCanStillEnd() throws Exception {
+        String code = startedTable();
+        postAs(TABLES + "/" + code + "/turn/draw", sessionFor(1)).andExpect(status().isNoContent());
+        postAs(TABLES + "/" + code + "/turn/end", sessionFor(1)).andExpect(status().isNoContent());
+        postAs(TABLES + "/" + code + "/turn/discard/test-card-2", sessionFor(1)).andExpect(status().isNoContent());
+        postAs(TABLES + "/" + code + "/turn/discard/test-card-17", sessionFor(1))
+                .andExpect(status().isNoContent());
+        GameState before = tables.game(code);
+        assertThat(before.players().getFirst().health()).isEqualTo(5);
+        assertThat(before.players().getFirst().hand()).hasSize(5);
+        assertThat(before.currentSeat()).isEqualTo(1);
+        assertThat(before.phase()).isEqualTo(GameState.Phase.DISCARD);
+        String view = mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor(1)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        postAs(TABLES + "/" + code + "/turn/discard/test-card-1", sessionFor(1))
+                .andExpect(status().isConflict())
+                .andExpect(content()
+                        .json(
+                                "{\"error\":\"Ta main respecte déjà la limite de tes PV actuels.\"}",
+                                JsonCompareMode.STRICT));
+
+        assertThat(tables.game(code)).isSameAs(before);
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor(1)))
+                .andExpect(status().isOk())
+                .andExpect(content().string(view));
+        assertCardPartition(tables.game(code));
+        postAs(TABLES + "/" + code + "/turn/end", sessionFor(1)).andExpect(status().isNoContent());
+        assertThat(tables.game(code).currentSeat()).isEqualTo(2);
+        assertThat(tables.game(code).phase()).isEqualTo(GameState.Phase.DRAW);
+    }
+
+    @Test
     void simultaneousDrawsRefreshesNewSessionsAndRepeatedStartsKeepOneDraw() throws Exception {
         String code = startedTable();
         var outcomes = simultaneously(

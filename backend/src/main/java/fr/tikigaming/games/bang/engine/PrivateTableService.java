@@ -204,6 +204,9 @@ public class PrivateTableService {
             throw new PrivateTableException(HttpStatus.CONFLICT, "Ce n'est pas la phase de défausse.");
         }
         GameState.Player active = game.players().get(game.currentSeat() - 1);
+        if (active.hand().size() <= active.health()) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Ta main respecte déjà la limite de tes PV actuels.");
+        }
         CardInstance card = active.hand().stream()
                 .filter(candidate -> candidate.id().equals(cardId))
                 .findFirst()
