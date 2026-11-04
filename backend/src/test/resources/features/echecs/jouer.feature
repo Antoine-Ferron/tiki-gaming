@@ -1,7 +1,7 @@
 # language: fr
-# Écrit AVANT le service (double boucle BDD → TDD) : rouge tant que EchecsService n'existe pas.
-# @en-cours : exclu de mvn verify pendant la boucle interne TDD ; le tag est retiré quand le service est prêt.
-@echecs @jouer @en-cours
+# Écrit AVANT le service (double boucle BDD → TDD) : rouge tant que EchecsService n'existait pas, marqué @en-cours
+# pendant la boucle interne TDD, puis tag retiré une fois le service prêt (voir docs/etapes/22).
+@echecs @jouer
 Fonctionnalité: Jouer un coup
   En tant que joueur d'échecs
   Je veux jouer un coup et obtenir la position qui en résulte
