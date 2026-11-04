@@ -9,28 +9,39 @@ public final class Game {
 
     private Game() {}
 
-    /** Joue le coup {@code from} → {@code to}. */
+    /**
+     * Joue le coup {@code from} → {@code to}. Refuse ({@link IllegalArgumentException}) un coup depuis une case vide,
+     * avec une pièce qui n'a pas le trait, ou vers une case qu'elle ne peut pas atteindre. Pas encore géré : échec au
+     * roi, roque, prise en passant, promotion (phases 3 et 4).
+     */
     public static Position play(Position position, Square from, Square to) {
+        Piece moving = checkedMovingPiece(position, from, to);
         Map<Square, Piece> pieces = new HashMap<>(position.pieces());
-        Piece moving = pieces.remove(from);
-        if (moving == null) {
-            throw new IllegalArgumentException("Aucune pièce à jouer : la case " + from + " est vide");
-        }
+        pieces.remove(from);
+        Piece captured = pieces.put(to, moving);
+        boolean resetsClock = moving.type() == PieceType.PAWN || captured != null;
+        boolean blackMoved = position.turn() == Color.BLACK;
+        return new Position(
+                pieces,
+                blackMoved ? Color.WHITE : Color.BLACK,
+                updatedCastling(position.castling(), from, to),
+                enPassantTarget(moving, from, to),
+                resetsClock ? 0 : position.halfmoveClock() + 1,
+                blackMoved ? position.fullmoveNumber() + 1 : position.fullmoveNumber());
+    }
+
+    /** La pièce jouée, après avoir vérifié que le coup est permis. */
+    private static Piece checkedMovingPiece(Position position, Square from, Square to) {
+        Piece moving = position.pieceAt(from)
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Aucune pièce à jouer : la case " + from + " est vide"));
         if (moving.color() != position.turn()) {
             throw new IllegalArgumentException("Ce n'est pas le trait de cette pièce : " + from);
         }
         if (!MoveGenerator.destinations(position, from).contains(to)) {
             throw new IllegalArgumentException("Case inaccessible pour la pièce en " + from + " : " + to);
         }
-        Piece captured = pieces.put(to, moving);
-        boolean resetsClock = moving.type() == PieceType.PAWN || captured != null;
-        return new Position(
-                pieces,
-                position.turn() == Color.WHITE ? Color.BLACK : Color.WHITE,
-                updatedCastling(position.castling(), from, to),
-                enPassantTarget(moving, from, to),
-                resetsClock ? 0 : position.halfmoveClock() + 1,
-                position.turn() == Color.BLACK ? position.fullmoveNumber() + 1 : position.fullmoveNumber());
+        return moving;
     }
 
     /** Après un double pas de pion, la case sautée devient la case de prise en passant ; sinon il n'y en a pas. */
