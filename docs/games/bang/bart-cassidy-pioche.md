@@ -55,3 +55,11 @@ Le raccordement de la pioche de tour est conduit par deux rouges HTTP (`204` att
 `409` reçu avec zéro ou une carte en pioche et une défausse suffisante). Le service utilise
 ensuite la même instance de `CardDraw` pour ses deux usages. **152 tests ciblés passent**,
 dont les trois cas de total insuffisant `(0,0)`, `(0,1)` et `(1,0)`, sans prélèvement partiel.
+
+Les garanties complémentaires passent sans nouvelle modification du moteur : **163 tests ciblés**,
+dont les réponses concurrentes accepter/accepter et accepter/esquiver, avec ou sans recyclage,
+les identifiants anciens de Willy, les doublons après résolution, les nouvelles sessions et les
+quatre vues privées. Chaque variante vérifie la partition des cartes entre mains et piles.
+Le bonus ne consomme pas la pioche normale de Bart et ne réinitialise pas le compteur de tirs.
+Un parcours avec le vrai catalogue et la vraie distribution conserve exactement les 37 cartes.
+Ces comportements déjà assurés par le verrou et le tir identifié ne donnent pas lieu à un rouge artificiel.

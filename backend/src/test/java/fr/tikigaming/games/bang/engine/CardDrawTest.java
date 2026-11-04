@@ -86,6 +86,30 @@ class CardDrawTest {
         assertThat(shuffled).isEmpty();
     }
 
+    @Test
+    void twoCardsFromAnInitiallyEmptyPilePreserveEveryExistingInstance() {
+        GameState before = game(List.of(), List.of(first, second, third));
+
+        GameState after = draw.draw(before, 2, 2);
+
+        assertThat(after.players().get(1).hand()).containsExactly(held, third, second);
+        assertThat(after.drawPile()).containsExactly(first);
+        assertThat(after.discardPile()).isEmpty();
+        List<CardInstance> all = new ArrayList<>(after.players().get(1).hand());
+        all.addAll(after.drawPile());
+        assertThat(all).containsExactlyInAnyOrder(held, first, second, third);
+        assertThat(all).extracting(CardInstance::id).doesNotHaveDuplicates();
+        assertThat(shuffled).containsExactly(List.of(first, second, third));
+    }
+
+    @Test
+    void zeroCardsLeaveTheOriginalStateAndShuffleUntouched() {
+        GameState before = game(List.of(), List.of(first, second));
+
+        assertThat(draw.draw(before, 2, 0)).isSameAs(before);
+        assertThat(shuffled).isEmpty();
+    }
+
     private GameState game(List<CardInstance> deck, List<CardInstance> discard) {
         return new GameState(
                 List.of(
