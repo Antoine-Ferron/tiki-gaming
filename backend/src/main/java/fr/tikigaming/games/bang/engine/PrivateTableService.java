@@ -1,7 +1,9 @@
 package fr.tikigaming.games.bang.engine;
 
+import fr.tikigaming.games.bang.cards.Role;
 import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.GameState;
+import fr.tikigaming.games.bang.model.PlayerGameView;
 import fr.tikigaming.games.bang.model.TableSeat;
 import java.time.Clock;
 import java.time.Duration;
@@ -95,6 +97,43 @@ public class PrivateTableService {
         if (table.game == null) table.game = initialDeal.deal(List.copyOf(players));
         table.lastActivity = clock.instant();
         return new GameStarted(code, table.game.currentSeat());
+    }
+
+    public synchronized PlayerGameView state(String code, String accountId) {
+        purgeInactive();
+        code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
+        Table table = tables.get(code);
+        if (table == null) throw new PrivateTableException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
+        if (!table.players.contains(accountId)) {
+            throw new PrivateTableException(
+                    HttpStatus.FORBIDDEN, "Tu dois être assis à cette table pour consulter la partie.");
+        }
+        if (table.game == null) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "La partie n'a pas encore démarré.");
+        }
+        GameState game = table.game;
+        GameState.Player own = game.players().stream()
+                .filter(player -> player.accountId().equals(accountId))
+                .findFirst()
+                .orElseThrow();
+        return new PlayerGameView(
+                code,
+                own.seat(),
+                game.currentSeat(),
+                own.roleCard().role(),
+                own.hand().stream()
+                        .map(card -> new PlayerGameView.Card(card.id(), card.type()))
+                        .toList(),
+                game.players().stream()
+                        .map(player -> new PlayerGameView.Player(
+                                player.seat(),
+                                player.character(),
+                                player.health(),
+                                player.maxHealth(),
+                                List.of(),
+                                player.hand().size(),
+                                player.roleCard().role() == Role.SHERIFF ? Role.SHERIFF : null))
+                        .toList());
     }
 
     synchronized GameState game(String code) {

@@ -6,6 +6,7 @@ import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.config.ApiExceptionHandler.ApiError;
 import fr.tikigaming.games.bang.engine.PrivateTableService;
 import fr.tikigaming.games.bang.model.GameStarted;
+import fr.tikigaming.games.bang.model.PlayerGameView;
 import fr.tikigaming.games.bang.model.TableSeat;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -124,6 +126,34 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     GameStarted start(@PathVariable String code, HttpServletRequest request) {
         return tables.start(code, connectedAccountId(request));
+    }
+
+    @GetMapping("/{code}/state")
+    @Operation(
+            summary = "Consulter sa vue de la partie",
+            description = "La main et le rôle sont ceux du compte en session. Les rôles secrets des autres joueurs, "
+                    + "leurs cartes en main et la pioche ne sont jamais transmis. "
+                    + "La casse et les espaces autour du code sont ignorés. "
+                    + "Consulter la partie ne renouvelle pas le délai d'expiration de la table.")
+    @ApiResponse(responseCode = "200", description = "Vue privée du joueur connecté et informations publiques")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Code de table inconnu ou expiré",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Compte non assis à cette table",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Partie non démarrée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    PlayerGameView state(@PathVariable String code, HttpServletRequest request) {
+        return tables.state(code, connectedAccountId(request));
     }
 
     private static String connectedAccountId(HttpServletRequest request) {

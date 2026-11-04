@@ -29,6 +29,43 @@ class GameStartServiceTest {
     private final PrivateTableService tables = new PrivateTableService(deal);
 
     @Test
+    void readingAnUnknownTableIsRefused() {
+        assertThatThrownBy(() -> tables.state("UNKNOWN", "player"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.NOT_FOUND));
+        verifyNoInteractions(deal);
+    }
+
+    @Test
+    void anOutsiderCannotReadBeforeOrAfterTheDeal() {
+        String code = tableWith(4);
+        assertThatThrownBy(() -> tables.state(code, "outsider"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN));
+        verifyNoInteractions(deal);
+
+        when(deal.deal(anyList())).thenReturn(new GameState(List.of(), List.of(), 1));
+        tables.start(code, "player-1");
+        assertThatThrownBy(() -> tables.state(code, "outsider"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    void aMemberCannotReadAnUndealtGame() {
+        String code = tableWith(4);
+
+        assertThatThrownBy(() -> tables.state(code, "player-2"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT));
+        verifyNoInteractions(deal);
+    }
+
+    @Test
     void startingRequestsADealForTheAccountsInSeatOrder() {
         String code = tableWith(4);
         GameState game = new GameState(List.of(), List.of(), 3);
