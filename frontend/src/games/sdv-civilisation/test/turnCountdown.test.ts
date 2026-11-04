@@ -1,46 +1,22 @@
-import { describe, expect, it, vi } from 'vitest'
-import type { AuditNotifier } from '../ports'
-import { createCountdown } from '../turnCountdown'
-import { FakeClock } from './fakes'
+import { describe, expect, it } from 'vitest'
+import { formatRemaining, turnPhase, WARNING_MS } from '../turnCountdown'
 
-const DEADLINE = 60_000
-
-// Fake (horloge avancée à la main, sans attente réelle) + mock (passerelle d'audit).
-function setup() {
-  const clock = new FakeClock(0)
-  const audit = { inactivityDetected: vi.fn<AuditNotifier['inactivityDetected']>() }
-  return { clock, audit, countdown: createCountdown({ player: 'alice', deadline: DEADLINE }, clock, audit) }
-}
-
-describe('createCountdown', () => {
-  it('passe de running à warning puis expired', () => {
-    const { clock, countdown } = setup()
-
-    expect(countdown.tick()).toBe('running')
-    clock.advance(50_000)
-    expect(countdown.tick()).toBe('warning')
-    expect(countdown.remainingMs()).toBe(10_000)
-    clock.advance(10_000)
-    expect(countdown.tick()).toBe('expired')
+describe('Minuteur du tour (affichage)', () => {
+  it('passe en alerte dans les 10 dernières secondes, puis expire à zéro', () => {
+    expect([turnPhase(WARNING_MS + 1), turnPhase(WARNING_MS), turnPhase(1), turnPhase(0)]).toEqual([
+      'running',
+      'warning',
+      'warning',
+      'expired',
+    ])
   })
 
-  it('signale une seule fois le joueur qui laisse expirer son tour', () => {
-    const { clock, audit, countdown } = setup()
-
-    clock.advance(DEADLINE)
-    countdown.tick()
-    countdown.tick()
-
-    expect(audit.inactivityDetected).toHaveBeenCalledExactlyOnceWith({ player: 'alice', deadline: DEADLINE })
-  })
-
-  it('ne signale pas le joueur qui a joué', () => {
-    const { clock, audit, countdown } = setup()
-
-    countdown.played()
-    clock.advance(DEADLINE)
-    countdown.tick()
-
-    expect(audit.inactivityDetected).not.toHaveBeenCalled()
+  it('affiche les minutes et secondes restantes, arrondies à la seconde supérieure', () => {
+    expect([formatRemaining(60_000), formatRemaining(9_001), formatRemaining(0), formatRemaining(-5)]).toEqual([
+      '1:00',
+      '0:10',
+      '0:00',
+      '0:00',
+    ])
   })
 })

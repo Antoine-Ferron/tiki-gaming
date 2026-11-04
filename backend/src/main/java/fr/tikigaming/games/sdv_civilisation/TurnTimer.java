@@ -9,9 +9,9 @@ public final class TurnTimer {
     private final Clock clock;
     private final long deadline;
 
-    private TurnTimer(Clock clock, long duration) {
+    private TurnTimer(Clock clock, long deadline) {
         this.clock = clock;
-        this.deadline = clock.now() + duration;
+        this.deadline = deadline;
     }
 
     public static TurnTimer start(Clock clock) {
@@ -19,7 +19,12 @@ public final class TurnTimer {
     }
 
     public static TurnTimer start(Clock clock, long duration) {
-        return new TurnTimer(clock, duration);
+        return new TurnTimer(clock, clock.now() + duration);
+    }
+
+    /** Reprend le minuteur d'un tour déjà commencé, à partir de son heure limite officielle (partie rechargée). */
+    public static TurnTimer resume(Clock clock, long deadline) {
+        return new TurnTimer(clock, deadline);
     }
 
     /** Heure limite officielle du tour, envoyée aux joueurs pour leur compte à rebours. */
