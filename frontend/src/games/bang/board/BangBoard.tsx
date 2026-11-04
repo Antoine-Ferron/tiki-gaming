@@ -13,6 +13,7 @@ export function BangBoard({
   onDiscard,
   onDraw,
   onEnd,
+  onDodge,
 }: {
   view: GameView
   /** Appelé avec la carte choisie et la place visée. */
@@ -23,6 +24,7 @@ export function BangBoard({
   onDraw?: () => void
   /** Appelé quand je finis mon tour, depuis ma main. */
   onEnd?: () => void
+  onDodge?: (cardId: string) => void
 }) {
   const [selected, setSelected] = useState<string | null>(null)
   const count = view.hand.length
@@ -31,6 +33,7 @@ export function BangBoard({
   const drawing = onDraw !== undefined && myTurn && view.phase === 'DRAW'
   const ending = onEnd !== undefined && myTurn && view.phase !== 'DRAW'
   const discarding = onDiscard !== undefined && myTurn && view.phase === 'DISCARD'
+  const dodging = onDodge !== undefined && view.pendingShot?.targetSeat === view.seat
 
   return (
     <div className="bang bang-board">
@@ -84,6 +87,15 @@ export function BangBoard({
         <ul>
           {view.hand.map((card) => {
             const label = cardLabel(card.type)
+            if (dodging && card.type === 'MISSED') {
+              return (
+                <li key={card.id}>
+                  <button type="button" onClick={() => onDodge(card.id)}>
+                    Esquiver avec {label}
+                  </button>
+                </li>
+              )
+            }
             if (discarding) {
               return (
                 <li key={card.id}>

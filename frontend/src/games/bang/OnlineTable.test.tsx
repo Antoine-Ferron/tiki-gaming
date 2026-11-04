@@ -3,11 +3,49 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, expect, test, vi } from 'vitest'
 import { OnlineTable } from './OnlineTable'
 import { fourPlayerView } from './features/vue-fixture'
+import type { GameView } from './board/view'
 
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   document.cookie = 'XSRF-TOKEN=; Max-Age=0; Path=/'
+})
+
+test('seule la cible esquive avec sa carte et l’identifiant courant, puis relit les quatre tapis', async () => {
+  let view: GameView = {
+    ...fourPlayerView(),
+    currentSeat: 4,
+    pendingShot: { id: 'tir/courant', shooterSeat: 4, targetSeat: 1 },
+  }
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/state')) return Response.json(view)
+    if (url.endsWith('/shots/tir%2Fcourant/dodge/MISSED-1')) {
+      view = {
+        ...view,
+        pendingShot: undefined,
+        hand: view.hand.filter((card) => card.id !== 'MISSED-1'),
+        players: view.players.map((p) => (p.seat === 1 ? { ...p, handCount: 2 } : p)),
+      }
+      return new Response(null, { status: 204 })
+    }
+    return Response.json({ code: view.code, seat: 1, playerCount: 4 })
+  })
+  vi.stubGlobal('fetch', fetch)
+  render(<OnlineTable />)
+  fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Esquiver avec Raté !' }))
+
+  await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Au tour de la place 4.'))
+  expect(fetch).toHaveBeenCalledWith(
+    '/api/games/bang/tables/ABC123/shots/tir%2Fcourant/dodge/MISSED-1',
+    expect.objectContaining({ method: 'POST' }),
+  )
+  for (const player of view.players) {
+    const mat = within(screen.getByRole('region', { name: `Tapis de la place ${player.seat}` }))
+    expect(mat.getByText(`${player.health}/${player.maxHealth} PV`)).toBeTruthy()
+    expect(mat.getByText(`${player.handCount} en main`)).toBeTruthy()
+  }
+  expect(within(screen.getByRole('region', { name: 'Ta main' })).queryByText('Raté !')).toBeNull()
 })
 
 test('depuis la partie en ligne, choisir un BANG ! et viser envoie le vrai POST avec le CSRF', async () => {

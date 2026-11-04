@@ -9,12 +9,14 @@ export function GameScreen({
   onEnd,
   onDiscard,
   onShoot,
+  onDodge,
 }: {
   view: GameView
   onDraw: () => void
   onEnd: () => void
   onDiscard: (cardId: string) => void
   onShoot?: (cardId: string, targetSeat: number) => void
+  onDodge?: (cardId: string) => void
 }) {
   // Le prototype local ne dispose pas encore des règles de tir du serveur.
   const [shotNotice, setShotNotice] = useState(false)
@@ -35,6 +37,7 @@ export function GameScreen({
         onDiscard={onDiscard}
         onDraw={onDraw}
         onEnd={onEnd}
+        onDodge={onDodge}
       />
     </>
   )
