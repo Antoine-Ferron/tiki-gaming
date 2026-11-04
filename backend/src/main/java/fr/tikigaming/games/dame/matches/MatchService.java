@@ -2,6 +2,8 @@ package fr.tikigaming.games.dame.matches;
 
 import fr.tikigaming.games.dame.Game;
 import java.time.Clock;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -13,22 +15,28 @@ public final class MatchService {
     private final Supplier<UUID> ids;
 
     public MatchService(MatchRepository repository, Clock clock, Supplier<UUID> ids) {
-        this.repository = repository;
-        this.clock = clock;
-        this.ids = ids;
+        this.repository = Objects.requireNonNull(repository);
+        this.clock = Objects.requireNonNull(clock);
+        this.ids = Objects.requireNonNull(ids);
     }
 
-    /** Squelette TDD : création après les tests RED. */
     public Match start(String whiteName, String blackName) {
-        return null;
+        Match match = Match.start(ids.get(), whiteName, blackName, clock.instant());
+        repository.save(match);
+        return match;
     }
 
     public Match find(UUID id) {
-        return null;
+        return repository
+                .findById(Objects.requireNonNull(id, "L'identifiant de rencontre est requis."))
+                .orElseThrow(() -> new NoSuchElementException("Rencontre introuvable."));
     }
 
     /** Le jeu doit être celui de la rencontre, détenu par le serveur ; aucun gagnant fourni par le client. */
     public Match finish(UUID id, Game game) {
-        return null;
+        Objects.requireNonNull(game, "La partie est requise.");
+        Match finished = find(id).finish(game.status(), clock.instant());
+        repository.save(finished);
+        return finished;
     }
 }

@@ -88,3 +88,15 @@ Le formatage et Checkstyle passent. La première exécution restreinte n'a pas p
 initialiser l'agent Mockito ; la commande a été relancée avec les droits JVM
 nécessaires. Le décompte ci-dessus vient de cette exécution complète, sans erreur
 d'infrastructure.
+
+### GREEN exécuté
+
+Les mêmes **59 cas passent**, sans modification des attentes. Le modèle valide
+les noms et les dates, calcule le camp gagnant et produit un nouvel instantané
+lors de la clôture. Le service lit le résultat du moteur, sauvegarde uniquement
+une opération valide et laisse remonter les pannes du dépôt.
+
+`mvn clean verify` : **984 tests réussis, 0 échec, 0 erreur, 0 ignoré**, dont
+224 tests du moteur Dames et 59 des rencontres. Checkstyle, Spotless et les seuils
+JaCoCo sont validés. Le package `games.dame.matches` couvre **44/44 lignes et
+21/21 branches**. Ces mesures ne remplacent pas le futur test de la base réelle.
