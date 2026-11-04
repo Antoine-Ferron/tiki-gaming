@@ -38,9 +38,9 @@ class MastermindApiIntegrationTest {
     void createsAndLoadsGameWithoutExposingSecret() throws Exception {
         JsonNode created = read(postJson("/api/games/mastermind", ""));
 
-        mvc.perform(get("/api/games/mastermind/{id}", created.get("id").asText()))
+        mvc.perform(get("/api/games/mastermind/{id}", created.get("id").textValue()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(created.get("id").asText()))
+                .andExpect(jsonPath("$.id").value(created.get("id").textValue()))
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.attemptsUsed").value(0))
                 .andExpect(jsonPath("$.attemptsRemaining").value(10))
@@ -50,19 +50,15 @@ class MastermindApiIntegrationTest {
     @Test
     void validatesGuessThroughControllerServiceAndGame() throws Exception {
         JsonNode created = read(postJson("/api/games/mastermind", ""));
-        String id = created.get("id").asText();
+        String id = created.get("id").textValue();
 
-        mvc.perform(postJson(
-                        "/api/games/mastermind/{id}/guesses".replace("{id}", id),
-                        """
+        mvc.perform(postJson("/api/games/mastermind/{id}/guesses".replace("{id}", id), """
                         {"colors":["red","blue","green"]}
                         """))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("exactement 4")));
 
-        mvc.perform(postJson(
-                        "/api/games/mastermind/{id}/guesses".replace("{id}", id),
-                        """
+        mvc.perform(postJson("/api/games/mastermind/{id}/guesses".replace("{id}", id), """
                         {"colors":["red","red","red","red"]}
                         """))
                 .andExpect(status().isOk())
@@ -75,7 +71,7 @@ class MastermindApiIntegrationTest {
     @Test
     void restartsGameAndReturnsNotFoundForUnknownGame() throws Exception {
         JsonNode created = read(postJson("/api/games/mastermind", ""));
-        String id = created.get("id").asText();
+        String id = created.get("id").textValue();
 
         mvc.perform(postJson("/api/games/mastermind/" + id + "/restart", ""))
                 .andExpect(status().isOk())
