@@ -34,3 +34,25 @@ test('depuis la partie en ligne, choisir un BANG ! et viser envoie le vrai POST 
     }),
   )
 })
+
+test('le tireur attend la réponse du tir serveur et ne peut plus jouer ni finir son tour', async () => {
+  const view = {
+    ...fourPlayerView(),
+    currentSeat: 1,
+    pendingShot: { id: 'tir-courant', shooterSeat: 1, targetSeat: 2 },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(url.endsWith('/state') ? view : { code: view.code, seat: 1, playerCount: 4 }),
+    ),
+  )
+  render(<OnlineTable />)
+  fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  await screen.findByRole('region', { name: 'Ta main' })
+
+  expect(screen.getByRole('status').textContent).toBe('Tir de la place 1 vers la place 2 : en attente de sa réponse.')
+  expect(screen.queryByRole('button', { name: 'Finir le tour' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'BANG !' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Accepter le tir' })).toBeNull()
+})
