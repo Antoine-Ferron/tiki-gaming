@@ -7,6 +7,7 @@ import static fr.tikigaming.games.sdv_civilisation.Tables.age;
 import static fr.tikigaming.games.sdv_civilisation.Tables.built;
 import static fr.tikigaming.games.sdv_civilisation.Tables.hand;
 import static fr.tikigaming.games.sdv_civilisation.Tables.player;
+import static fr.tikigaming.games.sdv_civilisation.Tables.stages;
 import static fr.tikigaming.games.sdv_civilisation.Tables.start;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -111,5 +112,21 @@ class AgeEndTest {
         // Alors aucun duel n'a lieu
         assertThat(next.conflicts()).isEmpty();
         assertThat(next.turn()).isEqualTo(6);
+    }
+
+    @Test
+    void theShieldsOfAWonderStageAddToThoseOfTheBuildings() {
+        // Étant donné "alice" (Temple d’Ysar) avec la "Palissade" (1 bouclier) et 2 étapes bâties (l'étape 2 : 2
+        // boucliers)
+        GameState game = player(player(start("Temple d’Ysar"), ALICE, built("Palissade")), ALICE, stages(2));
+        // Et "IA 1" qui a construit les "Écuries" (2 boucliers)
+        GameState armed = player(game, IA_1, built("Écuries"));
+
+        // Quand l'âge I se termine
+        GameState next = lastTurnOf(1, armed);
+
+        // Alors alice a 1 + 2 = 3 boucliers, et gagne ses deux duels
+        assertThat(next.player(ALICE).shields()).isEqualTo(3);
+        assertThat(next.player(ALICE).tokens()).extracting(MilitaryToken::value).containsExactly(1, 1);
     }
 }
