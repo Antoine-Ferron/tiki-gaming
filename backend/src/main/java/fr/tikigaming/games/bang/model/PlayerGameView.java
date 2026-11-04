@@ -12,6 +12,8 @@ public record PlayerGameView(
         String code,
         int seat,
         int currentSeat,
+
+        @Schema(description = "Phase du joueur actif : DRAW (piocher), PLAY (jouer) ou DISCARD (se défausser)")
         GameState.Phase phase,
 
         @Schema(description = "Rôle privé du compte connecté")

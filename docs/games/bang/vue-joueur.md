@@ -11,6 +11,7 @@ La réponse `200` est un objet JSON :
 | `code` | Code de la table. |
 | `seat` | Place du compte connecté, de 1 à 4. |
 | `currentSeat` | Place du joueur actif. Au démarrage, c'est celle du Shérif. |
+| `phase` | Phase conservée par le serveur : `DRAW` (piocher), `PLAY` (jouer) ou `DISCARD` (se défausser). Au démarrage : `DRAW`. |
 | `role` | Rôle privé du compte connecté : `SHERIFF`, `OUTLAW` ou `RENEGADE`. |
 | `hand` | Sa main : tableau d'objets `{ "id": "…", "type": "BANG" }`, le type pouvant aussi être `MISSED`. |
 | `players` | Joueurs dans l'ordre des places. |
@@ -33,5 +34,7 @@ le tour.
 | `409` | Le compte est assis, mais la partie n'a pas encore démarré. |
 
 Les erreurs utilisent le format commun `{ "error": "message" }`. Une table expire une heure après
-sa création, une jonction acceptée ou un démarrage accepté. Consulter une vue ne renouvelle pas ce
-délai.
+sa création, une jonction acceptée, un démarrage accepté ou une action de tour acceptée. Consulter
+une vue ou envoyer une action refusée ne renouvelle pas ce délai.
+
+Les commandes et transitions sont décrites dans [Déroulement des tours](deroulement-tours.md).

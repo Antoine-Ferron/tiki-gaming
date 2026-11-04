@@ -20,8 +20,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
- * Tables privées en mémoire. Sans création, jonction ou démarrage accepté pendant {@link #INACTIVITY_TIMEOUT}, la
- * table et sa donne sont retirées : sa place se libère, et son créateur peut ouvrir une nouvelle table.
+ * Tables privées en mémoire. Sans création, jonction, démarrage ou action de tour accepté pendant
+ * {@link #INACTIVITY_TIMEOUT}, la table et sa partie sont retirées : sa place se libère, et son créateur peut ouvrir
+ * une nouvelle table. Les lectures et les refus ne renouvellent pas ce délai.
  */
 @Service
 public class PrivateTableService {

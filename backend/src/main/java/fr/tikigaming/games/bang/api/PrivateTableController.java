@@ -42,8 +42,8 @@ public class PrivateTableController {
             summary = "Créer une table privée",
             description = "Le compte connecté occupe la première place. "
                     + "Chaque compte a au plus une table ouverte, dans une limite globale de 1 000 tables. "
-                    + "La table et sa donne expirent après 1 h sans création, jonction acceptée ou démarrage accepté. "
-                    + "Un démarrage refusé ne renouvelle pas ce délai.")
+                    + "La table et sa partie expirent après 1 h sans création, jonction, démarrage ou action de tour accepté. "
+                    + "Les lectures et les actions refusées ne renouvellent pas ce délai.")
     @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
     @ApiResponse(
             responseCode = "409",
@@ -102,7 +102,8 @@ public class PrivateTableController {
     @Operation(
             summary = "Démarrer une partie à quatre",
             description = "Tout compte connecté et assis à cette table peut la démarrer. Le Shérif joue en premier. "
-                    + "Les demandes suivantes conservent la donne, même simultanées. "
+                    + "La distribution initiale n'inclut pas la pioche de début de tour. "
+                    + "Les demandes suivantes conservent la donne et la phase, même simultanées. "
                     + "La réponse contient uniquement le code de table et la place du joueur actif.")
     @ApiResponse(responseCode = "200", description = "Partie démarrée ou déjà en cours")
     @ApiResponse(
@@ -160,7 +161,9 @@ public class PrivateTableController {
     @Operation(
             summary = "Piocher les deux cartes du début de son tour",
             description = "Seul le joueur actif peut piocher, une fois par tour. "
-                    + "Le recyclage de la défausse n'est pas encore pris en charge.")
+                    + "Le recyclage de la défausse n'est pas encore pris en charge. "
+                    + "La casse et les espaces autour du code sont ignorés. "
+                    + "Une action acceptée renouvelle l'activité de la table ; un refus ne la renouvelle pas.")
     @ApiResponse(responseCode = "204", description = "Deux cartes piochées ; la phase de jeu commence")
     @ApiResponse(
             responseCode = "401",
@@ -190,7 +193,9 @@ public class PrivateTableController {
     @Operation(
             summary = "Terminer sa phase de jeu ou son tour",
             description =
-                    "Si la main dépasse les PV actuels, ouvre la défausse ; sinon passe au prochain joueur vivant.")
+                    "Si la main dépasse les PV actuels, ouvre la défausse ; sinon passe au prochain joueur vivant. "
+                            + "La casse et les espaces autour du code sont ignorés. "
+                            + "Une action acceptée renouvelle l'activité de la table ; un refus ne la renouvelle pas.")
     @ApiResponse(responseCode = "204", description = "Phase ou tour terminé")
     @ApiResponse(
             responseCode = "401",
@@ -220,7 +225,9 @@ public class PrivateTableController {
     @Operation(
             summary = "Défausser une carte de sa main par son identifiant",
             description =
-                    "Le joueur actif choisit ses cartes pendant la phase de défausse, puis termine explicitement son tour.")
+                    "Le joueur actif choisit ses cartes pendant la phase de défausse, puis termine explicitement son tour. "
+                            + "La casse et les espaces autour du code sont ignorés. "
+                            + "Une action acceptée renouvelle l'activité de la table ; un refus ne la renouvelle pas.")
     @ApiResponse(responseCode = "204", description = "Carte déplacée de la main vers la défausse")
     @ApiResponse(
             responseCode = "401",

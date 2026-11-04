@@ -15,6 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -51,7 +53,7 @@ class OpenApiDocsTest {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.info.title").value("Tiki Gaming API"))
-                    .andExpect(jsonPath("$.paths", aMapWithSize(27)))
+                    .andExpect(jsonPath("$.paths", aMapWithSize(30)))
                     .andExpect(jsonPath("$.paths['/api/auth/session'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/google'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/login'].post.summary", not(emptyOrNullString())))
@@ -98,6 +100,30 @@ class OpenApiDocsTest {
                             "$.paths['/api/games/sudoku/{gameId}/moves'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.tags[*]", hasItem("sudoku")))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.tags[*]", hasItem("sudoku")));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"draw", "end", "discard/{cardId}"})
+        void documentsTheBangTurnCommandsAndTheirResponses(String command) throws Exception {
+            String operation = "$.paths['/api/games/bang/tables/{code}/turn/" + command + "'].post";
+            var response = mvc.perform(get("/v3/api-docs"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath(operation + ".summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath(operation + ".tags[*]", hasItem("bang")))
+                    .andExpect(jsonPath(operation + ".responses['204'].content").doesNotExist())
+                    .andExpect(jsonPath(
+                            "$.components.schemas.PlayerGameView.properties.phase.enum",
+                            org.hamcrest.Matchers.contains("DRAW", "PLAY", "DISCARD")))
+                    .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.drawPile")
+                            .doesNotExist())
+                    .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.discardPile")
+                            .doesNotExist())
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/bang/tables/{code}/state'].get.responses['200'].content.*.schema['$ref']",
+                            hasItem("#/components/schemas/PlayerGameView")));
+            for (String code : new String[] {"204", "401", "403", "404", "409"}) {
+                response.andExpect(jsonPath(operation + ".responses", hasKey(code)));
+            }
         }
 
         @Test
