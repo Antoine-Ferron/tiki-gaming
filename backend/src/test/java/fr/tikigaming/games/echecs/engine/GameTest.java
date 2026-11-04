@@ -75,6 +75,23 @@ class GameTest {
                 .hasMessageContaining("vide");
     }
 
+    @ParameterizedTest(name = "{0} : {1} → {2} donne demi-coups {3}, coup n°{4}")
+    @CsvSource({
+        "'k7/8/8/8/8/8/8/R6K w - - 5 10', a1, a2, 6, 10", // coup blanc ordinaire : +1 demi-coup, même numéro
+        "'k7/8/8/8/8/8/8/R6K b - - 5 10', a8, b8, 6, 11", // coup noir : le numéro du coup avance
+        "'k7/8/8/8/8/8/4P3/7K w - - 5 10', e2, e3, 0, 10", // coup de pion : compteur des 50 coups remis à 0
+        "'k7/8/8/8/8/8/8/Rn5K w - - 5 10', a1, b1, 0, 10" // prise : compteur des 50 coups remis à 0
+    })
+    @DisplayName("les compteurs avancent : demi-coups (règle des 50 coups) et numéro du coup")
+    void lesCompteursAvancent(String fen, String from, String to, int halfmoves, int fullmove) {
+        // Act
+        Position after = play(fen, from, to);
+
+        // Assert
+        assertThat(after.halfmoveClock()).isEqualTo(halfmoves);
+        assertThat(after.fullmoveNumber()).isEqualTo(fullmove);
+    }
+
     private static Position play(String fen, String from, String to) {
         return Game.play(Fen.parse(fen), Square.of(from), Square.of(to));
     }
