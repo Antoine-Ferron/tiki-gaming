@@ -76,6 +76,8 @@ class GameSocketControllerIntegrationTest {
         RoomEvent<?> seenByA = topicEventsA.poll(5, TimeUnit.SECONDS);
         assertThat(seenByA).isNotNull();
         assertThat(seenByA.type()).isEqualTo("ROOM_UPDATED");
+        // Jamais le siège de Bob (2) dans la diffusion : Alice (siège 1) ne doit pas se le voir appliquer à tort.
+        assertThat(asMap(seenByA.payload())).containsEntry("playerCount", 2).doesNotContainKey("seat");
 
         // Le joueur qui rejoint voit aussi la diffusion sur le topic de la salle, pas seulement sa propre réponse.
         RoomEvent<?> seenByB = topicEventsB.poll(5, TimeUnit.SECONDS);
@@ -146,6 +148,8 @@ class GameSocketControllerIntegrationTest {
         RoomEvent<?> playerLeft = secondTopicEvents.poll(5, TimeUnit.SECONDS);
         assertThat(playerLeft).isNotNull();
         assertThat(playerLeft.type()).isEqualTo(RoomEventTypes.PLAYER_LEFT);
+        // Le joueur restant apprend le nouvel effectif (1) sans qu'un siège qui n'est pas le sien lui soit appliqué.
+        assertThat(asMap(playerLeft.payload())).containsEntry("playerCount", 1).doesNotContainKey("seat");
 
         // Le siège est bien libéré côté serveur : le créateur peut rouvrir une salle pour ce jeu.
         BlockingQueue<RoomView> newResponses = subscribeToResponses(creatorSession);
@@ -197,6 +201,12 @@ class GameSocketControllerIntegrationTest {
         assertThat(topicEvents.poll(1, TimeUnit.SECONDS)).isNull();
 
         session.disconnect();
+    }
+
+    /** `RoomEvent<?>.payload()` est désérialisé sans type générique connu : une `Map` brute, par simple JSON. */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asMap(Object payload) {
+        return (Map<String, Object>) payload;
     }
 
     private BlockingQueue<RoomView> subscribeToResponses(StompSession session) {

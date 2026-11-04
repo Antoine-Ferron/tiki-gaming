@@ -129,13 +129,22 @@ class GameRoomServiceTest {
     }
 
     @Test
-    void leavingReturnsTheCanonicalCodeOnlyWhenAccountWasActuallySeated() {
+    void leavingReturnsTheCanonicalSummaryOnlyWhenAccountWasActuallySeated() {
         String code = rooms.createRoom(SLUG, "creator", 4).code();
 
         assertThat(rooms.leaveRoom(SLUG, code.toLowerCase(Locale.ROOT), "creator"))
-                .contains(code);
+                .contains(new RoomSummary(SLUG, code, 0, 4));
         assertThat(rooms.leaveRoom(SLUG, code, "creator")).isEmpty();
         assertThat(rooms.leaveRoom(SLUG, "UNKNOWN", "creator")).isEmpty();
+    }
+
+    @Test
+    void leavingReportsThePlayerCountRemainingForTheOthers() {
+        String code = rooms.createRoom(SLUG, "creator", 4).code();
+        rooms.joinRoom(SLUG, code, "second");
+        rooms.joinRoom(SLUG, code, "third");
+
+        assertThat(rooms.leaveRoom(SLUG, code, "second")).contains(new RoomSummary(SLUG, code, 2, 4));
     }
 
     @Test

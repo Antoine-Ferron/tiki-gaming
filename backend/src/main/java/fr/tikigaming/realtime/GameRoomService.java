@@ -82,8 +82,12 @@ public class GameRoomService {
         return view(gameSlug, normalized, room, players.size());
     }
 
-    /** Renvoie le code canonique de la salle si le compte en a bien été retiré (sinon vide, sans rien changer). */
-    public synchronized Optional<String> leaveRoom(String gameSlug, String code, String accountId) {
+    /**
+     * Retire le compte de la salle et renvoie son nouvel état (sans lui, pour les joueurs restants) s'il en a bien
+     * été retiré, sinon vide sans rien changer. Pas de siège dans la réponse : un départ décale les places des
+     * joueurs suivants (liste), donc le seul siège que connaît encore ce compte (le sien) ne veut plus rien dire.
+     */
+    public synchronized Optional<RoomSummary> leaveRoom(String gameSlug, String code, String accountId) {
         Room room = findRoom(gameSlug, code);
         if (room == null) return Optional.empty();
         int seat = room.players.indexOf(accountId);
@@ -93,11 +97,13 @@ public class GameRoomService {
         if (room.players.isEmpty()) {
             rooms.remove(normalized);
             openRoomByFirstSeat.remove(firstSeatKey(gameSlug, accountId));
-        } else if (seat == 0) {
+            return Optional.of(new RoomSummary(gameSlug, normalized, 0, room.maxPlayers));
+        }
+        if (seat == 0) {
             openRoomByFirstSeat.remove(firstSeatKey(gameSlug, accountId));
             openRoomByFirstSeat.put(firstSeatKey(gameSlug, room.players.getFirst()), normalized);
         }
-        return Optional.of(normalized);
+        return Optional.of(new RoomSummary(gameSlug, normalized, room.players.size(), room.maxPlayers));
     }
 
     /** Vérifie qu'un compte est bien assis dans cette salle, avant de lui laisser envoyer une action. */

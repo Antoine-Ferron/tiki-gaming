@@ -3,9 +3,15 @@ import SockJS from 'sockjs-client'
 import { codeForStatus, GameError } from '../errors'
 import { ROOM_EVENT_TYPES, type Realtime, type RealtimeConnection, type RealtimeStatus, type RoomEvent } from '../ports'
 
-/** Vue d'une salle telle qu'envoyée par le serveur (fr.tikigaming.realtime.RoomView). */
+/** Vue d'une salle telle qu'envoyée au compte qui vient de créer/rejoindre (fr.tikigaming.realtime.RoomView). */
 type RoomView = { gameSlug: string; code: string; seat: number; playerCount: number; maxPlayers: number }
+/** Vue diffusée à toute la salle (fr.tikigaming.realtime.RoomSummary) : jamais de `seat`, qui n'a de sens que pour
+ * le compte à qui il appartient — les autres joueurs assis ne doivent jamais se le voir appliquer. */
+type RoomSummary = { gameSlug: string; code: string; playerCount: number; maxPlayers: number }
 type RoomErrorMessage = { status: number; error: string }
+
+/** Délai au-delà duquel une création/jonction sans réponse du serveur est abandonnée (connexion coupée entre-temps). */
+const REQUEST_TIMEOUT_MS = 10_000
 
 function errorFor(message: RoomErrorMessage): GameError {
   // Le message est toujours écrit pour le joueur (même contrat que ApiError côté REST) : on le garde tel quel.
@@ -43,8 +49,10 @@ class StompRoomConnection implements RealtimeConnection {
 
   private dispatch(message: IMessage) {
     const event = JSON.parse(message.body) as RoomEvent
-    if (event.type === ROOM_EVENT_TYPES.ROOM_UPDATED && isRoomView(event.payload)) {
-      this.seat = event.payload.seat
+    // Diffusé à toute la salle : seul playerCount s'applique ici. Le siège est propre à chaque compte (il décale à
+    // chaque départ) et n'arrive jamais que par une réponse directe (voir le constructeur et `requestRoom`).
+    const isRoomUpdate = event.type === ROOM_EVENT_TYPES.ROOM_UPDATED || event.type === ROOM_EVENT_TYPES.PLAYER_LEFT
+    if (isRoomUpdate && isRoomSummary(event.payload)) {
       this.playerCount = event.payload.playerCount
     }
     for (const handler of this.handlers.get(event.type) ?? []) handler(event)
@@ -86,25 +94,31 @@ class StompRoomConnection implements RealtimeConnection {
   }
 }
 
-/** Vrai si `payload` a la forme d'une `RoomView` (garde avant de lire `seat`/`playerCount`). */
-function isRoomView(payload: unknown): payload is RoomView {
-  return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    typeof (payload as RoomView).seat === 'number' &&
-    typeof (payload as RoomView).playerCount === 'number'
-  )
+/** Vrai si `payload` a la forme d'une `RoomSummary` (garde avant de lire `playerCount`). */
+function isRoomSummary(payload: unknown): payload is RoomSummary {
+  return typeof payload === 'object' && payload !== null && typeof (payload as RoomSummary).playerCount === 'number'
 }
 
-/** Envoie une requête sur `/app/...` et attend la réponse (ou l'erreur) dédiée à ce compte. */
+/**
+ * Envoie une requête sur `/app/...` et attend la réponse (ou l'erreur) dédiée à ce compte. Abandonnée après
+ * `REQUEST_TIMEOUT_MS` sans réponse (connexion coupée entre l'abonnement et la publication, ou après) : sans ce
+ * filet, la promesse ne se résoudrait jamais et, les appels étant sérialisés, gèlerait aussi tous les suivants.
+ */
 function requestRoom(client: Client, gameSlug: string, action: string, body: unknown): Promise<RoomView> {
   return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      responseSub.unsubscribe()
+      errorSub.unsubscribe()
+      reject(new GameError('network', 'Le serveur ne répond pas. Vérifie ta connexion et réessaie.'))
+    }, REQUEST_TIMEOUT_MS)
     const responseSub = client.subscribe(`/user/queue/rooms/${gameSlug}/response`, (message) => {
+      clearTimeout(timeout)
       responseSub.unsubscribe()
       errorSub.unsubscribe()
       resolve(JSON.parse(message.body) as RoomView)
     })
     const errorSub = client.subscribe(`/user/queue/rooms/${gameSlug}/errors`, (message) => {
+      clearTimeout(timeout)
       responseSub.unsubscribe()
       errorSub.unsubscribe()
       reject(errorFor(JSON.parse(message.body) as RoomErrorMessage))

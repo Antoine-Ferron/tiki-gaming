@@ -51,8 +51,9 @@ public class GameSocketController {
     @MessageMapping("/rooms/{slug}/leave")
     public void leave(@DestinationVariable String slug, JoinRoomRequest request, Principal principal) {
         rooms.leaveRoom(slug, request.code(), principal.getName())
-                .ifPresent(code -> messaging.convertAndSend(
-                        topic(slug, code), new RoomEvent<Void>(RoomEventTypes.PLAYER_LEFT, null, code, Instant.now())));
+                .ifPresent(summary -> messaging.convertAndSend(
+                        topic(slug, summary.code()),
+                        new RoomEvent<>(RoomEventTypes.PLAYER_LEFT, summary, summary.code(), Instant.now())));
     }
 
     @MessageMapping("/rooms/{slug}/{code}/actions")
@@ -86,10 +87,16 @@ public class GameSocketController {
         messaging.convertAndSendToUser(principal.getName(), "/queue/rooms/" + slug + "/response", view);
     }
 
+    /**
+     * Diffuse le nouvel effectif de la salle à tous les joueurs assis. Jamais le {@code seat} du compte qui vient
+     * de créer/rejoindre : il n'a de sens que pour lui (voir {@link RoomSummary}) — chaque client ne connaît et ne
+     * met à jour que son propre siège, reçu en privé par {@link #respond}.
+     */
     private void broadcastRoomUpdated(String slug, RoomView view) {
+        RoomSummary summary = new RoomSummary(view.gameSlug(), view.code(), view.playerCount(), view.maxPlayers());
         messaging.convertAndSend(
                 topic(slug, view.code()),
-                new RoomEvent<>(RoomEventTypes.ROOM_UPDATED, view, view.code(), Instant.now()));
+                new RoomEvent<>(RoomEventTypes.ROOM_UPDATED, summary, view.code(), Instant.now()));
     }
 
     private void sendError(String slug, Principal principal, GameRoomException e) {

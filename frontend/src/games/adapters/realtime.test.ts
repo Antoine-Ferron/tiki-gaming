@@ -63,6 +63,15 @@ const roomView = (overrides: Partial<Record<string, unknown>> = {}) => ({
   ...overrides,
 })
 
+/** Forme diffusée à toute la salle (fr.tikigaming.realtime.RoomSummary) : jamais de `seat`. */
+const roomSummary = (overrides: Partial<Record<string, unknown>> = {}) => ({
+  gameSlug: 'bataille-navale',
+  code: 'ABC123',
+  playerCount: 2,
+  maxPlayers: 2,
+  ...overrides,
+})
+
 const tick = () => Promise.resolve().then(() => Promise.resolve())
 
 function lastClient() {
@@ -133,7 +142,7 @@ describe('createRealtime', () => {
     expect(joined.code).toBe('DEF456')
   })
 
-  test('diffuse les évènements du topic de la salle et met à jour le siège sur ROOM_UPDATED', async () => {
+  test('diffuse les évènements du topic de la salle et met à jour playerCount sur ROOM_UPDATED', async () => {
     const realtime = createRealtime('bataille-navale')
     const pending = realtime.createRoom(2)
     await tick()
@@ -151,14 +160,35 @@ describe('createRealtime', () => {
     })
     expect(received).toHaveBeenCalledWith(expect.objectContaining({ type: 'COUP_JOUE', payload: { case: 'A1' } }))
 
+    // La diffusion d'un ROOM_UPDATED n'a jamais de siège (voir RoomSummary) : seul playerCount est mis à jour, le
+    // siège de cette connexion (1) ne doit pas se faire écraser par celui d'un autre compte qui vient de rejoindre.
     stomp.deliver('/topic/rooms/bataille-navale/ABC123', {
       type: 'ROOM_UPDATED',
-      payload: roomView({ seat: 2, playerCount: 2 }),
+      payload: roomSummary({ playerCount: 2 }),
       code: 'ABC123',
       serverTime: '2026-11-03T12:00:01Z',
     })
-    expect(connection.seat).toBe(2)
+    expect(connection.seat).toBe(1)
     expect(connection.playerCount).toBe(2)
+  })
+
+  test('PLAYER_LEFT met aussi à jour playerCount pour les joueurs restants', async () => {
+    const realtime = createRealtime('bataille-navale')
+    const pending = realtime.createRoom(2)
+    await tick()
+    const stomp = lastClient()
+    stomp.deliver('/user/queue/rooms/bataille-navale/response', roomView({ playerCount: 2 }))
+    const connection = await pending
+
+    stomp.deliver('/topic/rooms/bataille-navale/ABC123', {
+      type: 'PLAYER_LEFT',
+      payload: roomSummary({ playerCount: 1 }),
+      code: 'ABC123',
+      serverTime: '2026-11-03T12:00:01Z',
+    })
+
+    expect(connection.seat).toBe(1)
+    expect(connection.playerCount).toBe(1)
   })
 
   test('un évènement ROOM_UPDATED malformé ne corrompt pas le siège', async () => {
@@ -251,6 +281,32 @@ describe('createRealtime', () => {
       serverTime: '2026-11-03T12:00:00Z',
     })
     expect(received).toHaveBeenCalled()
+  })
+
+  test('une requête sans réponse du serveur est abandonnée après un délai, sans bloquer les suivantes', async () => {
+    vi.useFakeTimers()
+    try {
+      const realtime = createRealtime('bataille-navale')
+      const firstPending = realtime.createRoom(2)
+      await vi.advanceTimersByTimeAsync(0) // laisse partir la publication, sans jamais livrer de réponse
+
+      const secondPending = realtime.joinRoom('DEF456') // mis en file : attend que la première requête se règle
+
+      await vi.advanceTimersByTimeAsync(10_000) // dépasse REQUEST_TIMEOUT_MS
+
+      await expect(firstPending).rejects.toMatchObject({ code: 'network' })
+
+      await vi.advanceTimersByTimeAsync(0) // la file débloquée laisse partir la seconde requête
+      const stomp = lastClient()
+      expect(stomp.published).toContainEqual({
+        destination: '/app/rooms/bataille-navale/join',
+        body: JSON.stringify({ code: 'DEF456' }),
+      })
+      stomp.deliver('/user/queue/rooms/bataille-navale/response', roomView({ code: 'DEF456', seat: 1, playerCount: 1 }))
+      await expect(secondPending).resolves.toMatchObject({ code: 'DEF456' })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   test('une reconnexion après un close ne rejoint pas la salle quittée', async () => {
