@@ -7,6 +7,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class MoveGeneratorTest {
 
@@ -103,6 +105,20 @@ class MoveGeneratorTest {
 
         // Assert
         assertThat(destinations).isEqualTo(squares("c3", "c4", "c5", "d3", "d5", "e3", "e4", "e5"));
+    }
+
+    @ParameterizedTest(name = "roi en {1} → {2} cases")
+    @CsvSource({
+        "4k3/8/8/8/3K4/8/8/8 w - - 0 1, d4, 8", // centre
+        "4k3/8/8/8/K7/8/8/8 w - - 0 1, a4, 5", // bord
+        "4k3/8/8/8/8/8/8/K7 w - - 0 1, a1, 3", // coin
+        "K3k3/8/8/8/8/8/8/8 w - - 0 1, a8, 3" // autre coin
+    })
+    @DisplayName("un roi a 8 cases au centre, 5 au bord, 3 dans un coin (valeurs limites)")
+    void unRoiA8CasesAuCentre5AuBord3DansUnCoin(String fen, String square, int expected) {
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(Fen.parse(fen), Square.of(square)))
+                .hasSize(expected);
     }
 
     private static Set<Square> squares(String... notations) {
