@@ -8,6 +8,7 @@ import { supabaseScores } from '@/games/adapters/supabase'
 import { GameError } from '@/games/errors'
 import { apiDelete } from '@/lib/api'
 import { clearSession, fetchSession } from '@/lib/session'
+import { accept, dodge, fire } from '@/games/bang/api'
 
 const { like, integer, regex } = MatchersV3
 
@@ -41,6 +42,30 @@ afterEach(() => {
 })
 
 describe('contrat front → backend', () => {
+  describe('actions de tir BANG!', () => {
+    test.each([
+      { action: 'tirer', path: '/shots/BANG-1/targets/2', send: () => fire('ABC123', 'BANG-1', 2) },
+      {
+        action: 'esquiver',
+        path: '/shots/tir-courant/dodge/MISSED-1',
+        send: () => dodge('ABC123', 'tir-courant', 'MISSED-1'),
+      },
+      { action: 'accepter', path: '/shots/tir-courant/accept', send: () => accept('ABC123', 'tir-courant') },
+    ])('$action utilise la route serveur et le CSRF du dépôt', async ({ action, path: route, send }) => {
+      await pact
+        .addInteraction()
+        .given('un joueur est connecté')
+        .uponReceiving(`l’action BANG! ${action}`)
+        .withRequest('POST', `/api/games/bang/tables/ABC123${route}`, (req) =>
+          req.headers({ 'Content-Type': 'application/json', ...csrfHeader }).jsonBody({}),
+        )
+        .willRespondWith(204)
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          await expect(send()).resolves.toBeUndefined()
+        })
+    })
+  })
   describe('POST /api/scores', () => {
     test('un joueur connecté enregistre le score de sa partie', async () => {
       await pact
