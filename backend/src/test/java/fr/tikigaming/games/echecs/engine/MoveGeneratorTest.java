@@ -215,6 +215,21 @@ class MoveGeneratorTest {
                 .doesNotContain(Square.of("f6"), Square.of("g7"), Square.of("h8"), Square.of("a1"));
     }
 
+    @Test
+    @DisplayName("une dame sur un échiquier libre (d4) a 27 cases : celles de la tour et du fou réunies (règle D3)")
+    void uneDameSurUnEchiquierLibreA27Cases() {
+        // Arrange
+        Position position = Fen.parse("k7/8/8/8/3Q4/8/8/7K w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("d4"));
+
+        // Assert
+        assertThat(destinations)
+                .hasSize(27)
+                .contains(Square.of("d8"), Square.of("a4"), Square.of("h8"), Square.of("a7"), Square.of("g1"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
