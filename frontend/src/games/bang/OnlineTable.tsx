@@ -15,13 +15,16 @@ export function OnlineTable() {
   const [view, setView] = useState<GameView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const acting = useRef(false)
+  const latestRead = useRef(0)
 
   const refresh = useCallback(async (tableCode: string) => {
+    const read = ++latestRead.current
     try {
-      setView(await api.getView(tableCode))
+      const next = await api.getView(tableCode)
+      if (read === latestRead.current) setView(next)
     } catch (err) {
       // 409 : la partie n'a pas encore démarré, on attend.
-      if (!(err instanceof ApiError && err.status === 409)) setError(messageOf(err))
+      if (read === latestRead.current && !(err instanceof ApiError && err.status === 409)) setError(messageOf(err))
     }
   }, [])
 
