@@ -262,6 +262,34 @@ est requis (`npm run test:integration`, depuis `frontend/`) ; sans Docker, les t
 Le front fait aujourd'hui `clearSave` puis `submitScore` en deux appels séparés (pas une transaction) : le test
 d'atomicité décrit ce que garantit la base si ces deux écritures sont regroupées, pas ce que fait le client.
 
+### Tests E2E (Playwright)
+
+`frontend/e2e/sudoku.spec.ts` joue le Sudoku dans un vrai navigateur, comme les autres parcours E2E (même
+`playwright.config.ts`, lancés par le job `E2E (Playwright + axe)` de la CI sous Chromium, Firefox et WebKit).
+Le backend et Supabase sont simulés : `frontend/e2e/sudokuServer.ts` rejoue le contrat de `/api/games/sudoku`
+(`GET /puzzle`, `GET /{id}`, `POST /{id}/moves`, `POST /check`) avec une grille résolue connue et trois cases
+vides. Il applique les règles du vrai serveur : les erreurs sont comptées côté serveur, la 4e perd la partie
+(409 ensuite), et l'état survit à un rechargement de page.
+
+| Parcours critique                    | Ce que le test vérifie                                                        |
+|--------------------------------------|-------------------------------------------------------------------------------|
+| Menu                                 | Les trois difficultés et le classement s'affichent                            |
+| Partie gagnée                        | Score du serveur affiché, un seul appel à `/check`, invitation à se connecter (invité) |
+| Chiffre faux                         | Case laissée vide, compteur « 1/3 », message, un appel à `/moves`             |
+| Indice de départ                     | Verrouillé : aucune saisie envoyée au serveur                                 |
+| Clavier                              | Flèches pour se déplacer, chiffre pour saisir                                 |
+| Avertissement                        | « Plus qu'une erreur permise » à 2/3                                          |
+| Partie perdue                        | 4e erreur : écran « Partie perdue », aucun `/check`, pas de reprise, on peut rejouer |
+| Reprise après rechargement           | Grille, erreurs et chrono relus depuis le serveur                             |
+| Partie oubliée par le serveur        | Message « Cette partie a expiré », la reprise disparaît                       |
+| Accessibilité (axe, WCAG 2.1 AA)     | Aucune violation sérieuse ou critique sur l'écran de jeu                      |
+
+Ces tests ont trouvé un vrai défaut : la grille portait `role="grid"` sans lignes ni cellules, ce qu'axe signale
+en `aria-required-children` (critique). Elle porte désormais `role="group"` avec son libellé « Grille de sudoku ».
+
+Lancer : `cd frontend && npx playwright test e2e/sudoku.spec.ts` (`--project=chromium` pour un seul navigateur).
+Il faut les navigateurs Playwright installés (`npx playwright install`).
+
 ### Analyse statique (SonarQube)
 
 Le Sudoku est analysé par le job `sonar` de la CI (SonarQube Cloud). Dernière analyse de la PR #21, avant
@@ -271,7 +299,7 @@ vulnérabilité, aucune duplication.
 | Règle        | Où                                      | Correction                                                                 |
 |--------------|-----------------------------------------|----------------------------------------------------------------------------|
 | `java:S6829` | `SystemClock`, `SudokuGenerator`        | Deux constructeurs : `@Autowired` sur le constructeur sans argument, celui que Spring doit utiliser (l'autre sert aux tests) |
-| `typescript:S6852` | `SudokuGame.tsx` (`role="grid"`)  | `tabIndex={-1}` : un élément au rôle interactif doit pouvoir recevoir le focus ; la navigation reste celle des cases |
+| `typescript:S6852` | `SudokuGame.tsx` (`role="grid"`)  | D'abord `tabIndex={-1}`, puis `role="group"` : un `grid` sans lignes ni cellules est invalide (voir [Tests E2E](#tests-e2e-playwright)) ; un groupe n'est pas un rôle interactif, la navigation reste celle des cases |
 
 Pour rescanner en local sans compte, un SonarQube Community suffit :
 `docker run -d -p 9000:9000 sonarqube:community`, puis `npx @sonar/scan` depuis la racine avec

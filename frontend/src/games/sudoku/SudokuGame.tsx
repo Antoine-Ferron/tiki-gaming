@@ -197,7 +197,7 @@ export default function SudokuGame({ ctx }: GameProps) {
               <span>Temps : {formatTime(seconds)}</span>
               <span>Erreurs : {mistakesLabel(mistakes, maxMistakes)}</span>
             </p>
-            <div className="sudoku-grid" role="grid" tabIndex={-1} aria-label="Grille de sudoku" onKeyDown={onKeyDown}>
+            <div className="sudoku-grid" role="group" aria-label="Grille de sudoku" onKeyDown={onKeyDown}>
               {values.map((v, i) => {
                 const fixed = puzzle[i] !== 0
                 const classes = ['sudoku-cell']
