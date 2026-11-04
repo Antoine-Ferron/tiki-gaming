@@ -20,6 +20,8 @@ import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -96,6 +98,71 @@ class GameShotHttpTest {
 
         assertThat(tables.game(code)).isSameAs(waiting);
         view(code, 2).andExpect(jsonPath("$.pendingShot.id").value(pending));
+    }
+
+    @Test
+    void theTargetDodgesAndTheShooterResumesTheSameTurn() throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+
+        command(code, "shots/" + shot + "/dodge/missed-2", 2).andExpect(status().isNoContent());
+
+        view(code, 2)
+                .andExpect(jsonPath("$.pendingShot").doesNotExist())
+                .andExpect(jsonPath("$.hand").isEmpty())
+                .andExpect(jsonPath("$.players[1].health").value(4))
+                .andExpect(jsonPath("$.currentSeat").value(1))
+                .andExpect(jsonPath("$.phase").value("PLAY"));
+        assertThat(tables.game(code).discardPile())
+                .containsExactly(
+                        card("old", CardType.MISSED), card("bang-1", CardType.BANG), card("missed-2", CardType.MISSED));
+        command(code, "turn/end", 1).andExpect(status().isNoContent());
+        view(code, 1)
+                .andExpect(jsonPath("$.currentSeat").value(2))
+                .andExpect(jsonPath("$.phase").value("DRAW"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 3, 5})
+    void onlyTheTargetSessionCanDodgeEvenWhenTheRequestClaimsItsIdentity(int actor) throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+        GameState before = tables.game(code);
+
+        mvc.perform(preparePost(TABLES + "/" + code + "/shots/" + shot + "/dodge/missed-2", actor)
+                        .param("accountId", accounts + ":2")
+                        .param("seat", "2"))
+                .andExpect(status().isForbidden());
+
+        assertThat(tables.game(code)).isSameAs(before);
+        view(code, 2).andExpect(jsonPath("$.pendingShot.id").value(shot));
+    }
+
+    @Test
+    void aWrongShotOrUnavailableDodgeCardDoesNotResolveThePendingShot() throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+        GameState before = tables.game(code);
+
+        command(code, "shots/older-shot/dodge/missed-2", 2).andExpect(status().isConflict());
+        command(code, "shots/" + shot + "/dodge/bang-2", 2).andExpect(status().isConflict());
+
+        assertThat(tables.game(code)).isSameAs(before);
+        view(code, 2).andExpect(jsonPath("$.pendingShot.id").value(shot));
+    }
+
+    private String pendingId(String code) throws Exception {
+        return json.readTree(view(code, 2)
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString())
+                .path("pendingShot")
+                .path("id")
+                .asString();
     }
 
     private String startedTable() throws Exception {

@@ -24,6 +24,17 @@ class PrivateTableControllerTest {
     private final PrivateTableController controller = new PrivateTableController(tables);
 
     @Test
+    void dodgingPassesTheSessionActorAndTheShotIdToTheTables() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser("target", "joueur@example.com"));
+
+        assertThat(controller.dodge("CODE", "shot", "missed", request).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        verify(tables).respond("CODE", "target", "shot", "missed");
+    }
+
+    @Test
     void firingPassesOnlyTheSessionActorAndTheChosenCardAndTarget() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         AuthSession.signIn(request, new AuthUser("shooter", "joueur@example.com"));

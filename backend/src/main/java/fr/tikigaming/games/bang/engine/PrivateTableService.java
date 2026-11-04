@@ -247,6 +247,26 @@ public class PrivateTableService {
         table.lastActivity = clock.instant();
     }
 
+    public synchronized void respond(String code, String accountId, String shotId, String missedCardId) {
+        Table table = seatedGame(code, accountId);
+        PendingShot shot = table.pendingShot;
+        if (shot == null || !shot.id().equals(shotId)) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Ce tir n'est plus en attente.");
+        }
+        if (!table.players.get(shot.targetSeat() - 1).equals(accountId)) {
+            throw new PrivateTableException(HttpStatus.FORBIDDEN, "Seule la cible peut répondre à ce tir.");
+        }
+        ShotOutcome outcome;
+        try {
+            outcome = shotRules(table.game).respond(table.game, shot.targetSeat(), missedCardId);
+        } catch (IllegalArgumentException | IllegalStateException refused) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, refused.getMessage());
+        }
+        table.game = applyShotOutcome(outcome);
+        table.pendingShot = null;
+        table.lastActivity = clock.instant();
+    }
+
     private static ShotRules shotRules(GameState game) {
         return new ShotRules((from, to) -> PlayerDistance.between(game, from, to));
     }
@@ -260,6 +280,17 @@ public class PrivateTableService {
     }
 
     private Table activeTable(String code, String accountId) {
+        Table table = seatedGame(code, accountId);
+        if (!table.players.get(table.game.currentSeat() - 1).equals(accountId)) {
+            throw new PrivateTableException(HttpStatus.FORBIDDEN, "Ce n'est pas ton tour.");
+        }
+        if (table.pendingShot != null) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "La cible doit d'abord répondre au tir en attente.");
+        }
+        return table;
+    }
+
+    private Table seatedGame(String code, String accountId) {
         purgeInactive();
         code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
         Table table = tables.get(code);
@@ -269,12 +300,6 @@ public class PrivateTableService {
         }
         if (table.game == null) {
             throw new PrivateTableException(HttpStatus.CONFLICT, "La partie n'a pas encore démarré.");
-        }
-        if (!table.players.get(table.game.currentSeat() - 1).equals(accountId)) {
-            throw new PrivateTableException(HttpStatus.FORBIDDEN, "Ce n'est pas ton tour.");
-        }
-        if (table.pendingShot != null) {
-            throw new PrivateTableException(HttpStatus.CONFLICT, "La cible doit d'abord répondre au tir en attente.");
         }
         return table;
     }

@@ -266,6 +266,17 @@ public class PrivateTableController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{code}/shots/{shotId}/dodge/{cardId}")
+    @Operation(summary = "Esquiver le tir en attente")
+    ResponseEntity<Void> dodge(
+            @PathVariable String code,
+            @PathVariable String shotId,
+            @PathVariable String cardId,
+            HttpServletRequest request) {
+        tables.respond(code, connectedAccountId(request), shotId, cardId);
+        return ResponseEntity.noContent().build();
+    }
+
     private static String connectedAccountId(HttpServletRequest request) {
         AuthUser user = AuthSession.currentUser(request);
         if (user == null) throw new AuthException(401, "Non connecté");
