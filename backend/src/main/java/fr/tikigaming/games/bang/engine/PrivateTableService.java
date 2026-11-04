@@ -195,6 +195,7 @@ public class PrivateTableService {
             } while (game.players().get(nextSeat - 1).health() <= 0);
             table.game =
                     new GameState(game.players(), game.drawPile(), game.discardPile(), nextSeat, GameState.Phase.DRAW);
+            table.shotsThisTurn = 0;
         }
         table.lastActivity = clock.instant();
     }

@@ -17,5 +17,6 @@ Ces tests HTTP ne sont pas des E2E navigateur.
 | Répondre par une esquive, depuis le compte cible | Esquive : `204` attendu, `404` reçu ; réponses par tireur, tiers ou extérieur : `403` attendu, `404` reçu. Identifiant périmé : `409` attendu, `404` reçu. | 20 tests ciblés ; PV conservés, défausse ajoutée, attente supprimée et tour repris. |
 | Accepter le tir une seule fois | `204` attendu, `404` reçu sur l'acceptation. | 22 tests ciblés ; perte de 1 PV, carte d'esquive conservée, doublons acceptation/esquive en `409`. |
 | Conserver le compteur à la reconnexion | Après réponse, lectures, jonctions et démarrages répétés : second BANG! en `204` au lieu de `409`. | 44 tests ciblés incluant les 21 contrats de `ShotRules`. |
+| Réinitialiser le compteur au nouveau tour | Au retour au tireur après un tour de table : `204` attendu, `409` reçu. | 48 tests ciblés incluant les règles de tour. |
 
 Le blocage initial du lanceur Java dans l'environnement restreint n'est pas compté comme rouge métier.

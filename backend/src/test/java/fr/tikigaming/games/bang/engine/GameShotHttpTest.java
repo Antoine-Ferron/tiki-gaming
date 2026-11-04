@@ -19,6 +19,7 @@ import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -193,6 +194,23 @@ class GameShotHttpTest {
         assertThat(tables.game(code)).isSameAs(resolved);
     }
 
+    @Test
+    void onlyStartingANewTurnResetsTheShotCounter() throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        command(code, "shots/" + pendingId(code) + "/accept", 2).andExpect(status().isNoContent());
+        command(code, "turn/end", 1).andExpect(status().isNoContent());
+        for (int seat = 2; seat <= 4; seat++) {
+            command(code, "turn/draw", seat).andExpect(status().isNoContent());
+            command(code, "turn/end", seat).andExpect(status().isNoContent());
+        }
+        command(code, "turn/draw", 1).andExpect(status().isNoContent());
+
+        command(code, "shots/bang-2/targets/2", 1).andExpect(status().isNoContent());
+
+        view(code, 1).andExpect(jsonPath("$.pendingShot.targetSeat").value(2));
+    }
+
     private String pendingId(String code) throws Exception {
         return json.readTree(view(code, 2)
                         .andExpect(status().isOk())
@@ -205,22 +223,27 @@ class GameShotHttpTest {
     }
 
     private String startedTable() throws Exception {
-        doReturn(new GameState(
-                        List.of(
-                                player(
-                                        1,
-                                        BangCharacter.BART_CASSIDY,
-                                        card("bang-1", CardType.BANG),
-                                        card("bang-2", CardType.BANG)),
-                                player(2, BangCharacter.CALAMITY_JANET, card("missed-2", CardType.MISSED)),
-                                player(3, BangCharacter.PAUL_REGRET),
-                                player(4, BangCharacter.WILLY_THE_KID)),
-                        List.of(card("draw-1", CardType.BANG), card("draw-2", CardType.MISSED)),
-                        List.of(card("old", CardType.MISSED)),
-                        1,
-                        GameState.Phase.PLAY))
-                .when(deal)
-                .deal(anyList());
+        return startedTable(
+                preparedGame(BangCharacter.BART_CASSIDY, BangCharacter.CALAMITY_JANET, GameState.Phase.PLAY));
+    }
+
+    private GameState preparedGame(BangCharacter shooter, BangCharacter target, GameState.Phase phase) {
+        return new GameState(
+                List.of(
+                        player(1, shooter, card("bang-1", CardType.BANG), card("bang-2", CardType.BANG)),
+                        player(2, target, card("missed-2", CardType.MISSED)),
+                        player(3, BangCharacter.PAUL_REGRET),
+                        player(4, BangCharacter.WILLY_THE_KID)),
+                IntStream.rangeClosed(1, 10)
+                        .mapToObj(i -> card("draw-" + i, CardType.BANG))
+                        .toList(),
+                List.of(card("old", CardType.MISSED)),
+                1,
+                phase);
+    }
+
+    private String startedTable(GameState game) throws Exception {
+        doReturn(game).when(deal).deal(anyList());
         String body = mvc.perform(preparePost(TABLES, 1))
                 .andExpect(status().isCreated())
                 .andReturn()
