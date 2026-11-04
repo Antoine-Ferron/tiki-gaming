@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -196,6 +197,23 @@ public class AuthController {
         AuthUser user = AuthSession.currentUser(request);
         if (user == null) throw new AuthException(401, "Non connecté");
         supabase.updatePassword(user.id(), body.password());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/account")
+    @Operation(
+            summary = "Supprimer mon compte",
+            description = "RGPD, droit à l'effacement : supprime définitivement le compte Supabase, avec le profil, "
+                    + "les scores et les sauvegardes, puis ferme la session.")
+    @ApiResponse(responseCode = "204", description = "Compte supprimé, déconnecté", content = @Content)
+    @ApiResponse(responseCode = "401", description = "Non connecté")
+    @ApiResponse(responseCode = "502", description = "Supabase indisponible : rien n'est supprimé, la session reste")
+    ResponseEntity<Void> deleteAccount(HttpServletRequest request) {
+        AuthUser user = AuthSession.currentUser(request);
+        if (user == null) throw new AuthException(401, "Non connecté");
+        supabase.deleteUser(user.id());
+        request.getSession().invalidate();
+        SecurityContextHolder.clearContext();
         return ResponseEntity.noContent().build();
     }
 

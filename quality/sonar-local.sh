@@ -22,7 +22,8 @@ fi
 # Scanner lancé sur la machine (lanceur npm officiel) : dans la VM Docker, l'analyse TypeScript manque de mémoire.
 SONAR_HOST_URL=$SONAR SONAR_TOKEN="$(cat "$TOKEN_FILE")" npx --yes @sonar/scan@5.0.2 -Dsonar.qualitygate.wait=true || true
 
-# Synthèse lisible : Quality Gate et métriques principales.
+# Synthèse lisible : Quality Gate et métriques principales (quality/reports/ est ignoré par git, absent d'un clone neuf).
+mkdir -p quality/reports
 KEY=EAnathos_tiki-gaming
 METRICS=alert_status,bugs,vulnerabilities,security_hotspots,code_smells,coverage,duplicated_lines_density,sqale_index,sqale_rating,reliability_rating,security_rating,cognitive_complexity,ncloc
 curl -sf -u "$(cat "$TOKEN_FILE"):" "$SONAR/api/measures/component?component=$KEY&metricKeys=$METRICS" |

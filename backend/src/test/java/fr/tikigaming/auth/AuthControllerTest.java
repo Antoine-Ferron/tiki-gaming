@@ -3,10 +3,12 @@ package fr.tikigaming.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -243,6 +245,35 @@ class AuthControllerTest {
     @Test
     void logoutWithoutSessionStillSucceeds() throws Exception {
         mvc.perform(post("/api/auth/logout")).andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteAccountErasesTheSupabaseAccountThenClosesTheSession() throws Exception {
+        MockHttpSession session = signedInSession();
+
+        mvc.perform(delete("/api/auth/account").session(session)).andExpect(status().isNoContent());
+
+        verify(supabase).deleteUser("u-1");
+        assertThat(session.isInvalid()).isTrue();
+    }
+
+    @Test
+    void deleteAccountWithoutSessionIsUnauthorized() throws Exception {
+        mvc.perform(delete("/api/auth/account"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Non connecté"));
+        verifyNoInteractions(supabase);
+    }
+
+    @Test
+    void deleteAccountKeepsTheSessionWhenSupabaseFails() throws Exception {
+        doThrow(new AuthException(500, "boom")).when(supabase).deleteUser("u-1");
+        MockHttpSession session = signedInSession();
+
+        mvc.perform(delete("/api/auth/account").session(session)).andExpect(status().isBadGateway());
+
+        assertThat(session.isInvalid()).isFalse();
+        assertThat(session.getAttribute(AuthSession.USER)).isEqualTo(PLAYER);
     }
 
     @Test

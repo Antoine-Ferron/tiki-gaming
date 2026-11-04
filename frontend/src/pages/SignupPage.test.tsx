@@ -7,9 +7,14 @@ import SignupPage from './SignupPage'
 
 const api = await vi.hoisted(async () => (await import('@/auth/testing')).fakeApiPost())
 vi.mock('@/lib/api', async (original) => ({ ...(await original<typeof import('@/lib/api')>()), apiPost: api.apiPost }))
+const google = vi.hoisted(() => ({ startGoogleAuth: vi.fn() }))
+vi.mock('@/lib/google', () => google)
 vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }))
 
-beforeEach(() => api.reset())
+beforeEach(() => {
+  api.reset()
+  google.startGoogleAuth.mockReset()
+})
 afterEach(cleanup)
 
 function fill(username: string, email: string, password: string) {
@@ -83,5 +88,15 @@ describe('SignupPage', () => {
 
     expect(await screen.findByText('Les inscriptions sont fermées pour le moment.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Créer mon compte' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  test('propose l’inscription avec Google, qui ramène à l’accueil sans demander de mot de passe', () => {
+    renderPage(<SignupPage />, { url: '/signup' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'S’inscrire avec Google' }))
+
+    expect(google.startGoogleAuth).toHaveBeenCalledWith('/')
+    expect(api.calls).toEqual([])
+    expect((screen.getByRole('button', { name: 'Création…' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
