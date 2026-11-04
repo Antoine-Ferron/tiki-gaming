@@ -6,6 +6,7 @@ import static fr.tikigaming.games.sdv_civilisation.api.Fixtures.SERVICE_KEY;
 import static fr.tikigaming.games.sdv_civilisation.api.Fixtures.SUPABASE_URL;
 import static fr.tikigaming.games.sdv_civilisation.api.Fixtures.props;
 import static fr.tikigaming.games.sdv_civilisation.api.Fixtures.saved;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.startsWith;
@@ -13,12 +14,12 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import fr.tikigaming.games.sdv_civilisation.ScoreBreakdown;
+import java.net.URLDecoder;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,8 @@ class SupabaseGamesIntegrationTest {
     private static final String ROW = "/rest/v1/game_saves?user_id=eq." + USER + "&game_slug=eq.sdv-civilisation";
 
     private final RestClient.Builder builder = RestClient.builder();
-    private final MockRestServiceServer supabase = MockRestServiceServer.bindTo(builder).build();
+    private final MockRestServiceServer supabase =
+            MockRestServiceServer.bindTo(builder).build();
     private final SealedState sealer = new SealedState(props(JWT_SECRET), JSON);
     private final SupabaseGames games =
             new SupabaseGames(SdvCivilisationConfig.supabase(builder, props(JWT_SECRET)), sealer);
@@ -75,8 +77,8 @@ class SupabaseGamesIntegrationTest {
         supabase.expect(requestTo(startsWith(SUPABASE_URL + ROW)))
                 .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
         supabase.expect(requestTo(startsWith(SUPABASE_URL + ROW)))
-                .andRespond(withSuccess(
-                        "[{\"data\":{\"version\":9,\"sealed\":\"triche\"}}]", MediaType.APPLICATION_JSON));
+                .andRespond(
+                        withSuccess("[{\"data\":{\"version\":9,\"sealed\":\"triche\"}}]", MediaType.APPLICATION_JSON));
 
         // Alors il n'y a pas de partie à reprendre
         assertThat(store.load()).isEmpty();
@@ -100,18 +102,23 @@ class SupabaseGamesIntegrationTest {
 
     @Test
     void theNextTurnIsSavedOnlyIfTheRowIsStillAtTheExpectedVersion() {
-        // Quand le serveur enregistre le tour 2 d'une partie en version 1
+        // Étant donné une ligne encore en version 1, qui n'est plus en version 2 au second envoi
         supabase.expect(requestTo(startsWith(SUPABASE_URL + ROW)))
                 .andExpect(method(HttpMethod.PATCH))
-                .andExpect(queryParam("data->>version", "eq.1"))
+                // Filtre PostgREST sur la version dans le JSON (encodé dans l'URL, décodé par Supabase)
+                .andExpect(
+                        request -> assertThat(URLDecoder.decode(request.getURI().getRawQuery(), UTF_8))
+                                .endsWith("&data->>version=eq.1"))
                 .andExpect(header("Prefer", "return=representation"))
                 .andExpect(jsonPath("$.data.version").value(2))
                 .andRespond(withSuccess(row(saved(2)), MediaType.APPLICATION_JSON));
-        store.save(saved(2), 1);
-
-        // Mais si la ligne a déjà changé (aucune ligne modifiée), l'enregistrement est refusé
         supabase.expect(requestTo(startsWith(SUPABASE_URL + ROW)))
                 .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+
+        // Quand le serveur enregistre le tour 2 d'une partie en version 1
+        // Alors la ligne est mise à jour
+        store.save(saved(2), 1);
+        // Mais si la ligne a déjà changé (aucune ligne modifiée), l'enregistrement est refusé
         assertThatThrownBy(() -> store.save(saved(3), 2)).isInstanceOf(StaleGameException.class);
     }
 
