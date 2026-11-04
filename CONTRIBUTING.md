@@ -212,6 +212,7 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
 | `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, couverture minimale (JaCoCo), et échec si le code n'est pas formaté |
+| `mvn -Pintegration verify` | Ajoute les tests Java `*IT` PostgreSQL/PostgREST via Testcontainers ; Docker obligatoire |
 | `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
 

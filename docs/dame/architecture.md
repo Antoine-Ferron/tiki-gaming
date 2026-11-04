@@ -50,4 +50,7 @@ fournisseur d'identifiants. Le moteur initial reste inchangé.
 Les tests distinguent un fake fonctionnel en mémoire, des stubs de réponse et de
 panne, et des mocks d'interaction ciblés. Les règles, limites, résultats de
 vérification et étapes restantes sont décrits dans [rencontres.md](rencontres.md).
-La vraie base et le raccordement API/interface ne sont pas encore livrés.
+La [persistance](persistance.md) dispose désormais d'un adaptateur PostgREST et
+de tests Testcontainers sur les vrais services PostgreSQL/PostgREST. La table est
+privée au backend et protège les transitions concurrentes. Le raccordement
+API/interface reste à réaliser.

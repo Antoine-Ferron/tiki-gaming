@@ -143,7 +143,7 @@ Surefire de la dernière suite complète donnent au plus 2 ms par cas du modèle
 de la JVM et des doublures intervient dans ces durées : on ne revendique pas
 que chaque cas Mockito respecte déjà strictement le critère de 5 ms du barème.
 
-## Suite à réaliser
+## Suite prévue après l'étape unitaire (historique)
 
 La gestion métier est testée avec des doublures ; **aucune rencontre n'est
 encore écrite dans une vraie base ni accessible depuis le navigateur**.
@@ -157,5 +157,13 @@ encore écrite dans une vraie base ni accessible depuis le navigateur**.
    trajet HTTP avec le service réel.
 4. Implémenter l'adaptateur puis raccorder API, SDK et formulaire des deux noms.
 
-Le daemon Docker local était indisponible lors de la préparation. Aucun résultat
-Testcontainers n'est revendiqué dans cette étape unitaire.
+Le daemon Docker local était indisponible lors de cette première préparation.
+Aucun résultat Testcontainers n'était revendiqué dans l'étape unitaire.
+
+## Étape de persistance réalisée ensuite
+
+Docker Desktop a été démarré, la migration `dame_matches` ajoutée et l'adaptateur
+PostgREST vérifié sur les vrais services PostgreSQL/PostgREST via Testcontainers.
+Les noms restent privés et la clôture concurrente est protégée en base. Voir
+[persistance.md](persistance.md) pour le RED/GREEN, les résultats et les commandes.
+Le raccordement de l'API au jeu serveur et le formulaire React restent à réaliser.

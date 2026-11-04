@@ -250,3 +250,30 @@ Les tests utilisent le vrai moteur, un fake de dépôt, des stubs de réponse/pa
 et des mocks ciblés sur les écritures. Aucun adaptateur de base, endpoint,
 changement frontend ou dépendance n'est ajouté dans cette étape. Détails,
 commandes, limites et suite dans [rencontres.md](rencontres.md).
+
+## 4 novembre 2026 — persistance réelle et tests d'intégration
+
+Branche `game/dame/rencontres` rebasée sur `dev` à `3af6766`. Les quatre commits
+unitaires conservent leurs auteurs et leur ordre, avec les nouveaux identifiants
+`d609bdf`, `6cc4202`, `a9cd566`, `88cdec0`. Docker Desktop est démarré localement.
+
+- `1dd018b` : structure de migration privée, adaptateur squelettique et profil
+  Failsafe avec deux dépendances de test gérées par Spring Boot.
+- `bef802d` : RED, **25 cas HTTP rouges**, **52 cas Testcontainers dont 33 échecs
+  attendus**, zéro erreur. Les vrais services PostgreSQL/PostgREST démarrent et
+  toutes les migrations sont appliquées.
+- `2960c5c` : contraintes SQL et transitions ; les **43 cas SQL passent**,
+  huit scénarios HTTP restent rouges.
+- `58edc4d` : adaptateur GREEN, **25 cas HTTP et 52 IT réussis** ; la concurrence
+  n'accepte qu'une clôture, sans écraser le premier résultat.
+- `c7c0b5e` : renforcement après mutation, **29 cas HTTP** ; réponses de plusieurs
+  lignes ou d'un mauvais UUID refusées. Dernière suite : **1 085 tests backend et
+  52 IT réussis**, puis **57 tests PostgreSQL collectifs** également verts.
+- Branchement CI : profil d'intégration obligatoire dans le check backend
+  existant, déclenché aussi par les migrations, rapports Failsafe en artefact.
+
+Persistance : JaCoCo **70/70 lignes et 18/18 branches** ; PIT **27/28 mutants
+tués (96,43 %)**, dernier survivant redondant documenté. Rencontres : PIT **22/22**.
+Profil PIT collectif : **262/270 (97,04 %)**. Aucun seuil, mutateur ou exclusion
+affaibli. Tests sur conteneurs éphémères uniquement, aucun push ni PR. Le raccord
+API/session et le formulaire restent à réaliser. Voir [persistance.md](persistance.md).

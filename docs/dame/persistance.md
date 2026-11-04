@@ -33,7 +33,7 @@
 
 `mvn -f backend/pom.xml verify` garde la suite rapide sans Docker.
 `mvn -f backend/pom.xml -Pintegration verify` ajoute les `*IT` via Failsafe et
-échoue si Docker manque. Ce profil sera rendu obligatoire dans le job backend CI.
+échoue si Docker manque. Ce profil est rendu obligatoire dans le job backend CI.
 
 ## Traçabilité
 
@@ -120,3 +120,42 @@ Le seul survivant de la persistance supprime le précontrôle `body.isBlank()` d
 renvoie toujours `MatchStorageException` : même contrat observable. Les tests
 ne figent pas le détail interne de la cause pour tuer cette redondance. Aucune
 exclusion ne masque le mutant. PIT mesure le code Java, pas les contraintes SQL.
+
+## CI et reproduction locale
+
+Le check existant `Backend (format + lint + tests)` conserve son nom et exécute
+`mvn -B -Pintegration verify`. Les changements de migrations et du script
+d'initialisation déclenchent aussi ce check ; les rapports Failsafe sont publiés
+en artefact. Il n'y a ni `continue-on-error`, ni test Docker désactivé, ni baisse
+de seuil. La syntaxe YAML et le branchement du profil ont été contrôlés localement.
+La CI GitHub n'a pas été exécutée sur ces commits locaux : aucun push ni PR.
+
+Depuis la racine, Docker Desktop démarré :
+
+```bash
+# Toute la validation backend, y compris les vrais conteneurs
+mvn -B -ntp -f backend/pom.xml -Pintegration clean verify
+
+# Les tests unitaires du contrat HTTP, sans Docker
+mvn -B -ntp -f backend/pom.xml -Dtest=SupabaseMatchRepositoryTest test
+
+# Mutation Java, sans Docker
+mvn -B -ntp -f backend/pom.xml -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
+
+# Compatibilité de toutes les migrations et politiques collectives
+cd frontend
+CI=true npm run test:integration
+```
+
+Les conteneurs utilisent des ports aléatoires et sont arrêtés à la fin. Aucun
+fichier `.env` ni base partagée n'est utilisé par ces tests. Rapports locaux :
+`backend/target/failsafe-reports`, `backend/target/site/jacoco/index.html`,
+`backend/target/pit-reports/index.html` (non versionnés).
+
+## Prochaine étape
+
+La persistance est prête et vérifiée sur des bases éphémères. Il reste à relier
+les cas d'usage à l'API en associant l'UUID et le vrai moteur à la session HTTP,
+à tester cette autorisation et le CSRF, puis à raccorder le formulaire React
+des deux noms et l'enregistrement automatique à la victoire. Aucun endpoint
+ne permet encore au navigateur de créer ou clôturer une rencontre.

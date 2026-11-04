@@ -82,6 +82,8 @@ jobs:
               - 'backend/pom.xml'
               - 'backend/src/main/java/fr/tikigaming/games/sdv_civilisation/**'
               - 'backend/src/test/java/fr/tikigaming/games/sdv_civilisation/**'
+              - 'backend/src/main/java/fr/tikigaming/games/dame/**'
+              - 'backend/src/test/java/fr/tikigaming/games/dame/**'
               - 'quality/db-init/**'
             quality:
               - *ci
@@ -264,6 +266,14 @@ jobs:
       - name: Stockage des parties SDV Civilisation (Testcontainers + PostgREST)
         working-directory: backend
         run: mvn -B test -Dtest=SdvCivilisationTestcontainersIT -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Persistance Java Dames (PostgreSQL et PostgREST réels)
+        working-directory: backend
+        run: mvn -B -Pintegration '-Dit.test=fr/tikigaming/games/dame/**/*IT' test-compile failsafe:integration-test failsafe:verify
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-integration-backend
+          path: backend/target/failsafe-reports/
 
   # Mutation : incrémental sur les PR et les push vers dev ou main (seuls les mutants touchés par le changement sont
   # rejoués ; le push alimente le cache lu par les PR suivantes), complet au run de nuit et à la demande, qui servent
