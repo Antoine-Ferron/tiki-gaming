@@ -189,6 +189,32 @@ class MoveGeneratorTest {
                 .isEqualTo(squares("a1", "b2", "c3", "e5", "f6", "g7", "h8", "a7", "b6", "c5", "e3", "f2", "g1"));
     }
 
+    @Test
+    @DisplayName("un fou dans un coin (a1) n'a qu'une diagonale : 7 cases (valeur limite)")
+    void unFouDansUnCoinA7Cases() {
+        // Arrange
+        Position position = Fen.parse("k7/8/8/8/8/8/8/B6K w - - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of("a1")))
+                .isEqualTo(squares("b2", "c3", "d4", "e5", "f6", "g7", "h8"));
+    }
+
+    @Test
+    @DisplayName("un fou s'arrête avant une pièce amie et sur une pièce adverse")
+    void unFouSArreteAvantUnePieceAmieEtSurUnePieceAdverse() {
+        // Arrange : pion blanc en f6 (bloque), pion noir en b2 (prise)
+        Position position = Fen.parse("k7/8/5P2/8/3B4/8/1p6/7K w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("d4"));
+
+        // Assert
+        assertThat(destinations)
+                .contains(Square.of("e5"), Square.of("c3"), Square.of("b2"))
+                .doesNotContain(Square.of("f6"), Square.of("g7"), Square.of("h8"), Square.of("a1"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
