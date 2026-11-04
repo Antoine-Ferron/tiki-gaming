@@ -1,5 +1,5 @@
 import { RED_CAR, SIZE, type Vehicle, parseBoard } from './board'
-import { DIFFICULTY_RANGES, type Difficulty } from './difficulty'
+import { type Difficulty, difficultyOf } from './difficulty'
 import { GENERATOR_LAYOUTS } from './generatorLayouts'
 import { axisPosition, nextPositions } from './solver'
 
@@ -8,9 +8,8 @@ import { axisPosition, nextPositions } from './solver'
  * choisie parmi celles dont le minimum de coups est dans la plage. Le hasard est injecté (graine fixe en test).
  */
 export function generateBoard(difficulty: Difficulty, random: () => number): string[] {
-  const { min, max } = DIFFICULTY_RANGES[difficulty]
   const { vehicles, positions } = positionsOf(Math.floor(random() * GENERATOR_LAYOUTS.length))
-  const candidates = positions.filter((p) => p.distance >= min && p.distance <= max)
+  const candidates = positions.filter((p) => difficultyOf(p.distance) === difficulty)
   return toMap(vehicles, candidates[Math.floor(random() * candidates.length)].state)
 }
 
