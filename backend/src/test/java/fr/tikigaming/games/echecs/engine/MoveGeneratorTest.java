@@ -301,6 +301,16 @@ class MoveGeneratorTest {
         assertThat(MoveGenerator.destinations(position, Square.of(from))).isEqualTo(squares(expected.split(" ")));
     }
 
+    @Test
+    @DisplayName("un pion noir descend : double pas depuis la rangée 7 et prise en diagonale vers le bas")
+    void unPionNoirAvanceVersLeBas() {
+        // Arrange : pion noir en e7, cavalier blanc en d6 (à prendre), cavalier noir en f6 (ami)
+        Position position = Fen.parse("k7/4p3/3N1n2/8/8/8/8/7K b - - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of("e7"))).isEqualTo(squares("e6", "e5", "d6"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
