@@ -1,11 +1,11 @@
 package fr.tikigaming.games.sdv_civilisation;
 
 /** Fake : horloge qui n'avance que quand le test le demande (pas d'attente réelle). */
-class FakeClock implements Clock {
+public class FakeClock implements Clock {
 
     private long current;
 
-    FakeClock(long start) {
+    public FakeClock(long start) {
         this.current = start;
     }
 
@@ -14,7 +14,7 @@ class FakeClock implements Clock {
         return current;
     }
 
-    void advance(long millis) {
+    public void advance(long millis) {
         current += millis;
     }
 }
