@@ -8,6 +8,11 @@ import java.util.Map;
 /** Plateau de Rush Hour : la liste des véhicules lue depuis une map de 6 lignes de 6 cases. */
 public record Board(List<Vehicle> vehicles) {
 
+    /** Le plateau fait SIZE × SIZE cases. */
+    public static final int SIZE = 6;
+    /** La voiture à faire sortir. */
+    public static final char RED_CAR = 'X';
+
     public enum Orientation {
         HORIZONTAL,
         VERTICAL

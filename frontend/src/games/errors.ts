@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger'
 
 /**
  * - network : serveur injoignable ou en panne (5xx), l'action peut être retentée ;
- * - queued : score gardé sur l'appareil après une coupure, il sera renvoyé à la prochaine partie ;
+ * - queued : score gardé sur l'appareil après une coupure ou une session perdue, renvoyé à la prochaine partie ;
  * - session : jeton expiré ou invalide, il faut se reconnecter ;
  * - forbidden : refusé par les droits (RLS) : mauvais compte, jeu fermé… ;
  * - invalid : donnée refusée (score hors limites, sauvegarde mal formée) ;
@@ -21,9 +21,12 @@ export class GameError extends Error {
     this.code = code
   }
 
-  /** Vrai si la même action a des chances de réussir plus tard (coupure réseau, serveur indisponible). */
+  /**
+   * Vrai si la même action a des chances de réussir plus tard : coupure réseau, serveur indisponible, ou session
+   * perdue (backend redémarré alors que le front se croit connecté) qui revient après reconnexion.
+   */
   get retryable(): boolean {
-    return this.code === 'network'
+    return this.code === 'network' || this.code === 'session'
   }
 }
 
@@ -36,6 +39,10 @@ export const MESSAGES: Record<GameErrorCode, string> = {
   not_found: 'Ce jeu n’est plus disponible.',
   unknown: 'Une erreur inattendue est survenue. Réessaie.',
 }
+
+/** Score mis de côté parce que la session a expiré : le joueur doit se reconnecter pour qu'il parte. */
+export const QUEUED_AFTER_SESSION =
+  'Ta session a expiré : ton score est gardé sur cet appareil et sera envoyé une fois reconnecté.'
 
 // Codes SQLSTATE (Postgres) et PGRST (PostgREST) renvoyés par supabase-js.
 const BY_CODE: Record<string, GameErrorCode> = {

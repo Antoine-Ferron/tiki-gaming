@@ -77,6 +77,7 @@ Catalogue des jeux : une ligne par jeu, ajoutée par une migration de l'équipe 
 | `category`    | `text`        | **obligatoire, sans défaut**, `games_category_check` : `solo`, `duel`, `multi` |
 | `theme`       | `text`        | **obligatoire, sans défaut**, `games_theme_check` : `action`, `reflexion`, `strategie` |
 | `is_active`   | `boolean`     | défaut `true` ; un jeu inactif n'accepte plus de nouveaux scores  |
+| `max_score`   | `bigint`      | nullable, `>= 0` ; score maximal accepté (null = pas de limite)   |
 | `created_at`  | `timestamptz` | défaut `now()`                                                    |
 
 `category` et `theme` doivent correspondre aux champs du même nom de la `GameDefinition` du jeu
@@ -84,14 +85,19 @@ Catalogue des jeux : une ligne par jeu, ajoutée par une migration de l'équipe 
 
 ### `scores`
 
-Historique des parties. Le client ne peut qu'insérer des lignes.
+Historique des parties, lisible par tous. **Seul le backend Java écrit** (`POST /api/scores`, clé
+`service_role`) : un joueur ne peut pas insérer de score depuis le navigateur, même le sien.
+
+Le trigger `scores_check_allowed` vérifie chaque insertion, quel que soit son auteur (la RLS ne s'applique pas
+au `service_role`) : jeu actif (sinon `55000`) et score au plus `games.max_score` (sinon `23514`). Un score
+négatif est refusé par `scores_score_check` (`23514`), un jeu inconnu par la clé étrangère (`23503`).
 
 | Colonne      | Type          | Contraintes                                                    |
 |--------------|---------------|----------------------------------------------------------------|
 | `id`         | `bigint`      | PK, identité                                                   |
-| `user_id`    | `uuid`        | FK `profiles(id)` `on delete cascade`, défaut `auth.uid()`      |
+| `user_id`    | `uuid`        | FK `profiles(id)` `on delete cascade`, fourni par le backend    |
 | `game_slug`  | `text`        | FK `games(slug)` `on delete cascade`                           |
-| `score`      | `bigint`      | obligatoire, **plus haut = meilleur**                          |
+| `score`      | `bigint`      | obligatoire, `>= 0`, **plus haut = meilleur**                  |
 | `metadata`   | `jsonb`       | défaut `{}` (durée, niveau… libre par jeu)                      |
 | `created_at` | `timestamptz` | défaut `now()`                                                 |
 
@@ -127,7 +133,7 @@ Toutes les tables ont la **RLS activée** et des privilèges explicites (pas de 
 |---------------|-----------------|---------------------------------------------------------------|
 | `profiles`    | lecture         | lecture ; mise à jour de `username`, `avatar_url` de **son** profil |
 | `games`       | lecture         | lecture (écriture uniquement par migration)                   |
-| `scores`      | lecture         | lecture ; insertion de **ses** scores, sur un jeu actif       |
+| `scores`      | lecture         | lecture (insertion par le backend uniquement)                 |
 | `game_saves`  | —               | lecture / écriture / suppression de **ses** sauvegardes       |
 | `leaderboard` | lecture         | lecture                                                       |
 

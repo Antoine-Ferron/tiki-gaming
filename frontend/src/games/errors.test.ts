@@ -104,6 +104,7 @@ describe('MESSAGES', () => {
 describe('GameError.retryable', () => {
   test.each([
     ['network', true],
+    ['session', true],
     ['queued', false],
     ['forbidden', false],
     ['invalid', false],

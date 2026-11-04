@@ -92,6 +92,7 @@ accepté), sinon un compte est créé.
 | `POST /api/auth/password/reset`   | Nouveau mot de passe via le jeton du lien                      |
 | `POST /api/auth/password`         | Changement de mot de passe (connecté)                          |
 | `POST /api/auth/logout`           | Déconnexion                                                    |
+| `POST /api/scores`                | Enregistre le score du joueur connecté (seul chemin d'écriture) |
 
 Les `POST` exigent l'en-tête `X-XSRF-TOKEN` (copie du cookie `XSRF-TOKEN`), ajouté par
 `frontend/src/lib/api.ts`. Les erreurs sont renvoyées sous la forme `{ "error": "message" }`.
@@ -185,7 +186,7 @@ classement, sauvegarde. Un jeu **n'importe jamais `@/lib/supabase`** directement
 ```
 GamePage ──> createGameContext(game, player, platformDeps()) ──> domaine pur (checkScore, rankLeaderboard)
                          │
-                         ├─ ScoreRepository ──> supabaseScores      (fake : FakeScores)
+                         ├─ ScoreRepository ──> supabaseScores      (fake : FakeScores ; envoi par POST /api/scores)
                          ├─ SaveStore       ──> supabaseSaves / localSaves (fake : FakeSaves)
                          ├─ KeyValueStorage ──> localStorage        (fake : MemoryStorage)
                          └─ Realtime        ──> createRealtime (STOMP) (fake : FakeRealtime)
@@ -291,5 +292,9 @@ Spécification complète : issue [#85](https://github.com/EAnathos/tiki-gaming/i
 - Toutes les tables ont la RLS activée ; voir [modele-donnees.md](modele-donnees.md).
 - Les redirections après connexion n'acceptent que des chemins relatifs (pas de redirection ouverte).
 - En mode invité, aucune écriture n'est faite en base : seule la lecture publique (catalogue, classement) est utilisée.
-- Les scores sont envoyés par le client, donc falsifiables. Pour un jeu compétitif, la partie devra
-  être validée côté serveur (backend Java) avant l'insertion du score.
+- Les scores ne s'écrivent que par `POST /api/scores` : le backend prend le joueur dans la session HTTP et
+  insère avec la clé `service_role` ; le navigateur n'a plus le droit d'insérer dans `public.scores`. Le
+  trigger `scores_check_allowed` impose jeu actif et `max_score`.
+- Le score reste **calculé par le client** : sous le plafond du jeu, un joueur peut encore envoyer un score
+  inventé à `POST /api/scores`. Pour un jeu compétitif, son équipe ajoute un `ScoreValidator`
+  (`fr.tikigaming.scores`) qui vérifie la partie côté serveur avant l'insertion.
