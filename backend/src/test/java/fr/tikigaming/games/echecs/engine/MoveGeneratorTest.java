@@ -175,6 +175,20 @@ class MoveGeneratorTest {
                 .doesNotContain(Square.of("d7"), Square.of("d8"));
     }
 
+    @Test
+    @DisplayName("un fou sur un échiquier libre (d4) a 13 cases sur ses deux diagonales (règle D5)")
+    void unFouSurUnEchiquierLibreA13Cases() {
+        // Arrange : rois en a8 et h1, hors des diagonales du fou
+        Position position = Fen.parse("k7/8/8/8/3B4/8/8/7K w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("d4"));
+
+        // Assert
+        assertThat(destinations)
+                .isEqualTo(squares("a1", "b2", "c3", "e5", "f6", "g7", "h8", "a7", "b6", "c5", "e3", "f2", "g1"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
