@@ -42,7 +42,7 @@ public class PrivateTableController {
             summary = "Créer une table privée",
             description = "Le compte connecté occupe la première place. "
                     + "Chaque compte a au plus une table ouverte, dans une limite globale de 1 000 tables. "
-                    + "La table et sa partie expirent après 1 h sans création, jonction, démarrage ou action de tour accepté. "
+                    + "La table et sa partie expirent après 1 h sans opération acceptée : création, jonction, démarrage ou action de tour. "
                     + "Les lectures et les actions refusées ne renouvellent pas ce délai.")
     @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
     @ApiResponse(

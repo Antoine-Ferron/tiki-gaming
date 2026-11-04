@@ -20,7 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
- * Tables privées en mémoire. Sans création, jonction, démarrage ou action de tour accepté pendant
+ * Tables privées en mémoire. Sans opération acceptée (création, jonction, démarrage ou action de tour) pendant
  * {@link #INACTIVITY_TIMEOUT}, la table et sa partie sont retirées : sa place se libère, et son créateur peut ouvrir
  * une nouvelle table. Les lectures et les refus ne renouvellent pas ce délai.
  */
