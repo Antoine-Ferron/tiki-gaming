@@ -135,6 +135,11 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-28 | REQ-RH-09 | nominal | contrat (front) | `frontend/src/games/rush-hour/contract.test.ts` › le jeu a exactement les niveaux du contrat, case par case | PASSED | — |
 | TC-RH-29 | REQ-RH-09 | nominal | contrat (backend) | `backend/src/test/java/fr/tikigaming/games/rush_hour/ContractTest.java` › serverReplaysTheContractGames | PASSED | — |
 | TC-RH-30 | REQ-RH-09 | erreur | contrat (front) | `frontend/src/games/rush-hour/contract.test.ts` › contrat partagé avec le serveur : parties rejouées | PASSED | — |
+| TC-RH-31 | REQ-RH-01 | erreur | fuzzing (fast-check) | `frontend/src/games/rush-hour/domain/board.property.test.ts` › n’importe quelle grille est acceptée ou refusée avec un message prévu, sans autre erreur | PASSED | — |
+| TC-RH-32 | REQ-RH-01 | nominal | propriété (fast-check) | `frontend/src/games/rush-hour/domain/board.property.test.ts` › aller-retour : un plateau accepté, redessiné à partir de ses véhicules, redonne la même grille | PASSED | — |
+| TC-RH-33 | REQ-RH-02 | nominal | propriété (fast-check) | `frontend/src/games/rush-hour/domain/session.property.test.ts` › après n’importe quels coups légaux, tout annuler ramène au départ | PASSED | — |
+| TC-RH-34 | REQ-RH-03 | nominal | propriété (fast-check) | `frontend/src/games/rush-hour/domain/score.property.test.ts` › un coup en trop ou un indice de plus ne fait jamais monter le score | PASSED | — |
+| TC-RH-35 | REQ-RH-08 | nominal | propriété (fast-check) | `frontend/src/games/rush-hour/components/drag.property.test.ts` › au lâcher, le véhicule va sur la case la plus proche, de la même façon dans les deux sens | PASSED | BUG-04 |
 | TC-A11Y-03 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/accessibilite.spec.ts` › ['Rush Hour', '/games/rush-hour', 'Rush Hour'] | PASSED | BUG-05 |
 
 ## Anomalies
