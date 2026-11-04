@@ -115,8 +115,8 @@ Le score **ne descend jamais sous 0** et ne dépasse jamais 1000.
 | S2 | **Joueur connecté** : la sauvegarde suit son compte. **Invité** : elle reste dans son navigateur, et le jeu l'invite à se connecter pour être classé. |
 | S3 | **Classement** : chaque joueur a un **score total** = la somme de ses records sur les 20 niveaux (maximum 20 000). Il ne fait que monter. |
 | S4 | Les plateaux de la **Génération ne comptent pas** dans le classement (sinon on pourrait gonfler son total en jouant à l'infini). Le joueur voit à la place ses **statistiques** : nombre de plateaux réussis et meilleur score, par difficulté. |
-| S5 | **Envoi du score** : quand le score total augmente, le jeu l'envoie avec `ctx.submitScore` (le SDK de la plateforme), et met dans les **métadonnées** le niveau joué et la **liste des coups**. Le score total ne peut pas dépasser **20 000** (`scoreLimits` du jeu et `max_score` en base). |
-| S6 | **Vérification par le serveur (anti-triche)** : le backend sait **rejouer** une liste de coups sur un plateau, et la refuse si un coup est illégal (sortie du plateau, traversée d'un véhicule) ou si la voiture rouge n'est pas sortie. Il pourra s'appuyer sur les coups envoyés en métadonnées (S5) pour vérifier une partie. |
+| S5 | **Envoi du score** : à la fin d'un niveau, le score vérifié par le serveur (S6) met à jour le record ; si le score total augmente, le jeu l'envoie avec `ctx.submitScore` (le SDK de la plateforme), avec en **métadonnées** le niveau, le score du niveau, les indices, la durée et la **liste des coups**. Le score total ne peut pas dépasser **20 000** (`scoreLimits` du jeu et `max_score` en base). |
+| S6 | **Vérification par le serveur (anti-triche)** : à la fin d'un niveau, le jeu envoie la **liste des coups** et le nombre d'indices à `POST /api/games/rush-hour/levels/{niveau}/results`. Le serveur **rejoue** les coups et **calcule lui-même le score** ; il refuse (422) un coup illégal, une voiture rouge non sortie, moins de coups que le minimum ou des indices négatifs. C'est son score qui est gardé et envoyé au classement. Les plateaux de la Génération ne passent pas par le serveur (ils ne comptent pas au classement). |
 
 ## 9. Contrôles et affichage
 
@@ -149,7 +149,7 @@ Chaque règle ci-dessus devient un ou plusieurs tests, écrits **avant** le code
 | §5    | 8 coups → Facile, 9 coups → Moyen, 16 → Moyen, 17 → Difficile, 2 → refusé. |
 | §7    | Le score ne descend jamais sous 0, même avec 1000 coups de trop. |
 | G3    | Tout plateau généré est valide, résoluble et dans sa plage de difficulté. |
-| S6    | (Back) Les coups « camion C descend de 1, voiture rouge avance de 2 » sur le niveau 1 → acceptés ; « voiture rouge avance de 2 » seule → refusé (elle traverserait le camion). |
+| S6    | (Back) La solution la plus courte du niveau 1 → 1000 points ; la voiture rouge qui avance sans que la sortie soit libre → refusé (422) ; niveau 21 → inconnu (404). |
 
 ---
 
