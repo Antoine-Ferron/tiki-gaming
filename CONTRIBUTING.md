@@ -372,9 +372,9 @@ d'adapter la réaction :
 | `code`      | Cas                                                        |
 |-------------|------------------------------------------------------------|
 | `invalid`   | score refusé, avant l'envoi (pas un entier, négatif, au-dessus de `scoreLimits.max`) ou par le serveur |
-| `queued`    | coupure réseau : le score est gardé sur l'appareil et renvoyé à la prochaine partie (5 essais) |
+| `queued`    | coupure réseau ou session perdue : le score est gardé sur l'appareil et renvoyé à la prochaine partie (5 essais) |
 | `network`   | serveur injoignable (lecture du classement, sauvegarde…) : réessayer plus tard |
-| `session`   | session expirée : se reconnecter                           |
+| `session`   | session expirée (hors envoi de score) : se reconnecter     |
 | `forbidden` / `not_found` | jeu fermé ou refusé par la RLS, ou jeu absent de `public.games` |
 
 `ctx.submitScore` passe par `POST /api/scores` : le backend enregistre le score pour le joueur de la session,

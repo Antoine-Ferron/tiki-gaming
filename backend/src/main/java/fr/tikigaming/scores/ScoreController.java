@@ -33,7 +33,7 @@ public class ScoreController {
     static final String NOT_SIGNED_IN = "Connecte-toi pour enregistrer ton score.";
     static final String INVALID_METADATA = "Les détails de la partie sont invalides.";
     /** Taille maximale des détails d'une partie (JSON sérialisé), lisibles par tous dans le classement. */
-    static final int MAX_METADATA_CHARS = 16_384;
+    static final int MAX_METADATA_CHARS = 65_536;
 
     record ScoreRequest(
             @Schema(example = "clicker") @NotBlank(message = "Indique le jeu.")

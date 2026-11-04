@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import * as z from 'zod/mini'
-import { GameError } from './errors'
+import { GameError, QUEUED_AFTER_SESSION } from './errors'
 import { createGameContext } from './sdk'
 import {
   FakeRealtime,
@@ -52,6 +52,26 @@ describe('contexte joueur', () => {
     expect(deps.storage?.getItem('tiki:pending-scores:player-1')).toContain('"score":10')
 
     await ctx.submitScore(20)
+
+    expect(scores.rows.map((r) => r.score)).toEqual([10, 20])
+  })
+
+  test('session perdue (backend redémarré) : garde le score et demande de se reconnecter', async () => {
+    const scores = new FakeScores(player)
+    const deps = fakeDeps({ scores })
+    const expired = new GameError('session', 'session expirée')
+    const ctx = createGameContext(game, player, deps)
+    scores.failNext(expired)
+
+    await expect(ctx.submitScore(10)).rejects.toMatchObject({
+      code: 'queued',
+      message: QUEUED_AFTER_SESSION,
+      cause: expired,
+    })
+    expect(deps.storage?.getItem('tiki:pending-scores:player-1')).toContain('"score":10')
+
+    // Reconnecté : le contexte suivant du même joueur envoie le score en attente.
+    await createGameContext(game, player, deps).submitScore(20)
 
     expect(scores.rows.map((r) => r.score)).toEqual([10, 20])
   })
