@@ -2,6 +2,7 @@ package fr.tikigaming.games.echecs.engine;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /** Joue un coup sur une position et renvoie la position suivante (les positions sont immuables). */
 public final class Game {
@@ -27,9 +28,17 @@ public final class Game {
                 pieces,
                 position.turn() == Color.WHITE ? Color.BLACK : Color.WHITE,
                 updatedCastling(position.castling(), from, to),
-                position.enPassant(),
+                enPassantTarget(moving, from, to),
                 resetsClock ? 0 : position.halfmoveClock() + 1,
                 position.turn() == Color.BLACK ? position.fullmoveNumber() + 1 : position.fullmoveNumber());
+    }
+
+    /** Après un double pas de pion, la case sautée devient la case de prise en passant ; sinon il n'y en a pas. */
+    private static Optional<Square> enPassantTarget(Piece moving, Square from, Square to) {
+        if (moving.type() == PieceType.PAWN && Math.abs(to.rank() - from.rank()) == 2) {
+            return Optional.of(new Square(from.file(), (from.rank() + to.rank()) / 2));
+        }
+        return Optional.empty();
     }
 
     /**
