@@ -20,6 +20,9 @@ public final class MoveGenerator {
     /** Le roi : 1 case dans les 8 directions. */
     private static final int[][] KING_OFFSETS = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
 
+    /** La tour : en ligne droite sur sa colonne et sa rangée. */
+    private static final int[][] ROOK_DIRECTIONS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
     private MoveGenerator() {}
 
     /** Les cases où peut aller la pièce posée en {@code from} ; vide si la case est libre. */
@@ -29,8 +32,26 @@ public final class MoveGenerator {
             return Set.of();
         }
         Piece piece = moving.get();
+        if (piece.type() == PieceType.ROOK) {
+            return slidingDestinations(from, ROOK_DIRECTIONS);
+        }
         int[][] offsets = piece.type() == PieceType.KING ? KING_OFFSETS : KNIGHT_OFFSETS;
         return jumpDestinations(position, from, piece.color(), offsets);
+    }
+
+    /** Pièces « glissantes » : avancent case après case dans chaque direction, jusqu'au bord. */
+    private static Set<Square> slidingDestinations(Square from, int[][] directions) {
+        Set<Square> destinations = new HashSet<>();
+        for (int[] direction : directions) {
+            int file = from.file() + direction[0];
+            int rank = from.rank() + direction[1];
+            while (isOnBoard(file, rank)) {
+                destinations.add(new Square(file, rank));
+                file += direction[0];
+                rank += direction[1];
+            }
+        }
+        return destinations;
     }
 
     /** Pièces « à sauts » (cavalier, roi) : chaque décalage donne au plus une case. */
