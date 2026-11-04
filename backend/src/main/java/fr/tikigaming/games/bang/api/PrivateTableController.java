@@ -137,6 +137,10 @@ public class PrivateTableController {
             responseCode = "404",
             description = "Code de table inconnu ou expiré",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Compte non assis à cette table",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     void state(@PathVariable String code, HttpServletRequest request) {
         tables.state(code, connectedAccountId(request));
     }

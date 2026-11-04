@@ -99,7 +99,12 @@ public class PrivateTableService {
 
     public synchronized void state(String code, String accountId) {
         purgeInactive();
-        if (!tables.containsKey(code)) throw new PrivateTableException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
+        Table table = tables.get(code);
+        if (table == null) throw new PrivateTableException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
+        if (!table.players.contains(accountId)) {
+            throw new PrivateTableException(
+                    HttpStatus.FORBIDDEN, "Tu dois être assis à cette table pour consulter la partie.");
+        }
     }
 
     synchronized GameState game(String code) {

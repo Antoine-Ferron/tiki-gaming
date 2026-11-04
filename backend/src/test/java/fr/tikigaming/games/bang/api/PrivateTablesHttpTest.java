@@ -71,6 +71,22 @@ class PrivateTablesHttpTest {
     }
 
     @Test
+    void anOutsiderCannotReadAnExistingTableBeforeOrAfterItStarts() throws Exception {
+        String code = createTable("creator");
+        for (int seat = 2; seat <= 4; seat++) {
+            postAs(TABLES + "/" + code + "/join", sessionFor("player-" + seat)).andExpect(status().isOk());
+        }
+
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor("outsider")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Tu dois être assis à cette table pour consulter la partie."));
+        postAs(TABLES + "/" + code + "/start", sessionFor("creator")).andExpect(status().isOk());
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor("outsider")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Tu dois être assis à cette table pour consulter la partie."));
+    }
+
+    @Test
     void threePlayersCannotStartAPrivateTable() throws Exception {
         String code = createTable("creator");
         postAs(TABLES + "/" + code + "/join", sessionFor("second")).andExpect(status().isOk());
