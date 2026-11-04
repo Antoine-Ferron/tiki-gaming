@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createGrid, type Rng } from './logic'
+import { createGrid, toggleFlag, type Rng } from './logic'
 
 describe('demineur: génération de grille', () => {
   it('crée une grille aux dimensions demandées', () => {
@@ -41,6 +41,20 @@ describe('demineur: génération de grille', () => {
     expect(grid[0][0].mine).toBe(true)
     const placedMines = grid.flat().filter((cell) => cell.mine).length
     expect(placedMines).toBe(1)
+  })
+})
+
+describe('demineur: drapeaux', () => {
+  it('ne fait rien si les coordonnées sont hors de la grille', () => {
+    // Arrange
+    const grid = createGrid(3, 3, 1, { next: () => 0 })
+
+    // Act
+    toggleFlag(grid, -1, 0)
+    toggleFlag(grid, 0, 99)
+
+    // Assert : aucune case de la grille n'a été modifiée
+    expect(grid.flat().some((cell) => cell.flagged)).toBe(false)
   })
 })
 

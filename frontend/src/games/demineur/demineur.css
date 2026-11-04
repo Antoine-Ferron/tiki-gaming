@@ -1,0 +1,16 @@
+.demineur {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+/* Un item de grille ne rétrécit pas sous la taille de son contenu par défaut (min-width: auto) :
+   sans ça, une grille large (Expert, 30 colonnes) déborde sur la carte voisine au lieu de scroller. */
+.demineur-board {
+  min-width: 0;
+}
+
+.demineur-board .demineur-grid {
+  overflow-x: auto;
+  max-width: 100%;
+}
