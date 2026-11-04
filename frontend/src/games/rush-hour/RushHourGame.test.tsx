@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test } from 'vitest'
+import { GameError } from '../errors'
 import { createGameContext } from '../sdk'
 import { FakeScores, fakeDeps } from '../testing/fakes'
 import { vehicleLabel } from './components/vehicleLabel'
@@ -11,7 +12,7 @@ import { generateBoard } from './domain/generator'
 import { getLevel } from './domain/levels'
 import { solve } from './domain/solver'
 import { seededRandom } from './testing/seededRandom'
-import { levelsVerifier } from './testing/verifiers'
+import { levelsVerifier, refuseWith } from './testing/verifiers'
 import RushHourGame from './RushHourGame'
 
 afterEach(cleanup)
@@ -283,5 +284,54 @@ describe('RushHourGame : mode Génération (G1, G5, G6, S4)', () => {
     // Assert
     expect(screen.getByRole('heading', { name: 'Plateau Facile' })).toBeInTheDocument()
     expect(screen.getByText(/^Coups : 0 /)).toBeInTheDocument()
+  })
+})
+
+// Robustesse : une panne du serveur s'affiche en message lisible, sans bloquer le jeu (REQ-ERR-01 de la plateforme).
+describe('RushHourGame : pannes du serveur', () => {
+  const outage = new GameError('network', 'Le serveur ne répond pas')
+
+  test('classement indisponible : le message s’affiche et les niveaux restent jouables', async () => {
+    // Arrange : Fake du classement en panne
+    const scores = new FakeScores(player)
+    scores.leaderboard = () => Promise.reject(outage)
+
+    // Act
+    render(<RushHourGame ctx={createGameContext(game, player, fakeDeps({ scores }))} verifyLevel={levelsVerifier} />)
+
+    // Assert
+    expect(await screen.findByText('Le serveur ne répond pas')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Niveau 1\b/ })).toBeEnabled()
+  })
+
+  test('progression illisible : le message s’affiche et le joueur repart du niveau 1', async () => {
+    // Arrange : Fake des sauvegardes en panne
+    const deps = fakeDeps()
+    deps.saves.load = () => Promise.reject(outage)
+
+    // Act
+    render(<RushHourGame ctx={createGameContext(game, player, deps)} verifyLevel={levelsVerifier} />)
+
+    // Assert
+    expect(await screen.findByText('Le serveur ne répond pas')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Niveau 1\b/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /^Niveau 2\b/ })).toBeDisabled()
+  })
+
+  test('partie refusée par le serveur : le refus s’affiche, sans score ni envoi au classement', async () => {
+    // Arrange : Stub du serveur, qui refuse la partie
+    const scores = new FakeScores(player)
+    const ctx = createGameContext(game, player, fakeDeps({ scores }))
+    render(<RushHourGame ctx={ctx} verifyLevel={refuseWith('Partie refusée : Déplacement impossible : X de 3')} />)
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /^Niveau 1\b/ }))
+
+    // Act
+    for (const move of SOLUTION) await playKeys(user, move)
+
+    // Assert
+    expect(await screen.findByText('Partie refusée : Déplacement impossible : X de 3')).toBeInTheDocument()
+    expect(screen.queryByText(/^Bravo/)).not.toBeInTheDocument()
+    expect(scores.rows).toEqual([])
   })
 })

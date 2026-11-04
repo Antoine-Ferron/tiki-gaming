@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { parseBoard } from './domain/board'
 import { levels } from './domain/levels'
@@ -18,9 +20,20 @@ type Contract = {
   bareme: { coups: number; minimum: number; indices: number; resultat: Result }[]
 }
 
-const contract: Contract = JSON.parse(
-  readFileSync(new URL('../../../../shared/games/rush-hour/contrat.json', import.meta.url), 'utf8'),
-)
+const CONTRACT = 'shared/games/rush-hour/contrat.json'
+
+/**
+ * Cherche le contrat en remontant les dossiers : un chemin fixe (`../../../..`) casse dès que le test tourne
+ * ailleurs que dans le dépôt, par exemple dans le bac à sable de Stryker (frontend/.stryker-tmp/sandbox-…).
+ */
+function findContract(dir = dirname(fileURLToPath(import.meta.url))): string {
+  const candidate = join(dir, CONTRACT)
+  if (existsSync(candidate)) return candidate
+  if (dirname(dir) === dir) throw new Error(`Contrat introuvable : ${CONTRACT}`)
+  return findContract(dirname(dir))
+}
+
+const contract: Contract = JSON.parse(readFileSync(findContract(), 'utf8'))
 
 /** Rejoue une partie avec le moteur du jeu, comme le serveur le fait avec la sienne. */
 function replay(map: string[], moves: Contract['parties'][number]['coups']): Result {

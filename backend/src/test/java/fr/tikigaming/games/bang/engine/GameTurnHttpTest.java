@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -167,13 +168,14 @@ class GameTurnHttpTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 1})
-    void insufficientDrawPilesRefuseWithoutPartialDrawingOrRecycling(int remaining) throws Exception {
+    @CsvSource({"0,0", "0,1", "1,0"})
+    void insufficientCombinedPilesRefuseWithoutPartialDrawingOrRecycling(int remaining, int discarded)
+            throws Exception {
         List<CardInstance> drawPile = new TestGameCatalog().cards().subList(0, remaining);
         GameState game = new GameState(
                 List.of(player(1, 2, 1), player(2, 4, 1), player(3, 3, 1), player(4, 4, 1)),
                 drawPile,
-                List.of(new CardInstance("already-discarded", CardType.MISSED)),
+                List.of(new CardInstance("already-discarded", CardType.MISSED)).subList(0, discarded),
                 1,
                 GameState.Phase.DRAW);
         doReturn(game).when(deal).deal(anyList());
@@ -182,12 +184,49 @@ class GameTurnHttpTest {
         postAs(TABLES + "/" + code + "/turn/draw", sessionFor(1))
                 .andExpect(status().isConflict())
                 .andExpect(content()
-                        .json("{\"error\":\"Il reste moins de deux cartes dans la pioche.\"}", JsonCompareMode.STRICT));
+                        .json(
+                                "{\"error\":\"Il ne reste pas assez de cartes dans la pioche et la défausse.\"}",
+                                JsonCompareMode.STRICT));
 
         assertThat(tables.game(code)).isSameAs(game);
         assertThat(game.players().getFirst().hand()).hasSize(1);
         assertThat(game.drawPile()).hasSize(remaining);
-        assertThat(game.discardPile()).hasSize(1);
+        assertThat(game.discardPile()).hasSize(discarded);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1})
+    void theTurnDrawUsesTheSharedRecyclingWhenZeroOrOneCardRemains(int remaining) throws Exception {
+        List<CardInstance> drawPile = new TestGameCatalog().cards().subList(0, remaining);
+        List<CardInstance> discarded =
+                List.of(new CardInstance("discard-1", CardType.MISSED), new CardInstance("discard-2", CardType.BANG));
+        GameState before = new GameState(
+                List.of(player(1, 2, 1), player(2, 4, 1), player(3, 3, 1), player(4, 4, 1)),
+                drawPile,
+                discarded,
+                1,
+                GameState.Phase.DRAW);
+        doReturn(before).when(deal).deal(anyList());
+        String code = startedTable();
+
+        postAs(TABLES + "/" + code + "/turn/draw", sessionFor(1)).andExpect(status().isNoContent());
+
+        GameState after = tables.game(code);
+        List<CardInstance> hand = after.players().getFirst().hand();
+        assertThat(hand)
+                .hasSize(3)
+                .startsWith(before.players().getFirst().hand().getFirst());
+        if (remaining == 1) assertThat(hand.get(1)).isSameAs(drawPile.getFirst());
+        List<CardInstance> recycled = new ArrayList<>(hand.subList(1 + remaining, 3));
+        recycled.addAll(after.drawPile());
+        assertThat(recycled).containsExactlyInAnyOrderElementsOf(discarded);
+        assertThat(after.drawPile()).hasSize(remaining);
+        assertThat(after.discardPile()).isEmpty();
+        assertThat(after.currentSeat()).isEqualTo(1);
+        assertThat(after.phase()).isEqualTo(GameState.Phase.PLAY);
+        assertThat(after.players().subList(1, 4)).isEqualTo(before.players().subList(1, 4));
+        assertThat(before.drawPile()).hasSize(remaining);
+        assertThat(before.discardPile()).containsExactlyElementsOf(discarded);
     }
 
     @Test

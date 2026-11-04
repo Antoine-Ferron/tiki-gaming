@@ -24,6 +24,39 @@ class PrivateTableControllerTest {
     private final PrivateTableController controller = new PrivateTableController(tables);
 
     @Test
+    void acceptingPassesTheSessionActorAndTheShotIdWithoutADodgeCard() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser("target", "joueur@example.com"));
+
+        assertThat(controller.accept("CODE", "shot", request).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        verify(tables).respond("CODE", "target", "shot", null);
+    }
+
+    @Test
+    void dodgingPassesTheSessionActorAndTheShotIdToTheTables() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser("target", "joueur@example.com"));
+
+        assertThat(controller.dodge("CODE", "shot", "missed", request).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        verify(tables).respond("CODE", "target", "shot", "missed");
+    }
+
+    @Test
+    void firingPassesOnlyTheSessionActorAndTheChosenCardAndTarget() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser("shooter", "joueur@example.com"));
+        request.addParameter("accountId", "someone-else");
+
+        assertThat(controller.fire("CODE", "bang-1", "2", request).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        verify(tables).fire("CODE", "shooter", "bang-1", 2);
+    }
+
+    @Test
     void creationPassesTheConnectedAccountIdToTheTables() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         AuthSession.signIn(request, new AuthUser("account-id", "joueur@example.com"));

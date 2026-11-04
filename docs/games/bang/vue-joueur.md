@@ -15,6 +15,7 @@ La réponse `200` est un objet JSON :
 | `role` | Rôle privé du compte connecté : `SHERIFF`, `OUTLAW` ou `RENEGADE`. |
 | `hand` | Sa main : tableau d'objets `{ "id": "…", "type": "BANG" }`, le type pouvant aussi être `MISSED`. |
 | `players` | Joueurs dans l'ordre des places. |
+| `pendingShot` | Présent uniquement lorsqu'un tir attend sa cible : `{ "id": "…", "shooterSeat": 1, "targetSeat": 2 }`. Absent après résolution. Conservé à la reconnexion du même compte tant que la table existe. |
 
 Chaque joueur de `players` possède les champs `seat`, `character`, `health`, `maxHealth`,
 `playedCards` et `handCount`. `character` est l'identifiant du personnage ; `health` et `maxHealth`
@@ -38,3 +39,6 @@ sa création, une jonction acceptée, un démarrage accepté ou une action de to
 une vue ou envoyer une action refusée ne renouvelle pas ce délai.
 
 Les commandes et transitions sont décrites dans [Déroulement des tours](deroulement-tours.md).
+Les actions et conflits de tir sont décrits dans [Synchronisation des tirs](synchronisation-tirs.md).
+La carte reçue grâce au bonus de Bart fait partie de sa main privée et reste présente à la
+reconnexion ; les autres comptes ne voient que son nombre de cartes et ses PV actualisés.

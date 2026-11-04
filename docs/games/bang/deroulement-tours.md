@@ -13,7 +13,7 @@ Un jeton CSRF valide est requis (cookie `XSRF-TOKEN` et en-tête `X-XSRF-TOKEN`,
 
 | Route | Effet d'une commande acceptée |
 | --- | --- |
-| `/turn/draw` | En `DRAW`, prend les deux premières cartes de la pioche déjà mélangée, les ajoute à la main et passe en `PLAY`. |
+| `/turn/draw` | En `DRAW`, prend deux cartes, les ajoute à la main et passe en `PLAY`. Si la pioche s'épuise, la défausse est mélangée pour la reconstituer, y compris entre les deux cartes. |
 | `/turn/end` | En `PLAY`, ouvre `DISCARD` si la main dépasse les **PV actuels** ; sinon, donne la main au prochain joueur vivant en `DRAW`. En `DISCARD`, termine le tour seulement lorsque la main respecte cette limite. |
 | `/turn/discard/{cardId}` | En `DISCARD`, tant que la main dépasse les **PV actuels**, déplace exactement un exemplaire choisi de sa propre main vers la défausse. Dès que la limite est respectée, toute défausse supplémentaire est refusée. La phase reste `DISCARD` : il faut ensuite appeler `/turn/end`. |
 
@@ -26,7 +26,7 @@ Aucune commande ne retourne directement `GameState`.
 | `401` | Aucune session authentifiée. |
 | `403` | Jeton CSRF absent ou invalide, compte extérieur à la table, ou joueur non actif. |
 | `404` | Table inconnue ou expirée. |
-| `409` | Partie non démarrée, transition incohérente, carte absente de sa propre main, défausse demandée alors que la main respecte déjà la limite de PV actuels, ou moins de deux cartes disponibles dans la pioche. |
+| `409` | Partie non démarrée, transition incohérente, carte absente de sa propre main, défausse demandée alors que la main respecte déjà la limite de PV actuels, ou moins de deux cartes disponibles au total dans la pioche et la défausse. |
 
 Les refus métier utilisent `{ "error": "message" }`. Les refus CSRF gardent la réponse du serveur
 embarqué documentée dans Swagger (`timestamp`, `status`, `error`, `path` avec `Accept: application/json`).
@@ -52,12 +52,18 @@ la partie n'a pas encore commencé.
 ## Modèle partagé et limites
 
 `GameState` porte explicitement `phase` et `discardPile` dans son constructeur. Les reconstructions
-de `ShotRules` conservent ces champs, ainsi que le siège actif et la pioche. Le contrat existant
+de `ShotRules` conservent la phase et le siège actif ; les pioches passent par `CardDraw`. Le contrat existant
 `ShotOutcome.discarded` est conservé ; la résolution multijoueur des tirs relève de la #59.
 Aucune action HTTP « jouer » n'est ajoutée dans cette issue.
 
-Le recyclage de la défausse reste hors périmètre : avec zéro ou une carte disponible, `/turn/draw`
-renvoie `409` et ne prélève aucune carte. Les distances, les tirs en attente, la victoire, le plateau,
-le temps réel et la persistance après redémarrage restent dans leurs issues respectives.
+Le recyclage est maintenant commun à la pioche de tour et au [bonus de Bart Cassidy](bart-cassidy-pioche.md).
+Avec moins de deux cartes disponibles **au total dans les deux piles**, `/turn/draw` renvoie `409`
+sans déplacer de carte ni mélanger la défausse. Avec une carte en pioche et une en défausse,
+les deux sont reçues sans duplication. La victoire, le plateau, le temps réel et la persistance
+après redémarrage restent hors périmètre.
 
 Le calcul de distance de base est décrit dans [Distance de tir](distance-tir.md).
+
+La [#59](synchronisation-tirs.md) raccorde désormais les tirs et leurs réponses HTTP.
+Pendant un tir en attente, les actions du tireur sont refusées en `409`, notamment `/turn/end`.
+Le compteur des tirs est conservé dans la table et remis à zéro seulement au nouveau tour.

@@ -4,6 +4,7 @@ import fr.tikigaming.games.bang.cards.Role;
 import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.GameState;
+import fr.tikigaming.games.bang.model.PendingShot;
 import fr.tikigaming.games.bang.model.PlayerGameView;
 import fr.tikigaming.games.bang.model.TableSeat;
 import java.time.Clock;
@@ -20,7 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
- * Tables privées en mémoire. Sans opération acceptée (création, jonction, démarrage ou action de tour) pendant
+ * Tables privées en mémoire. Sans opération acceptée (création, jonction, démarrage, action de tour, tir ou réponse) pendant
  * {@link #INACTIVITY_TIMEOUT}, la table et sa partie sont retirées : sa place se libère, et son créateur peut ouvrir
  * une nouvelle table. Les lectures et les refus ne renouvellent pas ce délai.
  */
@@ -33,6 +34,7 @@ public class PrivateTableService {
     private final Map<String, Table> tables = new HashMap<>();
     private final InitialDeal initialDeal;
     private final Clock clock;
+    private final CardDraw cardDraw = new CardDraw();
 
     @Autowired
     public PrivateTableService(InitialDeal initialDeal) {
@@ -136,7 +138,8 @@ public class PrivateTableService {
                                 List.of(),
                                 player.hand().size(),
                                 player.roleCard().role() == Role.SHERIFF ? Role.SHERIFF : null))
-                        .toList());
+                        .toList(),
+                table.pendingShot);
     }
 
     public synchronized void draw(String code, String accountId) {
@@ -145,31 +148,14 @@ public class PrivateTableService {
         if (game.phase() != GameState.Phase.DRAW) {
             throw new PrivateTableException(HttpStatus.CONFLICT, "Ce n'est pas la phase de pioche.");
         }
-        // shortcut: la défausse n'est pas recyclée ; à ajouter avec les règles de recyclage.
-        if (game.drawPile().size() < 2) {
-            throw new PrivateTableException(HttpStatus.CONFLICT, "Il reste moins de deux cartes dans la pioche.");
+        GameState drawn;
+        try {
+            drawn = cardDraw.draw(game, game.currentSeat(), 2);
+        } catch (IllegalStateException refused) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, refused.getMessage());
         }
-        List<GameState.Player> players = game.players().stream()
-                .map(player -> {
-                    if (player.seat() != game.currentSeat()) return player;
-                    List<CardInstance> hand = new ArrayList<>(player.hand());
-                    hand.addAll(game.drawPile().subList(0, 2));
-                    return new GameState.Player(
-                            player.accountId(),
-                            player.seat(),
-                            player.roleCard(),
-                            player.character(),
-                            player.health(),
-                            player.maxHealth(),
-                            List.copyOf(hand));
-                })
-                .toList();
         table.game = new GameState(
-                players,
-                List.copyOf(game.drawPile().subList(2, game.drawPile().size())),
-                game.discardPile(),
-                game.currentSeat(),
-                GameState.Phase.PLAY);
+                drawn.players(), drawn.drawPile(), drawn.discardPile(), drawn.currentSeat(), GameState.Phase.PLAY);
         table.lastActivity = clock.instant();
     }
 
@@ -193,6 +179,7 @@ public class PrivateTableService {
             } while (game.players().get(nextSeat - 1).health() <= 0);
             table.game =
                     new GameState(game.players(), game.drawPile(), game.discardPile(), nextSeat, GameState.Phase.DRAW);
+            table.shotsThisTurn = 0;
         }
         table.lastActivity = clock.instant();
     }
@@ -231,7 +218,68 @@ public class PrivateTableService {
         table.lastActivity = clock.instant();
     }
 
+    public synchronized void fire(String code, String accountId, String cardId, int targetSeat) {
+        Table table = activeTable(code, accountId);
+        GameState game = table.game;
+        if (game.phase() != GameState.Phase.PLAY) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Ce n'est pas la phase de jeu.");
+        }
+        ShotOutcome outcome;
+        try {
+            outcome = shotRules(game).fire(game, game.currentSeat(), cardId, targetSeat, table.shotsThisTurn);
+        } catch (IllegalArgumentException | IllegalStateException refused) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, refused.getMessage());
+        }
+        table.game = applyShotOutcome(outcome);
+        table.pendingShot = new PendingShot(UUID.randomUUID().toString(), game.currentSeat(), targetSeat);
+        table.shotsThisTurn++;
+        table.lastActivity = clock.instant();
+    }
+
+    public synchronized void respond(String code, String accountId, String shotId, String missedCardId) {
+        Table table = seatedGame(code, accountId);
+        PendingShot shot = table.pendingShot;
+        if (shot == null || !shot.id().equals(shotId)) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Ce tir n'est plus en attente.");
+        }
+        if (!table.players.get(shot.targetSeat() - 1).equals(accountId)) {
+            throw new PrivateTableException(HttpStatus.FORBIDDEN, "Seule la cible peut répondre à ce tir.");
+        }
+        ShotOutcome outcome;
+        try {
+            outcome = shotRules(table.game).respond(table.game, shot.targetSeat(), missedCardId);
+        } catch (IllegalArgumentException | IllegalStateException refused) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, refused.getMessage());
+        }
+        table.game = applyShotOutcome(outcome);
+        table.pendingShot = null;
+        table.lastActivity = clock.instant();
+    }
+
+    private ShotRules shotRules(GameState game) {
+        return new ShotRules((from, to) -> PlayerDistance.between(game, from, to), cardDraw);
+    }
+
+    private static GameState applyShotOutcome(ShotOutcome outcome) {
+        GameState state = outcome.state();
+        List<CardInstance> discarded = new ArrayList<>(state.discardPile());
+        discarded.addAll(outcome.discarded());
+        return new GameState(
+                state.players(), state.drawPile(), List.copyOf(discarded), state.currentSeat(), state.phase());
+    }
+
     private Table activeTable(String code, String accountId) {
+        Table table = seatedGame(code, accountId);
+        if (!table.players.get(table.game.currentSeat() - 1).equals(accountId)) {
+            throw new PrivateTableException(HttpStatus.FORBIDDEN, "Ce n'est pas ton tour.");
+        }
+        if (table.pendingShot != null) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "La cible doit d'abord répondre au tir en attente.");
+        }
+        return table;
+    }
+
+    private Table seatedGame(String code, String accountId) {
         purgeInactive();
         code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
         Table table = tables.get(code);
@@ -241,9 +289,6 @@ public class PrivateTableService {
         }
         if (table.game == null) {
             throw new PrivateTableException(HttpStatus.CONFLICT, "La partie n'a pas encore démarré.");
-        }
-        if (!table.players.get(table.game.currentSeat() - 1).equals(accountId)) {
-            throw new PrivateTableException(HttpStatus.FORBIDDEN, "Ce n'est pas ton tour.");
         }
         return table;
     }
@@ -263,6 +308,8 @@ public class PrivateTableService {
         private final List<String> players = new ArrayList<>();
         private Instant lastActivity;
         private GameState game;
+        private PendingShot pendingShot;
+        private int shotsThisTurn;
 
         private Table(String creator, Instant now) {
             players.add(creator);
