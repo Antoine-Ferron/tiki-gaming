@@ -17,6 +17,7 @@ import fr.tikigaming.games.bang.cards.RoleCard;
 import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +32,11 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -52,6 +57,7 @@ import tools.jackson.databind.ObjectMapper;
             "SUPABASE_JWT_SECRET=test-jwt-secret-with-at-least-32-characters"
         })
 @AutoConfigureMockMvc
+@Import(GameShotHttpTest.Setup.class)
 class GameShotHttpTest {
     private static final String TABLES = "/api/games/bang/tables";
     private final String accounts = UUID.randomUUID().toString();
@@ -67,6 +73,23 @@ class GameShotHttpTest {
 
     @MockitoSpyBean
     private InitialDeal deal;
+
+    @Autowired
+    private MutableClock clock;
+
+    @TestConfiguration
+    static class Setup {
+        @Bean
+        MutableClock clock() {
+            return new MutableClock();
+        }
+
+        @Bean
+        @Primary
+        PrivateTableService timedTables(InitialDeal initialDeal, MutableClock clock) {
+            return new PrivateTableService(initialDeal, clock);
+        }
+    }
 
     @Test
     void firingConsumesOneCardAndPublishesOnePendingShot() throws Exception {
@@ -462,6 +485,122 @@ class GameShotHttpTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"fire", "accept", "dodge"})
+    void acceptedShotActionsRenewActivity(String action) throws Exception {
+        String code = startedTable();
+        String shot = null;
+        if (!action.equals("fire")) {
+            command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+            shot = pendingId(code);
+        }
+        clock.advance(Duration.ofMinutes(59));
+        String command = switch (action) {
+            case "fire" -> "shots/bang-1/targets/2";
+            case "accept" -> "shots/" + shot + "/accept";
+            default -> "shots/" + shot + "/dodge/missed-2";
+        };
+
+        command(code, command, action.equals("fire") ? 1 : 2).andExpect(status().isNoContent());
+
+        clock.advance(Duration.ofMinutes(59));
+        view(code, 2).andExpect(status().isOk());
+        clock.advance(Duration.ofMinutes(1));
+        view(code, 2).andExpect(status().isNotFound());
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "read",
+                "second-shot",
+                "end",
+                "wrong-actor",
+                "wrong-id",
+                "wrong-card",
+                "repeat-fire",
+                "repeat-accept",
+                "repeat-dodge"
+            })
+    void readsRefusalsAndDuplicatesNeverRenewActivity(String action) throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+        if (action.equals("repeat-accept")) {
+            command(code, "shots/" + shot + "/accept", 2).andExpect(status().isNoContent());
+        }
+        if (action.equals("repeat-dodge")) {
+            command(code, "shots/" + shot + "/dodge/missed-2", 2).andExpect(status().isNoContent());
+        }
+        GameState before = tables.game(code);
+        clock.advance(Duration.ofMinutes(59));
+
+        switch (action) {
+            case "read" -> view(code, 2).andExpect(status().isOk());
+            case "second-shot" -> command(code, "shots/bang-2/targets/2", 1).andExpect(status().isConflict());
+            case "repeat-fire" -> command(code, "shots/bang-1/targets/2", 1).andExpect(status().isConflict());
+            case "end" -> command(code, "turn/end", 1).andExpect(status().isConflict());
+            case "wrong-actor" -> command(code, "shots/" + shot + "/accept", 3).andExpect(status().isForbidden());
+            case "wrong-id" -> command(code, "shots/old/accept", 2).andExpect(status().isConflict());
+            case "wrong-card" ->
+                command(code, "shots/" + shot + "/dodge/bang-2", 2).andExpect(status().isConflict());
+            case "repeat-accept" ->
+                command(code, "shots/" + shot + "/accept", 2).andExpect(status().isConflict());
+            default -> command(code, "shots/" + shot + "/dodge/missed-2", 2).andExpect(status().isConflict());
+        }
+
+        assertThat(tables.game(code)).isSameAs(before);
+        clock.advance(Duration.ofMinutes(1));
+        view(code, 2).andExpect(status().isNotFound());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"shots/bang-1/targets/2", "shots/{shot}/accept", "shots/{shot}/dodge/missed-2"})
+    void shotEndpointsRequireAuthenticationAndValidCsrf(String action) throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String path = TABLES + "/" + code + "/" + action.replace("{shot}", pendingId(code));
+        GameState before = tables.game(code);
+
+        mvc.perform(preparePost(path, new MockHttpSession())).andExpect(status().isUnauthorized());
+        mvc.perform(post(path).session(sessionFor(2))).andExpect(status().isForbidden());
+        mvc.perform(post(path)
+                        .session(sessionFor(2))
+                        .cookie(new Cookie("XSRF-TOKEN", "correct"))
+                        .header("X-XSRF-TOKEN", "incorrect"))
+                .andExpect(status().isForbidden());
+
+        assertThat(tables.game(code)).isSameAs(before);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"shots/bang-1/targets/2", "shots/old/accept", "shots/old/dodge/missed-2"})
+    void unknownAndUnstartedTablesRejectShotActions(String action) throws Exception {
+        command("UNKNOWN", action, 1).andExpect(status().isNotFound());
+        String code = fullTable();
+
+        command(code, action, 1).andExpect(status().isConflict());
+        command(code, action, 5).andExpect(status().isForbidden());
+
+        assertThat(tables.game(code)).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 3, 5})
+    void onlyTheTargetSessionCanAcceptTheShot(int actor) throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+        GameState before = tables.game(code);
+
+        mvc.perform(preparePost(TABLES + "/" + code + "/shots/" + shot + "/accept", actor)
+                        .param("accountId", accounts + ":2")
+                        .param("seat", "2"))
+                .andExpect(status().isForbidden());
+
+        assertThat(tables.game(code)).isSameAs(before);
+    }
+
     private String pendingId(String code) throws Exception {
         return json.readTree(view(code, 2)
                         .andExpect(status().isOk())
@@ -495,6 +634,12 @@ class GameShotHttpTest {
 
     private String startedTable(GameState game) throws Exception {
         doReturn(game).when(deal).deal(anyList());
+        String code = fullTable();
+        command(code, "start", 1).andExpect(status().isOk());
+        return code;
+    }
+
+    private String fullTable() throws Exception {
         String body = mvc.perform(preparePost(TABLES, 1))
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -502,7 +647,6 @@ class GameShotHttpTest {
                 .getContentAsString();
         String code = json.readTree(body).path("code").asString();
         for (int seat = 2; seat <= 4; seat++) command(code, "join", seat).andExpect(status().isOk());
-        command(code, "start", 1).andExpect(status().isOk());
         return code;
     }
 
@@ -531,7 +675,10 @@ class GameShotHttpTest {
     }
 
     private MockHttpServletRequestBuilder preparePost(String path, int seat) throws Exception {
-        MockHttpSession session = sessionFor(seat);
+        return preparePost(path, sessionFor(seat));
+    }
+
+    private MockHttpServletRequestBuilder preparePost(String path, MockHttpSession session) throws Exception {
         Cookie csrf = mvc.perform(get("/api/auth/session").session(session))
                 .andExpect(status().isOk())
                 .andReturn()

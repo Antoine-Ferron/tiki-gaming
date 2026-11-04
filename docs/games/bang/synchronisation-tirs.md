@@ -28,3 +28,9 @@ suivie d'un nouveau calcul de distance, deux tirs simultanés, deux réponses si
 esquive et concurrence des deux) et confidentialité des quatre vues sont déjà verts avec le
 raccordement précédent : **104 tests ciblés**, sans ajouter de code de production ni fabriquer de rouge.
 Les courses utilisent une `CyclicBarrier`, des sessions distinctes et des attentes bornées, sans sommeil.
+
+Avec une horloge contrôlée, les tirs et réponses acceptés renouvellent l'activité ; lectures,
+refus, secondes tentatives et doublons de réponses laissent expirer la table à l'heure exacte.
+Authentification, CSRF et refus sur table inconnue/non démarrée sont couverts pour les trois routes.
+**127 tests ciblés** passent, dont un parcours HTTP utilisant le vrai catalogue et la vraie distribution
+(seul le mélange est reproductible), vérifiant que chaque carte existe exactement une fois.
