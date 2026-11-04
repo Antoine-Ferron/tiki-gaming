@@ -23,7 +23,7 @@ class CatalogueTest {
     }
 
     @Test
-    void everyChainStartsFromACardOfThePreviousAge() {
+    void everyChainStartsFromACardOfAnEarlierAge() {
         // Étant donné toutes les cartes qui se construisent gratuitement par chaîne
         List<Card> chained = IntStream.rangeClosed(1, 3)
                 .mapToObj(Cards::ofAge)
@@ -31,10 +31,14 @@ class CatalogueTest {
                 .filter(card -> card.chainFrom() != null)
                 .toList();
 
-        // Alors chacune part d'une carte de l'âge précédent
-        assertThat(chained).isNotEmpty().allSatisfy(card -> assertThat(Cards.ofAge(card.age() - 1))
-                .extracting(Card::name)
-                .contains(card.chainFrom()));
+        // Alors chacune part d'une carte d'un âge antérieur (l'Observatoire de l'âge III part de l'Atelier de l'âge I)
+        assertThat(chained)
+                .isNotEmpty()
+                .allSatisfy(card -> assertThat(IntStream.range(1, card.age())
+                                .mapToObj(Cards::ofAge)
+                                .flatMap(List::stream))
+                        .extracting(Card::name)
+                        .contains(card.chainFrom()));
     }
 
     @Test
