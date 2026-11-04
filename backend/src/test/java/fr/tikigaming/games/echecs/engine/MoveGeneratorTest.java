@@ -160,6 +160,21 @@ class MoveGeneratorTest {
                 .doesNotContain(squares("d6", "d7", "d8").toArray(Square[]::new));
     }
 
+    @Test
+    @DisplayName("une tour peut prendre une pièce adverse, puis s'arrête dessus (règle D4)")
+    void uneTourPrendUnePieceAdversePuisSArrete() {
+        // Arrange : pion noir en d6, au-dessus de la tour blanche en d4
+        Position position = Fen.parse("k7/8/3p4/8/3R4/8/8/7K w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("d4"));
+
+        // Assert : d5 et d6 (prise) ; pas d7 ni d8, derrière le pion pris
+        assertThat(destinations)
+                .contains(Square.of("d5"), Square.of("d6"))
+                .doesNotContain(Square.of("d7"), Square.of("d8"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
