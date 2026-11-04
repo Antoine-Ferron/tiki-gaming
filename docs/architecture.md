@@ -187,12 +187,15 @@ GamePage ──> createGameContext(game, player, platformDeps()) ──> domaine
                          │
                          ├─ ScoreRepository ──> supabaseScores      (fake : FakeScores)
                          ├─ SaveStore       ──> supabaseSaves / localSaves (fake : FakeSaves)
-                         └─ KeyValueStorage ──> localStorage        (fake : MemoryStorage)
+                         ├─ KeyValueStorage ──> localStorage        (fake : MemoryStorage)
+                         └─ Realtime        ──> createRealtime (STOMP) (fake : FakeRealtime)
 ```
 
 Le contexte ne connaît que les ports (`ports.ts`) : `sdk.ts` n'importe aucun adaptateur. C'est la page
 de jeu (point d'assemblage) qui branche les adaptateurs avec `platformDeps()` (`adapters/index.ts`). Les
 adaptateurs traduisent toute erreur en `GameError`. Les tests injectent des fakes en mémoire : aucun test unitaire ne touche le réseau.
+`createRealtime` n'est chargé (import dynamique) que si un jeu appelle réellement `ctx.realtime` : un jeu
+solo n'alourdit pas le chargement initial de la plateforme avec le client STOMP.
 
 #### Catégories
 
@@ -227,6 +230,7 @@ backend/src/main/java/fr/tikigaming/
 │   ├── SupabaseErrors.java            Codes d'erreur Supabase → messages en français
 │   ├── Username.java                  Contrainte @Username (+ UsernameValidator)
 │   └── SupabaseTokenService.java      JWT au format Supabase pour la RLS
+├── realtime/                          Socle WebSocket pour le multijoueur (voir ci-dessous)
 └── games/
     └── <slug>/                        Code serveur d'un jeu, endpoints /api/games/<slug>/*
 ```
@@ -236,6 +240,42 @@ sont dans [CONTRIBUTING.md](../CONTRIBUTING.md#packages). Formatter (Spotless), 
 tests passent par `mvn verify`, relancé par la CI.
 
 La configuration est lue depuis `backend/.env` (non versionné, modèle : `backend/.env.example`).
+
+### Socle WebSocket (`fr.tikigaming.realtime`)
+
+STOMP sur WebSocket (SockJS en repli), un seul endpoint `/ws` partagé par tous les jeux multijoueurs.
+Généralise les « tables privées » de BANG! (`games/bang/engine/PrivateTableService`), qui restent en
+l'état (migration laissée en suivi pour son équipe).
+
+```
+Connexion WebSocket ──authentifiée par la session HTTP (AuthSession, même cookie JSESSIONID)──┐
+                                                                                                 │
+GameRoomService  : createRoom/joinRoom/leaveRoom (code à 12 caractères, sièges, purge 1 h)      │
+      │ une salle = un canal STOMP :                                                            │
+      ├─ diffusion publique   /topic/rooms/{slug}/{code}        (RoomEvent { type, payload })   │
+      └─ réponses/erreurs     /user/queue/rooms/{slug}/response | /errors                       │
+                                                                                                 │
+IdempotencyGuard : déduplique une action (scope, actionId) — double clic, renvoi après coupure ◄┘
+```
+
+Une session de jeu (une partie en cours) correspond donc exactement à un canal `/topic/rooms/{slug}/{code}` :
+pas de notion séparée de « session » côté WebSocket. La reconnexion (page rafraîchie, coupure réseau)
+passe par le même message `join`, idempotent : le joueur retrouve son siège. Un jeu avec de l'état caché
+par joueur (main de cartes…) construit son propre `@MessageMapping` dans son package, au-dessus de
+`GameRoomService`/`IdempotencyGuard` — le socle ne connaît que les sièges, jamais les règles d'un jeu.
+
+Un `ChannelInterceptor` (`RoomChannelInterceptor`) filtre les frames des clients, par liste d'autorisations : seul
+`SEND` vers `/app/**` passe (un `SEND` direct sur `/topic/...` serait diffusé tel quel), et `SUBSCRIBE` n'est permis
+que vers `/user/queue/rooms/{slug}/(response|errors)` et vers le topic d'une salle où le compte est assis. Tout le
+reste est refusé, motifs Ant (`*`, `?`, `{}`) compris. Un jeu qui ajoute ses destinations les déclare dans cet
+interceptor.
+
+Limite connue : l'appartenance n'est vérifiée qu'au `SUBSCRIBE`. Après `leave` ou une purge d'inactivité,
+l'abonnement serveur du compte reste actif jusqu'à ce que le client se désabonne ou se déconnecte, et il continue
+de recevoir les évènements de la salle. Acceptable tant que le relais ne diffuse que des actions publiques ; à
+corriger (désabonnement côté serveur ou refiltrage à l'envoi) si des actions deviennent sensibles.
+
+Spécification complète : issue [#85](https://github.com/EAnathos/tiki-gaming/issues/85).
 
 ## Sécurité
 
