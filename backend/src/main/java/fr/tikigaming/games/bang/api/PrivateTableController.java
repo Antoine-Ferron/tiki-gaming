@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -124,6 +125,16 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     GameStarted start(@PathVariable String code, HttpServletRequest request) {
         return tables.start(code, connectedAccountId(request));
+    }
+
+    @GetMapping("/{code}/state")
+    @Operation(summary = "Consulter sa vue de la partie")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    void state(@PathVariable String code, HttpServletRequest request) {
+        connectedAccountId(request);
     }
 
     private static String connectedAccountId(HttpServletRequest request) {

@@ -57,6 +57,13 @@ class PrivateTablesHttpTest {
     private ObjectMapper json;
 
     @Test
+    void anonymousPlayersCannotReadATableState() throws Exception {
+        mvc.perform(get(TABLES + "/UNKNOWN/state"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Non connecté"));
+    }
+
+    @Test
     void threePlayersCannotStartAPrivateTable() throws Exception {
         String code = createTable("creator");
         postAs(TABLES + "/" + code + "/join", sessionFor("second")).andExpect(status().isOk());

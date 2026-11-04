@@ -71,6 +71,14 @@ class PrivateTableControllerTest {
     }
 
     @Test
+    void anAnonymousReadNeverReachesTheTables() {
+        assertThatThrownBy(() -> controller.state("UNKNOWN", new MockHttpServletRequest()))
+                .isInstanceOfSatisfying(
+                        AuthException.class, error -> assertThat(error.status()).isEqualTo(401));
+        verifyNoInteractions(tables);
+    }
+
+    @Test
     void anAnonymousCreationNeverReachesTheTables() {
         assertThatThrownBy(() -> controller.create(new MockHttpServletRequest()))
                 .isInstanceOfSatisfying(
