@@ -1,6 +1,7 @@
 package fr.tikigaming.games.echecs.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -42,6 +43,15 @@ class GameTest {
         // Assert : un seul occupant en d5, le pion blanc ; le cavalier a disparu
         assertThat(after.pieceAt(Square.of("d5"))).isEqualTo(Optional.of(new Piece(Color.WHITE, PieceType.PAWN)));
         assertThat(after.pieces()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("on ne peut pas jouer une pièce de l'autre camp : c'est aux Blancs de commencer")
+    void onNePeutPasJouerUnePieceDeLAutreCamp() {
+        // Act + Assert : les Noirs essaient de jouer alors que le trait est aux Blancs
+        assertThatThrownBy(() -> play(START, "e7", "e5"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("trait");
     }
 
     private static Position play(String fen, String from, String to) {
