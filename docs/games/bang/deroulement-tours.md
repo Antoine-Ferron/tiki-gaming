@@ -59,3 +59,5 @@ Aucune action HTTP « jouer » n'est ajoutée dans cette issue.
 Le recyclage de la défausse reste hors périmètre : avec zéro ou une carte disponible, `/turn/draw`
 renvoie `409` et ne prélève aucune carte. Les distances, les tirs en attente, la victoire, le plateau,
 le temps réel et la persistance après redémarrage restent dans leurs issues respectives.
+
+Le calcul de distance de base est décrit dans [Distance de tir](distance-tir.md).

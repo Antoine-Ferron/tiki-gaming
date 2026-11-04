@@ -16,4 +16,9 @@ public final class LogAuditNotifier implements AuditNotifier {
                 alert.balance(),
                 alert.threshold());
     }
+
+    @Override
+    public void inactivityDetected(InactivityReport report) {
+        log.warn("Tour expiré sans carte jouée : joueur={}, heure limite={}", report.player(), report.deadline());
+    }
 }

@@ -259,10 +259,12 @@ class PrivateTablesHttpTest {
                 .andExpect(jsonPath("$.components.schemas.Player.properties.playedCards.description")
                         .value("Cartes posées, toujours vide au démarrage"))
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.hand.items['$ref']")
-                        .value("#/components/schemas/Card"))
-                .andExpect(jsonPath("$.components.schemas.Card.properties", org.hamcrest.Matchers.aMapWithSize(2)))
-                .andExpect(jsonPath("$.components.schemas.Card.properties.id").exists())
-                .andExpect(jsonPath("$.components.schemas.Card.properties.type").exists());
+                        .value("#/components/schemas/BangCard"))
+                .andExpect(jsonPath("$.components.schemas.BangCard.properties", org.hamcrest.Matchers.aMapWithSize(2)))
+                .andExpect(
+                        jsonPath("$.components.schemas.BangCard.properties.id").exists())
+                .andExpect(jsonPath("$.components.schemas.BangCard.properties.type")
+                        .exists());
 
         for (int error : List.of(401, 403, 404, 409)) {
             docs.andExpect(jsonPath(path + ".responses['" + error + "'].content.*.schema['$ref']")

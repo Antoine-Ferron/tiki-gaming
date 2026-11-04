@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
 import { Field } from '@/components/Field'
+import { GoogleButton } from '@/components/GoogleButton'
 import { apiPost, toFormErrors } from '@/lib/api'
 import { signupSchema, validate, type FieldErrors, USERNAME_HINT, PASSWORD_HINT } from '@/lib/validation'
 
@@ -51,6 +52,7 @@ export default function SignupPage() {
   return (
     <form className="card form" onSubmit={handleSubmit} noValidate>
       <h1>Inscription</h1>
+      <GoogleButton label="S’inscrire avec Google" redirect="/" disabled={busy} onStart={() => setBusy(true)} />
       <Field
         label="Pseudo"
         hint={USERNAME_HINT}

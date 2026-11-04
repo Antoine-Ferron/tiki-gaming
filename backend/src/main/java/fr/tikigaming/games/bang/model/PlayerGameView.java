@@ -23,6 +23,7 @@ public record PlayerGameView(
         List<Card> hand,
 
         List<Player> players) {
+    @Schema(name = "BangCard")
     public record Card(String id, CardType type) {}
 
     public record Player(
