@@ -12,7 +12,7 @@ Fonctionnalité: Fin d'une partie
 
   Scénario: Une partie moins bonne ne fait pas baisser le record
     Étant donné un joueur connecté
-    Et son record est de 500 points
+    Et son record actuel est de 500 points
     Quand il termine une partie avec un score de 300 points
     Alors un score de 300 points est envoyé au classement
     Et son record est de 500 points
