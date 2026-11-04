@@ -8,6 +8,7 @@ import type { GameView } from './board/view'
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  vi.useRealTimers()
   document.cookie = 'XSRF-TOKEN=; Max-Age=0; Path=/'
 })
 
@@ -232,4 +233,47 @@ test('une réponse périmée affiche le refus puis le nouveau tir, sans rejouer 
       expect.objectContaining({ method: 'POST' }),
     ),
   )
+})
+
+test('une ancienne lecture périodique ne réaffiche pas un tir déjà résolu', async () => {
+  const pending: GameView = {
+    ...fourPlayerView(),
+    currentSeat: 4,
+    pendingShot: { id: 'tir-courant', shooterSeat: 4, targetSeat: 1 },
+  }
+  const resolved = { ...pending, pendingShot: undefined }
+  let finishOld!: (response: Response) => void
+  const oldRead = new Promise<Response>((resolve) => {
+    finishOld = resolve
+  })
+  let reads = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/state')) {
+        reads++
+        if (reads === 2) return oldRead
+        return Response.json(reads === 1 ? pending : resolved)
+      }
+      if (url.endsWith('/accept')) return new Response(null, { status: 204 })
+      return Response.json({ code: pending.code, seat: 1, playerCount: 4 })
+    }),
+  )
+  vi.useFakeTimers()
+  render(<OnlineTable />)
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  })
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2000)
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Accepter le tir' }))
+  })
+  expect(screen.getByRole('status').textContent).toBe('Au tour de la place 4.')
+  await act(async () => {
+    finishOld(Response.json(pending))
+  })
+  expect(screen.getByRole('status').textContent).toBe('Au tour de la place 4.')
+  expect(screen.queryByRole('button', { name: 'Accepter le tir' })).toBeNull()
 })
