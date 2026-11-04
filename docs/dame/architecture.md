@@ -54,3 +54,7 @@ La [persistance](persistance.md) dispose désormais d'un adaptateur PostgREST et
 de tests Testcontainers sur les vrais services PostgreSQL/PostgREST. La table est
 privée au backend et protège les transitions concurrentes. Le raccordement
 API/interface reste à réaliser.
+
+Les [premiers scénarios Gherkin](bdd.md) formalisent les rencontres, les prises et
+la victoire pour la relecture métier. Ils attendent encore leurs bindings Java et
+ne sont pas comptabilisés comme tests automatisés.

@@ -277,3 +277,13 @@ tués (96,43 %)**, dernier survivant redondant documenté. Rencontres : PIT **22
 Profil PIT collectif : **262/270 (97,04 %)**. Aucun seuil, mutateur ou exclusion
 affaibli. Tests sur conteneurs éphémères uniquement, aucun push ni PR. Le raccord
 API/session et le formulaire restent à réaliser. Voir [persistance.md](persistance.md).
+
+## 4 novembre 2026 — premiers exemples BDD à relire
+
+À la demande de l'utilisateur, ajout de deux fichiers Gherkin français pour les
+rencontres et les prises/victoire : huit scénarios déclarés, dont deux plans,
+soit douze cas après développement des exemples. Leur lecture est vérifiée avec
+le parseur déjà installé dans le dépôt, sans nouvelle dépendance. Ils ne sont
+pas encore liés à des étapes Java et ne sont pas comptés comme tests verts.
+La prochaine étape sera la relecture des exemples puis leur automatisation
+sur le domaine et ses fakes ; voir [bdd.md](bdd.md).
