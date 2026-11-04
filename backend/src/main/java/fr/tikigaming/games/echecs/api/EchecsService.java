@@ -24,6 +24,10 @@ public class EchecsService {
 
     /** Joue le coup {@code from} → {@code to} et renvoie la FEN de la position suivante. */
     public String play(String fen, String from, String to) {
-        return Fen.toFen(Game.play(Fen.parse(fen), Square.of(from), Square.of(to)));
+        try {
+            return Fen.toFen(Game.play(Fen.parse(fen), Square.of(from), Square.of(to)));
+        } catch (IllegalArgumentException e) {
+            throw new EchecsRejectedException(e.getMessage());
+        }
     }
 }
