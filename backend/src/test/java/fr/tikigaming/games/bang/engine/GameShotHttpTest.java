@@ -173,6 +173,26 @@ class GameShotHttpTest {
         command(code, "turn/end", 1).andExpect(status().isNoContent());
     }
 
+    @Test
+    void reconnectingAndStartingAgainNeverResetTheTurnsShotLimit() throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+        String targetView = view(code, 2).andReturn().getResponse().getContentAsString();
+
+        command(code, "join", 2).andExpect(status().isOk());
+        command(code, "start", 1).andExpect(status().isOk());
+        assertThat(view(code, 2).andReturn().getResponse().getContentAsString()).isEqualTo(targetView);
+        command(code, "shots/" + shot + "/accept", 2).andExpect(status().isNoContent());
+        GameState resolved = tables.game(code);
+        command(code, "join", 1).andExpect(status().isOk());
+        command(code, "start", 2).andExpect(status().isOk());
+        view(code, 1).andExpect(status().isOk());
+
+        command(code, "shots/bang-2/targets/2", 1).andExpect(status().isConflict());
+        assertThat(tables.game(code)).isSameAs(resolved);
+    }
+
     private String pendingId(String code) throws Exception {
         return json.readTree(view(code, 2)
                         .andExpect(status().isOk())

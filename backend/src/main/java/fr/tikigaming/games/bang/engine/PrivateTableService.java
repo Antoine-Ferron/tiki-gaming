@@ -238,12 +238,13 @@ public class PrivateTableService {
         GameState game = table.game;
         ShotOutcome outcome;
         try {
-            outcome = shotRules(game).fire(game, game.currentSeat(), cardId, targetSeat, 0);
+            outcome = shotRules(game).fire(game, game.currentSeat(), cardId, targetSeat, table.shotsThisTurn);
         } catch (IllegalArgumentException | IllegalStateException refused) {
             throw new PrivateTableException(HttpStatus.CONFLICT, refused.getMessage());
         }
         table.game = applyShotOutcome(outcome);
         table.pendingShot = new PendingShot(UUID.randomUUID().toString(), game.currentSeat(), targetSeat);
+        table.shotsThisTurn++;
         table.lastActivity = clock.instant();
     }
 
@@ -320,6 +321,7 @@ public class PrivateTableService {
         private Instant lastActivity;
         private GameState game;
         private PendingShot pendingShot;
+        private int shotsThisTurn;
 
         private Table(String creator, Instant now) {
             players.add(creator);
