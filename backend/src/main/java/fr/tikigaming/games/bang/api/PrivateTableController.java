@@ -156,6 +156,36 @@ public class PrivateTableController {
         return tables.state(code, connectedAccountId(request));
     }
 
+    @PostMapping("/{code}/turn/draw")
+    @Operation(
+            summary = "Piocher les deux cartes du début de son tour",
+            description = "Seul le joueur actif peut piocher, une fois par tour. "
+                    + "Le recyclage de la défausse n'est pas encore pris en charge.")
+    @ApiResponse(responseCode = "204", description = "Deux cartes piochées ; la phase de jeu commence")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF invalide ou compte non actif",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Table inconnue ou expirée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Partie non démarrée, mauvaise phase ou pioche insuffisante",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    ResponseEntity<Void> draw(@PathVariable String code, HttpServletRequest request) {
+        tables.draw(code, connectedAccountId(request));
+        return ResponseEntity.noContent().build();
+    }
+
     private static String connectedAccountId(HttpServletRequest request) {
         AuthUser user = AuthSession.currentUser(request);
         if (user == null) throw new AuthException(401, "Non connecté");

@@ -1,6 +1,7 @@
 package fr.tikigaming.games.bang.engine;
 
 import fr.tikigaming.games.bang.cards.Role;
+import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.GameState;
 import fr.tikigaming.games.bang.model.PlayerGameView;
@@ -135,6 +136,56 @@ public class PrivateTableService {
                                 player.hand().size(),
                                 player.roleCard().role() == Role.SHERIFF ? Role.SHERIFF : null))
                         .toList());
+    }
+
+    public synchronized void draw(String code, String accountId) {
+        Table table = activeTable(code, accountId);
+        GameState game = table.game;
+        if (game.phase() != GameState.Phase.DRAW) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Ce n'est pas la phase de pioche.");
+        }
+        // shortcut: la défausse n'est pas recyclée ; à ajouter avec les règles de recyclage.
+        if (game.drawPile().size() < 2) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Il reste moins de deux cartes dans la pioche.");
+        }
+        List<GameState.Player> players = game.players().stream()
+                .map(player -> {
+                    if (player.seat() != game.currentSeat()) return player;
+                    List<CardInstance> hand = new ArrayList<>(player.hand());
+                    hand.addAll(game.drawPile().subList(0, 2));
+                    return new GameState.Player(
+                            player.accountId(),
+                            player.seat(),
+                            player.roleCard(),
+                            player.character(),
+                            player.health(),
+                            player.maxHealth(),
+                            List.copyOf(hand));
+                })
+                .toList();
+        table.game = new GameState(
+                players,
+                List.copyOf(game.drawPile().subList(2, game.drawPile().size())),
+                game.currentSeat(),
+                GameState.Phase.PLAY);
+        table.lastActivity = clock.instant();
+    }
+
+    private Table activeTable(String code, String accountId) {
+        purgeInactive();
+        code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
+        Table table = tables.get(code);
+        if (table == null) throw new PrivateTableException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
+        if (!table.players.contains(accountId)) {
+            throw new PrivateTableException(HttpStatus.FORBIDDEN, "Tu dois être assis à cette table.");
+        }
+        if (table.game == null) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "La partie n'a pas encore démarré.");
+        }
+        if (!table.players.get(table.game.currentSeat() - 1).equals(accountId)) {
+            throw new PrivateTableException(HttpStatus.FORBIDDEN, "Ce n'est pas ton tour.");
+        }
+        return table;
     }
 
     synchronized GameState game(String code) {
