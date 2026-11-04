@@ -60,6 +60,13 @@ public record PlayerState(
         return new PlayerState(name, bot, newCoins, wonder, stages, city, military, tokens);
     }
 
+    /** Le joueur après les duels de fin d'âge contre ses deux voisins. */
+    PlayerState afterConflicts(List<MilitaryToken> duels) {
+        int won = duels.stream().mapToInt(MilitaryToken::value).sum();
+        List<MilitaryToken> all = Stream.concat(tokens.stream(), duels.stream()).toList();
+        return new PlayerState(name, bot, coins, wonder, stagesBuilt, built, military + won, all);
+    }
+
     public boolean hasBuilt(String card) {
         return built.stream().anyMatch(c -> c.name().equals(card));
     }

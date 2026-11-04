@@ -17,6 +17,10 @@ public final class Engine {
     public static final int HAND_SIZE = 7;
     public static final int TURNS_PER_AGE = 6;
     public static final int DISCARD_COINS = 3;
+    public static final int LAST_AGE = 3;
+    /** Jeton de victoire de chaque âge ; une défaite vaut toujours −1, une égalité 0. */
+    private static final List<Integer> VICTORY_TOKENS = List.of(1, 3, 5);
+
     static final List<String> BOTS = List.of("IA 1", "IA 2");
 
     private final CurrencyConverter converter;
@@ -94,7 +98,36 @@ public final class Engine {
         List<List<Card>> passed = IntStream.range(0, count)
                 .mapToObj(i -> rest.get(passesLeft(state.age()) ? state.rightOf(i) : state.leftOf(i)))
                 .toList();
-        return new GameState(state.age(), state.turn() + 1, players, passed, false, discards, lastTurn, List.of());
+        if (state.turn() < TURNS_PER_AGE) {
+            return new GameState(state.age(), state.turn() + 1, players, passed, false, discards, lastTurn, List.of());
+        }
+
+        // Fin d'âge : la dernière carte de chaque main est défaussée, puis les conflits sont résolus.
+        passed.forEach(discards::addAll);
+        List<List<MilitaryToken>> duels = IntStream.range(0, count)
+                .mapToObj(i -> List.of(
+                        duel(state.age(), players.get(i), players.get(state.leftOf(i))),
+                        duel(state.age(), players.get(i), players.get(state.rightOf(i)))))
+                .toList();
+        List<PlayerState> fought = IntStream.range(0, count)
+                .mapToObj(i -> players.get(i).afterConflicts(duels.get(i)))
+                .toList();
+        List<Integer> conflicts = duels.stream()
+                .map(pair -> pair.stream().mapToInt(MilitaryToken::value).sum())
+                .toList();
+        if (state.age() == LAST_AGE) {
+            List<List<Card>> empty =
+                    fought.stream().<List<Card>>map(p -> List.of()).toList();
+            return new GameState(state.age(), state.turn(), fought, empty, true, discards, lastTurn, conflicts);
+        }
+        int age = state.age() + 1;
+        return new GameState(age, 1, fought, deal(age, count), false, discards, lastTurn, conflicts);
+    }
+
+    /** Duel contre un voisin : victoire selon l'âge, défaite −1, égalité 0. */
+    private static MilitaryToken duel(int age, PlayerState player, PlayerState other) {
+        int value = Integer.compare(player.shields(), other.shields());
+        return new MilitaryToken(age, other.name(), value > 0 ? VICTORY_TOKENS.get(age - 1) : Math.min(value, 0));
     }
 
     private Payment payment(GameState state, int index, ActionType type, Card card) {
