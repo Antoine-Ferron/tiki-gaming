@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { Realtime } from '../ports'
 import type { GameContext } from '../types'
@@ -90,6 +90,19 @@ describe('BatailleNavaleGame — mode local', () => {
     expect(screen.getAllByRole('button', { name: /^Case / })).toHaveLength(GRID_SIZE * GRID_SIZE)
   })
 
+  test('le panneau liste les cinq navires de chaque camp, intacts au début de la bataille', () => {
+    startLocalGame()
+
+    const mine = within(screen.getByText('Mes navires').closest('div')!)
+    const theirs = within(screen.getByText('Navires adverses').closest('div')!)
+    for (const ship of FLEET) {
+      expect(mine.getByText(new RegExp(`^${ship.name}`))).toBeTruthy()
+      expect(theirs.getByText(new RegExp(`^${ship.name}`))).toBeTruthy()
+    }
+    expect(screen.queryByText(/\(coulé\)/)).toBeNull()
+    expect(screen.getByText('Tirs').nextElementSibling?.textContent).toBe('0')
+  })
+
   test("un tir dans l'eau passe la main avec le message correspondant", async () => {
     startLocalGame()
 
@@ -123,6 +136,15 @@ describe('BatailleNavaleGame — mode local', () => {
 
     click(cellName({ row: 4, col: 1 })) // Torpilleur, 2e et dernière case
     expect(await screen.findByText('Torpilleur coulé !')).toBeTruthy()
+
+    click('Je suis prêt') // passe au joueur 2
+    click(cellName({ row: 9, col: 8 }))
+    await screen.findByText(/^(Touché !|À l'eau\.)$/)
+    click('Je suis prêt') // revient au joueur 1 : le panneau doit refléter le Torpilleur coulé
+
+    const theirs = within(screen.getByText('Navires adverses').closest('div')!)
+    expect(theirs.getByText(/^Torpilleur \(coulé\)/)).toBeTruthy()
+    expect(theirs.getByText(/^Porte-avions/).closest('li')?.className).not.toContain('sunk')
   })
 
   test('au tour suivant du même joueur, ses tirs précédents restent marqués et désactivés', async () => {
@@ -240,6 +262,19 @@ describe('BatailleNavaleGame — mode en ligne', () => {
       connection.emit('FIRE_RESULT', { by: 2, targets: [{ row: 0, col: 0 }], results: ['hit'], sunk: [], gameOver: false })
     })
     expect(await screen.findByText('À toi de tirer')).toBeTruthy()
+
+    await act(async () => {
+      connection.emit('FIRE_RESULT', {
+        by: 1,
+        targets: [{ row: 4, col: 0 }, { row: 4, col: 1 }],
+        results: ['hit', 'hit'],
+        sunk: [FLEET[4]],
+        gameOver: false,
+      })
+    })
+    const theirs = within((await screen.findByText('Navires adverses')).closest('div')!)
+    expect(theirs.getByText(/^Torpilleur \(coulé\)/)).toBeTruthy()
+    expect(theirs.getByText(/^Porte-avions/).closest('li')?.className).not.toContain('sunk')
   })
 
   test('la perte de connexion affiche un message clair, sans reprise', async () => {

@@ -2,8 +2,13 @@
   --bn-water: #16304d;
   --bn-hit: #ef4444;
   --bn-miss: #64748b;
-  --bn-ship: #475569;
   --bn-radar: #22d3ee;
+  /* Une couleur par navire de FLEET (même ordre), pour les distinguer tant qu'ils ne sont pas touchés. */
+  --bn-ship-0: #818cf8;
+  --bn-ship-1: #f472b6;
+  --bn-ship-2: #facc15;
+  --bn-ship-3: #34d399;
+  --bn-ship-4: #38bdf8;
   display: grid;
   gap: 1rem;
 }
@@ -75,9 +80,30 @@
   gap: 1.5rem;
 }
 
-.bn-cell-placement.ship {
-  background: var(--bn-ship);
-  border-color: var(--bn-ship);
+.bn-cell-placement.ship-0,
+.bn-grid-own .bn-cell-own.ship-0 {
+  background: var(--bn-ship-0);
+  border-color: var(--bn-ship-0);
+}
+.bn-cell-placement.ship-1,
+.bn-grid-own .bn-cell-own.ship-1 {
+  background: var(--bn-ship-1);
+  border-color: var(--bn-ship-1);
+}
+.bn-cell-placement.ship-2,
+.bn-grid-own .bn-cell-own.ship-2 {
+  background: var(--bn-ship-2);
+  border-color: var(--bn-ship-2);
+}
+.bn-cell-placement.ship-3,
+.bn-grid-own .bn-cell-own.ship-3 {
+  background: var(--bn-ship-3);
+  border-color: var(--bn-ship-3);
+}
+.bn-cell-placement.ship-4,
+.bn-grid-own .bn-cell-own.ship-4 {
+  background: var(--bn-ship-4);
+  border-color: var(--bn-ship-4);
 }
 
 .bn-cell-placement.preview-valid {
@@ -101,6 +127,88 @@
 .bn-fleet-list li.placed {
   color: var(--muted);
   text-decoration: line-through;
+}
+
+.bn-fleet-list li,
+.bn-fleet-status li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bn-ship-swatch {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.bn-ship-swatch.ship-0 {
+  background: var(--bn-ship-0);
+}
+.bn-ship-swatch.ship-1 {
+  background: var(--bn-ship-1);
+}
+.bn-ship-swatch.ship-2 {
+  background: var(--bn-ship-2);
+}
+.bn-ship-swatch.ship-3 {
+  background: var(--bn-ship-3);
+}
+.bn-ship-swatch.ship-4 {
+  background: var(--bn-ship-4);
+}
+
+/* --- Panneau d'état de la partie (flottes, tirs, précision) --- */
+
+.bn-status-panel {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.bn-fleet-status {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.bn-fleet-status li.sunk {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.bn-fleet-status li.sunk .bn-ship-swatch {
+  background: var(--bn-hit);
+}
+
+.bn-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin: 0;
+  text-align: center;
+}
+
+.bn-stats div {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+.bn-stats dt {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.bn-stats dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .bn-placement-actions {
@@ -129,11 +237,6 @@
 .bn-grid-own .bn-cell-own {
   background: var(--bn-water);
   border: 1px solid var(--border);
-}
-
-.bn-grid-own .bn-cell-own.ship {
-  background: var(--bn-ship);
-  border-color: var(--bn-ship);
 }
 
 .bn-grid-own .bn-cell-own.hit {

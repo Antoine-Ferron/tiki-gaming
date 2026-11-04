@@ -8,9 +8,13 @@ import {
   computeUnlocks,
   coordKey,
   fireVolleyAndSubmitIfOver,
+  fleetStatus,
+  fleetStatusFromSunkNames,
   scanZone,
+  shipIndex,
   zoneCoords,
   type Coord,
+  type FleetStatus,
   type PlacedShip,
   type Ship,
   type VolleyShot,
@@ -168,25 +172,78 @@ function FiringBoard({ label, disabled, results, radarHints, bonuses, onFire, on
 
 /** Mon propre plateau : lecture seule, montre mes navires et les cases où l'adversaire a tiré. */
 function OwnBoard({ fleet, shotsOnMe }: { fleet: PlacedShip[]; shotsOnMe: ReadonlySet<string> }) {
-  const shipCells = new Set(fleet.flatMap((p) => p.coords.map(coordKey)))
+  const shipByCell = new Map<string, Ship>(fleet.flatMap((p) => p.coords.map((c) => [coordKey(c), p.ship] as const)))
   return (
     <div className="bn-grid bn-grid-own" role="grid" aria-label="Ta flotte">
       {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
         const cell: Coord = { row: Math.floor(i / GRID_SIZE), col: i % GRID_SIZE }
         const key = coordKey(cell)
-        const hasShip = shipCells.has(key)
+        const ship = shipByCell.get(key)
         const shot = shotsOnMe.has(key)
         const classes = ['bn-cell', 'bn-cell-own']
-        if (hasShip) classes.push('ship')
-        if (shot) classes.push(hasShip ? 'hit' : 'miss')
+        if (ship) classes.push(`ship-${shipIndex(ship)}`)
+        if (shot) classes.push(ship ? 'hit' : 'miss')
         return (
           <div
             key={key}
             className={classes.join(' ')}
-            aria-label={`Case ${cell.row + 1},${cell.col + 1}${hasShip ? ', ton navire' : ''}${shot ? (hasShip ? ', touché' : ", à l'eau") : ''}`}
+            aria-label={`Case ${cell.row + 1},${cell.col + 1}${ship ? `, ${ship.name}` : ''}${shot ? (ship ? ', touché' : ", à l'eau") : ''}`}
           />
         )
       })}
+    </div>
+  )
+}
+
+type StatusPanelProps = {
+  myFleet: FleetStatus[]
+  opponentFleet: FleetStatus[]
+  shotsFired: number
+  hits: number
+}
+
+/** État de la partie : quels navires (de chaque camp) sont coulés, et mes statistiques de tir. */
+function StatusPanel({ myFleet, opponentFleet, shotsFired, hits }: StatusPanelProps) {
+  const accuracy = shotsFired > 0 ? Math.round((hits / shotsFired) * 100) : 0
+  return (
+    <div className="bn-status-panel">
+      <h3>État de la partie</h3>
+      <div>
+        <p className="muted">Mes navires</p>
+        <ul className="bn-fleet-status">
+          {myFleet.map(({ ship, sunk }) => (
+            <li key={ship.name} className={sunk ? 'sunk' : undefined}>
+              <span className={`bn-ship-swatch ship-${shipIndex(ship)}`} aria-hidden="true" />
+              {ship.name} {sunk && '(coulé)'}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <p className="muted">Navires adverses</p>
+        <ul className="bn-fleet-status">
+          {opponentFleet.map(({ ship, sunk }) => (
+            <li key={ship.name} className={sunk ? 'sunk' : undefined}>
+              <span className={`bn-ship-swatch ship-${shipIndex(ship)}`} aria-hidden="true" />
+              {ship.name} {sunk && '(coulé)'}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <dl className="bn-stats">
+        <div>
+          <dt>Tirs</dt>
+          <dd>{shotsFired}</dd>
+        </div>
+        <div>
+          <dt>Touchés</dt>
+          <dd>{hits}</dd>
+        </div>
+        <div>
+          <dt>Précision</dt>
+          <dd>{accuracy}%</dd>
+        </div>
+      </dl>
     </div>
   )
 }
@@ -268,6 +325,12 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver 
               <h3>Ta flotte</h3>
               <OwnBoard fleet={myFleet} shotsOnMe={state.shotsOnMe} />
             </div>
+            <StatusPanel
+              myFleet={fleetStatus(myFleet, state.shotsOnMe)}
+              opponentFleet={fleetStatusFromSunkNames(state.sunkOpponentShips)}
+              shotsFired={state.shotsOnOpponent.size}
+              hits={state.hitsOnOpponent}
+            />
           </div>
         </div>
       )}
@@ -494,15 +557,27 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
       {mode === 'local' && !pass && localPhase === 'battle' && (
         <div className="card bn-board">
           <h2>Au tour du joueur {current}</h2>
-          <FiringBoard
-            label={`Grille du joueur ${current === 1 ? 2 : 1}`}
-            disabled={false}
-            results={players[current].resultsOnOpponent}
-            radarHints={players[current].radarRevealsOnOpponent}
-            bonuses={augmented ? unlockedBonuses(players[current].shotsOnOpponent.size, players[current].shipsSunk, players[current].usedBonuses) : []}
-            onFire={localFire}
-            onRadar={localRadar}
-          />
+          <div className="bn-boards">
+            <FiringBoard
+              label={`Grille du joueur ${current === 1 ? 2 : 1}`}
+              disabled={false}
+              results={players[current].resultsOnOpponent}
+              radarHints={players[current].radarRevealsOnOpponent}
+              bonuses={
+                augmented
+                  ? unlockedBonuses(players[current].shotsOnOpponent.size, players[current].shipsSunk, players[current].usedBonuses)
+                  : []
+              }
+              onFire={localFire}
+              onRadar={localRadar}
+            />
+            <StatusPanel
+              myFleet={fleetStatus(players[current].fleet, players[current === 1 ? 2 : 1].shotsOnOpponent)}
+              opponentFleet={fleetStatus(players[current === 1 ? 2 : 1].fleet, players[current].shotsOnOpponent)}
+              shotsFired={players[current].shotsOnOpponent.size}
+              hits={players[current].hits}
+            />
+          </div>
           {error && <p className="error">{error}</p>}
         </div>
       )}

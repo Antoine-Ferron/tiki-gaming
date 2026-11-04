@@ -126,6 +126,17 @@ describe('FIRE_RESULT — applied identically by both sides', () => {
     expect(next.winnerSeat).toBe(1)
     expect(next.shipsSunkByMe).toBe(1)
     expect(next.pendingSubmit).toEqual({ shots: 2, hits: 2 })
+    expect(next.sunkOpponentShips.has(myFleet[0].ship.name)).toBe(true)
+  })
+
+  it('only records a sunk opponent ship when I am the one who sank it', () => {
+    const state = battleState({ turnSeat: 2 })
+    const event: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: { by: 2, targets: [{ row: 0, col: 1 }], results: ['hit'], sunk: [myFleet[0].ship], gameOver: true },
+    }
+    const { state: next } = applyRemoteEvent(state, event)
+    expect(next.sunkOpponentShips.size).toBe(0)
   })
 
   it('ends the game without queuing a submission for the losing side', () => {

@@ -43,6 +43,8 @@ export type NetState = {
   readonly radarRevealsOnOpponent: ReadonlySet<string>
   readonly hitsOnOpponent: number
   readonly shipsSunkByMe: number
+  /** Noms des navires adverses coulés (la composition de FLEET est publique, seul leur placement est secret). */
+  readonly sunkOpponentShips: ReadonlySet<string>
   readonly usedBonuses: ReadonlySet<Bonus>
   readonly augmented: boolean
   readonly winnerSeat: number | null
@@ -64,6 +66,7 @@ export function createNetState(mySeat: number, myFleet: PlacedShip[], augmented:
     radarRevealsOnOpponent: new Set(),
     hitsOnOpponent: 0,
     shipsSunkByMe: 0,
+    sunkOpponentShips: new Set(),
     usedBonuses: new Set(),
     augmented,
     winnerSeat: null,
@@ -173,6 +176,9 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
           if (results[i] !== 'repeat') resultsOnOpponent.set(coordKey(t), results[i] as 'hit' | 'miss')
         })
       }
+      const sunkOpponentShips = iAmShooter
+        ? new Set([...state.sunkOpponentShips, ...sunk.map((s) => s.name)])
+        : state.sunkOpponentShips
       const next: NetState = {
         ...state,
         shotsOnOpponent: iAmShooter ? shots : state.shotsOnOpponent,
@@ -180,6 +186,7 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
         shotsOnMe: iAmShooter ? state.shotsOnMe : shots,
         hitsOnOpponent,
         shipsSunkByMe,
+        sunkOpponentShips,
         turnSeat: gameOver ? state.turnSeat : otherSeat(by),
         phase: gameOver ? 'over' : state.phase,
         winnerSeat: gameOver ? by : state.winnerSeat,

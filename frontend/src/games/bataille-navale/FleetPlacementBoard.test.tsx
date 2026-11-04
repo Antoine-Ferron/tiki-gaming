@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import FleetPlacementBoard from './FleetPlacementBoard'
-import { FLEET, GRID_SIZE } from './logic'
+import { FLEET, GRID_SIZE, shipIndex } from './logic'
 
 afterEach(cleanup)
 
@@ -42,6 +42,17 @@ describe('FleetPlacementBoard', () => {
     expect(cellButton(0, 0).getAttribute('aria-label')).toContain('occupée')
     // Le Porte-avions (5 cases) occupe aussi (0,1) à (0,4) en orientation par défaut (horizontale).
     expect(cellButton(0, 4).getAttribute('aria-label')).toContain('occupée')
+  })
+
+  test('chaque navire posé porte la couleur qui lui est propre, distincte des autres', () => {
+    render(<FleetPlacementBoard onComplete={vi.fn()} />)
+
+    fireEvent.click(cellButton(0, 0)) // Porte-avions (FLEET[0])
+    fireEvent.click(cellButton(1, 0)) // Croiseur (FLEET[1])
+
+    expect(cellButton(0, 0).className).toContain(`ship-${shipIndex(FLEET[0])}`)
+    expect(cellButton(1, 0).className).toContain(`ship-${shipIndex(FLEET[1])}`)
+    expect(shipIndex(FLEET[0])).not.toBe(shipIndex(FLEET[1]))
   })
 
   test('tourner avant de placer utilise l’orientation verticale', () => {

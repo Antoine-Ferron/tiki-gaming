@@ -107,6 +107,26 @@ export function sunkShips(fleet: PlacedShip[], shots: Set<string>): Ship[] {
   return fleet.filter((p) => p.coords.every((c) => shots.has(coordKey(c)))).map((p) => p.ship)
 }
 
+/** Position d'un navire dans `FLEET` (fixe, publique) : sert à lui attribuer une couleur stable. */
+export function shipIndex(ship: Ship): number {
+  return FLEET.findIndex((s) => s.name === ship.name)
+}
+
+export type FleetStatus = { ship: Ship; sunk: boolean }
+
+/** Statut de chaque navire d'une flotte connue (la mienne, ou celle de l'adversaire en local). */
+export function fleetStatus(fleet: PlacedShip[], shotsAgainst: ReadonlySet<string>): FleetStatus[] {
+  return fleet.map((p) => ({ ship: p.ship, sunk: p.coords.every((c) => shotsAgainst.has(coordKey(c))) }))
+}
+
+/**
+ * Statut de la flotte adverse quand on n'en connaît que les navires déjà coulés (mode en ligne : la
+ * composition de `FLEET` est publique, seul son placement est secret).
+ */
+export function fleetStatusFromSunkNames(sunkNames: ReadonlySet<string>): FleetStatus[] {
+  return FLEET.map((ship) => ({ ship, sunk: sunkNames.has(ship.name) }))
+}
+
 export type Unlocks = { salvo: boolean; radar: boolean; nuke: boolean }
 
 /**

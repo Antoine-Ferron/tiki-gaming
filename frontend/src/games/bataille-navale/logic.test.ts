@@ -10,11 +10,14 @@ import {
   fireShot,
   fireVolley,
   fireVolleyAndSubmitIfOver,
+  fleetStatus,
+  fleetStatusFromSunkNames,
   isFleetSunk,
   isInBounds,
   placeFleetRandomly,
   scanZone,
   shipCoords,
+  shipIndex,
   sunkShips,
   zoneCoords,
   type PlacedShip,
@@ -265,6 +268,36 @@ describe('sunkShips', () => {
   it('is empty when no ship is fully hit', () => {
     const fleet = buildFleetAt({ row: 0, col: 0 })
     expect(sunkShips(fleet, new Set([coordKey({ row: 0, col: 0 })]))).toEqual([])
+  })
+})
+
+describe('shipIndex', () => {
+  it('gives a stable, distinct index for each ship of the fleet', () => {
+    const indices = FLEET.map(shipIndex)
+    expect(indices).toEqual([0, 1, 2, 3, 4])
+    expect(new Set(indices).size).toBe(FLEET.length)
+  })
+})
+
+describe('fleetStatus', () => {
+  it('marks a ship sunk once every one of its cells has been hit, the rest intact', () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 }) // Torpilleur, taille 2 : (0,0) et (0,1)
+    const shots = new Set(fleet[0].coords.map(coordKey))
+    expect(fleetStatus(fleet, shots)).toEqual([{ ship: fleet[0].ship, sunk: true }])
+    expect(fleetStatus(fleet, new Set([coordKey({ row: 0, col: 0 })]))).toEqual([{ ship: fleet[0].ship, sunk: false }])
+  })
+})
+
+describe('fleetStatusFromSunkNames', () => {
+  it('lists the whole public fleet, sunk only for the named ships', () => {
+    const status = fleetStatusFromSunkNames(new Set([FLEET[0].name]))
+    expect(status).toHaveLength(FLEET.length)
+    expect(status.find((s) => s.ship.name === FLEET[0].name)?.sunk).toBe(true)
+    expect(status.filter((s) => s.sunk)).toHaveLength(1)
+  })
+
+  it('is entirely intact when nothing has been sunk yet', () => {
+    expect(fleetStatusFromSunkNames(new Set())).toEqual(FLEET.map((ship) => ({ ship, sunk: false })))
   })
 })
 

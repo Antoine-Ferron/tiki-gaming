@@ -6,9 +6,11 @@ import {
   coordKey,
   placeFleetRandomly,
   shipCoords,
+  shipIndex,
   type Coord,
   type Orientation,
   type PlacedShip,
+  type Ship,
 } from './logic'
 
 type FleetPlacementBoardProps = {
@@ -28,7 +30,7 @@ export default function FleetPlacementBoard({ onComplete }: FleetPlacementBoardP
 
   const nextShip = FLEET[placed.length]
   const done = placed.length === FLEET.length
-  const occupied = new Set(placed.flatMap((p) => p.coords.map(coordKey)))
+  const shipByCell = new Map<string, Ship>(placed.flatMap((p) => p.coords.map((c) => [coordKey(c), p.ship] as const)))
 
   const preview = !done && hover ? shipCoords(hover, nextShip.size, orientation) : []
   const previewValid = preview.length > 0 && canPlaceShip(placed, preview)
@@ -61,10 +63,10 @@ export default function FleetPlacementBoard({ onComplete }: FleetPlacementBoardP
           {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
             const cell: Coord = { row: Math.floor(i / GRID_SIZE), col: i % GRID_SIZE }
             const key = coordKey(cell)
-            const hasShip = occupied.has(key)
+            const ship = shipByCell.get(key)
             const inPreview = previewKeys.has(key)
             const classes = ['bn-cell', 'bn-cell-placement']
-            if (hasShip) classes.push('ship')
+            if (ship) classes.push(`ship-${shipIndex(ship)}`)
             else if (inPreview) classes.push(previewValid ? 'preview-valid' : 'preview-invalid')
             return (
               <button
@@ -75,7 +77,7 @@ export default function FleetPlacementBoard({ onComplete }: FleetPlacementBoardP
                 onMouseEnter={() => setHover(cell)}
                 onFocus={() => setHover(cell)}
                 onClick={() => place(cell)}
-                aria-label={`Case ${cell.row + 1},${cell.col + 1}${hasShip ? ', occupée' : ''}`}
+                aria-label={`Case ${cell.row + 1},${cell.col + 1}${ship ? `, occupée (${ship.name})` : ''}`}
               />
             )
           })}
@@ -86,6 +88,7 @@ export default function FleetPlacementBoard({ onComplete }: FleetPlacementBoardP
         <ul className="bn-fleet-list">
           {FLEET.map((ship, i) => (
             <li key={ship.name} className={i < placed.length ? 'placed' : undefined}>
+              <span className={`bn-ship-swatch ship-${i}`} aria-hidden="true" />
               {ship.name} ({ship.size})
             </li>
           ))}
