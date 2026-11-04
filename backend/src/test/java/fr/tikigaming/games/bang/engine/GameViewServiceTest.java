@@ -33,7 +33,9 @@ class GameViewServiceTest {
                         player("three", 3, Role.OUTLAW, false, BangCharacter.PAUL_REGRET, 1, 3, "other-card"),
                         player("four", 4, Role.RENEGADE, false, BangCharacter.WILLY_THE_KID, 4, 4, "renegade-card")),
                 List.of(new CardInstance("secret-deck-card", CardType.MISSED)),
-                3);
+                List.of(),
+                3,
+                GameState.Phase.PLAY);
         when(deal.deal(accounts)).thenReturn(game);
         tables.start(code, "one");
 
@@ -42,6 +44,7 @@ class GameViewServiceTest {
                         code,
                         2,
                         3,
+                        GameState.Phase.PLAY,
                         Role.OUTLAW,
                         List.of(new PlayerGameView.Card("own-card", CardType.BANG)),
                         List.of(
@@ -64,7 +67,9 @@ class GameViewServiceTest {
                 .thenReturn(new GameState(
                         List.of(player("one", 1, Role.SHERIFF, true, BangCharacter.BART_CASSIDY, 3, 5, "card")),
                         List.of(),
-                        1));
+                        List.of(),
+                        1,
+                        GameState.Phase.DRAW));
         tables.start(code, "one");
 
         assertThat(tables.state("  " + code.toLowerCase(Locale.ROOT) + "  ", "one"))

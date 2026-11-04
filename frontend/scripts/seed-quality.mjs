@@ -16,7 +16,7 @@ await client.connect()
 try {
   const count = await applyMigrations(client)
   console.log(`${count} migration(s) appliquée(s).`)
-  // Identifiants déterministes (md5 du numéro) : k6 recalcule les mêmes pour signer les JWT des joueurs.
+  // Identifiants déterministes (md5 du numéro) : k6 recalcule les mêmes pour choisir les joueurs.
   await client.query(
     `insert into auth.users (id, email, raw_user_meta_data)
      select md5('k6-player-' || i)::uuid, 'k6-' || i || '@quality.local', jsonb_build_object('username', 'k6_' || i)

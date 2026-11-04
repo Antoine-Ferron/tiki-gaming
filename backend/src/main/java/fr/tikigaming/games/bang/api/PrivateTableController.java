@@ -42,8 +42,8 @@ public class PrivateTableController {
             summary = "Créer une table privée",
             description = "Le compte connecté occupe la première place. "
                     + "Chaque compte a au plus une table ouverte, dans une limite globale de 1 000 tables. "
-                    + "La table et sa donne expirent après 1 h sans création, jonction acceptée ou démarrage accepté. "
-                    + "Un démarrage refusé ne renouvelle pas ce délai.")
+                    + "La table et sa partie expirent après 1 h sans opération acceptée : création, jonction, démarrage ou action de tour. "
+                    + "Les lectures et les actions refusées ne renouvellent pas ce délai.")
     @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
     @ApiResponse(
             responseCode = "409",
@@ -102,7 +102,8 @@ public class PrivateTableController {
     @Operation(
             summary = "Démarrer une partie à quatre",
             description = "Tout compte connecté et assis à cette table peut la démarrer. Le Shérif joue en premier. "
-                    + "Les demandes suivantes conservent la donne, même simultanées. "
+                    + "La distribution initiale n'inclut pas la pioche de début de tour. "
+                    + "Les demandes suivantes conservent la donne et la phase, même simultanées. "
                     + "La réponse contient uniquement le code de table et la place du joueur actif.")
     @ApiResponse(responseCode = "200", description = "Partie démarrée ou déjà en cours")
     @ApiResponse(
@@ -154,6 +155,104 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     PlayerGameView state(@PathVariable String code, HttpServletRequest request) {
         return tables.state(code, connectedAccountId(request));
+    }
+
+    @PostMapping("/{code}/turn/draw")
+    @Operation(
+            summary = "Piocher les deux cartes du début de son tour",
+            description = "Seul le joueur actif peut piocher, une fois par tour. "
+                    + "Le recyclage de la défausse n'est pas encore pris en charge. "
+                    + "La casse et les espaces autour du code sont ignorés. "
+                    + "Une action acceptée renouvelle l'activité de la table ; un refus ne la renouvelle pas.")
+    @ApiResponse(responseCode = "204", description = "Deux cartes piochées ; la phase de jeu commence")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF invalide ou compte non actif",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Table inconnue ou expirée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Partie non démarrée, mauvaise phase ou pioche insuffisante",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    ResponseEntity<Void> draw(@PathVariable String code, HttpServletRequest request) {
+        tables.draw(code, connectedAccountId(request));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{code}/turn/end")
+    @Operation(
+            summary = "Terminer sa phase de jeu ou son tour",
+            description =
+                    "Si la main dépasse les PV actuels, ouvre la défausse ; sinon passe au prochain joueur vivant. "
+                            + "La casse et les espaces autour du code sont ignorés. "
+                            + "Une action acceptée renouvelle l'activité de la table ; un refus ne la renouvelle pas.")
+    @ApiResponse(responseCode = "204", description = "Phase ou tour terminé")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF invalide ou compte non actif",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Table inconnue ou expirée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Partie non démarrée, pioche attendue ou défausse incomplète",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    ResponseEntity<Void> endTurn(@PathVariable String code, HttpServletRequest request) {
+        tables.endTurn(code, connectedAccountId(request));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{code}/turn/discard/{cardId}")
+    @Operation(
+            summary = "Défausser une carte de sa main par son identifiant",
+            description =
+                    "Le joueur actif choisit ses cartes en phase de défausse tant que sa main dépasse ses PV actuels, "
+                            + "puis termine explicitement son tour. "
+                            + "La casse et les espaces autour du code sont ignorés. "
+                            + "Une action acceptée renouvelle l'activité de la table ; un refus ne la renouvelle pas.")
+    @ApiResponse(responseCode = "204", description = "Carte déplacée de la main vers la défausse")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF invalide ou compte non actif",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Table inconnue ou expirée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description =
+                    "Partie non démarrée, mauvaise phase, carte absente de sa main ou limite de main déjà respectée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    ResponseEntity<Void> discard(@PathVariable String code, @PathVariable String cardId, HttpServletRequest request) {
+        tables.discard(code, connectedAccountId(request), cardId);
+        return ResponseEntity.noContent().build();
     }
 
     private static String connectedAccountId(HttpServletRequest request) {

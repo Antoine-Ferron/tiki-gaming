@@ -5,7 +5,18 @@ import fr.tikigaming.games.bang.cards.RoleCard;
 import java.util.List;
 
 /** État privé du serveur, jamais retourné par le contrôleur HTTP. */
-public record GameState(List<Player> players, List<CardInstance> drawPile, int currentSeat) {
+public record GameState(
+        List<Player> players,
+        List<CardInstance> drawPile,
+        List<CardInstance> discardPile,
+        int currentSeat,
+        Phase phase) {
+    public enum Phase {
+        DRAW,
+        PLAY,
+        DISCARD
+    }
+
     public record Player(
             String accountId,
             int seat,

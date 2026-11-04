@@ -41,9 +41,11 @@ jobs:
             frontend:
               - *ci
               - 'frontend/**'
+              - 'shared/**'
             backend:
               - *ci
               - 'backend/**'
+              - 'shared/**'
             database:
               - *ci
               - 'frontend/**'

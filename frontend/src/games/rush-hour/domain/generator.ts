@@ -1,5 +1,5 @@
-import { type Board, RED_CAR, SIZE, type Vehicle, parseBoard } from './board'
-import { DIFFICULTY_RANGES, type Difficulty } from './difficulty'
+import { RED_CAR, SIZE, type Vehicle, parseBoard } from './board'
+import { type Difficulty, difficultyOf } from './difficulty'
 import { GENERATOR_LAYOUTS } from './generatorLayouts'
 import { axisPosition, nextPositions } from './solver'
 
@@ -8,22 +8,35 @@ import { axisPosition, nextPositions } from './solver'
  * choisie parmi celles dont le minimum de coups est dans la plage. Le hasard est injecté (graine fixe en test).
  */
 export function generateBoard(difficulty: Difficulty, random: () => number): string[] {
-  const { min, max } = DIFFICULTY_RANGES[difficulty]
-  const layout = parseBoard(GENERATOR_LAYOUTS[Math.floor(random() * GENERATOR_LAYOUTS.length)])
-  const candidates = positionsWithin(layout, min, max)
-  return toMap(layout.vehicles, candidates[Math.floor(random() * candidates.length)])
+  const { vehicles, positions } = positionsOf(Math.floor(random() * GENERATOR_LAYOUTS.length))
+  const candidates = positions.filter((p) => difficultyOf(p.distance) === difficulty)
+  return toMap(vehicles, candidates[Math.floor(random() * candidates.length)].state)
 }
 
-/** Toutes les positions atteignables depuis la disposition, dont la distance à la victoire est dans [min, max]. */
-function positionsWithin(layout: Board, min: number, max: number): number[][] {
-  const { vehicles } = layout
+type Positions = { vehicles: Vehicle[]; positions: { state: number[]; distance: number }[] }
+
+/** Positions d'une disposition, calculées une seule fois puis gardées en mémoire (elles ne changent jamais). */
+const cache = new Map<number, Positions>()
+
+function positionsOf(layoutIndex: number): Positions {
+  let found = cache.get(layoutIndex)
+  if (!found) {
+    const { vehicles } = parseBoard(GENERATOR_LAYOUTS[layoutIndex])
+    found = { vehicles, positions: distancesToWin(vehicles) }
+    cache.set(layoutIndex, found)
+  }
+  return found
+}
+
+/** Toutes les positions atteignables de la disposition, avec leur distance à la victoire (minimum de coups). */
+function distancesToWin(vehicles: Vehicle[]): { state: number[]; distance: number }[] {
   const reachable = explore(vehicles, [vehicles.map(axisPosition)])
   const red = vehicles.findIndex((v) => v.id === RED_CAR)
   const goal = SIZE - vehicles[red].length
   const solved = [...reachable.values()].filter((state) => state[red] === goal)
 
-  // Distance à la victoire : parcours en largeur en partant de toutes les positions gagnées à la fois.
-  const result: number[][] = []
+  // Parcours en largeur en partant de toutes les positions gagnées à la fois.
+  const result = solved.map((state) => ({ state, distance: 0 }))
   const seen = new Set(solved.map((s) => s.join()))
   let frontier = solved
   for (let distance = 1; frontier.length > 0; distance++) {
@@ -35,7 +48,7 @@ function positionsWithin(layout: Board, min: number, max: number): number[][] {
         if (seen.has(moved.join())) continue
         seen.add(moved.join())
         next.push(moved)
-        if (distance >= min && distance <= max) result.push(moved)
+        result.push({ state: moved, distance })
       }
     }
     frontier = next
