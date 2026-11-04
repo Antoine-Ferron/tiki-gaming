@@ -56,12 +56,12 @@ class ContractTest {
     }
 
     static Stream<Arguments> games() {
-        return each("parties").map(n -> Arguments.of(n.get("nom").asString(), n));
+        return each("parties").map(Arguments::of);
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "partie {index}")
     @MethodSource("games")
-    void serverReplaysTheContractGames(String name, JsonNode game) {
+    void serverReplaysTheContractGames(JsonNode game) {
         // Arrange
         List<Move> moves = new ArrayList<>();
         game.get("coups")
