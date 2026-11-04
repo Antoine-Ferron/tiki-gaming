@@ -66,6 +66,15 @@ class GameTest {
                 .hasMessageContaining("inaccessible");
     }
 
+    @Test
+    @DisplayName("jouer depuis une case vide est refusé proprement")
+    void jouerDepuisUneCaseVideEstRefuse() {
+        // Act + Assert : e4 est vide dans la position de départ
+        assertThatThrownBy(() -> play(START, "e4", "e5"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("vide");
+    }
+
     private static Position play(String fen, String from, String to) {
         return Game.play(Fen.parse(fen), Square.of(from), Square.of(to));
     }
