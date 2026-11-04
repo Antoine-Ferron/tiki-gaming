@@ -187,3 +187,49 @@ test.each([
     ),
   )
 })
+
+test.each([1, 3, 4])('la place %i ne répond pas au tir visant la place 2', async (seat) => {
+  const view = { ...fourPlayerView(), seat, currentSeat: 1, pendingShot: { id: 'tir', shooterSeat: 1, targetSeat: 2 } }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(url.endsWith('/state') ? view : { code: view.code, seat, playerCount: 4 }),
+    ),
+  )
+  render(<OnlineTable />)
+  fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  await screen.findByRole('region', { name: 'Ta main' })
+  expect(screen.queryByRole('button', { name: /Esquiver avec/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Accepter le tir' })).toBeNull()
+})
+
+test('une réponse périmée affiche le refus puis le nouveau tir, sans rejouer la réponse', async () => {
+  let view: GameView = {
+    ...fourPlayerView(),
+    currentSeat: 4,
+    pendingShot: { id: 'ancien', shooterSeat: 4, targetSeat: 1 },
+  }
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/state')) return Response.json(view)
+    if (url.endsWith('/shots/ancien/accept')) {
+      view = { ...view, pendingShot: { id: 'nouveau', shooterSeat: 4, targetSeat: 1 } }
+      return Response.json({ error: 'Ce tir est déjà résolu.' }, { status: 409 })
+    }
+    return Response.json({ code: view.code, seat: 1, playerCount: 4 })
+  })
+  vi.stubGlobal('fetch', fetch)
+  render(<OnlineTable />)
+  fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Accepter le tir' }))
+  expect((await screen.findByRole('alert')).textContent).toBe('Ce tir est déjà résolu.')
+  await waitFor(() => expect(fetch.mock.calls.filter(([url]) => url.endsWith('/state'))).toHaveLength(2))
+  expect(fetch.mock.calls.filter(([url]) => url.includes('/shots/'))).toHaveLength(1)
+  expect(within(screen.getByRole('region', { name: 'Tapis de la place 1' })).getByText('4/4 PV')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Accepter le tir' }))
+  await waitFor(() =>
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/games/bang/tables/ABC123/shots/nouveau/accept',
+      expect.objectContaining({ method: 'POST' }),
+    ),
+  )
+})
