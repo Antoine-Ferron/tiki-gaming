@@ -62,6 +62,17 @@ public class GameSocketController {
             @DestinationVariable String code,
             RoomAction action,
             Principal principal) {
+        if (action == null
+                || action.type() == null
+                || action.type().isBlank()
+                || action.actionId() == null
+                || action.actionId().isBlank()) {
+            sendError(
+                    slug,
+                    principal,
+                    new GameRoomException(HttpStatus.BAD_REQUEST, "Une action doit avoir un type et un actionId."));
+            return;
+        }
         if (RoomEventTypes.isReserved(action.type())) {
             sendError(
                     slug,

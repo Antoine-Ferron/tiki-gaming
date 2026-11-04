@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 public class GameRoomService {
 
     static final int MAX_ROOMS = 1000;
+    static final int MAX_PLAYERS = 16;
     static final Duration INACTIVITY_TIMEOUT = Duration.ofHours(1);
 
     private final Map<String, Room> rooms = new HashMap<>();
@@ -42,8 +43,9 @@ public class GameRoomService {
     }
 
     public synchronized RoomView createRoom(String gameSlug, String accountId, int maxPlayers) {
-        if (maxPlayers < 1) {
-            throw new GameRoomException(HttpStatus.BAD_REQUEST, "Le nombre de joueurs doit être d'au moins 1.");
+        if (maxPlayers < 1 || maxPlayers > MAX_PLAYERS) {
+            throw new GameRoomException(
+                    HttpStatus.BAD_REQUEST, "Le nombre de joueurs doit être compris entre 1 et " + MAX_PLAYERS + ".");
         }
         purgeInactive();
         String firstSeatKey = firstSeatKey(gameSlug, accountId);

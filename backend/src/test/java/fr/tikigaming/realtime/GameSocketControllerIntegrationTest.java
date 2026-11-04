@@ -65,7 +65,6 @@ class GameSocketControllerIntegrationTest {
 
         StompSession sessionB = connect("bob");
         BlockingQueue<RoomView> responsesB = subscribeToResponses(sessionB);
-        BlockingQueue<RoomEvent<?>> topicEventsB = subscribeToTopic(sessionB, created.code());
 
         sessionB.send("/app/rooms/" + SLUG + "/join", new JoinRoomRequest(created.code()));
         RoomView joined = responsesB.poll(5, TimeUnit.SECONDS);
@@ -79,10 +78,14 @@ class GameSocketControllerIntegrationTest {
         // Jamais le siège de Bob (2) dans la diffusion : Alice (siège 1) ne doit pas se le voir appliquer à tort.
         assertThat(asMap(seenByA.payload())).containsEntry("playerCount", 2).doesNotContainKey("seat");
 
-        // Le joueur qui rejoint voit aussi la diffusion sur le topic de la salle, pas seulement sa propre réponse.
+        // Assis, le joueur qui a rejoint peut s'abonner au topic de la salle et y reçoit les actions suivantes.
+        BlockingQueue<RoomEvent<?>> topicEventsB = subscribeToTopic(sessionB, created.code());
+        sessionA.send(
+                "/app/rooms/" + SLUG + "/" + created.code() + "/actions",
+                new RoomAction("SHOT_FIRED", "action-1", Map.of()));
         RoomEvent<?> seenByB = topicEventsB.poll(5, TimeUnit.SECONDS);
         assertThat(seenByB).isNotNull();
-        assertThat(seenByB.type()).isEqualTo("ROOM_UPDATED");
+        assertThat(seenByB.type()).isEqualTo("SHOT_FIRED");
 
         sessionA.disconnect();
         sessionB.disconnect();
@@ -138,10 +141,9 @@ class GameSocketControllerIntegrationTest {
 
         StompSession secondSession = connect("leave-second");
         BlockingQueue<RoomView> secondResponses = subscribeToResponses(secondSession);
-        BlockingQueue<RoomEvent<?>> secondTopicEvents = subscribeToTopic(secondSession, created.code());
         secondSession.send("/app/rooms/" + SLUG + "/join", new JoinRoomRequest(created.code()));
         assertThat(secondResponses.poll(5, TimeUnit.SECONDS)).isNotNull();
-        secondTopicEvents.poll(1, TimeUnit.SECONDS); // ignore le ROOM_UPDATED de sa propre jonction
+        BlockingQueue<RoomEvent<?>> secondTopicEvents = subscribeToTopic(secondSession, created.code());
 
         creatorSession.send("/app/rooms/" + SLUG + "/leave", new JoinRoomRequest(created.code()));
 
@@ -198,6 +200,81 @@ class GameSocketControllerIntegrationTest {
         RoomErrorMessage error = errors.poll(5, TimeUnit.SECONDS);
         assertThat(error).isNotNull();
         assertThat(error.status()).isEqualTo(400);
+        assertThat(topicEvents.poll(1, TimeUnit.SECONDS)).isNull();
+
+        session.disconnect();
+    }
+
+    @Test
+    void anAccountNotSeatedInTheRoomNeverReceivesItsEvents() throws Exception {
+        StompSession creatorSession = connect("subscribe-creator");
+        BlockingQueue<RoomView> responses = subscribeToResponses(creatorSession);
+        creatorSession.send("/app/rooms/" + SLUG + "/create", new CreateRoomRequest(4));
+        RoomView created = responses.poll(5, TimeUnit.SECONDS);
+        assertThat(created).isNotNull();
+        BlockingQueue<RoomEvent<?>> creatorEvents = subscribeToTopic(creatorSession, created.code());
+
+        StompSession strangerSession = connect("subscribe-stranger");
+        BlockingQueue<RoomEvent<?>> strangerEvents = subscribeToTopic(strangerSession, created.code());
+        BlockingQueue<RoomEvent<?>> strangerWildcardEvents =
+                subscribeToTopic(strangerSession, "*");
+
+        creatorSession.send(
+                "/app/rooms/" + SLUG + "/" + created.code() + "/actions",
+                new RoomAction("SHOT_FIRED", "action-1", Map.of()));
+
+        // Le créateur, lui, le reçoit : la salle fonctionne, c'est bien l'abonnement de l'inconnu qui est refusé.
+        assertThat(creatorEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
+        assertThat(strangerEvents.poll(1, TimeUnit.SECONDS)).isNull();
+        assertThat(strangerWildcardEvents.poll(1, TimeUnit.SECONDS)).isNull();
+
+        creatorSession.disconnect();
+        strangerSession.disconnect();
+    }
+
+    @Test
+    void aClientCannotPublishDirectlyOnARoomTopic() throws Exception {
+        StompSession creatorSession = connect("forge-creator");
+        BlockingQueue<RoomView> responses = subscribeToResponses(creatorSession);
+        creatorSession.send("/app/rooms/" + SLUG + "/create", new CreateRoomRequest(4));
+        RoomView created = responses.poll(5, TimeUnit.SECONDS);
+        assertThat(created).isNotNull();
+        BlockingQueue<RoomEvent<?>> creatorEvents = subscribeToTopic(creatorSession, created.code());
+
+        StompSession forgerSession = connect("forge-attacker");
+        forgerSession.send(
+                "/topic/rooms/" + SLUG + "/" + created.code(),
+                new RoomEvent<>(RoomEventTypes.PLAYER_LEFT, Map.of("playerCount", 0), created.code(), null));
+
+        assertThat(creatorEvents.poll(1, TimeUnit.SECONDS)).isNull();
+
+        creatorSession.disconnect();
+        forgerSession.disconnect();
+    }
+
+    @Test
+    void anActionWithoutATypeOrAnActionIdIsRefusedAndNeverBroadcast() throws Exception {
+        StompSession session = connect("malformed-action-player");
+        BlockingQueue<RoomView> responses = subscribeToResponses(session);
+        session.send("/app/rooms/" + SLUG + "/create", new CreateRoomRequest(4));
+        RoomView created = responses.poll(5, TimeUnit.SECONDS);
+        assertThat(created).isNotNull();
+        BlockingQueue<RoomEvent<?>> topicEvents = subscribeToTopic(session, created.code());
+        BlockingQueue<RoomErrorMessage> errors = new LinkedBlockingQueue<>();
+        session.subscribe(
+                "/user/queue/rooms/" + SLUG + "/errors", new JsonFrameHandler<>(RoomErrorMessage.class, errors));
+        String destination = "/app/rooms/" + SLUG + "/" + created.code() + "/actions";
+
+        session.send(destination, new RoomAction(null, "action-1", Map.of()));
+        RoomErrorMessage missingType = errors.poll(5, TimeUnit.SECONDS);
+        assertThat(missingType).isNotNull();
+        assertThat(missingType.status()).isEqualTo(400);
+
+        session.send(destination, new RoomAction("SHOT_FIRED", null, Map.of()));
+        RoomErrorMessage missingId = errors.poll(5, TimeUnit.SECONDS);
+        assertThat(missingId).isNotNull();
+        assertThat(missingId.status()).isEqualTo(400);
+
         assertThat(topicEvents.poll(1, TimeUnit.SECONDS)).isNull();
 
         session.disconnect();

@@ -31,8 +31,8 @@ class GameRoomServiceTest {
     private final GameRoomService rooms = new GameRoomService(clock);
 
     @ParameterizedTest
-    @ValueSource(ints = {0, -1})
-    void refusesToCreateARoomWithFewerThanOnePlayer(int maxPlayers) {
+    @ValueSource(ints = {0, -1, GameRoomService.MAX_PLAYERS + 1, Integer.MAX_VALUE})
+    void refusesToCreateARoomOutsideThePlayerCountBounds(int maxPlayers) {
         assertThatThrownBy(() -> rooms.createRoom(SLUG, "creator", maxPlayers))
                 .isInstanceOfSatisfying(
                         GameRoomException.class,
