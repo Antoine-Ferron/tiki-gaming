@@ -29,6 +29,7 @@ erDiagram
         text title
         text description
         text category "solo | duel | multi"
+        text theme "action | reflexion | strategie"
         boolean is_active
         timestamptz created_at
     }
@@ -74,11 +75,12 @@ Catalogue des jeux : une ligne par jeu, ajoutée par une migration de l'équipe 
 | `title`       | `text`        | obligatoire                                                       |
 | `description` | `text`        | nullable                                                          |
 | `category`    | `text`        | **obligatoire, sans défaut**, `games_category_check` : `solo`, `duel`, `multi` |
+| `theme`       | `text`        | **obligatoire, sans défaut**, `games_theme_check` : `action`, `reflexion`, `strategie` |
 | `is_active`   | `boolean`     | défaut `true` ; un jeu inactif n'accepte plus de nouveaux scores  |
 | `created_at`  | `timestamptz` | défaut `now()`                                                    |
 
-`category` doit correspondre au champ `category` de la `GameDefinition` du jeu
-(`frontend/src/games/categories.ts`).
+`category` et `theme` doivent correspondre aux champs du même nom de la `GameDefinition` du jeu
+(`frontend/src/games/categories.ts`, `frontend/src/games/themes.ts`) ; `tests/integration/catalog.test.ts` le vérifie.
 
 ### `scores`
 
@@ -141,6 +143,7 @@ Pour une requête du front, « connecté » signifie que la requête porte le JW
 | `20261102000000_init_platform.sql`        | Schéma socle, RLS, jeu d'exemple `clicker`       |
 | `20261102120000_auth_user_lookup.sql`     | Fonction `find_auth_user_id`                     |
 | `20261102130000_game_categories.sql`      | Colonne `games.category` + contrainte            |
+| `20261103160000_game_themes.sql`          | Colonne `games.theme` + contrainte               |
 
 Les règles (une migration par changement, jamais modifiée une fois fusionnée, application en
 production par l'équipe plateforme) sont dans [CONTRIBUTING.md](../CONTRIBUTING.md#migrations-de-base-de-données).
@@ -148,6 +151,6 @@ production par l'équipe plateforme) sont dans [CONTRIBUTING.md](../CONTRIBUTING
 Exemple d'ajout d'un jeu au catalogue :
 
 ```sql
-insert into public.games (slug, title, description, category)
-values ('mastermind', 'Mastermind', 'Trouve la combinaison secrète en un minimum de coups.', 'solo');
+insert into public.games (slug, title, description, category, theme)
+values ('mastermind', 'Mastermind', 'Trouve la combinaison secrète en un minimum de coups.', 'solo', 'reflexion');
 ```

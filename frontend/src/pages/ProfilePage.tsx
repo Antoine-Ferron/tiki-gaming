@@ -5,7 +5,7 @@ import { useAuth } from '@/auth/AuthContext'
 import { Field } from '@/components/Field'
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase'
-import { profileSchema, validate, type FieldErrors } from '@/lib/validation'
+import { profileSchema, validate, type FieldErrors, USERNAME_HINT } from '@/lib/validation'
 import type { Profile } from '@/auth/AuthContext'
 
 /** Traduit le refus de Postgres en message lisible (contrainte unique ou CHECK sur le pseudo). */
@@ -53,7 +53,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
       <p className="muted">{user?.email}</p>
       <Field
         label="Pseudo"
-        hint="3 à 24 caractères : lettres sans accent, chiffres et _"
+        hint={USERNAME_HINT}
         autoComplete="username"
         value={username}
         error={fieldErrors.username}

@@ -51,7 +51,7 @@ class OpenApiDocsTest {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.info.title").value("Tiki Gaming API"))
-                    .andExpect(jsonPath("$.paths", aMapWithSize(18)))
+                    .andExpect(jsonPath("$.paths", aMapWithSize(25)))
                     .andExpect(jsonPath("$.paths['/api/auth/session'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/google'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/login'].post.summary", not(emptyOrNullString())))
@@ -66,6 +66,18 @@ class OpenApiDocsTest {
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}/restart")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/bang/tables")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/bang/tables/{code}/join")))
+                    .andExpect(jsonPath("$.paths['/api/games/mini-gta/world'].get.summary", not(emptyOrNullString())))
+                    .andExpect(
+                            jsonPath("$.paths['/api/games/mini-gta/missions'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/mini-gta/weapons'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/mini-gta/route'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/mini-gta/missions/{id}/complete'].post.summary",
+                            not(emptyOrNullString())))
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/mini-gta/shop/purchase'].post.summary", not(emptyOrNullString())))
+                    .andExpect(
+                            jsonPath("$.paths['/api/games/mini-gta/respawn'].post.summary", not(emptyOrNullString())))
                     // Chaque endpoint porte le tag de son contrôleur : la plateforme ou le slug du jeu.
                     .andExpect(jsonPath(
                             "$.paths.*.*.tags[*]",
@@ -73,7 +85,8 @@ class OpenApiDocsTest {
                                     containsString("Authentification"),
                                     containsString("mastermind"),
                                     containsString("bang"),
-                                    containsString("sudoku")))))
+                                    containsString("sudoku"),
+                                    containsString("mini-gta")))))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/{gameId}'].get.summary", not(emptyOrNullString())))
