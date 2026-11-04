@@ -5,8 +5,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Fake fonctionnel pour les tests de cas d'usage ; ne valide aucune propriété de PostgreSQL. */
-final class InMemoryMatchRepository implements MatchRepository {
+/** Fake réutilisé par les tests unitaires et BDD ; ne valide aucune propriété de PostgreSQL. */
+public final class InMemoryMatchRepository implements MatchRepository {
 
     private final Map<UUID, Match> matches = new HashMap<>();
 

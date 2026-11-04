@@ -2,18 +2,20 @@
 
 ## Statut
 
-Première proposition à relire ensemble, avant le raccordement API/interface.
-Les fichiers `.feature` décrivent les comportements attendus ; leurs étapes ne
-sont **pas encore reliées à un runner Java**. Ils ne constituent donc pas une
-nouvelle suite verte et n'augmentent pas le nombre de tests automatisés.
+Les deux fichiers `.feature` sont maintenant exécutés par `DameBddTest` avec
+Cucumber Java/JUnit Platform : **12 cas réussis**, aucun cas ignoré ou étape
+indéfinie. Les plans de scénario sont développés à partir des vraies lignes des
+tableaux, sans recopier leurs valeurs dans un test Java parallèle.
 
-Les règles décrites possèdent déjà des tests JUnit. Les prochains bindings devront
-appeler le vrai moteur et `MatchService`, avec un fake de `MatchRepository`, une
-horloge et des identifiants fixes. Aucun navigateur ni base réelle n'est nécessaire
-pour ces scénarios métier. Les tests Testcontainers restent la preuve séparée du
-fonctionnement du stockage réel.
+`RencontreSteps` appelle `MatchService` avec le fake partagé
+`InMemoryMatchRepository`, une horloge et un UUID fixes. `PrisesSteps` appelle
+directement `Game` et `GameRules`. Cucumber crée des instances d'étapes neuves
+par scénario, donc un dépôt neuf pour chaque exemple. Les victoires des deux camps
+sont obtenues par de vraies captures de la dernière pièce dans le moteur.
+Aucun navigateur, Spring, réseau ou base réelle n'est nécessaire pour ces cas.
+Les tests Testcontainers restent la preuve séparée du fonctionnement du stockage.
 
-## Scénarios proposés
+## Scénarios exécutés
 
 | Fichier | Exemples métier | Comportements Java déjà testés |
 |---|---|---|
@@ -25,20 +27,20 @@ développement des exemples. Les noms composés de lettres A rendent les fronti�
 de longueur explicites sans ambiguïté sur les caractères Unicode.
 
 Le « joueur au trait » est celui qui doit jouer. Un « résultat refusé » signifie
-que l'état et le gagnant de la rencontre sont conservés ; une panne quelconque
-ne devra pas suffire à faire passer cette assertion. Le gagnant provient du moteur.
+que l'état et le gagnant de la rencontre sont conservés. Les étapes vérifient le
+type de refus métier et l'état inchangé : une panne quelconque ne suffit pas à
+faire passer l'assertion. Le gagnant provient du moteur.
 
-## Relecture et prochaine étape
+## Relecture métier
 
 Le cours J2 matin présente le BDD comme une discussion métier/dev/QA guidée par des
 exemples. Ces textes reprennent notre périmètre convenu ; leur ajout seul ne prouve
 pas qu'un atelier avec l'équipe a eu lieu. À relire notamment : la limite de 50
 caractères et l'impossibilité de corriger un résultat déjà enregistré.
 
-Après cette relecture, relier les étapes au domaine Java et publier leur rapport
-d'exécution en CI. Le runner Gherkin existant côté frontend sert ici uniquement à
-vérifier la lecture des fichiers français ; le moteur Dames ne sera pas réécrit
-en TypeScript pour ces tests.
+Les bindings Java sont maintenant réalisés. Aucun moteur de règles n'est
+recopié en TypeScript. Le runner frontend avait servi uniquement à vérifier la
+lecture des premiers fichiers français, avant leur raccordement au domaine.
 
 ## Préparation du runner Java — RED
 
@@ -54,3 +56,32 @@ Avant les bindings, `mvn -f backend/pom.xml -Dtest=DameBddTest test` découvre b
 RED de raccordement : le métier existe déjà, les étapes manquent encore.
 Le scénario de résultat immuable précise désormais les deux participants pour
 que toutes les valeurs utiles viennent du Gherkin.
+
+## GREEN et contrôle du lien avec les exemples
+
+Les étapes Java font passer les **12 cas**, sans modifier le code de production.
+Le fake existant devient public uniquement dans les sources de test pour être
+réutilisé depuis le package BDD. Les positions littérales sont des fixtures,
+pas des doublures du moteur ; les coordonnées techniques restent hors Gherkin.
+
+Un contrôle négatif temporaire a changé le gagnant noir attendu en `Inconnu` et
+le nom accepté de 50 lettres en 51 lettres dans le fichier `.feature`. Les mêmes
+12 cas se sont exécutés avec **exactement 2 échecs**, correspondant à ces deux
+attentes erronées. Le fichier original a ensuite été restauré. Cela vérifie que
+les noms et les nombres du Gherkin pilotent effectivement les assertions.
+
+`mvn -B -ntp -f backend/pom.xml -Pintegration clean verify` réussit ensuite avec
+**1 097 tests backend, dont les 12 BDD, et 52 tests d'intégration**, zéro échec,
+erreur ou ignoré. Checkstyle, Spotless et les seuils JaCoCo restent verts.
+
+Depuis la racine, pour exécuter uniquement les scénarios, sans Docker :
+
+```bash
+mvn -B -ntp -f backend/pom.xml -Dtest=DameBddTest test
+open backend/target/cucumber/dame.html
+```
+
+Le rapport HTML affiche les scénarios et leurs étapes. Le JSON et le JUnit XML
+sont également générés dans `backend/target/cucumber` ; aucun rapport généré
+n'est versionné. La suite est incluse dans `mvn test`, `mvn verify` et dans le
+profil d'intégration déjà exécuté par le check backend CI.
