@@ -1,19 +1,21 @@
 import { beforeEach, expect, test } from 'vitest'
-import { as, createUser, describeDb, useDatabase } from './db'
+import { as, asServer, createUser, describeDb, useDatabase } from './db'
 
 // Boîte grise : on passe par les droits de l'API (rôles + RLS) et on vérifie l'état réel de la base.
-describeDb('scores (RLS et contraintes)', () => {
+// Seul le backend (service_role, POST /api/scores) écrit les scores ; les règles du catalogue sont dans un trigger.
+describeDb('scores (droits, trigger et contraintes)', () => {
   const db = useDatabase()
   let alice: string
   let bob: string
 
-  const insertScore = (score: number, game = 'clicker', userId?: string) =>
-    db.query(
-      userId
-        ? 'insert into public.scores (game_slug, score, user_id) values ($1, $2, $3)'
-        : 'insert into public.scores (game_slug, score) values ($1, $2)',
-      userId ? [game, score, userId] : [game, score],
+  /** Insertion faite par le backend pour le compte de `userId` (alice par défaut). */
+  const recordScore = (score: number, game = 'clicker', userId = alice) =>
+    asServer(db, () =>
+      db.query('insert into public.scores (user_id, game_slug, score) values ($1, $2, $3)', [userId, game, score]),
     )
+  /** Insertion tentée depuis le navigateur, avec supabase-js : user_id rempli par auth.uid(). */
+  const insertFromBrowser = (userId: string | null, score = 42) =>
+    as(db, userId, () => db.query(`insert into public.scores (game_slug, score) values ('clicker', $1)`, [score]))
   const scoresOf = async (userId: string) =>
     (await db.query('select score from public.scores where user_id = $1 order by id', [userId])).rows.map((r) =>
       Number(r.score),
@@ -24,63 +26,77 @@ describeDb('scores (RLS et contraintes)', () => {
     bob = await createUser(db, 'bob')
   })
 
-  test('un joueur enregistre son score, rattaché à son compte par auth.uid()', async () => {
-    await as(db, alice, () => insertScore(42))
+  test('le backend enregistre le score d’un joueur, rattaché à son compte', async () => {
+    await recordScore(42)
 
     expect(await scoresOf(alice)).toEqual([42])
   })
 
-  test('un joueur ne peut pas enregistrer un score au nom d’un autre', async () => {
-    await expect(as(db, alice, () => insertScore(42, 'clicker', bob))).rejects.toMatchObject({ code: '42501' })
+  test('un joueur connecté ne peut pas écrire de score depuis le navigateur, même le sien', async () => {
+    await expect(insertFromBrowser(alice)).rejects.toMatchObject({ code: '42501' })
+    expect(await scoresOf(alice)).toEqual([])
+  })
+
+  test('un joueur ne peut pas non plus écrire au nom d’un autre', async () => {
+    await expect(
+      as(db, alice, () =>
+        db.query(`insert into public.scores (user_id, game_slug, score) values ($1, 'clicker', 300)`, [bob]),
+      ),
+    ).rejects.toMatchObject({ code: '42501' })
     expect(await scoresOf(bob)).toEqual([])
   })
 
-  test('un visiteur non connecté ne peut pas enregistrer de score', async () => {
-    await expect(as(db, null, () => insertScore(1))).rejects.toMatchObject({ code: '42501' })
+  test('un visiteur non connecté ne peut pas écrire de score', async () => {
+    await expect(insertFromBrowser(null)).rejects.toMatchObject({ code: '42501' })
   })
 
-  test('un jeu inactif refuse les scores', async () => {
+  test('un jeu inactif refuse les scores, même ceux du backend', async () => {
     await db.query(`update public.games set is_active = false where slug = 'clicker'`)
 
-    await expect(as(db, alice, () => insertScore(1))).rejects.toMatchObject({ code: '42501' })
+    await expect(recordScore(1)).rejects.toMatchObject({ code: '55000' })
+    expect(await scoresOf(alice)).toEqual([])
   })
 
   test('un jeu absent du catalogue refuse les scores', async () => {
-    await expect(as(db, alice, () => insertScore(1, 'inconnu'))).rejects.toMatchObject({ code: '42501' })
+    await expect(recordScore(1, 'inconnu')).rejects.toMatchObject({
+      code: '23503',
+      constraint: 'scores_game_slug_fkey',
+    })
   })
 
   // Valeurs limites basses : -1 refusé, 0 accepté
   test('refuse un score négatif', async () => {
-    await expect(as(db, alice, () => insertScore(-1))).rejects.toMatchObject({ code: '23514' })
+    await expect(recordScore(-1)).rejects.toMatchObject({ code: '23514' })
   })
 
   test('accepte un score nul', async () => {
-    await as(db, alice, () => insertScore(0))
+    await recordScore(0)
 
     expect(await scoresOf(alice)).toEqual([0])
   })
 
   // Valeurs limites hautes autour de games.max_score (300 pour le Clicker) : 299, 300, 301
   test.each([299, 300])('accepte %d (≤ max_score)', async (score) => {
-    await as(db, alice, () => insertScore(score))
+    await recordScore(score)
 
     expect(await scoresOf(alice)).toEqual([score])
   })
 
-  test('refuse 301 (> max_score)', async () => {
-    await expect(as(db, alice, () => insertScore(301))).rejects.toMatchObject({ code: '42501' })
+  test('refuse 301 (> max_score), même pour le backend', async () => {
+    await expect(recordScore(301)).rejects.toMatchObject({ code: '23514' })
+    expect(await scoresOf(alice)).toEqual([])
   })
 
   test('sans max_score, un grand score est accepté', async () => {
     await db.query(`update public.games set max_score = null where slug = 'clicker'`)
 
-    await as(db, alice, () => insertScore(1_000_000))
+    await recordScore(1_000_000)
 
     expect(await scoresOf(alice)).toEqual([1_000_000])
   })
 
   test('un score enregistré ne peut être ni modifié ni supprimé par le joueur', async () => {
-    await as(db, alice, () => insertScore(10))
+    await recordScore(10)
 
     await expect(as(db, alice, () => db.query('update public.scores set score = 300'))).rejects.toMatchObject({
       code: '42501',
@@ -90,9 +106,9 @@ describeDb('scores (RLS et contraintes)', () => {
   })
 
   test('le classement garde le meilleur score de chaque joueur et compte ses parties, lisible sans compte', async () => {
-    await as(db, alice, () => insertScore(10))
-    await as(db, alice, () => insertScore(30))
-    await as(db, bob, () => insertScore(20))
+    await recordScore(10)
+    await recordScore(30)
+    await recordScore(20, 'clicker', bob)
 
     const { rows } = await as(db, null, () =>
       db.query(

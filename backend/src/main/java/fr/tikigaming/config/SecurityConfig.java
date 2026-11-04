@@ -16,8 +16,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http, GoogleLoginSuccessHandler googleSuccess, TikiProperties props) throws Exception {
         http
-                // L'accès aux données est contrôlé par la RLS Supabase ; les endpoints /api/auth vérifient eux-mêmes la
-                // session.
+                // L'accès aux données est contrôlé par la RLS Supabase ; les endpoints /api/auth et /api/scores
+                // vérifient eux-mêmes la session.
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                 // Le front lit le cookie XSRF-TOKEN et le renvoie dans l'en-tête X-XSRF-TOKEN.
                 .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())

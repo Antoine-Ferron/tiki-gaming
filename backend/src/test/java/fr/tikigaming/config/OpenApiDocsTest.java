@@ -53,7 +53,7 @@ class OpenApiDocsTest {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.info.title").value("Tiki Gaming API"))
-                    .andExpect(jsonPath("$.paths", aMapWithSize(30)))
+                    .andExpect(jsonPath("$.paths", aMapWithSize(31)))
                     .andExpect(jsonPath("$.paths['/api/auth/session'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/google'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/login'].post.summary", not(emptyOrNullString())))
@@ -62,6 +62,7 @@ class OpenApiDocsTest {
                     .andExpect(jsonPath("$.paths['/api/auth/password/reset'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/password'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/logout'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/scores'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}")))
                     .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}/guesses")))
@@ -89,6 +90,7 @@ class OpenApiDocsTest {
                             "$.paths.*.*.tags[*]",
                             everyItem(anyOf(
                                     containsString("Authentification"),
+                                    containsString("Scores"),
                                     containsString("mastermind"),
                                     containsString("bang"),
                                     containsString("sudoku"),
