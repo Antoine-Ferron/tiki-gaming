@@ -2,6 +2,7 @@ package fr.tikigaming.games.rush_hour;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 /**
  * Les 20 niveaux, connus du serveur pour vérifier les parties. Copie de frontend/src/games/rush-hour/domain/levels.ts :
@@ -54,6 +55,11 @@ public final class Levels {
     private Levels() {}
 
     /** Map du niveau (6 lignes de 6 cases), ou vide si le niveau n'existe pas. */
+    /** Nombre minimal de coups du niveau, ou vide si le niveau n'existe pas. */
+    public static OptionalInt minimum(int number) {
+        return OptionalInt.empty();
+    }
+
     public static Optional<List<String>> map(int number) {
         return number >= 1 && number <= MAPS.size() ? Optional.of(MAPS.get(number - 1)) : Optional.empty();
     }
