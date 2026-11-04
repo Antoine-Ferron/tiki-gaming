@@ -23,6 +23,9 @@ public final class MoveGenerator {
     /** La tour : en ligne droite sur sa colonne et sa rangée. */
     private static final int[][] ROOK_DIRECTIONS = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
+    /** Le fou : en diagonale. */
+    private static final int[][] BISHOP_DIRECTIONS = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+
     private MoveGenerator() {}
 
     /** Les cases où peut aller la pièce posée en {@code from} ; vide si la case est libre. */
@@ -34,6 +37,9 @@ public final class MoveGenerator {
         Piece piece = moving.get();
         if (piece.type() == PieceType.ROOK) {
             return slidingDestinations(position, from, piece.color(), ROOK_DIRECTIONS);
+        }
+        if (piece.type() == PieceType.BISHOP) {
+            return slidingDestinations(position, from, piece.color(), BISHOP_DIRECTIONS);
         }
         int[][] offsets = piece.type() == PieceType.KING ? KING_OFFSETS : KNIGHT_OFFSETS;
         return jumpDestinations(position, from, piece.color(), offsets);
