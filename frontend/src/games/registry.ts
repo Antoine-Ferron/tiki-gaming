@@ -1,6 +1,7 @@
 import type { GameDefinition } from './types'
 import clicker from './clicker'
 import batailleNavale from './bataille-navale'
+import echecs from './echecs'
 import mastermind from './mastermind'
 import rushHour from './rush-hour'
 import yams from './yams'
@@ -22,6 +23,7 @@ export const games: GameDefinition[] = [
   sudoku,
   miniGta,
   yams,
+  echecs,
 ]
 
 export function getGame(slug: string): GameDefinition | undefined {

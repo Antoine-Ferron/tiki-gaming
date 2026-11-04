@@ -38,6 +38,7 @@ describe('HomePage', () => {
   })
 
   test('aucun jeu ne correspond : le dit plutôt que d’afficher une grille vide', () => {
+    // Aucun jeu de duel n'est classé « réflexion » (bataille navale est en « action », les échecs en « stratégie »).
     renderPage(<HomePage />, { url: '/?categorie=duel&theme=reflexion', route: '/' })
 
     expect(titles()).toEqual([])
