@@ -166,6 +166,10 @@ c'est le formatter qui tranche les questions de style.
 - **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
   écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
   le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+- **BDD Java Dames** (`backend/src/test/resources/features/dame`) : `DameBddTest` appelle le domaine et son fake
+  via Cucumber/JUnit Platform, sans Spring ni Docker. Depuis la racine :
+  `mvn -f backend/pom.xml -Dtest=DameBddTest test`. Rapport : `backend/target/cucumber/dame.html`, artefact CI
+  `rapport-bdd-dame` ; voir [la documentation Dames](docs/dame/bdd.md).
 - **Propriétés et fuzzing** (`*.property.test.ts`, fast-check) : une règle vraie pour toute entrée générée
   (« tout entier au-dessus du maximum est refusé »), et du fuzzing (« n'importe quelle saisie donne des données ou
   des messages, jamais une exception »). En cas d'échec, fast-check réduit l'entrée au plus petit contre-exemple

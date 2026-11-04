@@ -55,6 +55,8 @@ de tests Testcontainers sur les vrais services PostgreSQL/PostgREST. La table es
 privée au backend et protège les transitions concurrentes. Le raccordement
 API/interface reste à réaliser.
 
-Les [premiers scénarios Gherkin](bdd.md) formalisent les rencontres, les prises et
-la victoire pour la relecture métier. Ils attendent encore leurs bindings Java et
-ne sont pas comptabilisés comme tests automatisés.
+Les [scénarios Gherkin](bdd.md) des rencontres, prises et victoire sont exécutés
+par `DameBddTest`. Les étapes Java utilisent le vrai moteur et `MatchService`
+avec le fake de dépôt partagé : 12 cas automatisés sans Spring, réseau ou Docker.
+Le rapport HTML est généré sous `backend/target/cucumber/dame.html` et publié en
+artefact par le check backend CI.

@@ -85,3 +85,19 @@ Le rapport HTML affiche les scénarios et leurs étapes. Le JSON et le JUnit XML
 sont également générés dans `backend/target/cucumber` ; aucun rapport généré
 n'est versionné. La suite est incluse dans `mvn test`, `mvn verify` et dans le
 profil d'intégration déjà exécuté par le check backend CI.
+
+## Qualité et CI
+
+Le check backend publie également `backend/target/cucumber/` dans l'artefact
+`rapport-bdd-dame`, même en cas d'échec. Aucun job existant n'est renommé ou
+rendu optionnel. La configuration YAML a été validée localement ; ces nouveaux
+commits restent locaux, la CI GitHub n'a pas encore été exécutée pour eux.
+
+PIT reste vert avec **262/270 mutants tués (97,04 %)**, sans mutation non couverte,
+timeout ou erreur, et sans changer cibles, seuil, mutateurs ou exclusions. Le
+raccordement Gherkin ne modifie aucune classe métier de production ni migration.
+
+Pour la soutenance : lancer `DameBddTest`, ouvrir le rapport HTML et expliquer une
+liaison telle que `Quand le joueur noir remporte la partie` → vraie capture noire
+dans `Game` → `MatchService.finish` → lecture du résultat dans le fake. Les noms
+des participants, camps, longueurs et attentes viennent des étapes et tableaux.

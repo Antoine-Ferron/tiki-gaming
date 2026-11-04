@@ -212,6 +212,11 @@ jobs:
             backend/target/classes/
             backend/target/test-classes/
           retention-days: 1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-bdd-dame
+          path: backend/target/cucumber/
 
   # Toujours exécuté et sans dépendance : un test renommé côté front ou backend casse la matrice.
   traceability:

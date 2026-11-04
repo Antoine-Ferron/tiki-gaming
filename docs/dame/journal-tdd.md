@@ -296,3 +296,20 @@ tableaux : **12 cas découverts, 12 erreurs `UndefinedStepException`, 0 ignoré*
 avant l'écriture des étapes. Ce RED concerne les bindings absents, pas une nouvelle
 règle métier. Le scénario de résultat immuable précise les participants sans
 changer son comportement attendu. Rapports dans `backend/target/cucumber`.
+
+## 4 novembre 2026 — bindings BDD GREEN et rapport CI
+
+- `7c955f4` : runner RED, 12 cas découverts avec étapes indéfinies.
+- `89422f6` : `RencontreSteps` et `PrisesSteps` appellent les vrais objets métier ;
+  fake partagé dans les sources de test, horloge et identifiants fixes. Les
+  victoires proviennent de vraies captures par le moteur. **12 cas passent**.
+- Un contrôle négatif change temporairement deux valeurs d'exemples (gagnant
+  noir et limite de nom) : exactement deux échecs, puis restauration du Gherkin.
+  Les nombres et noms sont donc exécutés, pas recopiés dans une suite parallèle.
+- Vérification complète `mvn -Pintegration clean verify` : **1 097 tests backend
+  dont 12 BDD, et 52 tests d'intégration**, zéro échec, erreur ou ignoré ; format,
+  linter et seuils JaCoCo verts.
+- PIT : **262/270 mutants tués (97,04 %)**, sans erreur ou mutant non couvert ;
+  aucune exclusion ou règle de qualité changée.
+- CI : ajout de l'artefact `rapport-bdd-dame` (HTML/JSON/JUnit XML), syntaxe YAML
+  vérifiée. Aucun push ni nouvelle PR. Détails et commandes dans [bdd.md](bdd.md).
