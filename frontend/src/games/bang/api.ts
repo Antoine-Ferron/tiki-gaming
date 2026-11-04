@@ -20,3 +20,5 @@ export const discard = (code: string, cardId: string) =>
   apiPost(`${table(code)}/turn/discard/${encodeURIComponent(cardId)}`)
 export const fire = (code: string, cardId: string, targetSeat: number) =>
   apiPost(`${table(code)}/shots/${encodeURIComponent(cardId)}/targets/${targetSeat}`)
+export const dodge = (code: string, shotId: string, cardId: string) =>
+  apiPost(`${table(code)}/shots/${encodeURIComponent(shotId)}/dodge/${encodeURIComponent(cardId)}`)
