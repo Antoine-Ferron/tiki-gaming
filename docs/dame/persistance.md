@@ -72,3 +72,12 @@ Références techniques : [réseau Testcontainers](https://java.testcontainers.o
 Le RED s'exécute avec `mvn ... -Dtest=SupabaseMatchRepositoryTest test`, puis
 `mvn ... -Pintegration -Dit.test=SupabaseMatchRepositoryIT
 failsafe:integration-test failsafe:verify` après `test-compile`.
+
+## Contraintes SQL
+
+Après implémentation de la migration, la même suite compte **44 réussites et
+8 échecs attendus sur 52, sans erreur ni test ignoré**. Les 43 cas SQL passent,
+ainsi que la lecture d'un identifiant absent. Les huit scénarios qui nécessitent
+l'adaptateur HTTP attendent encore son implémentation. Les noms suivent les mêmes
+limites UTF-16 et espaces Unicode que le domaine Java ; la base refuse les dates
+incohérentes, les insertions déjà terminées, les réécritures et les accès navigateur.
