@@ -39,9 +39,12 @@ const player: Player = { id: 'p1', username: 'alice' }
 const EMPTY_CELL = 'Ligne 5, colonne 5, vide'
 
 /** Faux serveur : même contrat que /api/games/sudoku, état en mémoire. */
+const MAX_MISTAKES = 3
 let mistakesOnServer: number
+let gameOnServer: { mistakes: number; lost: boolean }
 const fakeServer = () => {
   mistakesOnServer = 0
+  gameOnServer = { mistakes: 2, lost: false }
   vi.mocked(apiGet).mockImplementation(async (path: string) => {
     if (path.startsWith('/games/sudoku/puzzle')) {
       return { gameId: 'g1', difficulty: new URL(path, 'http://x').searchParams.get('difficulty'), puzzle: PUZZLE }
@@ -52,7 +55,9 @@ const fakeServer = () => {
         difficulty: 'medium',
         puzzle: PUZZLE,
         values: PUZZLE,
-        mistakes: 2,
+        mistakes: gameOnServer.mistakes,
+        maxMistakes: MAX_MISTAKES,
+        lost: gameOnServer.lost,
         seconds: 42,
       }
     }
@@ -61,9 +66,11 @@ const fakeServer = () => {
   vi.mocked(apiPost).mockImplementation(async (path: string, body?: unknown) => {
     if (path === '/games/sudoku/g1/moves') {
       const { cell, value } = body as { cell: number; value: number }
+      if (mistakesOnServer > MAX_MISTAKES)
+        throw new ApiError(409, 'Partie perdue : trop d’erreurs. Lance-en une nouvelle.')
       const correct = SOLUTION[cell] === value
       if (!correct) mistakesOnServer++
-      return { correct, mistakes: mistakesOnServer, complete: correct }
+      return { correct, mistakes: mistakesOnServer, complete: correct, lost: mistakesOnServer > MAX_MISTAKES }
     }
     if (path === '/games/sudoku/check') return { solved: true, score: SERVER_SCORE }
     throw new Error(`appel inattendu : ${path}`)
@@ -180,7 +187,7 @@ describe('partie', () => {
     selectEmptyCell()
     await pad(WRONG_DIGIT)
 
-    expect(screen.getByText('Erreurs : 1')).toBeTruthy()
+    expect(screen.getByText('Erreurs : 1/3')).toBeTruthy()
     expect(screen.getByRole('status').textContent).toContain('pas le bon')
     expect(screen.getByRole('button', { name: EMPTY_CELL })).toBeTruthy()
   })
@@ -193,7 +200,7 @@ describe('partie', () => {
     await pad(9)
 
     expect(apiPost).not.toHaveBeenCalled()
-    expect(screen.getByText('Erreurs : 0')).toBeTruthy()
+    expect(screen.getByText('Erreurs : 0/3')).toBeTruthy()
   })
 
   test('se joue au clavier : chiffre et flèches', async () => {
@@ -204,7 +211,7 @@ describe('partie', () => {
 
     fireEvent.keyDown(grid, { key: String(WRONG_DIGIT) })
     await flush()
-    expect(screen.getByText('Erreurs : 1')).toBeTruthy()
+    expect(screen.getByText('Erreurs : 1/3')).toBeTruthy()
 
     fireEvent.keyDown(grid, { key: 'ArrowRight' })
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Ligne 5, colonne 6, / }))
@@ -254,7 +261,7 @@ describe('partie', () => {
     // Assert
     expect(apiGet).toHaveBeenCalledWith('/games/sudoku/g1')
     expect(screen.getByText('Temps : 0:42')).toBeTruthy()
-    expect(screen.getByText('Erreurs : 2')).toBeTruthy()
+    expect(screen.getByText('Erreurs : 2/3')).toBeTruthy()
   })
 
   test('abandonne la sauvegarde d’une partie que le serveur ne connaît plus', async () => {
@@ -391,5 +398,77 @@ describe('fin de partie', () => {
 
     expect(screen.queryByText(/Bravo/)).toBeNull()
     expect(screen.getByRole('grid', { name: 'Grille de sudoku' })).toBeTruthy()
+  })
+})
+
+describe('partie perdue', () => {
+  const loseTheGame = async () => {
+    selectEmptyCell()
+    for (let i = 0; i <= MAX_MISTAKES; i++) await pad(WRONG_DIGIT)
+  }
+
+  test('trois erreurs sont permises : la partie continue et le compteur avance', async () => {
+    await setup()
+    await startEasy()
+    selectEmptyCell()
+
+    for (let i = 0; i < MAX_MISTAKES; i++) await pad(WRONG_DIGIT)
+
+    expect(screen.getByText('Erreurs : 3/3')).toBeTruthy()
+    expect(screen.queryByText(/Partie perdue/)).toBeNull()
+    expect(screen.getByRole('grid')).toBeTruthy()
+  })
+
+  test('avertit quand il ne reste plus qu’une erreur permise', async () => {
+    await setup()
+    await startEasy()
+    selectEmptyCell()
+
+    await pad(WRONG_DIGIT)
+    expect(screen.queryByText(/plus qu’une erreur/)).toBeNull()
+    await pad(WRONG_DIGIT)
+
+    expect(screen.getByText(/plus qu’une erreur permise/)).toBeTruthy()
+  })
+
+  test('la quatrième erreur termine la partie sans score et efface la sauvegarde', async () => {
+    const { scores, saves } = await setup()
+    await startEasy()
+
+    await loseTheGame()
+
+    expect(screen.getByText(/Partie perdue : plus de 3 erreurs/)).toBeTruthy()
+    expect(screen.queryByRole('grid')).toBeNull()
+    expect(apiPost).not.toHaveBeenCalledWith('/games/sudoku/check', expect.anything())
+    expect(scores.rows).toHaveLength(0)
+    expect(saves.data.has('sudoku')).toBe(false)
+    expect(screen.queryByRole('button', { name: 'Reprendre ma partie' })).toBeNull()
+  })
+
+  test('propose de relancer une partie après la défaite', async () => {
+    await setup()
+    await startEasy()
+    await loseTheGame()
+    mistakesOnServer = 0
+
+    await startEasy()
+
+    expect(screen.getByRole('grid')).toBeTruthy()
+    expect(screen.getByText('Erreurs : 0/3')).toBeTruthy()
+    expect(screen.queryByText(/Partie perdue/)).toBeNull()
+  })
+
+  test('reprendre une partie déjà perdue affiche la défaite et efface la sauvegarde', async () => {
+    gameOnServer = { mistakes: 4, lost: true }
+    const deps = fakeDeps()
+    await deps.saves.save('sudoku', { gameId: 'g1' })
+    render(<SudokuGame ctx={createGameContext({ slug: 'sudoku' }, player, deps)} />)
+    await flush()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reprendre ma partie' }))
+    await flush()
+
+    expect(screen.getByText(/Partie perdue/)).toBeTruthy()
+    expect(deps.saves.data.has('sudoku')).toBe(false)
   })
 })

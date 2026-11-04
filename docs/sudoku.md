@@ -23,6 +23,7 @@ Le jeu a deux morceaux :
 | `index.ts`                               | Déclaration du jeu : slug `sudoku`, catégorie `solo`, mode `solo`       |
 | `SudokuGame.tsx`                         | Composant : choix de difficulté, grille, pavé numérique, appels à l'API, classement |
 | `logic.ts`                               | Types, libellés des difficultés, format du temps                        |
+| `mistakes.ts`                            | Règle des erreurs à l'affichage : reste permis, partie perdue, compteur « 2/3 », avertissements |
 | `sudoku.css`                             | Styles, classes préfixées `sudoku-`, couleurs via les tokens de la charte |
 
 Le jeu est aussi ajouté dans `frontend/src/games/registry.ts`.
@@ -36,7 +37,13 @@ Le jeu est aussi ajouté dans `frontend/src/games/registry.ts`.
   sélection. Les indices de départ sont verrouillés. Chaque chiffre part sur `POST …/{gameId}/moves` : s'il est
   faux, la case reste vide, une erreur est comptée par le serveur et un message le signale. Il n'y a donc ni
   bouton « Effacer » ni conflits à afficher : seuls les bons chiffres entrent dans la grille.
-- **Erreurs et chrono** : comptés et mesurés par le serveur ; le chrono affiché n'est qu'un affichage.
+- **Erreurs et chrono** : comptés et mesurés par le serveur ; le chrono affiché n'est qu'un affichage. Le compteur
+  s'affiche « Erreurs : 2/3 ».
+- **Partie perdue** : 3 erreurs sont permises, la 4e perd la partie. À 2/3 puis 3/3, un avertissement prévient. À la
+  défaite, la grille disparaît, un message « Partie perdue : plus de 3 erreurs » s'affiche, aucun score n'est
+  envoyé et la sauvegarde est effacée ; le joueur peut relancer une partie. Reprendre une partie déjà perdue
+  mène au même écran. Le plafond (3) vient du serveur (`maxMistakes`) ; `mistakes.ts` n'en garde qu'une valeur
+  par défaut pour le départ.
 - **Fin de partie** : quand le serveur répond `complete`, le front appelle `POST …/check` et envoie à
   `ctx.submitScore` le `score` renvoyé. Il n'existe plus de formule de score côté front.
 - **Reprise** : seul `{ gameId }` est sauvegardé. « Reprendre ma partie » relit l'état sur `GET …/{gameId}`
@@ -78,6 +85,7 @@ client ne décide ni de la grille, ni de la difficulté, ni du temps.
 | `ScoreCalculator`  | Règles métier du score (fonction pure)                                            |
 | `ScoreBreakdown`   | Détail du score : base, bonus de temps, bonus sans faute, pénalité, total         |
 | `SudokuBadRequestException` | Requête refusée : hérite de `config/ApiException`, renvoyée en 400 `{ error }` par `ApiExceptionHandler` |
+| `SudokuGameOverException` | Partie perdue (plus de 3 erreurs) : hérite de `config/ApiException`, renvoyée en **409** `{ error }` |
 | `GameStore`        | Parties en cours : grille, solution, saisies, erreurs et chrono (`GameTimer` + `Clock`) gardés côté serveur ; expiration 2 h, id clos dès la résolution ; 5 parties ouvertes par client et 10 000 au total, la plus ancienne est retirée au-delà |
 | `SudokuService`    | Vérifie une partie (forme des grilles, indices intacts, conflits) et calcule le score |
 | `SudokuController` | Les endpoints REST, documentés dans OpenAPI (tag « sudoku »)                      |
@@ -100,13 +108,18 @@ client ne décide ni de la grille, ni de la difficulté, ni du temps.
 { "gameId": "3f2a…", "difficulty": "medium", "puzzle": [0, 3, 0, 0, 7, "… 81 valeurs, 0 = case vide"] }
 ```
 
-`GET /api/games/sudoku/{gameId}` renvoie `gameId`, `difficulty`, `puzzle`, `values` (grille du joueur), `mistakes`
-et `seconds`.
+`GET /api/games/sudoku/{gameId}` renvoie `gameId`, `difficulty`, `puzzle`, `values` (grille du joueur), `mistakes`,
+`maxMistakes` (3), `lost` (partie perdue) et `seconds`.
 
 `POST /api/games/sudoku/{gameId}/moves` reçoit `{ "cell": 40, "value": 7 }` (case de 0 à 80, ligne par ligne) et
-renvoie `{ "correct": true, "mistakes": 0, "complete": false }`. Le serveur compare à sa solution : une saisie
+renvoie `{ "correct": true, "mistakes": 0, "complete": false, "lost": false }`. Le serveur compare à sa solution : une saisie
 juste entre dans la grille du serveur, une saisie fausse n'y entre pas et coûte une erreur (comptée à chaque
 essai). Un indice de départ ou un chiffre hors 1 à 9 donne un 400.
+
+**Limite d'erreurs** : 3 erreurs sont permises (`GameStore.MAX_MISTAKES`). La 4e répond `lost: true` ; ensuite
+toute saisie, même juste, donne un **409** (`Partie perdue : trop d'erreurs`), et `POST …/check` aussi : une
+partie perdue ne rapporte aucun score. La partie reste lisible par `GET …/{gameId}` (avec `lost: true`) jusqu'à
+son expiration. Cela borne aussi l'effet d'oracle de `/moves` : au plus 4 essais ratés par partie.
 
 `POST /api/games/sudoku/check` reçoit seulement `{ "gameId": "3f2a…" }`. Grille du joueur, difficulté, temps (de
 `GET /puzzle` à l'appel, sur l'horloge du serveur) et erreurs sont ceux que le serveur a lui-même enregistrés :
@@ -115,7 +128,7 @@ Sans toutes les saisies faites par `/moves`, la grille reste incomplète et le s
 
 et renvoie `complete`, `solved`, `conflicts` (indices des cases en doublon), `score` et `breakdown`.
 Une entrée invalide (`gameId` inconnu, expiré ou déjà résolu, case ou chiffre invalide, difficulté inconnue) donne un **400** avec
-`{ "error": "…" }`.
+`{ "error": "…" }` ; une partie perdue donne un **409** au même format.
 
 Avec le backend lancé, la documentation interactive est sur `/swagger-ui/index.html`.
 
@@ -201,7 +214,8 @@ Les tests unitaires du backend sont dans `backend/src/test/java/fr/tikigaming/su
 | `SudokuGeneratorTest`     | Nombre d'indices, solution unique, reproductibilité avec une graine  |
 | `ScoreCalculatorTest`     | Paliers, seuil, bonus sans faute, bornes, déterminisme, débordement  |
 | `SudokuServiceTest`       | Grille résolue, incomplète, en conflit, indice modifié, entrées invalides |
-| `SudokuControllerTest`    | Réponses et erreurs 400, en appelant le controller comme un objet Java |
+| `SudokuControllerTest`    | Réponses et erreurs 400, en appelant le controller comme un objet Java ; limite d'erreurs : 3 permises, 4e perd (`lost`), 409 sur `/moves` et `/check` d'une partie perdue, `lost` dans l'état |
+| `GameStoreTest`           | Expiration, éviction, et limite d'erreurs : seuil 3/4, une saisie juste ne compte pas, partie perdue figée |
 | `ClockTest`               | Horloge figée, avancée à la main ; `SystemClock` sur une horloge figée ou décalée |
 | `GameTimerTest`           | Durée écoulée, troncature, arrêt, transitions invalides, horloge qui recule, seuil du bonus de temps à 540 s / 541 s |
 | `FixedRateCurrencyConverterTest` | Conversion via la référence, arrondi, devise inconnue, montant négatif |
@@ -222,6 +236,11 @@ Les tests unitaires du backend sont dans `backend/src/test/java/fr/tikigaming/su
 Exigences : logique pure, aucun accès réseau ni disque, pas de contexte Spring. Le seul aléa est un
 `Random` à graine fixe. Les tests à backtracking (générateur, solveur) prennent quelques dizaines de ms
 à froid.
+
+Côté front (`frontend/src/games/sudoku/`) : `SudokuGame.test.tsx` joue le composant contre un faux serveur (dont
+la partie perdue : 3 erreurs permises, avertissement, défaite à la 4e sans score ni sauvegarde, reprise d'une
+partie perdue, nouvelle partie), `logic.test.ts` le format du temps, et `mistakes.test.ts` la règle des erreurs
+(volontairement faible, voir [Tests de mutation](#tests-de-mutation-stryker)).
 
 Dans l'historique, la règle « valeur vide = manquante » est faite en cycle TDD : un commit `test`
 (rouge), un commit `fix` (vert), un commit `refactor`.
@@ -259,6 +278,63 @@ Pour rescanner en local sans compte, un SonarQube Community suffit :
 `-Dsonar.sources=backend/src/main/java/fr/tikigaming/games/sudoku,frontend/src/games/sudoku` et les rapports
 JaCoCo et lcov. Après les correctifs, l'analyse locale du Sudoku donne : Quality Gate **OK**, 0 bug,
 0 vulnérabilité, 0 *code smell*, 0 point sensible, dette SQALE 0, duplication 0 %, couverture 98 % (935 lignes).
+
+### Tests de mutation (Stryker)
+
+Stryker modifie le code (inverse une condition, vide un tableau, change un signe) et vérifie qu'un test échoue :
+un mutant « survivant » est un comportement que les tests ne protègent pas, même si la ligne est couverte.
+Le Sudoku n'est pas dans la configuration du dépôt (`frontend/stryker.config.mjs` ne mute que le cœur de la
+plateforme) ; scan initial lancé à part, sur `logic.ts` et `SudokuGame.tsx`, avec les seuls tests du Sudoku
+(`vitest.dir = src/games/sudoku`, car les tests des autres jeux n'ont pas toutes leurs dépendances en local).
+Le calcul du score (`ScoreCalculator`) est en Java : il relève de Pitest, pas de Stryker.
+
+| Fichier          | Score    | Tués | Timeout | Survivants | Non couverts |
+|------------------|----------|------|---------|------------|--------------|
+| `logic.ts`       | 100 %    | 12   | 0       | 0          | 0            |
+| `SudokuGame.tsx` | 79,92 %  | 139  | 64      | 50         | 1            |
+| Total (266 mutants) | **80,83 %** | 151 | 64 | 50         | 1            |
+
+Les survivants de `SudokuGame.tsx` sont surtout :
+- le clavier : le test des flèches ne vérifie pas chaque direction (`ArrowDown: [1, 0]` → `[]`,
+  `ArrowLeft: [0, -1]` → `[0, +1]`), ni le `if (!d) return` ni le `preventDefault()` ;
+- l'affichage conditionnel : « Ton meilleur score » sans meilleur score (`best !== null && …` → `true && …`) et
+  le message d'erreur (`error && …` → `error || …`).
+
+Ce premier scan date d'avant la limite d'erreurs.
+
+#### Scan initial du moteur d'erreurs (`mistakes.ts`)
+
+C'est le cas « 100 % de couverture, score bas » de l'atelier. Les tests de `mistakes.test.ts` sont
+**volontairement faibles** : ils appellent chaque fonction et chaque branche, mais ne vérifient qu'un type ou une
+valeur définie, jamais la valeur exacte. Ce n'est pas un oubli, c'est l'état de départ de l'exercice, à renforcer
+à l'étape suivante.
+
+| Mesure (tests de `mistakes.test.ts` seuls) | Résultat |
+|---------------------------------------------|----------|
+| Couverture (lignes, branches, fonctions)    | **100 %** (8/8, 4/4, 4/4) |
+| Score de mutation                           | **25 %** (5 tués, 15 survivants sur 20 mutants) |
+
+Survivants typiques : `isLost` reste « juste » avec `mistakes >= max`, `true` ou `false` (aucun test ne fixe la
+frontière 3/4) ; `Math.min` devient `Math.max` dans le compteur ; les deux messages d'avertissement peuvent devenir
+une chaîne vide ; `max - mistakes` devient `max + mistakes`.
+
+Avec en plus les tests du composant (`SudokuGame.test.tsx`), qui jouent des parties entières (3 erreurs permises,
+avertissement, défaite à la 4e), les mêmes mutants sont presque tous tués :
+
+| Fichier          | Score       | Tués | Timeout | Survivants |
+|------------------|-------------|------|---------|------------|
+| `logic.ts`       | 100 %       | 12   | 0       | 0          |
+| `mistakes.ts`    | 80 %        | 4    | 12      | 4          |
+| `SudokuGame.tsx` | 93,8 %      | 146  | 111     | 16         |
+| Total            | **93,14 %** | 162  | 123     | 20         |
+
+Un test de composant protège donc le comportement, mais un test unitaire du moteur reste nécessaire : il tue les
+mutants sans passer par l'interface et il fixe les bornes.
+
+Pour rejouer un scan : un fichier de configuration qui reprend `frontend/stryker.config.mjs` avec
+`mutate: ['src/games/sudoku/mistakes.ts']` et, pour isoler les tests unitaires, un `vitest.configFile` dont
+`test.include` ne liste que `src/games/sudoku/mistakes.test.ts` (ou `vitest: { dir: 'src/games/sudoku' }` pour tous
+les tests du Sudoku), puis `npx stryker run <fichier>` depuis `frontend/`.
 
 ## Lancer en local
 
@@ -299,8 +375,9 @@ le plafond de `ScoreCalculator` en difficile (partie parfaite en 0 s). Les deux 
 
 ## Écarts connus
 
-- **`/moves` sert d'oracle** : un joueur peut deviner chaque case en lisant `correct`. Chaque essai raté coûte
-  une erreur (−50, et plus de bonus « sans faute »), donc la triche reste peu rentable, sans être impossible.
+- **`/moves` sert d'oracle, mais borné** : un joueur peut deviner une case en lisant `correct`. Chaque essai raté
+  coûte une erreur (−50, et plus de bonus « sans faute ») et la 4e erreur perd la partie : au plus 4 essais ratés
+  par partie. En créer une autre reste possible (voir « Création de partie »).
 - **Le classement reste alimenté par le navigateur** : le front envoie son score via `ctx.submitScore` et
   `/check` n'enregistre rien. Un joueur connecté peut donc insérer un score jusqu'au plafond (6864) sans jouer.
   Pour y remédier, le backend doit écrire le score à la résolution et l'insertion client doit être bloquée pour
