@@ -263,6 +263,18 @@ pas de notion séparée de « session » côté WebSocket. La reconnexion (page 
 passe par le même message `join`, idempotent : le joueur retrouve son siège. Un jeu avec de l'état caché
 par joueur (main de cartes…) construit son propre `@MessageMapping` dans son package, au-dessus de
 `GameRoomService`/`IdempotencyGuard` — le socle ne connaît que les sièges, jamais les règles d'un jeu.
+
+Un `ChannelInterceptor` (`RoomChannelInterceptor`) filtre les frames des clients, par liste d'autorisations : seul
+`SEND` vers `/app/**` passe (un `SEND` direct sur `/topic/...` serait diffusé tel quel), et `SUBSCRIBE` n'est permis
+que vers `/user/queue/rooms/{slug}/(response|errors)` et vers le topic d'une salle où le compte est assis. Tout le
+reste est refusé, motifs Ant (`*`, `?`, `{}`) compris. Un jeu qui ajoute ses destinations les déclare dans cet
+interceptor.
+
+Limite connue : l'appartenance n'est vérifiée qu'au `SUBSCRIBE`. Après `leave` ou une purge d'inactivité,
+l'abonnement serveur du compte reste actif jusqu'à ce que le client se désabonne ou se déconnecte, et il continue
+de recevoir les évènements de la salle. Acceptable tant que le relais ne diffuse que des actions publiques ; à
+corriger (désabonnement côté serveur ou refiltrage à l'envoi) si des actions deviennent sensibles.
+
 Spécification complète : issue [#85](https://github.com/EAnathos/tiki-gaming/issues/85).
 
 ## Sécurité

@@ -217,6 +217,8 @@ class GameSocketControllerIntegrationTest {
         StompSession strangerSession = connect("subscribe-stranger");
         BlockingQueue<RoomEvent<?>> strangerEvents = subscribeToTopic(strangerSession, created.code());
         BlockingQueue<RoomEvent<?>> strangerWildcardEvents = subscribeToTopic(strangerSession, "*");
+        BlockingQueue<RoomEvent<?>> strangerVariableEvents = new LinkedBlockingQueue<>();
+        subscribeTo(strangerSession, "/topic/{a}/{b}/{c}", strangerVariableEvents);
 
         creatorSession.send(
                 "/app/rooms/" + SLUG + "/" + created.code() + "/actions",
@@ -226,6 +228,7 @@ class GameSocketControllerIntegrationTest {
         assertThat(creatorEvents.poll(5, TimeUnit.SECONDS)).isNotNull();
         assertThat(strangerEvents.poll(1, TimeUnit.SECONDS)).isNull();
         assertThat(strangerWildcardEvents.poll(1, TimeUnit.SECONDS)).isNull();
+        assertThat(strangerVariableEvents.poll(1, TimeUnit.SECONDS)).isNull();
 
         creatorSession.disconnect();
         strangerSession.disconnect();
@@ -291,12 +294,16 @@ class GameSocketControllerIntegrationTest {
         return queue;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private BlockingQueue<RoomEvent<?>> subscribeToTopic(StompSession session, String code) {
         BlockingQueue<RoomEvent<?>> queue = new LinkedBlockingQueue<>();
-        BlockingQueue rawQueue = queue;
-        session.subscribe("/topic/rooms/" + SLUG + "/" + code, new JsonFrameHandler<>(RoomEvent.class, rawQueue));
+        subscribeTo(session, "/topic/rooms/" + SLUG + "/" + code, queue);
         return queue;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void subscribeTo(StompSession session, String destination, BlockingQueue<RoomEvent<?>> queue) {
+        BlockingQueue rawQueue = queue;
+        session.subscribe(destination, new JsonFrameHandler<>(RoomEvent.class, rawQueue));
     }
 
     private StompSession connect(String accountId) throws Exception {

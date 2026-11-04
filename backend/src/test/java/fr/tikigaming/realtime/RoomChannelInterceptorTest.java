@@ -72,14 +72,21 @@ class RoomChannelInterceptorTest {
     }
 
     @Test
-    void blocksWildcardAndMalformedRoomTopics() {
+    void blocksEveryDestinationThatIsNotExplicitlyAllowed() {
         String code = rooms.createRoom(SLUG, "creator", 4).code();
         for (String destination : new String[] {
             "/topic/rooms/**",
             "/topic/rooms/" + SLUG + "/*",
             "/topic/rooms/" + SLUG,
             "/topic/rooms/" + SLUG + "/" + code + "/extra",
-            "/topic/**"
+            "/topic/**",
+            "/topic/{a}/{b}/{c}",
+            "/topic/rooms/{s}/{c}",
+            "/topic/{x}/**",
+            "/topic/other",
+            "/queue/anything",
+            "/user/queue/rooms/" + SLUG + "/other",
+            "/user/queue/rooms/{s}/response"
         }) {
             Message<?> message = stompMessage(StompCommand.SUBSCRIBE, destination, "creator");
 

@@ -17,8 +17,9 @@ import org.springframework.messaging.support.ChannelInterceptor;
  */
 class RoomChannelInterceptor implements ChannelInterceptor {
 
-    private static final String ROOM_TOPIC_PREFIX = "/topic/rooms/";
-    private static final Pattern ROOM_TOPIC = Pattern.compile("^/topic/rooms/([^/]+)/([^/]+)$");
+    private static final String SEGMENT = "[^/*?{}]+";
+    private static final Pattern ROOM_TOPIC = Pattern.compile("^/topic/rooms/(" + SEGMENT + ")/(" + SEGMENT + ")$");
+    private static final Pattern USER_QUEUE = Pattern.compile("^/user/queue/rooms/" + SEGMENT + "/(response|errors)$");
 
     private final GameRoomService rooms;
 
@@ -43,15 +44,19 @@ class RoomChannelInterceptor implements ChannelInterceptor {
         return destination != null && destination.startsWith(WebSocketConfig.APPLICATION_PREFIX + "/");
     }
 
+    /**
+     * Liste d'autorisations : tout ce qui n'est pas explicitement permis est refusé. Le broker simple interprète
+     * les motifs Ant ({@code *}, {@code ?}, {@code {a}}) : un abonnement à {@code /topic/{a}/{b}/{c}} recevrait les
+     * évènements de toutes les salles, d'où des segments sans aucun de ces caractères. Un jeu qui ajoute ses propres
+     * destinations les déclare ici.
+     */
     private boolean maySubscribe(String destination, Principal user) {
-        if (destination == null) return false;
-        // Le broker simple interprète les motifs Ant : « /topic/rooms/** » s'abonnerait à toutes les salles.
-        if (destination.indexOf('*') >= 0 || destination.indexOf('?') >= 0) return false;
-        if (!destination.startsWith(ROOM_TOPIC_PREFIX)) return true;
-        Matcher matcher = ROOM_TOPIC.matcher(destination);
-        if (!matcher.matches() || user == null) return false;
+        if (destination == null || user == null) return false;
+        if (USER_QUEUE.matcher(destination).matches()) return true;
+        Matcher room = ROOM_TOPIC.matcher(destination);
+        if (!room.matches()) return false;
         try {
-            rooms.requireMembership(matcher.group(1), matcher.group(2), user.getName());
+            rooms.requireMembership(room.group(1), room.group(2), user.getName());
             return true;
         } catch (GameRoomException e) {
             return false;
