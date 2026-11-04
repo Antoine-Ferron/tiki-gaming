@@ -2,7 +2,9 @@ export type Mark = 'X' | 'O'
 export type GameStatus = 'IN_PROGRESS' | 'X_WON' | 'O_WON' | 'DRAW'
 
 export class TicTacToeGame {
-  private readonly board: (Mark | undefined)[][] = Array.from({ length: 3 }, () => Array<Mark | undefined>(3))
+  private readonly board: (Mark | undefined)[][] = Array.from({ length: 3 }, () =>
+    Array<Mark | undefined>(3).fill(undefined),
+  )
   private player: Mark = 'X'
   private currentStatus: GameStatus = 'IN_PROGRESS'
 
