@@ -81,7 +81,7 @@ public final class MoveGenerator {
         return destinations;
     }
 
-    /** Le pion : avance d'une case, ou de deux depuis sa rangée de départ. */
+    /** Le pion : avance d'une case, ou de deux depuis sa rangée de départ ; prend en diagonale vers l'avant. */
     private static Set<Square> pawnDestinations(Position position, Square from) {
         Set<Square> destinations = new HashSet<>();
         Square oneStep = new Square(from.file(), from.rank() + 1);
@@ -90,6 +90,12 @@ public final class MoveGenerator {
             Square twoSteps = new Square(from.file(), from.rank() + 2);
             if (from.rank() == 1 && position.pieceAt(twoSteps).isEmpty()) {
                 destinations.add(twoSteps);
+            }
+        }
+        for (int side : new int[] {-1, 1}) {
+            Square diagonal = new Square(from.file() + side, from.rank() + 1);
+            if (position.pieceAt(diagonal).isPresent()) {
+                destinations.add(diagonal);
             }
         }
         return destinations;
