@@ -15,7 +15,7 @@ public final class Game {
         pieces.put(to, moving);
         return new Position(
                 pieces,
-                position.turn(),
+                position.turn() == Color.WHITE ? Color.BLACK : Color.WHITE,
                 position.castling(),
                 position.enPassant(),
                 position.halfmoveClock(),
