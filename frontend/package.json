@@ -15,6 +15,7 @@
     "db:sql": "node scripts/db.mjs",
     "db:migrate": "node scripts/db.mjs --migrate",
     "db:check": "node scripts/check-migrations.mjs",
+    "rtm:check": "node scripts/check-rtm.mjs",
     "test": "vitest run",
     "test:mutation": "stryker run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
