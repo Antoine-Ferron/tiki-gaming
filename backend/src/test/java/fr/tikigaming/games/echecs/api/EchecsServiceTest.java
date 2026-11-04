@@ -29,4 +29,12 @@ class EchecsServiceTest {
         assertThat(service.destinations(fen, "a1"))
                 .containsExactly("a2", "a3", "a4", "a5", "a6", "a7", "a8", "b1", "c1", "d1", "e1", "f1", "g1");
     }
+
+    @Test
+    @DisplayName("jouer un coup renvoie la FEN de la nouvelle position")
+    void jouerUnCoupRenvoieLaNouvelleFen() {
+        // Act + Assert
+        assertThat(service.play(START, "e2", "e4"))
+                .isEqualTo("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    }
 }
