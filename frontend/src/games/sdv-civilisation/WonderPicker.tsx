@@ -1,9 +1,9 @@
 import { costIcons, costText, RESOURCES, stageIcons, stageText } from './cardText'
 import { CostIcons, GameIcon, IconRow } from './GameIcon'
-import { WONDERS, type Wonder } from './wonders'
+import type { Wonder } from './wonders'
 
 /** Avant la partie : le joueur choisit son plateau merveille ; les IA reçoivent les autres au hasard. */
-export function WonderPicker({ onPick }: { onPick: (wonder: Wonder) => void }) {
+export function WonderPicker({ wonders, onPick }: { wonders: Wonder[]; onPick: (wonder: Wonder) => void }) {
   return (
     <section className="sdv-civilisation-picker" aria-labelledby="sdv-civilisation-picker-title">
       <h2 id="sdv-civilisation-picker-title">Choisis ta merveille</h2>
@@ -11,7 +11,7 @@ export function WonderPicker({ onPick }: { onPick: (wonder: Wonder) => void }) {
         Elle produit une ressource dès le départ et se bâtit en 3 étapes, dans l’ordre. Les IA reçoivent les autres.
       </p>
       <ul className="sdv-civilisation-picker-list">
-        {WONDERS.map((wonder) => (
+        {wonders.map((wonder) => (
           <li key={wonder.name}>
             <span className="sdv-civilisation-wonder-art">
               <GameIcon k="wonder" size={40} />

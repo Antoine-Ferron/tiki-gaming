@@ -1,39 +1,16 @@
-import { CARDS_BY_AGE, type Age, type Card, type Cost } from './cards'
-import type { Seat } from './bots'
-import type { CurrencyConverter, Resource, Shuffler } from './ports'
-import { neighbours } from './setup'
-import { WONDERS, type Wonder, type WonderStage } from './wonders'
+import type { Age, Card } from './cards'
+import type { Resource } from './ports'
+import type { Wonder, WonderStage } from './wonders'
 
-export const HAND_SIZE = 7
+/**
+ * Partie telle que le serveur la montre au joueur (voir backend : GameView). Le front n'applique aucune règle :
+ * prix, refus, IA, conflits et score viennent du serveur ; ce module ne contient que leurs types et l'affichage.
+ */
+
+/** Tours d'un âge, pour afficher « Tour 3 / 6 » (le serveur décide de la fin de l'âge). */
 export const TURNS_PER_AGE = 6
-export const DISCARD_COINS = 3
-const VICTORY_TOKENS: Record<Age, number> = { 1: 1, 2: 3, 3: 5 }
-const DEFEAT_TOKEN = -1
 
-export interface PlayerState extends Seat {
-  wonder: Wonder
-  /** Nombre d'étapes de merveille construites, dans l'ordre du plateau. */
-  stagesBuilt: number
-  built: Card[]
-  /** Somme des jetons de conflit gagnés et perdus. */
-  military: number
-  /** Résultat de chaque duel de fin d'âge, voisin par voisin. */
-  tokens: MilitaryToken[]
-}
-
-export interface GameState {
-  age: Age
-  turn: number
-  players: PlayerState[]
-  hands: Card[][]
-  over: boolean
-  /** Cartes défaussées depuis le début de la partie, visibles de tous. */
-  discards: Card[]
-  /** Ce que chaque joueur a fait au dernier tour, à afficher au joueur. */
-  lastTurn: TurnEvent[]
-  /** Jetons gagnés ou perdus par chaque joueur aux conflits de l'âge qui vient de se terminer, sinon null. */
-  conflicts: number[] | null
-}
+export type ActionType = 'build' | 'wonder' | 'discard'
 
 export interface MilitaryToken {
   age: Age
@@ -42,79 +19,36 @@ export interface MilitaryToken {
   value: number
 }
 
+export interface PlayerState {
+  name: string
+  isBot: boolean
+  coins: number
+  wonder: Wonder
+  /** Nombre d'étapes de merveille construites, dans l'ordre du plateau. */
+  stagesBuilt: number
+  built: Card[]
+  /** Somme des jetons de conflit gagnés et perdus. */
+  military: number
+  tokens: MilitaryToken[]
+  /** Calculés par le serveur : ressources produites, boucliers et points de science. */
+  production: Resource[]
+  shields: number
+  sciencePoints: number
+}
+
 export interface TurnEvent {
   player: number
-  action: Action['type']
+  action: ActionType
   card: Card
   /** Pièces gagnées ou perdues ce tour (commerce compris). */
   coins: number
 }
-
-/** Une carte, une action : construire le bâtiment, construire une étape de merveille avec la carte, ou la défausser. */
-export type Action = { type: 'build' | 'wonder' | 'discard'; card: string }
 
 export type Refusal = 'built' | 'resources' | 'coins' | 'wonder'
 
 export type Payment =
   | { ok: true; coins: number; toLeft: number; toRight: number; chain: boolean }
   | { ok: false; code: Refusal; reason: string }
-
-/** Distribue une main de 7 cartes de l'âge à chaque joueur : chaque carte existe en un exemplaire par joueur. */
-function deal(age: Age, playerCount: number, shuffler: Shuffler): Card[][] {
-  // Une copie par exemplaire : deux exemplaires de la même carte dans une main restent deux cartes distinctes.
-  const deck = shuffler.shuffle(
-    Array.from({ length: playerCount }, () => CARDS_BY_AGE[age].map((c) => ({ ...c }))).flat(),
-  )
-  return Array.from({ length: playerCount }, (_, i) => deck.slice(i * HAND_SIZE, (i + 1) * HAND_SIZE))
-}
-
-/**
- * Mise en place : 3 pièces, un plateau merveille différent par joueur et 7 cartes de l'âge I.
- * Si le premier joueur a choisi sa merveille, les autres reçoivent au hasard les plateaux restants.
- */
-export function createGame(seats: Seat[], shuffler: Shuffler, chosen?: Wonder): GameState {
-  const wonders = chosen
-    ? [chosen, ...shuffler.shuffle(WONDERS.filter((w) => w !== chosen))]
-    : shuffler.shuffle(WONDERS)
-  return {
-    age: 1,
-    turn: 1,
-    players: seats.map((seat, i) => ({
-      ...seat,
-      wonder: wonders[i],
-      stagesBuilt: 0,
-      built: [],
-      military: 0,
-      tokens: [],
-    })),
-    hands: deal(1, seats.length, shuffler),
-    over: false,
-    discards: [],
-    lastTurn: [],
-    conflicts: null,
-  }
-}
-
-/** Ressources produites : plateau merveille et cartes marron et grises. */
-export function production(player: PlayerState): Resource[] {
-  return [player.wonder.resource, ...player.built.flatMap((card) => card.produces ?? [])]
-}
-
-function count(resources: Resource[]): Map<Resource, number> {
-  const counts = new Map<Resource, number>()
-  for (const r of resources) counts.set(r, (counts.get(r) ?? 0) + 1)
-  return counts
-}
-
-export function builtStages(player: PlayerState): WonderStage[] {
-  return player.wonder.stages.slice(0, player.stagesBuilt)
-}
-
-/** Puissance militaire : boucliers des cartes rouges et des étapes de merveille. */
-export function shields(player: PlayerState): number {
-  const fromCards = player.built.reduce((sum, card) => sum + (card.shields ?? 0), 0)
-  return fromCards + builtStages(player).reduce((sum, stage) => sum + (stage.shields ?? 0), 0)
-}
 
 /** Pour une ressource d'un coût : ce que le joueur produit lui-même, achète à chaque voisin, et ce qui manque. */
 export interface ResourceNeed {
@@ -126,61 +60,53 @@ export interface ResourceNeed {
   missing: number
 }
 
-/**
- * Détail d'un coût, ressource par ressource : d'abord la production du joueur, puis l'achat au voisin de gauche,
- * puis à celui de droite, dans la limite de ce qu'ils produisent.
- */
-export function costBreakdown(state: GameState, index: number, cost: Cost): ResourceNeed[] {
-  const { left, right } = neighbours(state.players, index)
-  const own = count(production(state.players[index]))
-  const fromLeft = count(production(left))
-  const fromRight = count(production(right))
-  return [...count(cost.resources ?? [])].map(([resource, needed]) => {
-    const mine = Math.min(needed, own.get(resource) ?? 0)
-    const leftQty = Math.min(needed - mine, fromLeft.get(resource) ?? 0)
-    const rightQty = Math.min(needed - mine - leftQty, fromRight.get(resource) ?? 0)
-    return {
-      resource,
-      needed,
-      own: mine,
-      fromLeft: leftQty,
-      fromRight: rightQty,
-      missing: needed - mine - leftQty - rightQty,
-    }
-  })
+/** Une carte de la main, avec le prix de sa construction et le détail de ses ressources. */
+export interface HandCard {
+  card: Card
+  build: Payment
+  needs: ResourceNeed[]
 }
 
-/**
- * Ce que coûte un coût au joueur : les ressources qu'il ne produit pas sont achetées au voisin de gauche, puis
- * de droite, au prix du convertisseur, dans la limite de ce qu'ils produisent. Les pièces reçues pendant le tour
- * ne servent pas à payer : tout est calculé sur l'état de début de tour.
- */
-function pay(state: GameState, index: number, cost: Cost, converter: CurrencyConverter): Payment {
-  const player = state.players[index]
-  let toLeft = 0
-  let toRight = 0
-
-  for (const need of costBreakdown(state, index, cost)) {
-    if (need.missing > 0) return { ok: false, code: 'resources', reason: 'Il te manque des ressources.' }
-    if (need.fromLeft > 0) toLeft += converter.toCoins(need.resource, need.fromLeft)
-    if (need.fromRight > 0) toRight += converter.toCoins(need.resource, need.fromRight)
-  }
-
-  const coins = (cost.coins ?? 0) + toLeft + toRight
-  if (coins > player.coins) return { ok: false, code: 'coins', reason: 'Pas assez de pièces.' }
-  return { ok: true, coins, toLeft, toRight, chain: false }
+export interface ScoreBreakdown {
+  military: number
+  treasury: number
+  wonder: number
+  civil: number
+  science: number
+  guilds: number
+  total: number
 }
 
-/** Construire un bâtiment : jamais deux fois le même, gratuit par chaîne, sinon payé. */
-export function payment(state: GameState, index: number, card: Card, converter: CurrencyConverter): Payment {
-  const player = state.players[index]
-  if (player.built.some((c) => c.name === card.name)) {
-    return { ok: false, code: 'built', reason: 'Tu as déjà construit cette carte.' }
-  }
-  if (player.built.some((c) => c.name === card.chainFrom)) {
-    return { ok: true, coins: 0, toLeft: 0, toRight: 0, chain: true }
-  }
-  return pay(state, index, card.cost, converter)
+export interface Ranked {
+  name: string
+  isBot: boolean
+  coins: number
+  score: ScoreBreakdown
+}
+
+export interface GameView {
+  /** +1 à chaque tour : renvoyée avec le coup, pour que le serveur refuse un coup joué sur une partie dépassée. */
+  version: number
+  age: Age
+  turn: number
+  over: boolean
+  /** Sens de passage des mains à cet âge : vers la gauche aux âges I et III. */
+  passesLeft: boolean
+  /** Temps restant pour jouer ce tour ; à zéro, le serveur défausse une carte au hasard. */
+  remainingMs: number
+  /** Le joueur d'abord, puis les IA, dans l'ordre de la table. */
+  players: PlayerState[]
+  hand: HandCard[]
+  /** Prix de la prochaine étape de merveille, et ses ressources. */
+  wonder: Payment
+  wonderNeeds: ResourceNeed[]
+  /** Nombre de cartes défaussées depuis le début de la partie. */
+  discards: number
+  lastTurn: TurnEvent[]
+  /** Jetons gagnés ou perdus par chacun aux conflits de l'âge qui vient de se terminer. */
+  conflicts?: number[]
+  /** Classement final, une fois la partie terminée. */
+  ranking?: Ranked[]
 }
 
 /** Prochaine étape de la merveille du joueur, ou undefined si elle est terminée. */
@@ -188,104 +114,11 @@ export function nextStage(player: PlayerState): WonderStage | undefined {
   return player.wonder.stages[player.stagesBuilt]
 }
 
-/** Ressources de la prochaine étape de merveille du joueur, une par une (aucune si elle est terminée). */
-export function wonderNeeds(state: GameState, index: number): ResourceNeed[] {
-  return costBreakdown(state, index, nextStage(state.players[index])?.cost ?? {})
-}
-
-/** Construire l'étape suivante de sa merveille : on paie le coût de l'étape, la carte ne sert que de support. */
-export function wonderPayment(state: GameState, index: number, converter: CurrencyConverter): Payment {
-  const stage = nextStage(state.players[index])
-  if (!stage) return { ok: false, code: 'wonder', reason: 'Ta merveille est déjà terminée.' }
-  return pay(state, index, stage.cost, converter)
-}
-
-/** Chaque joueur affronte séparément ses deux voisins : victoire selon l'âge, défaite −1, égalité 0. */
-function conflictTokens(players: PlayerState[], age: Age): MilitaryToken[][] {
-  return players.map((player, index) => {
-    const { left, right } = neighbours(players, index)
-    const duel = (other: PlayerState) => {
-      if (shields(player) > shields(other)) return VICTORY_TOKENS[age]
-      if (shields(player) < shields(other)) return DEFEAT_TOKEN
-      return 0
-    }
-    return [
-      { age, against: left.name, value: duel(left) },
-      { age, against: right.name, value: duel(right) },
-    ]
-  })
-}
-
-/**
- * Joue un tour : toutes les actions sont choisies sur l'état de début de tour puis appliquées en même temps.
- * Lève une erreur (message pour le joueur) si une action est impossible.
- */
-export function playTurn(
-  state: GameState,
-  actions: Action[],
-  converter: CurrencyConverter,
-  shuffler: Shuffler,
-): GameState {
-  const delta = state.players.map(() => 0)
-  const built = state.players.map((p) => [...p.built])
-  const stagesBuilt = state.players.map((p) => p.stagesBuilt)
-  const discards = [...state.discards]
-  const played: { action: Action['type']; card: Card }[] = []
-  const count = state.players.length
-
-  const hands = actions.map((action, index) => {
-    const hand = state.hands[index]
-    const at = hand.findIndex((c) => c.name === action.card)
-    const card = hand[at]
-    if (!card) throw new Error(`Cette carte n'est pas dans ta main : ${action.card}`)
-    played.push({ action: action.type, card })
-
-    if (action.type === 'discard') {
-      delta[index] += DISCARD_COINS
-      discards.push(card)
-    } else {
-      const building = action.type === 'build'
-      const cost = building ? payment(state, index, card, converter) : wonderPayment(state, index, converter)
-      if (!cost.ok) throw new Error(cost.reason)
-      // Effet immédiat : pièces de la carte jaune, ou de l'étape de merveille.
-      const gain = building ? (card.coins ?? 0) : (nextStage(state.players[index])!.coins ?? 0)
-      delta[index] += gain - cost.coins
-      delta[(index - 1 + count) % count] += cost.toLeft
-      delta[(index + 1) % count] += cost.toRight
-      if (building) built[index].push(card)
-      // Étape de merveille : la carte est posée face cachée sous le plateau, sans effet.
-      else stagesBuilt[index] += 1
-    }
-    // Un seul exemplaire quitte la main, même si elle en contient deux.
-    return hand.filter((_, i) => i !== at)
-  })
-
-  const players = state.players.map((p, i) => ({
-    ...p,
-    coins: p.coins + delta[i],
-    built: built[i],
-    stagesBuilt: stagesBuilt[i],
-  }))
-  const lastTurn = played.map((event, player) => ({ ...event, player, coins: delta[player] }))
-  // Âges I et III : chaque main part au voisin de gauche, donc on reçoit celle du voisin de droite. Âge II : l'inverse.
-  const passed = hands.map((_, i) => hands[state.age === 2 ? (i - 1 + count) % count : (i + 1) % count])
-
-  if (state.turn < TURNS_PER_AGE) {
-    return { ...state, turn: state.turn + 1, players, hands: passed, discards, lastTurn, conflicts: null }
+/** Les joueurs sont assis en cercle : le premier et le dernier sont voisins. */
+export function neighbours<T>(players: T[], index: number): { left: T; right: T } {
+  const count = players.length
+  return {
+    left: players[(index - 1 + count) % count],
+    right: players[(index + 1) % count],
   }
-
-  // Fin d'âge : la dernière carte de chaque main est défaussée, puis les conflits sont résolus.
-  discards.push(...passed.flat())
-  const duels = conflictTokens(players, state.age)
-  const conflicts = duels.map((pair) => pair.reduce((sum, token) => sum + token.value, 0))
-  const afterConflicts = players.map((p, i) => ({
-    ...p,
-    military: p.military + conflicts[i],
-    tokens: [...p.tokens, ...duels[i]],
-  }))
-  const end = { players: afterConflicts, discards, lastTurn, conflicts }
-  if (state.age === 3) return { ...state, ...end, hands: players.map(() => []), over: true }
-
-  const age = (state.age + 1) as Age
-  return { ...end, age, turn: 1, hands: deal(age, count, shuffler), over: false }
 }

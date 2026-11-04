@@ -28,8 +28,10 @@ const send = (name: string | RegExp) => act(async () => click(name))
 async function setup(tempo: Tempo, saved: GameView, plays: GameView[]) {
   const alice = { id: 'p1', username: 'alice' }
   const ctx = createGameContext(sdvCivilisation, alice, fakeDeps({ scores: new FakeScores(alice) }))
-  render(<SdvCivilisationBoard ctx={ctx} server={new FakeGameServer({ saved, plays })} tempo={tempo} />)
+  const server = new FakeGameServer({ saved, plays })
+  render(<SdvCivilisationBoard ctx={ctx} server={server} tempo={tempo} />)
   await act(async () => {})
+  return server
 }
 
 describe('Animations du tour', () => {
@@ -89,7 +91,8 @@ describe('Animations du tour', () => {
     for (let step = 0; step < 3; step++) nextStep()
     const conflicts = () => within(screen.getByLabelText('Conflits militaires')).getAllByRole('listitem')
     expect(conflicts()).toHaveLength(1)
-    expect(conflicts()[0].textContent).toBe('Contre IA 2 : 0 contre 1 — Défaite −1')
+    // Le signe moins dépend de la locale du moteur JavaScript (− ou -).
+    expect(conflicts()[0].textContent).toMatch(/^Contre IA 2 : 0 contre 1 — Défaite [−-]1$/)
     nextStep()
     expect(conflicts()).toHaveLength(2)
     nextStep()
@@ -107,6 +110,23 @@ describe('Animations du tour', () => {
     expect(screen.getByLabelText('Changement d’âge').textContent).toBe('Fin de l’âge IIFin de la partie')
     nextStep()
     expect(screen.getByText('Fin de partie')).toBeTruthy()
+  })
+
+  it('raconte aussi le tour joué par le serveur à la place du joueur, minuteur expiré', async () => {
+    const server = await setup('normal', contract.start, [])
+
+    // Quand le minuteur expire et que le serveur a défaussé une carte au hasard
+    server.saved = contract.turnTwo
+    await act(async () => vi.advanceTimersByTime(60_000))
+
+    // Alors les cartes de chacun sont révélées, sans carte qui part de la main du joueur
+    expect(banner()).toBe('Tous les joueurs ont choisi : les cartes sont révélées.')
+    expect(document.querySelectorAll('.sdv-civilisation-reveal')).toHaveLength(2)
+    expect(document.querySelector('.sdv-civilisation-card-fly')).toBeNull()
+    expect(screen.queryByText(/Tu lui paies/)).toBeNull()
+    for (let step = 0; step < 3; step++) nextStep()
+    expect(status()).toContain('Tour 2')
+    expect(banner()).toBe('Temps écoulé : une carte de ta main a été défaussée au hasard.')
   })
 
   it('annonce la défausse des dernières cartes au dernier tour d’un âge', async () => {

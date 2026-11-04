@@ -7,6 +7,7 @@ import { createGameContext } from '@/games/sdk'
 import { fakeDeps, FakeScores } from '@/games/testing/fakes'
 import { ApiError } from '@/lib/api'
 import sdvCivilisation from '..'
+import type { GameView } from '../game'
 import { TurnConflict } from '../ports'
 import { SdvCivilisationBoard } from '../SdvCivilisationGame'
 import { contract, FakeGameServer } from './fakes'
@@ -30,11 +31,12 @@ function renderBoard(server: FakeGameServer, scores = new FakeScores({ id: 'p1',
 }
 
 // Étant donné une partie commencée avec la Citadelle d’Orkan (fake : le serveur répond avec les vues du contrat)
-async function started(plays: FakeGameServer['saved'][] = []) {
-  const server = new FakeGameServer({ plays: plays as never })
+async function started(plays: GameView[] = []) {
+  const server = new FakeGameServer({ plays })
   renderBoard(server)
-  fireEvent.click(await screen.findByRole('button', { name: 'Choisir Citadelle d’Orkan' }))
-  await screen.findByRole('region', { name: 'Ta civilisation' })
+  const choose = await screen.findByRole('button', { name: 'Choisir Citadelle d’Orkan' })
+  // La réponse du serveur arrive dans act : l'écran et ses effets (minuteur) sont à jour avant la suite du test.
+  await act(async () => fireEvent.click(choose))
   return server
 }
 
@@ -147,6 +149,27 @@ describe('SdvCivilisationGame', () => {
 
     expect(server.abandon).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: 'Choisir Citadelle d’Orkan' })).toBeTruthy()
+    // Et les règles restent consultables avant de rejouer
+    click('Règles')
+    expect(screen.getByRole('dialog', { name: 'Règles du jeu' })).toBeTruthy()
+  })
+
+  it('revient au choix de la merveille si la partie a disparu quand le minuteur expire', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const server = await started()
+
+    // Quand la partie a été abandonnée depuis un autre onglet, puis que le minuteur expire
+    server.saved = null
+    await act(async () => vi.advanceTimersByTime(60_000))
+
+    // Alors l'écran revient au choix de la merveille
+    expect(screen.getByRole('button', { name: 'Choisir Citadelle d’Orkan' })).toBeTruthy()
+  })
+
+  it('à l’âge II, la nouvelle main arrive du voisin de gauche', async () => {
+    renderBoard(new FakeGameServer({ saved: { ...contract.ageTwo, turn: 2 } }))
+
+    expect(await screen.findByText('Main reçue de IA 2')).toBeTruthy()
   })
 
   it('montre le classement final du serveur, rafraîchit celui de la plateforme et propose de rejouer', async () => {
@@ -206,6 +229,30 @@ describe('SdvCivilisationGame', () => {
     renderBoard(server)
 
     expect(await screen.findByText('Le serveur est injoignable. Vérifie ta connexion et réessaie.')).toBeTruthy()
+  })
+
+  it('affiche chaque refus du serveur : merveilles, nouvelle partie, abandon, fin du minuteur', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    // Stubs : chaque appel échoue une fois avec son message
+    const server = new FakeGameServer()
+    server.wonders.mockRejectedValueOnce(new ApiError(502, 'Merveilles indisponibles.'))
+    renderBoard(server)
+    expect(await screen.findByText('Merveilles indisponibles.')).toBeTruthy()
+    cleanup()
+
+    const again = await started()
+    again.abandon.mockRejectedValueOnce(new ApiError(502, 'Abandon impossible.'))
+    await act(async () => click('Abandonner'))
+    expect(screen.getByText('Abandon impossible.')).toBeTruthy()
+
+    again.current.mockRejectedValueOnce(new ApiError(0, 'Serveur injoignable.'))
+    await act(async () => vi.advanceTimersByTime(60_000))
+    expect(screen.getByText('Serveur injoignable.')).toBeTruthy()
+
+    await act(async () => click('Abandonner'))
+    again.start.mockRejectedValueOnce(new ApiError(502, 'Partie impossible à créer.'))
+    await act(async () => click('Choisir Citadelle d’Orkan'))
+    expect(screen.getByText('Partie impossible à créer.')).toBeTruthy()
   })
 
   it('chargé depuis le catalogue, parle au vrai serveur HTTP et affiche une erreur de classement', async () => {

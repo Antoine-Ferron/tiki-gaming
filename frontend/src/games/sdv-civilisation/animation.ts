@@ -1,4 +1,4 @@
-import type { GameState } from './game'
+import type { GameView } from './game'
 
 /** Vitesse des animations, choisie par le joueur : normales, rapides ou désactivées. */
 export type Tempo = 'normal' | 'fast' | 'off'
@@ -52,8 +52,8 @@ export const DURATIONS: Record<Step, number> = {
 /** Tant que l'étape « apply » n'est pas atteinte, l'écran montre encore l'état de début de tour. */
 export const APPLY_STEP = 2
 
-export function turnSteps(after: GameState): Step[] {
+export function turnSteps(after: GameView): Step[] {
   const steps: Step[] = ['reveal', 'pass', 'apply']
-  if (after.conflicts) steps.push('duel-left', 'duel-right', 'age')
+  if (after.conflicts?.length) steps.push('duel-left', 'duel-right', 'age')
   return steps
 }

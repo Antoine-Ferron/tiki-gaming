@@ -1,7 +1,7 @@
-import type { ranking } from './score'
+import type { Ranked } from './game'
 
 interface Props {
-  ranked: ReturnType<typeof ranking>
+  ranked: Ranked[]
   me: string
   isGuest: boolean
   onReplay: () => void

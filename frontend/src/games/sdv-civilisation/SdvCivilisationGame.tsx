@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
 import type { GameContext, GameProps, LeaderboardEntry } from '../types'
-import { randomShuffler, standardTrade } from './adapters'
-import { chooseAction } from './ai'
+import { httpGameServer } from './adapters'
 import {
   APPLY_STEP,
   DURATIONS,
@@ -14,66 +13,72 @@ import {
   type Step,
   type Tempo,
 } from './animation'
-import { fillWithBots } from './bots'
 import { CardDetail } from './CardDetail'
 import { CardFace } from './CardFace'
-import { cardStatus, duel, relevantNeeds } from './cardText'
+import { cardStatus, duel } from './cardText'
 import { CityBoard, CityCards, WonderBoard } from './CityBoard'
 import {
-  costBreakdown,
-  createGame,
-  payment,
-  playTurn,
-  shields,
+  neighbours,
   TURNS_PER_AGE,
-  wonderNeeds,
-  wonderPayment,
-  type Action,
-  type GameState,
+  type ActionType,
+  type GameView,
+  type Payment,
   type ResourceNeed,
   type TurnEvent,
 } from './game'
 import { FullscreenIcon, RulesIcon } from './icons'
 import { Modal } from './Modal'
 import { NeighbourPanel } from './NeighbourPanel'
-import type { Shuffler } from './ports'
+import { TurnConflict, type GameServer } from './ports'
 import { Results } from './Results'
 import { RulesDialog } from './RulesDialog'
-import { ranking } from './score'
-import { neighbours } from './setup'
 import { TurnLog, type TurnRecord } from './TurnLog'
+import { TurnTimer } from './TurnTimer'
 import { WonderPicker } from './WonderPicker'
 import type { Wonder } from './wonders'
 import './sdv-civilisation.css'
 
 const AGES = ['I', 'II', 'III']
+/** Le serveur assoit le joueur à la première place et l'appelle « Toi ». */
 const ME = 0
+const ME_NAME = 'Toi'
+const EXPIRED = 'Temps écoulé : une carte de ta main a été défaussée au hasard.'
 const PLAYED: Record<TurnEvent['action'], string> = { build: '', wonder: 'étape de merveille', discard: 'défausse' }
 
 /** Où part la carte jouée par le joueur : vers ses bâtiments, l'étape de merveille à bâtir ou la défausse. */
-const TARGETS: Record<Action['type'], string> = {
+const TARGETS: Record<ActionType, string> = {
   build: '.sdv-civilisation-citycards',
   wonder: '.sdv-civilisation-stage-next',
   discard: '.sdv-civilisation-discard',
 }
 
+/** Coup joué par le joueur : la carte, son trajet à l'écran, et ce que l'action coûte (calculé par le serveur). */
+interface Move {
+  index: number
+  dx: number
+  dy: number
+  cost?: Payment
+  needs: ResourceNeed[]
+}
+
 /**
- * Tour en cours d'animation. Le moteur a déjà joué le tour (`game` est à jour) ; tant que l'étape « apply » n'est
- * pas atteinte, l'écran montre encore `before` pour laisser au joueur le temps de voir ce qui se passe.
+ * Tour en cours d'animation. Le serveur a déjà joué le tour (`game` est à jour) ; tant que l'étape « apply »
+ * n'est pas atteinte, l'écran montre encore `before` pour laisser au joueur le temps de voir ce qui se passe.
  */
 interface Sequence {
-  before: GameState
+  before: GameView
   steps: Step[]
   index: number
-  /** Carte jouée par le joueur : sa position dans la main et le trajet jusqu'à sa destination. */
-  played: { index: number; dx: number; dy: number }
-  /** Ressources de l'action jouée, pour garder en évidence ce qui a été produit ou acheté. */
-  needs: ResourceNeed[]
+  /** Coup du joueur, ou null si le serveur a joué à sa place (minuteur expiré, autre onglet). */
+  played: Move | null
   /** Pièces payées à chaque voisin pour commercer. */
   paid: { left: number; right: number }
 }
 
-const passing = (age: number) => (age === 2 ? 'vers la droite →' : '← vers la gauche')
+const passing = (passesLeft: boolean) => (passesLeft ? '← vers la gauche' : 'vers la droite →')
+
+// Erreurs du serveur (ApiError, TurnConflict) et du classement (GameError) : toutes portent un message pour le joueur.
+const errorText = (err: unknown) => (err as Error).message
 
 function center(el: Element) {
   const rect = el.getBoundingClientRect()
@@ -81,11 +86,11 @@ function center(el: Element) {
 }
 
 /** Message de la barre d'état pour chaque étape du tour. */
-function stepText(step: Step, before: GameState): string {
+function stepText(step: Step, before: GameView): string {
   if (step === 'reveal') return 'Tous les joueurs ont choisi : les cartes sont révélées.'
   if (step === 'pass') {
     if (before.turn === TURNS_PER_AGE) return 'Fin de l’âge : la dernière carte de chaque main part à la défausse.'
-    return `Les mains passent ${passing(before.age)}.`
+    return `Les mains passent ${passing(before.passesLeft)}.`
   }
   if (step === 'apply') return 'Les civilisations se mettent à jour.'
   if (step === 'age') return 'Changement d’âge.'
@@ -113,16 +118,21 @@ function useFullscreen(ref: RefObject<HTMLElement | null>) {
 type Panel = 'rules' | 'journal' | 'left' | 'right' | null
 
 /**
- * Partie contre deux IA, organisée en trois zones : les voisins (B), la civilisation du joueur (A) et sa main (C).
- * Les informations avancées (journal, cité d'un voisin, règles) s'ouvrent dans une fenêtre.
- * Chaque tour est raconté par une courte séquence animée (révélation, passage des mains, conflits), au tempo
- * choisi par le joueur. Le mélangeur est injectable : aléatoire en production, ordre fixe dans les tests.
+ * Partie contre deux IA, arbitrée par le serveur et organisée en trois zones : les voisins (B), la civilisation
+ * du joueur (A) et sa main (C). Le serveur garde la partie (le joueur la reprend en revenant), calcule le prix de
+ * chaque carte, fait jouer les IA, tient le minuteur et enregistre le score. Chaque tour est raconté par une
+ * courte séquence animée, au tempo choisi par le joueur. Le serveur est injectable : HTTP en production, fake
+ * dans les tests.
  */
-export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffler; tempo?: Tempo }) {
-  const { ctx, shuffler } = props
-  const me = ctx.player?.username ?? 'Toi'
-  // Pas de partie tant que le joueur n'a pas choisi sa merveille.
-  const [game, setGame] = useState<GameState | null>(null)
+export function SdvCivilisationBoard(props: { ctx: GameContext; server: GameServer; tempo?: Tempo }) {
+  const { ctx, server } = props
+  const [wonders, setWonders] = useState<Wonder[]>([])
+  // Pas de partie tant que le joueur n'a pas choisi sa merveille (ou repris la sienne).
+  const [game, setGame] = useState<GameView | null>(null)
+  // Chaque réponse du serveur relance le minuteur du tour, même quand la partie n'a pas changé de version.
+  const [received, setReceived] = useState(0)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const [history, setHistory] = useState<TurnRecord[]>([])
   // Position de la carte choisie dans la main (une main peut contenir deux exemplaires de la même carte).
   const [selected, setSelected] = useState<number | null>(null)
@@ -137,6 +147,32 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
   const closePanel = useCallback(() => setPanel(null), [])
   const scrollOnStart = useRef(false)
   const factor = TEMPO_FACTOR[tempo]
+  const over = game?.over ?? false
+
+  // Au chargement : les merveilles à choisir, et la partie à reprendre s'il y en a une.
+  useEffect(() => {
+    server
+      .wonders()
+      .then(setWonders)
+      .catch((err) => setError(errorText(err)))
+    server
+      .current()
+      .then((saved) => {
+        if (!saved) return
+        setGame(saved)
+        setReceived((n) => n + 1)
+        setNotice(`Partie reprise : âge ${AGES[saved.age - 1]}, tour ${saved.turn}.`)
+      })
+      .catch((err) => setError(errorText(err)))
+  }, [server])
+
+  // Classement de la plateforme, relu en fin de partie : le serveur vient d'y enregistrer le score du joueur.
+  useEffect(() => {
+    ctx
+      .getLeaderboard(10)
+      .then(setLeaderboard)
+      .catch((err) => setError(errorText(err)))
+  }, [ctx, over])
 
   // Le plateau occupe tout l'écran pendant la partie : au lancement, la page défile jusqu'à lui (une fois affiché).
   useEffect(() => {
@@ -155,29 +191,59 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
     return () => clearTimeout(id)
   }, [sequence, factor])
 
-  useEffect(() => {
-    ctx
-      .getLeaderboard(10)
-      .then(setLeaderboard)
-      .catch((e) => setError(e.message))
-  }, [ctx])
-
-  // Fin de partie : le score du joueur est envoyé une fois, puis le classement est rafraîchi.
-  useEffect(() => {
-    if (!game?.over) return
-    const mine = ranking(game.players).find((row) => row.name === me)!
-    ctx
-      .submitScore(mine.score.total, { ...mine.score })
-      .then(() => ctx.getLeaderboard(10))
-      .then(setLeaderboard)
-      .catch((e) => setError(e.message))
-  }, [ctx, game, me])
-
-  function start(wonder: Wonder) {
-    setGame(createGame(fillWithBots([me]), shuffler, wonder))
-    scrollOnStart.current = true
+  /** Retour au choix de la merveille, sans rien garder de la partie précédente. */
+  function reset() {
+    setGame(null)
+    setSequence(null)
     setHistory([])
+    setSelected(null)
+    setNotice(null)
     setError(null)
+  }
+
+  /**
+   * Nouvelle vue renvoyée par le serveur. Si un tour a été joué (nouvelle version), il est gardé au journal et
+   * raconté par la séquence animée.
+   */
+  function receive(before: GameView, next: GameView, move: Move | null = null) {
+    setGame(next)
+    setReceived((n) => n + 1)
+    setSelected(null)
+    if (next.version === before.version) return
+    setHistory((h) => [
+      { age: before.age, turn: before.turn, events: next.lastTurn, conflicts: next.conflicts ?? null },
+      ...h,
+    ])
+    if (factor === 0) return
+    const cost = move?.cost
+    setSequence({
+      before,
+      steps: turnSteps(next),
+      index: 0,
+      played: move,
+      paid: cost?.ok ? { left: cost.toLeft, right: cost.toRight } : { left: 0, right: 0 },
+    })
+  }
+
+  async function start(wonder: Wonder) {
+    try {
+      const view = await server.start(wonder.name)
+      reset()
+      setGame(view)
+      setReceived((n) => n + 1)
+      scrollOnStart.current = true
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+
+  async function abandon() {
+    try {
+      await server.abandon()
+      reset()
+    } catch (err) {
+      setError(errorText(err))
+    }
   }
 
   function changeTempo(value: Tempo) {
@@ -190,11 +256,32 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
   const beforeApply = sequence !== null && sequence.index < APPLY_STEP
   // Ce que voit le joueur : l'état de début de tour pendant la révélation, puis le nouvel état.
   const view = beforeApply ? sequence.before : game
-  const hand = view ? view.hands[ME] : []
+  const hand = view?.hand ?? []
   const selectedCard = selected === null ? undefined : hand[selected]
   // Le tour affiché ne change qu'à l'arrivée de la nouvelle main, une fois la séquence terminée.
   const shownTurn = sequence?.before ?? view
   const errorBox = error && <p className="error">{error}</p>
+
+  /**
+   * Le minuteur est écoulé : le serveur a défaussé une carte au hasard (ou le fera dans un instant). Si la partie
+   * n'existe plus (abandonnée depuis un autre onglet), retour au choix de la merveille.
+   */
+  async function expire(playing: GameView) {
+    try {
+      const next = await server.current()
+      if (!next) return reset()
+      receive(playing, next)
+      if (next.version !== playing.version) setNotice(EXPIRED)
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+
+  const prompt = notice ?? (
+    <>
+      <strong>À toi de jouer :</strong> choisis une carte de ta main.
+    </>
+  )
 
   const toolbar = (
     <header className="sdv-civilisation-toolbar">
@@ -203,9 +290,12 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
           <span className="sdv-civilisation-age">Âge {AGES[shownTurn.age - 1]}</span> · Tour{' '}
           <strong>{shownTurn.turn}</strong> / {TURNS_PER_AGE}
           <span className="sdv-civilisation-direction">
-            Les mains passent <strong>{passing(shownTurn.age)}</strong>
+            Les mains passent <strong>{passing(shownTurn.passesLeft)}</strong>
           </span>
         </p>
+      )}
+      {game && !game.over && (
+        <TurnTimer key={received} remainingMs={game.remainingMs} onExpire={() => void expire(game)} />
       )}
       <p className="sdv-civilisation-banner" role="status">
         {!game && (
@@ -217,14 +307,10 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
         {!sequence && game?.over && 'Partie terminée : voici le score de chacun.'}
         {!sequence && game && !game.over && selectedCard && (
           <>
-            <strong>{selectedCard.name}</strong> : choisis une action à droite de ta main.
+            <strong>{selectedCard.card.name}</strong> : choisis une action à droite de ta main.
           </>
         )}
-        {!sequence && game && !game.over && !selectedCard && (
-          <>
-            <strong>À toi de jouer :</strong> choisis une carte de ta main.
-          </>
-        )}
+        {!sequence && game && !game.over && !selectedCard && prompt}
       </p>
       <div className="sdv-civilisation-tools">
         <label className="sdv-civilisation-tempo">
@@ -240,6 +326,11 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
         {game && (
           <button type="button" className="sdv-civilisation-secondary" onClick={() => setPanel('journal')}>
             Journal
+          </button>
+        )}
+        {game && !game.over && (
+          <button type="button" className="sdv-civilisation-secondary" onClick={() => void abandon()}>
+            Abandonner
           </button>
         )}
         <button type="button" className="sdv-civilisation-secondary" onClick={() => setPanel('rules')}>
@@ -272,7 +363,7 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
       <div ref={boardRef} className="sdv-civilisation">
         {toolbar}
         <div className="sdv-civilisation-start">
-          <WonderPicker onPick={start} />
+          <WonderPicker wonders={wonders} onPick={(wonder) => void start(wonder)} />
           {ranks}
         </div>
         {errorBox}
@@ -287,59 +378,55 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
   const { left, right } = neighbours(current.players, ME)
   const count = current.players.length
   const seat = { left: (ME - 1 + count) % count, right: (ME + 1) % count }
-  const costs = hand.map((card) => payment(current, ME, card, standardTrade))
-  const buildCost = selected === null ? undefined : costs[selected]
-  const buildNeeds =
-    selectedCard && buildCost ? relevantNeeds(buildCost, costBreakdown(current, ME, selectedCard.cost)) : []
-  const wonderCost = wonderPayment(current, ME, standardTrade)
-  const stageNeeds = wonderNeeds(current, ME)
   const coinsOf = (player: number) => current.lastTurn.find((event) => event.player === player)?.coins ?? 0
   // Identifiant du tour affiché : les animations liées au tour (gains, arrivée de la main) se rejouent à chaque tour.
   const stamp = `${current.age}-${current.turn}`
-  const shownNeeds = sequence ? (beforeApply ? sequence.needs : []) : buildNeeds
+  const shownNeeds = sequence ? (beforeApply ? (sequence.played?.needs ?? []) : []) : (selectedCard?.needs ?? [])
   const bought = (side: 'fromLeft' | 'fromRight') => shownNeeds.filter((n) => n[side] > 0).map((n) => n.resource)
   // Pendant la révélation, chaque voisin montre la carte qu'il vient de jouer.
   const reveal = (side: 'left' | 'right') =>
     beforeApply ? { event: after.lastTurn[seat[side]], paid: sequence.paid[side] } : undefined
   // La nouvelle main vient du voisin qui passe la sienne, ou du paquet de l'âge au premier tour.
-  const from = current.turn === 1 ? 'deck' : current.age === 2 ? 'left' : 'right'
+  const from = current.turn === 1 ? 'deck' : current.passesLeft ? 'right' : 'left'
   const arrival =
     from === 'deck'
       ? `Nouvelles cartes de l’âge ${AGES[current.age - 1]}`
       : `Main reçue de ${from === 'left' ? left.name : right.name}`
   const shown = panel === 'left' ? left : right
   const duels = after.players[ME].tokens.slice(-2)
-  const shieldsOf = (name: string) => shields(after.players.find((p) => p.name === name)!)
+  const shieldsOf = (name: string) => after.players.find((p) => p.name === name)!.shields
 
-  function play(type: Action['type']) {
+  async function play(type: ActionType) {
     const index = selected!
-    const action = { type, card: selectedCard!.name }
-    const actions = current.players.map((_, i) => (i === ME ? action : chooseAction(current, i, standardTrade)))
-    const next = playTurn(current, actions, standardTrade, shuffler)
-    setHistory([{ age: current.age, turn: current.turn, events: next.lastTurn, conflicts: next.conflicts }, ...history])
-    setGame(next)
-    setSelected(null)
-    if (factor === 0) return
-
+    // Coût et ressources de l'action choisie, déjà calculés par le serveur.
+    const { cost, needs } = {
+      build: { cost: hand[index].build, needs: hand[index].needs },
+      wonder: { cost: current.wonder, needs: current.wonderNeeds },
+      discard: { cost: undefined, needs: [] },
+    }[type]
     // La carte part de la main vers sa destination : le trajet est mesuré avant que l'écran change.
     const startAt = center(cardsRef.current!.children[index])
     const endAt = center(boardRef.current!.querySelector(TARGETS[type])!)
-    const cost = type === 'build' ? buildCost! : type === 'wonder' ? wonderCost : null
-    setSequence({
-      before: current,
-      steps: turnSteps(next),
-      index: 0,
-      played: { index, dx: endAt.x - startAt.x, dy: endAt.y - startAt.y },
-      needs: type === 'build' ? buildNeeds : type === 'wonder' ? stageNeeds : [],
-      paid: cost?.ok ? { left: cost.toLeft, right: cost.toRight } : { left: 0, right: 0 },
-    })
+    setBusy(true)
+    setNotice(null)
+    setError(null)
+    try {
+      const next = await server.play(index, type, current.version)
+      receive(current, next, { index, dx: endAt.x - startAt.x, dy: endAt.y - startAt.y, cost, needs })
+    } catch (err) {
+      if (!(err instanceof TurnConflict)) return setError(errorText(err))
+      receive(current, err.game)
+      setNotice(err.message)
+    } finally {
+      setBusy(false)
+    }
   }
 
   // Animation de chaque carte de la main : arrivée d'une nouvelle main, envol de la carte jouée, départ des autres.
   function motion(i: number): { motion?: string; style: CSSProperties } {
     const style = { '--i': i } as CSSProperties
     if (!sequence) return { motion: 'sdv-civilisation-card-arrive', style }
-    if (i === sequence.played.index) {
+    if (sequence.played && i === sequence.played.index) {
       const trip = { '--dx': `${sequence.played.dx}px`, '--dy': `${sequence.played.dy}px` }
       return { motion: 'sdv-civilisation-card-fly', style: { ...style, ...trip } as CSSProperties }
     }
@@ -359,7 +446,7 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
         <NeighbourPanel
           player={left}
           side="left"
-          myShields={shields(myself)}
+          myShields={myself.shields}
           ready={!current.over}
           bought={bought('fromLeft')}
           onOpen={() => setPanel('left')}
@@ -378,8 +465,8 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
                 {age}
               </span>
             ))}
-            <span key={current.discards.length} className="sdv-civilisation-discard sdv-civilisation-pop">
-              Défausse · {current.discards.length}
+            <span key={current.discards} className="sdv-civilisation-discard sdv-civilisation-pop">
+              Défausse · {current.discards}
             </span>
           </div>
           {current.lastTurn.length > 0 && (
@@ -399,7 +486,7 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
         <NeighbourPanel
           player={right}
           side="right"
-          myShields={shields(myself)}
+          myShields={myself.shields}
           ready={!current.over}
           bought={bought('fromRight')}
           onOpen={() => setPanel('right')}
@@ -421,7 +508,7 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
               const result = duel(token.value, 0)
               return (
                 <li key={token.against} className={`sdv-civilisation-duel-${result.kind}`}>
-                  Contre {token.against} : {shields(after.players[ME])} contre {shieldsOf(token.against)} —{' '}
+                  Contre {token.against} : {after.players[ME].shields} contre {shieldsOf(token.against)} —{' '}
                   <strong>
                     {result.label}
                     {token.value !== 0 && ` ${token.value.toLocaleString('fr-FR', { signDisplay: 'always' })}`}
@@ -441,7 +528,7 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
 
       {current.over && !sequence ? (
         <div className="sdv-civilisation-end">
-          <Results ranked={ranking(current.players)} me={me} isGuest={ctx.isGuest} onReplay={() => setGame(null)} />
+          <Results ranked={current.ranking!} me={ME_NAME} isGuest={ctx.isGuest} onReplay={reset} />
           {ranks}
         </div>
       ) : (
@@ -457,26 +544,26 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
             </h2>
             {sequence && !beforeApply ? (
               <p
-                className={`sdv-civilisation-passing sdv-civilisation-passing-${sequence.before.age === 2 ? 'right' : 'left'}`}
+                className={`sdv-civilisation-passing sdv-civilisation-passing-${sequence.before.passesLeft ? 'left' : 'right'}`}
               >
                 {sequence.before.turn === TURNS_PER_AGE
                   ? 'Les dernières cartes partent à la défausse.'
-                  : `Les mains passent ${passing(sequence.before.age)}`}
+                  : `Les mains passent ${passing(sequence.before.passesLeft)}`}
               </p>
             ) : (
               <div
                 ref={cardsRef}
-                className={`sdv-civilisation-cards sdv-civilisation-from-${from} sdv-civilisation-pass-${current.age === 2 ? 'right' : 'left'}`}
+                className={`sdv-civilisation-cards sdv-civilisation-from-${from} sdv-civilisation-pass-${current.passesLeft ? 'left' : 'right'}`}
                 style={{ '--hand': hand.length } as CSSProperties}
               >
-                {hand.map((card, i) => (
+                {hand.map(({ card, build }, i) => (
                   <CardFace
                     key={`${stamp}-${i}`}
                     card={card}
-                    status={cardStatus(costs[i])}
+                    status={cardStatus(build)}
                     selected={i === selected}
                     onSelect={() => setSelected(i)}
-                    disabled={sequence !== null}
+                    disabled={sequence !== null || busy}
                     {...motion(i)}
                   />
                 ))}
@@ -490,16 +577,16 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
                 Passer l’animation
               </button>
             </div>
-          ) : selectedCard && buildCost ? (
+          ) : selectedCard ? (
             <CardDetail
               key={selected}
-              card={selectedCard}
+              card={selectedCard.card}
               player={myself}
               left={left.name}
               right={right.name}
-              build={{ cost: buildCost, needs: buildNeeds }}
-              wonder={{ cost: wonderCost, needs: stageNeeds }}
-              onPlay={play}
+              build={{ cost: selectedCard.build, needs: selectedCard.needs }}
+              wonder={{ cost: current.wonder, needs: current.wonderNeeds }}
+              onPlay={(type) => void play(type)}
             />
           ) : (
             <p className="sdv-civilisation-detail sdv-civilisation-detail-empty">
@@ -528,5 +615,5 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; shuffler: Shuffl
 }
 
 export default function SdvCivilisationGame({ ctx }: GameProps) {
-  return <SdvCivilisationBoard ctx={ctx} shuffler={randomShuffler} />
+  return <SdvCivilisationBoard ctx={ctx} server={httpGameServer} />
 }

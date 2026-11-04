@@ -236,6 +236,23 @@ button.sdv-civilisation-icon-button:hover {
   color: var(--sdv-civilisation-text);
 }
 
+/* Minuteur du tour : tenu par le serveur, qui défausse une carte au hasard à zéro. */
+.sdv-civilisation-timer {
+  padding: 0.2rem 0.7rem;
+  border: 2px solid var(--sdv-civilisation-line);
+  border-radius: 999px;
+  color: var(--sdv-civilisation-text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sdv-civilisation-timer-warning,
+.sdv-civilisation-timer-expired {
+  border-color: var(--sdv-civilisation-lose);
+  color: var(--sdv-civilisation-lose);
+}
+
 .sdv-civilisation-age {
   font-family: Cinzel, Georgia, serif;
   font-size: 1.6rem;

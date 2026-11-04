@@ -11,10 +11,9 @@ import {
   stageIcons,
   stageText,
 } from './cardText'
-import { production, shields, type PlayerState, type ResourceNeed } from './game'
+import type { PlayerState, ResourceNeed } from './game'
 import { CostIcons, GameIcon, IconRow } from './GameIcon'
 import type { Resource } from './ports'
-import { scienceScore } from './score'
 
 const COLOR_ORDER: CardColor[] = ['brown', 'grey', 'blue', 'red', 'green', 'yellow', 'purple']
 const AGES = ['I', 'II', 'III']
@@ -34,7 +33,7 @@ function counts<T extends string>(items: T[]): [T, number][] {
  */
 export function ProductionTokens(props: { player: PlayerState; variant: 'own' | 'buy'; highlight?: Resource[] }) {
   const { player, variant, highlight = [] } = props
-  const produced = counts<Resource>(production(player))
+  const produced = counts<Resource>(player.production)
   const label = produced.map(([r, n]) => `${n} ${RESOURCES[r]}`).join(', ')
   return (
     <span
@@ -147,11 +146,10 @@ interface CityProps {
 
 /** Barre de ressources du joueur : production, or, armée et science, regroupés au même endroit. */
 function ResourceBar({ player, left, right, lastCoins, stamp, needs }: CityProps) {
-  const mine = shields(player)
+  const mine = player.shields
   const missing = needs.filter((need) => need.missing > 0)
   const symbols = player.built.map((card) => card.science)
   const count = (s: string) => symbols.filter((x) => x === s).length
-  const [tablets, gears, compasses] = [count('tablet'), count('gear'), count('compass')]
 
   return (
     <div className="sdv-civilisation-bar">
@@ -201,10 +199,10 @@ function ResourceBar({ player, left, right, lastCoins, stamp, needs }: CityProps
           </span>
           <ul aria-label="Duels" className="sdv-civilisation-duels">
             {[left, right].map((other) => {
-              const result = duel(mine, shields(other))
+              const result = duel(mine, other.shields)
               return (
                 <li key={other.name} className={`sdv-civilisation-duel-${result.kind}`}>
-                  {result.label} contre {other.name} ({mine} – {shields(other)})
+                  {result.label} contre {other.name} ({mine} – {other.shields})
                 </li>
               )
             })}
@@ -222,7 +220,7 @@ function ResourceBar({ player, left, right, lastCoins, stamp, needs }: CityProps
       </div>
 
       <div className="sdv-civilisation-bar-group">
-        <span className="sdv-civilisation-bar-label">Science · {scienceScore(tablets, gears, compasses)} pts</span>
+        <span className="sdv-civilisation-bar-label">Science · {player.sciencePoints} pts</span>
         <ul aria-label="Symboles de science" className="sdv-civilisation-science">
           {(['tablet', 'gear', 'compass'] as const).map((symbol) => (
             <li key={symbol} aria-label={`${SCIENCE_NAMES[symbol]} : ${count(symbol)}`} title={SCIENCE_NAMES[symbol]}>

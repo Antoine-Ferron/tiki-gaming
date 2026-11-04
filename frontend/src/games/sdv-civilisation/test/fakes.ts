@@ -37,15 +37,15 @@ export class FakeGameServer implements GameServer {
     this.plays = [...plays]
   }
 
-  wonders = vi.fn(async () => contract.wonders)
-  current = vi.fn(async () => this.saved)
-  start = vi.fn(async (_wonder: string) => (this.saved = contract.start))
-  play = vi.fn(async (_card: number, _action: string, _version: number) => {
+  wonders = vi.fn<GameServer['wonders']>(async () => contract.wonders)
+  current = vi.fn<GameServer['current']>(async () => this.saved)
+  start = vi.fn<GameServer['start']>(async () => (this.saved = contract.start))
+  play = vi.fn<GameServer['play']>(async () => {
     const next = this.plays.shift()
     if (!next) throw new Error('Fake : aucun tour prévu')
     return (this.saved = next)
   })
-  abandon = vi.fn(async () => {
+  abandon = vi.fn<GameServer['abandon']>(async () => {
     this.saved = null
   })
 }

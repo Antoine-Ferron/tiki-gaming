@@ -1,7 +1,7 @@
 import type { CardColor } from './cards'
 import { CATEGORIES, duel } from './cardText'
 import { ProductionTokens } from './CityBoard'
-import { shields, type PlayerState, type TurnEvent } from './game'
+import type { PlayerState, TurnEvent } from './game'
 import { GameIcon } from './GameIcon'
 import type { Resource } from './ports'
 
@@ -61,7 +61,7 @@ function Reveal({ name, event, paid }: { name: string; event: TurnEvent; paid: n
  */
 export function NeighbourPanel({ player, side, myShields, ready, bought, onOpen, delta, stamp, reveal }: Props) {
   const label = side === 'left' ? 'Voisin de gauche' : 'Voisin de droite'
-  const theirs = shields(player)
+  const theirs = player.shields
   const result = duel(myShields, theirs)
   const byColor = COLOR_ORDER.map((color) => ({
     color,
