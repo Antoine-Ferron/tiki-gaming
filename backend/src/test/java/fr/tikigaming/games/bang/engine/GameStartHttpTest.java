@@ -246,6 +246,28 @@ class GameStartHttpTest {
     }
 
     @Test
+    void readingTheViewDoesNotExtendTheTablesLifetime() throws Exception {
+        String code = fullTable();
+        postAs(TABLES + "/{code}/start", sessionFor("creator"), code).andExpect(status().isOk());
+        GameState original = tables.game(code);
+        clock.advance(Duration.ofMinutes(59));
+
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor("third")))
+                .andExpect(status().isOk());
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor("outsider")))
+                .andExpect(status().isForbidden());
+        assertThat(tables.game(code)).isSameAs(original);
+        clock.advance(Duration.ofMinutes(1));
+
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor("creator")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Code de table inconnu."));
+        assertThat(tables.game(code)).isNull();
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor("outsider")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void successfulStartsKeepTheTableAndTheSameDealAlive() throws Exception {
         String code = fullTable();
         clock.advance(Duration.ofMinutes(59));
