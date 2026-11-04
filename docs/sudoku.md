@@ -226,6 +226,40 @@ Exigences : logique pure, aucun accès réseau ni disque, pas de contexte Spring
 Dans l'historique, la règle « valeur vide = manquante » est faite en cycle TDD : un commit `test`
 (rouge), un commit `fix` (vert), un commit `refactor`.
 
+### Tests d'intégration (Testcontainers)
+
+`frontend/tests/integration/sudoku.test.ts` joue le Sudoku sur une vraie base PostgreSQL. Le conteneur
+(image Supabase de production) est démarré une fois par `tests/integration/globalSetup.ts`, qui y rejoue
+toutes les migrations du dépôt ; chaque test s'exécute ensuite dans une transaction annulée à la fin. Docker
+est requis (`npm run test:integration`, depuis `frontend/`) ; sans Docker, les tests sont ignorés en local.
+
+| Groupe                       | Vérifie                                                                                      |
+|------------------------------|----------------------------------------------------------------------------------------------|
+| Migrations rejouées          | Le jeu est au catalogue (catégorie `solo`, plafond 6864) ; un second rejeu n'applique rien ; les deux migrations du Sudoku sont suivies |
+| Unicité                      | Slug `sudoku` unique (`games_pkey`) ; rejouer le SQL d'ajout échoue (`23505`) ; une sauvegarde par joueur et par jeu, l'écriture `on conflict` la remplace ; deux écritures simultanées sur deux connexions : l'une passe, l'autre est refusée, sans doublon |
+| Scores et atomicité          | 0, 1 et 6864 acceptés, 6865 refusé (RLS), −1 refusé (`CHECK`) ; fin de partie en une étape : score refusé, la sauvegarde effacée revient ; score accepté, sauvegarde effacée et score écrit ; classement : meilleur score et nombre de parties |
+| Atomicité d'une migration    | Une migration dont la seconde instruction viole l'unicité n'écrit rien : pas de ligne, pas de trace dans `schema_migrations` |
+
+Le front fait aujourd'hui `clearSave` puis `submitScore` en deux appels séparés (pas une transaction) : le test
+d'atomicité décrit ce que garantit la base si ces deux écritures sont regroupées, pas ce que fait le client.
+
+### Analyse statique (SonarQube)
+
+Le Sudoku est analysé par le job `sonar` de la CI (SonarQube Cloud). Dernière analyse de la PR #21, avant
+les correctifs ci-dessous : Quality Gate vert, 3 *code smells* (dette SQALE de 15 min) et aucun bug, aucune
+vulnérabilité, aucune duplication.
+
+| Règle        | Où                                      | Correction                                                                 |
+|--------------|-----------------------------------------|----------------------------------------------------------------------------|
+| `java:S6829` | `SystemClock`, `SudokuGenerator`        | Deux constructeurs : `@Autowired` sur le constructeur sans argument, celui que Spring doit utiliser (l'autre sert aux tests) |
+| `typescript:S6852` | `SudokuGame.tsx` (`role="grid"`)  | `tabIndex={-1}` : un élément au rôle interactif doit pouvoir recevoir le focus ; la navigation reste celle des cases |
+
+Pour rescanner en local sans compte, un SonarQube Community suffit :
+`docker run -d -p 9000:9000 sonarqube:community`, puis `npx @sonar/scan` depuis la racine avec
+`-Dsonar.sources=backend/src/main/java/fr/tikigaming/games/sudoku,frontend/src/games/sudoku` et les rapports
+JaCoCo et lcov. Après les correctifs, l'analyse locale du Sudoku donne : Quality Gate **OK**, 0 bug,
+0 vulnérabilité, 0 *code smell*, 0 point sensible, dette SQALE 0, duplication 0 %, couverture 98 % (935 lignes).
+
 ## Lancer en local
 
 **Tests et couverture du backend** (aucune clé nécessaire) :
