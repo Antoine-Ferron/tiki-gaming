@@ -13,6 +13,8 @@ import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.games.bang.model.TableSeat;
 import jakarta.servlet.http.Cookie;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -31,6 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(
@@ -144,6 +147,71 @@ class PrivateTablesHttpTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value(code))
                     .andExpect(jsonPath("$.currentSeat").isNumber());
+        }
+    }
+
+    @Test
+    void fourPlayersReadTheirViewsThroughTheProductionComponentsAndCatalogue() throws Exception {
+        String code = createTable("player-1");
+        for (int seat = 2; seat <= 4; seat++) {
+            postAs(TABLES + "/" + code + "/join", sessionFor("player-" + seat)).andExpect(status().isOk());
+        }
+        postAs(TABLES + "/" + code + "/start", sessionFor("player-1")).andExpect(status().isOk());
+
+        var cardIds = new HashSet<String>();
+        var roles = new ArrayList<String>();
+        JsonNode publicPlayers = null;
+        for (int seat = 1; seat <= 4; seat++) {
+            String body = mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor("player-" + seat)))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+            JsonNode view = json.readTree(body);
+            assertFields(view, "code", "seat", "currentSeat", "role", "hand", "players");
+            assertThat(view.path("code").asString()).isEqualTo(code);
+            assertThat(view.path("seat").asInt()).isEqualTo(seat);
+            roles.add(view.path("role").asString());
+            assertThat(view.path("players")).hasSize(4);
+            if (publicPlayers == null) publicPlayers = view.path("players");
+            else assertThat(view.path("players")).isEqualTo(publicPlayers);
+
+            int sheriffSeat = view.path("currentSeat").asInt();
+            assertThat(sheriffSeat).isBetween(1, 4);
+            for (int index = 0; index < 4; index++) {
+                JsonNode player = view.path("players").get(index);
+                if (index + 1 == sheriffSeat) {
+                    assertFields(
+                            player, "seat", "character", "health", "maxHealth", "playedCards", "handCount", "role");
+                    assertThat(player.path("role").asString()).isEqualTo("SHERIFF");
+                } else {
+                    assertFields(player, "seat", "character", "health", "maxHealth", "playedCards", "handCount");
+                }
+                assertThat(player.path("seat").asInt()).isEqualTo(index + 1);
+                assertThat(player.path("playedCards")).isEmpty();
+            }
+            assertThat(view.path("hand"))
+                    .hasSize(
+                            view.path("players").get(seat - 1).path("handCount").asInt());
+            for (JsonNode card : view.path("hand")) {
+                assertFields(card, "id", "type");
+                String id = card.path("id").asString();
+                String type = card.path("type").asString();
+                assertThat(type).isIn("BANG", "MISSED");
+                assertThat(id).matches(type + "-[1-9][0-9]*");
+                int number = Integer.parseInt(id.substring(type.length() + 1));
+                assertThat(number).isBetween(1, type.equals("BANG") ? 25 : 12);
+                assertThat(cardIds.add(id)).isTrue();
+            }
+        }
+        assertThat(roles).containsExactlyInAnyOrder("SHERIFF", "OUTLAW", "OUTLAW", "RENEGADE");
+        assertThat(cardIds).hasSize(16);
+    }
+
+    private static void assertFields(JsonNode node, String... fields) {
+        assertThat(node.size()).isEqualTo(fields.length);
+        for (String field : fields) {
+            assertThat(node.has(field)).as("Champ attendu : %s", field).isTrue();
         }
     }
 
