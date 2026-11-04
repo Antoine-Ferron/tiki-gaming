@@ -17,6 +17,12 @@ public class EchecsController {
     /** Les cases accessibles, triées. */
     record DestinationsResponse(List<String> destinations) {}
 
+    /** Un coup à jouer sur une position. */
+    record MoveRequest(String fen, String from, String to) {}
+
+    /** La position après le coup. */
+    record MoveResponse(String fen) {}
+
     private final EchecsService service;
 
     public EchecsController(EchecsService service) {
@@ -26,5 +32,10 @@ public class EchecsController {
     @PostMapping("/destinations")
     public DestinationsResponse destinations(@RequestBody DestinationsRequest request) {
         return new DestinationsResponse(service.destinations(request.fen(), request.from()));
+    }
+
+    @PostMapping("/moves")
+    public MoveResponse play(@RequestBody MoveRequest request) {
+        return new MoveResponse(service.play(request.fen(), request.from(), request.to()));
     }
 }
