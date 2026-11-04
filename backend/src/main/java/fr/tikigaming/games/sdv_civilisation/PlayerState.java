@@ -50,6 +50,16 @@ public record PlayerState(
                 + builtStages().stream().mapToInt(WonderStage::shields).sum();
     }
 
+    /** Le joueur après son action du tour : ses nouvelles pièces, et le bâtiment ou l'étape de merveille gagnés. */
+    PlayerState afterTurn(int newCoins, ActionType type, Card card) {
+        List<Card> city = type == ActionType.BUILD
+                ? Stream.concat(built.stream(), Stream.of(card)).toList()
+                : built;
+        // Étape de merveille : la carte est posée face cachée sous le plateau, sans effet.
+        int stages = stagesBuilt + (type == ActionType.WONDER ? 1 : 0);
+        return new PlayerState(name, bot, newCoins, wonder, stages, city, military, tokens);
+    }
+
     public boolean hasBuilt(String card) {
         return built.stream().anyMatch(c -> c.name().equals(card));
     }

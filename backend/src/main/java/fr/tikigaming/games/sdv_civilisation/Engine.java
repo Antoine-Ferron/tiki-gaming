@@ -1,7 +1,9 @@
 package fr.tikigaming.games.sdv_civilisation;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 /**
@@ -13,6 +15,8 @@ public final class Engine {
 
     public static final int STARTING_COINS = 3;
     public static final int HAND_SIZE = 7;
+    public static final int TURNS_PER_AGE = 6;
+    public static final int DISCARD_COINS = 3;
     static final List<String> BOTS = List.of("IA 1", "IA 2");
 
     private final CurrencyConverter converter;
@@ -35,6 +39,95 @@ public final class Engine {
             players.add(PlayerState.seat(BOTS.get(i), true, STARTING_COINS, others.get(i)));
         }
         return new GameState(1, 1, players, deal(1, players.size()), false, List.of(), List.of(), List.of());
+    }
+
+    /** Âges I et III : chaque main part au voisin de gauche (on reçoit celle de droite). Âge II : l'inverse. */
+    public static boolean passesLeft(int age) {
+        return age != 2;
+    }
+
+    /**
+     * Joue un tour : toutes les actions sont vérifiées sur l'état de début de tour, puis appliquées en même temps.
+     * Les pièces passent par le trésor et le commerce ({@link Treasury}, {@link Trade}).
+     *
+     * @throws GameRuleException si une action est impossible (message pour le joueur)
+     */
+    public GameState play(GameState state, List<Action> actions) {
+        int count = state.players().size();
+        List<Card> played = new ArrayList<>();
+        List<List<Card>> rest = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            Action action = actions.get(i);
+            List<Card> hand = new ArrayList<>(state.hands().get(i));
+            Card card = hand.stream()
+                    .filter(c -> c.name().equals(action.card()))
+                    .findFirst()
+                    .orElseThrow(() -> new GameRuleException("Cette carte n'est pas dans ta main : " + action.card()));
+            Payment payment = payment(state, i, action.type(), card);
+            if (!payment.ok()) throw new GameRuleException(payment.reason());
+            // Un seul exemplaire quitte la main, même si elle en contient deux.
+            hand.remove(card);
+            played.add(card);
+            rest.add(hand);
+        }
+
+        Map<String, Integer> balances = new LinkedHashMap<>();
+        state.players().forEach(p -> balances.put(p.name(), p.coins()));
+        Treasury treasury = new Treasury(new MapTreasuryRegistry(balances), audit);
+        Trade trade = new Trade(converter, treasury);
+        for (int i = 0; i < count; i++) {
+            settle(state, i, actions.get(i).type(), played.get(i), treasury, trade);
+        }
+
+        List<PlayerState> players = new ArrayList<>();
+        List<Card> discards = new ArrayList<>(state.discards());
+        List<TurnEvent> lastTurn = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            ActionType type = actions.get(i).type();
+            Card card = played.get(i);
+            PlayerState before = state.player(i);
+            PlayerState after = before.afterTurn(balances.get(before.name()), type, card);
+            if (type == ActionType.DISCARD) discards.add(card);
+            players.add(after);
+            lastTurn.add(new TurnEvent(i, type, card, after.coins() - before.coins()));
+        }
+        List<List<Card>> passed = IntStream.range(0, count)
+                .mapToObj(i -> rest.get(passesLeft(state.age()) ? state.rightOf(i) : state.leftOf(i)))
+                .toList();
+        return new GameState(state.age(), state.turn() + 1, players, passed, false, discards, lastTurn, List.of());
+    }
+
+    private Payment payment(GameState state, int index, ActionType type, Card card) {
+        return switch (type) {
+            case BUILD -> Payments.build(state, index, card, converter);
+            case WONDER -> Payments.wonder(state, index, converter);
+            case DISCARD -> Payment.paid(0, 0, 0);
+        };
+    }
+
+    /** Pièces du tour : coût en pièces, achats aux voisins, puis gain immédiat (carte jaune, étape, défausse). */
+    private static void settle(GameState state, int index, ActionType type, Card card, Treasury treasury, Trade trade) {
+        PlayerState player = state.player(index);
+        if (type == ActionType.DISCARD) {
+            treasury.credit(player.name(), DISCARD_COINS);
+            return;
+        }
+        boolean building = type == ActionType.BUILD;
+        WonderStage stage = building ? null : player.nextStage().orElseThrow();
+        if (!(building && Payments.chained(player, card))) {
+            Cost cost = building ? card.cost() : stage.cost();
+            if (cost.coins() > 0) treasury.debit(player.name(), cost.coins());
+            for (ResourceNeed need : Payments.breakdown(state, index, cost)) {
+                buy(trade, player, state.left(index), need.resource(), need.fromLeft());
+                buy(trade, player, state.right(index), need.resource(), need.fromRight());
+            }
+        }
+        int gain = building ? card.coins() : stage.coins();
+        if (gain > 0) treasury.credit(player.name(), gain);
+    }
+
+    private static void buy(Trade trade, PlayerState buyer, PlayerState seller, Resource resource, int quantity) {
+        if (quantity > 0) trade.buy(new Purchase(buyer.name(), seller.name(), resource, quantity));
     }
 
     /** Distribue 7 cartes de l'âge à chaque joueur : chaque carte existe en un exemplaire par joueur. */

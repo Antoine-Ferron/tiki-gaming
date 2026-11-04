@@ -19,8 +19,13 @@ public final class Payments {
     public static Payment build(GameState state, int index, Card card, CurrencyConverter converter) {
         PlayerState player = state.player(index);
         if (player.hasBuilt(card.name())) return Payment.refused(Refusal.BUILT);
-        if (card.chainFrom() != null && player.hasBuilt(card.chainFrom())) return Payment.CHAIN;
+        if (chained(player, card)) return Payment.CHAIN;
         return pay(state, index, card.cost(), converter);
+    }
+
+    /** Le joueur a déjà construit le bâtiment qui rend celui-ci gratuit. */
+    static boolean chained(PlayerState player, Card card) {
+        return card.chainFrom() != null && player.hasBuilt(card.chainFrom());
     }
 
     /** Bâtir l'étape suivante de sa merveille : on paie le coût de l'étape, la carte ne sert que de support. */

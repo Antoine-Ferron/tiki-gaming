@@ -70,8 +70,8 @@ class TurnTest {
 
     @Test
     void aWonderStageHidesTheCardAndGivesItsReward() {
-        // Étant donné "alice" et le Phare de Sélène, dont l'étape 1 (1 bois) est déjà bâtie
-        GameState game = player(start("Phare de Sélène"), ALICE, stages(1));
+        // Étant donné "alice" avec 4 pièces et le Phare de Sélène, dont l'étape 1 (1 bois) est déjà bâtie
+        GameState game = player(player(start("Phare de Sélène"), ALICE, stages(1)), ALICE, coins(4));
 
         // Quand elle bâtit l'étape 2 (2 pierres, +6 pièces) avec les "Bains", en achetant 2 pierres
         GameState withStone = player(game, IA_1, Tables.built("Cavité"));
@@ -82,7 +82,7 @@ class TurnTest {
         assertThat(next.player(ALICE).built()).isEmpty();
         assertThat(next.discards()).extracting(Card::name).doesNotContain("Bains");
         // Et elle a payé 4 pièces à ses voisins, puis reçu les 6 pièces de l'étape
-        assertThat(next.player(ALICE).coins()).isEqualTo(3 - 4 + 6);
+        assertThat(next.player(ALICE).coins()).isEqualTo(4 - 4 + 6);
     }
 
     @Test
@@ -112,7 +112,11 @@ class TurnTest {
     void handsPassToTheLeftInAgesOneAndThreeAndToTheRightInAgeTwo(int age, String neighbour) {
         // Étant donné la partie à l'âge donné, chaque joueur avec une main reconnaissable
         GameState game = hand(
-                hand(hand(age(start("Citadelle d’Orkan"), age, 1), ALICE, "Bains", "Chantier"), IA_1, "Filon", "Cavité"),
+                hand(
+                        hand(age(start("Citadelle d’Orkan"), age, 1), ALICE, "Bains", "Chantier"),
+                        IA_1,
+                        "Filon",
+                        "Cavité"),
                 IA_2,
                 "Verrerie",
                 "Atelier");
