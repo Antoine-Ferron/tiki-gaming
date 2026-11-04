@@ -168,8 +168,7 @@ class SdvCivilisationApiIntegrationTest {
         mvc.perform(get(API + "/games/current").session(guest))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.version").value(1));
-        mvc.perform(get(API + "/games/current").session(new MockHttpSession()))
-                .andExpect(status().isNoContent());
+        mvc.perform(get(API + "/games/current").session(new MockHttpSession())).andExpect(status().isNoContent());
     }
 
     @Test
@@ -225,7 +224,7 @@ class SdvCivilisationApiIntegrationTest {
     @Test
     void aConnectedPlayerQuitsResumesOnAnotherDeviceAndHisScoreIsRecorded() throws Exception {
         // Étant donné un joueur connecté qui commence une partie sur son ordinateur
-        String user = "user-" + System.nanoTime();
+        String user = "user-1";
         mvc.perform(send("/games", signedIn(user), CITADEL)).andExpect(status().isCreated());
 
         // Quand il la reprend sur son téléphone (autre session, même compte)
@@ -244,7 +243,9 @@ class SdvCivilisationApiIntegrationTest {
         // Alors la partie est terminée avec le classement, et son score a été enregistré une fois
         assertThat(view.get("ranking")).hasSize(3);
         assertThat(view.get("remainingMs").asLong()).isZero();
-        assertThat(scores.recorded).extracting(RecordingScoreRecorder.Recorded::userId).containsExactly(user);
+        assertThat(scores.recorded)
+                .extracting(RecordingScoreRecorder.Recorded::userId)
+                .containsExactly(user);
     }
 
     @Test
@@ -267,9 +268,7 @@ class SdvCivilisationApiIntegrationTest {
     void aMoveWithoutTheCsrfTokenOrAnUnknownWonderIsRefused() throws Exception {
         // Quand une requête n'a pas le jeton CSRF (site tiers)
         // Alors elle est refusée avant d'atteindre le jeu
-        mvc.perform(post(API + "/games")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(CITADEL))
+        mvc.perform(post(API + "/games").contentType(MediaType.APPLICATION_JSON).content(CITADEL))
                 .andExpect(status().isForbidden());
 
         // Et une merveille inconnue ou absente est refusée avec un message
@@ -285,7 +284,8 @@ class SdvCivilisationApiIntegrationTest {
     void theApiIsDocumentedInSwagger() throws Exception {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paths['/api/games/sdv-civilisation/games'].post.summary").isNotEmpty())
+                .andExpect(jsonPath("$.paths['/api/games/sdv-civilisation/games'].post.summary")
+                        .isNotEmpty())
                 .andExpect(jsonPath("$.paths.*.*.tags[*]", hasItem("SDV Civilisation")));
     }
 }

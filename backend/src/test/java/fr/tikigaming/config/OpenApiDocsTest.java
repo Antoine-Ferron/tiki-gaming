@@ -1,6 +1,7 @@
 package fr.tikigaming.config;
 
 import static org.hamcrest.Matchers.aMapWithSize;
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.everyItem;
@@ -49,7 +50,8 @@ class OpenApiDocsTest {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.info.title").value("Tiki Gaming API"))
-                    .andExpect(jsonPath("$.paths", aMapWithSize(8)))
+                    // 8 routes d'authentification + 5 routes du jeu SDV Civilisation
+                    .andExpect(jsonPath("$.paths", aMapWithSize(13)))
                     .andExpect(jsonPath("$.paths['/api/auth/session'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/google'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/login'].post.summary", not(emptyOrNullString())))
@@ -58,7 +60,9 @@ class OpenApiDocsTest {
                     .andExpect(jsonPath("$.paths['/api/auth/password/reset'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/password'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/logout'].post.summary", not(emptyOrNullString())))
-                    .andExpect(jsonPath("$.paths.*.*.tags[*]", everyItem(containsString("Authentification"))));
+                    .andExpect(jsonPath(
+                            "$.paths.*.*.tags[*]",
+                            everyItem(anyOf(containsString("Authentification"), containsString("SDV Civilisation")))));
         }
 
         @Test
