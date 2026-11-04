@@ -38,13 +38,41 @@ class ShotDistanceRulesTest {
         assertThat(before).isEqualTo(table());
     }
 
+    @Test
+    void anEliminationBringsTheOppositeTargetIntoRangeWithoutLosingTheRefusedBang() {
+        GameState before = table(1, 4);
+        ShotRules rules = rulesFor(before);
+        assertThatThrownBy(() -> rules.fire(before, 1, bang.id(), 3, 0))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("La cible est hors de portée");
+        assertThat(before.players().getFirst().hand()).containsExactly(bang);
+
+        GameState afterElimination = rules.respond(before, 2, null).state();
+        ShotOutcome outcome = rulesFor(afterElimination).fire(afterElimination, 1, bang.id(), 3, 0);
+
+        assertThat(outcome.discarded()).containsExactly(bang);
+        assertThat(outcome.state().players().getFirst().hand()).isEmpty();
+        assertThat(afterElimination.players())
+                .extracting(GameState.Player::seat)
+                .containsExactly(1, 2, 3, 4);
+        assertThat(afterElimination.players())
+                .extracting(GameState.Player::accountId)
+                .containsExactly("account-1", "account-2", "account-3", "account-4");
+        assertThat(afterElimination.players().get(1).health()).isZero();
+        assertThat(before).isEqualTo(table(1, 4));
+    }
+
     private static ShotRules rulesFor(GameState state) {
         return new ShotRules((from, to) -> PlayerDistance.between(state, from, to));
     }
 
     private GameState table() {
+        return table(4, 4);
+    }
+
+    private GameState table(int secondHealth, int fourthHealth) {
         return new GameState(
-                List.of(player(1, 4, bang), player(2, 4), player(3, 4), player(4, 4)),
+                List.of(player(1, 4, bang), player(2, secondHealth), player(3, 4), player(4, fourthHealth)),
                 List.of(),
                 List.of(),
                 1,
