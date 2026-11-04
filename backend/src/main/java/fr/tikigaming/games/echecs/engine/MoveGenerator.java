@@ -41,6 +41,11 @@ public final class MoveGenerator {
         if (piece.type() == PieceType.BISHOP) {
             return slidingDestinations(position, from, piece.color(), BISHOP_DIRECTIONS);
         }
+        if (piece.type() == PieceType.QUEEN) {
+            Set<Square> destinations = slidingDestinations(position, from, piece.color(), ROOK_DIRECTIONS);
+            destinations.addAll(slidingDestinations(position, from, piece.color(), BISHOP_DIRECTIONS));
+            return destinations;
+        }
         int[][] offsets = piece.type() == PieceType.KING ? KING_OFFSETS : KNIGHT_OFFSETS;
         return jumpDestinations(position, from, piece.color(), offsets);
     }
