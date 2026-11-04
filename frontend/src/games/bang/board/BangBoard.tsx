@@ -14,6 +14,7 @@ export function BangBoard({
   onDraw,
   onEnd,
   onDodge,
+  onAccept,
 }: {
   view: GameView
   /** Appelé avec la carte choisie et la place visée. */
@@ -25,6 +26,7 @@ export function BangBoard({
   /** Appelé quand je finis mon tour, depuis ma main. */
   onEnd?: () => void
   onDodge?: (cardId: string) => void
+  onAccept?: () => void
 }) {
   const [selected, setSelected] = useState<string | null>(null)
   const count = view.hand.length
@@ -124,6 +126,11 @@ export function BangBoard({
         {ending && (
           <button type="button" onClick={onEnd}>
             Finir le tour
+          </button>
+        )}
+        {onAccept && view.pendingShot?.targetSeat === view.seat && (
+          <button type="button" onClick={onAccept}>
+            Accepter le tir
           </button>
         )}
       </section>
