@@ -81,10 +81,13 @@ public final class MoveGenerator {
         return destinations;
     }
 
-    /** Le pion : avance d'une case. */
+    /** Le pion : avance d'une case, ou de deux depuis sa rangée de départ. */
     private static Set<Square> pawnDestinations(Square from) {
         Set<Square> destinations = new HashSet<>();
         destinations.add(new Square(from.file(), from.rank() + 1));
+        if (from.rank() == 1) {
+            destinations.add(new Square(from.file(), from.rank() + 2));
+        }
         return destinations;
     }
 
