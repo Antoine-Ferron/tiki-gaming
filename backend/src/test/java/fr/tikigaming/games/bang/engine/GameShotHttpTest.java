@@ -695,6 +695,27 @@ class GameShotHttpTest {
         view(code, 2).andExpect(jsonPath("$.pendingShot").doesNotExist());
     }
 
+    @Test
+    void anEmptyDrawPileStillLetsBartTakeDamageAndRecycleTheOnlyDiscardedCard() throws Exception {
+        GameState initial =
+                preparedGame(BangCharacter.CALAMITY_JANET, BangCharacter.BART_CASSIDY, GameState.Phase.PLAY);
+        String code = startedTable(new GameState(initial.players(), List.of(), List.of(), 1, GameState.Phase.PLAY));
+        CardInstance playedBang = initial.players().getFirst().hand().getFirst();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+
+        command(code, "shots/" + pendingId(code) + "/accept", 2).andExpect(status().isNoContent());
+
+        GameState after = tables.game(code);
+        assertThat(after.players().get(1).health()).isEqualTo(3);
+        assertThat(after.players().get(1).hand()).containsExactly(card("missed-2", CardType.MISSED), playedBang);
+        assertThat(after.players().get(1).hand().getLast()).isSameAs(playedBang);
+        assertThat(after.drawPile()).isEmpty();
+        assertThat(after.discardPile()).isEmpty();
+        view(code, 2)
+                .andExpect(jsonPath("$.hand[1].id").value("bang-1"))
+                .andExpect(jsonPath("$.pendingShot").doesNotExist());
+    }
+
     private String pendingId(String code) throws Exception {
         return json.readTree(view(code, 2)
                         .andExpect(status().isOk())

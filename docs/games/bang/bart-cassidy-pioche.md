@@ -43,3 +43,10 @@ Après l'accord sur le recyclage, le premier raccordement de `cardsDrawnOnLifeLo
 fait passer **125 tests ciblés** au vert. Les PV réellement perdus et la survie déterminent
 le bonus ; le transfert de carte est confié à `CardDraw`, sans règle spéciale de Bart
 dans le service ou le contrôleur. Le cas de la pioche vide est le palier TDD suivant.
+
+Le recyclage est ensuite piloté par un rouge HTTP (`204` attendu, `409` reçu pour Bart
+avec une pioche vide), puis deux rouges domaine : refus de piocher depuis la défausse
+et de franchir la limite entre les deux piles. Un double de mélange inverse la liste
+pour vérifier l'ordre exact des cartes reçues et restantes ; les listes d'entrée restent intactes.
+Après ajout du recyclage dans `CardDraw`, **132 tests ciblés passent**. Le scénario où seule
+la carte du BANG! est disponible confirme les dégâts et le bonus, sans création de carte.
