@@ -93,7 +93,11 @@ public final class MoveGenerator {
             }
         }
         for (int side : new int[] {-1, 1}) {
-            Square diagonal = new Square(from.file() + side, from.rank() + 1);
+            int file = from.file() + side;
+            if (!isOnBoard(file, from.rank() + 1)) {
+                continue;
+            }
+            Square diagonal = new Square(file, from.rank() + 1);
             if (position.pieceAt(diagonal).isPresent() && !isOccupiedBy(position, diagonal, color)) {
                 destinations.add(diagonal);
             }
