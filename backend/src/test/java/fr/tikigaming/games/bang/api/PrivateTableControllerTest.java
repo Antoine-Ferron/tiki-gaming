@@ -50,7 +50,7 @@ class PrivateTableControllerTest {
         AuthSession.signIn(request, new AuthUser("shooter", "joueur@example.com"));
         request.addParameter("accountId", "someone-else");
 
-        assertThat(controller.fire("CODE", "bang-1", 2, request).getStatusCode())
+        assertThat(controller.fire("CODE", "bang-1", "2", request).getStatusCode())
                 .isEqualTo(HttpStatus.NO_CONTENT);
 
         verify(tables).fire("CODE", "shooter", "bang-1", 2);

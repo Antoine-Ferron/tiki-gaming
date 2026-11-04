@@ -45,6 +45,7 @@ transmis, et aucune route ne retourne directement `GameState`.
 | Statut | Situation |
 | --- | --- |
 | `401` | Session non authentifiée (avec un CSRF valide). |
+| `400` | Le siège cible n'est pas un entier 32 bits. Un entier représentant un siège invalide relève de `409`. |
 | `403` | CSRF absent/invalide, compte extérieur, tireur non actif ou réponse d'un autre compte que la cible du tir courant. |
 | `404` | Table inconnue ou expirée. |
 | `409` | Partie non démarrée ; tir hors phase, déjà en attente, au-delà de la limite du tour, cible invalide/hors portée ou carte indisponible ; réponse sans attente, avec un identifiant périmé ou une carte non autorisée. |
@@ -114,6 +115,7 @@ Ces tests HTTP ne sont pas des E2E navigateur.
 | Refuser les tirs hors phase | Deux phases (`DRAW`, `DISCARD`) : `409` attendu, `204` reçu. | 57 tests ciblés ; les refus hors tour, hors portée, cible invalide et carte indisponible étaient déjà verts avec les vrais composants. |
 | Respecter Paul Regret comme cible | HTTP : `409` attendu, `204` reçu. Domaine : exception attendue mais absente. | 96 tests ciblés ; appel de `distanceAsTarget` dans `ShotRules`, sans duplication dans le service. |
 | Documenter les actions et leur protection CSRF | 6 échecs : descriptions absentes et schémas `403` manquants face au JSON observé sur le serveur embarqué. | 48 tests HTTP/Swagger réussis ; 41 routes, `BangCard` et schémas des autres jeux conservés. |
+| Refuser un siège cible mal formé | 3 requêtes (texte et débordements d'entier) : `400` attendu, `500` reçu. | 137 tests ciblés HTTP/moteur/Swagger réussis ; conversion locale au contrôleur BANG!, sans modification du gestionnaire des autres jeux. |
 
 Le blocage initial du lanceur Java dans l'environnement restreint n'est pas compté comme rouge métier.
 

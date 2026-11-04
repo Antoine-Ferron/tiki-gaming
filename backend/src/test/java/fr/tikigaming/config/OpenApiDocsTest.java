@@ -169,6 +169,11 @@ class OpenApiDocsTest {
                     operation + ".responses['403'].content['application/json'].schema.anyOf[*]['$ref']",
                     org.hamcrest.Matchers.containsInAnyOrder(
                             "#/components/schemas/ApiError", "#/components/schemas/CsrfErrorResponse")));
+            if (action.contains("targets")) {
+                response.andExpect(jsonPath(operation + ".responses", hasKey("400")))
+                        .andExpect(jsonPath(
+                                operation + ".parameters[?(@.name == 'targetSeat')].schema.type", hasItem("integer")));
+            }
         }
 
         @Test

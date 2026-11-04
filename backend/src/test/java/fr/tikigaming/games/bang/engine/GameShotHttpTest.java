@@ -20,6 +20,7 @@ import jakarta.servlet.http.Cookie;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
@@ -599,6 +600,31 @@ class GameShotHttpTest {
                 .andExpect(status().isForbidden());
 
         assertThat(tables.game(code)).isSameAs(before);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"not-a-seat", "2147483648", "-2147483649"})
+    void aMalformedTargetSeatIsABadRequestWithoutMutation(String target) throws Exception {
+        String code = startedTable();
+        GameState before = tables.game(code);
+
+        command(code, "shots/bang-1/targets/" + target, 1)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Siège cible invalide."));
+
+        assertThat(tables.game(code)).isSameAs(before);
+        view(code, 1).andExpect(jsonPath("$.pendingShot").doesNotExist());
+    }
+
+    @Test
+    void shotsAndResponsesAcceptTheNormalizedTableCode() throws Exception {
+        String code = startedTable();
+        String entered = "  " + code.toLowerCase(Locale.ROOT) + "  ";
+
+        command(entered, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        command(entered, "shots/" + pendingId(code) + "/dodge/missed-2", 2).andExpect(status().isNoContent());
+
+        view(code, 1).andExpect(jsonPath("$.pendingShot").doesNotExist());
     }
 
     private String pendingId(String code) throws Exception {

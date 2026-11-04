@@ -4,11 +4,13 @@ import fr.tikigaming.auth.AuthException;
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.config.ApiExceptionHandler.ApiError;
+import fr.tikigaming.games.bang.engine.PrivateTableException;
 import fr.tikigaming.games.bang.engine.PrivateTableService;
 import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.PlayerGameView;
 import fr.tikigaming.games.bang.model.TableSeat;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -266,6 +268,10 @@ public class PrivateTableController {
                     + "Un tir accepté renouvelle l'activité ; refus et doublons ne la prolongent pas.")
     @ApiResponse(responseCode = "204", description = "Carte défaussée et tir en attente créé")
     @ApiResponse(
+            responseCode = "400",
+            description = "Le siège cible n'est pas un entier 32 bits",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
             responseCode = "401",
             description = "Non connecté",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
@@ -288,9 +294,18 @@ public class PrivateTableController {
     ResponseEntity<Void> fire(
             @PathVariable String code,
             @PathVariable String cardId,
-            @PathVariable int targetSeat,
+            @Parameter(description = "Siège de la cible", schema = @Schema(type = "integer", format = "int32"))
+                    @PathVariable
+                    String targetSeat,
             HttpServletRequest request) {
-        tables.fire(code, connectedAccountId(request), cardId, targetSeat);
+        String accountId = connectedAccountId(request);
+        int seat;
+        try {
+            seat = Integer.parseInt(targetSeat);
+        } catch (NumberFormatException invalid) {
+            throw new PrivateTableException(HttpStatus.BAD_REQUEST, "Siège cible invalide.");
+        }
+        tables.fire(code, accountId, cardId, seat);
         return ResponseEntity.noContent().build();
     }
 

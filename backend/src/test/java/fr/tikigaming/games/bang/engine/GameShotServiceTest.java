@@ -26,7 +26,7 @@ class GameShotServiceTest {
                 List.of(
                         player("one", 1, bang), player("two", 2, missed),
                         player("three", 3), player("four", 4)),
-                List.of(missed),
+                List.of(new CardInstance("draw", CardType.MISSED)),
                 List.of(old),
                 1,
                 GameState.Phase.PLAY);
