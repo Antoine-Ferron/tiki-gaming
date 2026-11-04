@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
+import fr.tikigaming.games.bang.cards.Role;
+import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.Locale;
@@ -48,6 +50,9 @@ class GameViewHttpTest {
 
     @Autowired
     private ObjectMapper json;
+
+    @Autowired
+    private PrivateTableService tables;
 
     @TestConfiguration
     static class Setup {
@@ -105,6 +110,66 @@ class GameViewHttpTest {
                     .getContentAsString();
             assertThat(normalized).isEqualTo(canonical);
         }
+    }
+
+    @Test
+    void fourAccountsKeepTheirOwnViewsAcrossAlternatingReadsAndNewSessions() throws Exception {
+        String code = startedTable();
+        GameState original = tables.game(code);
+        MockHttpSession oldSession = sessionFor(2);
+        MockHttpSession newSession = sessionFor(2);
+        assertThat(newSession.getId()).isNotEqualTo(oldSession.getId());
+
+        for (int seat : List.of(2, 4, 1, 3, 4, 2, 3, 1)) {
+            MockHttpSession session = seat == 2 ? oldSession : sessionFor(seat);
+            mvc.perform(get(TABLES + "/{code}/state", code)
+                            .session(session)
+                            .param("seat", "4")
+                            .param("accountId", accountPrefix + ":player-4"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().json(expectedView(code, seat), JsonCompareMode.STRICT));
+        }
+        mvc.perform(get(TABLES + "/{code}/state", code).session(newSession))
+                .andExpect(status().isOk())
+                .andExpect(content().json(expectedView(code, 2), JsonCompareMode.STRICT));
+
+        assertThat(tables.game(code)).isSameAs(original);
+        assertThat(original.drawPile()).hasSize(24);
+        assertThat(original.currentSeat()).isEqualTo(1);
+        assertThat(original.players())
+                .allSatisfy(player -> assertThat(player.roleCard().faceUp())
+                        .isEqualTo(player.roleCard().role() == Role.SHERIFF));
+    }
+
+    private static String expectedView(String code, int seat) {
+        String[] hands = {"""
+            [{"id":"test-card-1","type":"BANG"},{"id":"test-card-2","type":"MISSED"},
+             {"id":"test-card-3","type":"BANG"},{"id":"test-card-4","type":"MISSED"},
+             {"id":"test-card-5","type":"BANG"}]
+            """, """
+            [{"id":"test-card-6","type":"MISSED"},{"id":"test-card-7","type":"BANG"},
+             {"id":"test-card-8","type":"MISSED"},{"id":"test-card-9","type":"BANG"}]
+            """, """
+            [{"id":"test-card-10","type":"MISSED"},{"id":"test-card-11","type":"BANG"},
+             {"id":"test-card-12","type":"MISSED"}]
+            """, """
+            [{"id":"test-card-13","type":"BANG"},{"id":"test-card-14","type":"MISSED"},
+             {"id":"test-card-15","type":"BANG"},{"id":"test-card-16","type":"MISSED"}]
+            """};
+        String[] roles = {"SHERIFF", "OUTLAW", "OUTLAW", "RENEGADE"};
+        return """
+                {"code":"%s","seat":%d,"currentSeat":1,"role":"%s","hand":%s,
+                 "players":[
+                   {"seat":1,"character":"BART_CASSIDY","health":5,"maxHealth":5,
+                    "playedCards":[],"handCount":5,"role":"SHERIFF"},
+                   {"seat":2,"character":"CALAMITY_JANET","health":4,"maxHealth":4,
+                    "playedCards":[],"handCount":4},
+                   {"seat":3,"character":"PAUL_REGRET","health":3,"maxHealth":3,
+                    "playedCards":[],"handCount":3},
+                   {"seat":4,"character":"WILLY_THE_KID","health":4,"maxHealth":4,
+                    "playedCards":[],"handCount":4}
+                 ]}
+                """.formatted(code, seat, roles[seat - 1], hands[seat - 1]);
     }
 
     private String startedTable() throws Exception {
