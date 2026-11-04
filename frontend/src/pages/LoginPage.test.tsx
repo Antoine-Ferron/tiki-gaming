@@ -7,9 +7,14 @@ import LoginPage from './LoginPage'
 
 const api = await vi.hoisted(async () => (await import('@/auth/testing')).fakeApiPost())
 vi.mock('@/lib/api', async (original) => ({ ...(await original<typeof import('@/lib/api')>()), apiPost: api.apiPost }))
+const google = vi.hoisted(() => ({ startGoogleAuth: vi.fn() }))
+vi.mock('@/lib/google', () => google)
 vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }))
 
-beforeEach(() => api.reset())
+beforeEach(() => {
+  api.reset()
+  google.startGoogleAuth.mockReset()
+})
 afterEach(cleanup)
 
 function fill(email: string, password: string) {
@@ -85,5 +90,14 @@ describe('LoginPage', () => {
     renderPage(<LoginPage />, { url: '/login?error=autre', route: '/login' })
 
     expect(document.querySelector('.error')).toBeNull()
+  })
+
+  test('le bouton Google part vers Google en revenant à la page demandée, et bloque le formulaire', () => {
+    renderPage(<LoginPage />, { url: '/login', state: { from: '/games/clicker' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Se connecter avec Google' }))
+
+    expect(google.startGoogleAuth).toHaveBeenCalledWith('/games/clicker')
+    expect((screen.getByRole('button', { name: 'Connexion…' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
