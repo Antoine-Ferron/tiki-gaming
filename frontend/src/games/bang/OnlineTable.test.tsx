@@ -277,3 +277,49 @@ test('une ancienne lecture périodique ne réaffiche pas un tir déjà résolu',
   expect(screen.getByRole('status').textContent).toBe('Au tour de la place 4.')
   expect(screen.queryByRole('button', { name: 'Accepter le tir' })).toBeNull()
 })
+
+test('une lecture lente actualise encore le plateau quand la lecture suivante est en vol', async () => {
+  const pending: GameView = {
+    ...fourPlayerView(),
+    currentSeat: 4,
+    pendingShot: { id: 'tir', shooterSeat: 4, targetSeat: 1 },
+  }
+  let finishSlow!: (response: Response) => void
+  let finishNext!: (response: Response) => void
+  const slow = new Promise<Response>((resolve) => {
+    finishSlow = resolve
+  })
+  const next = new Promise<Response>((resolve) => {
+    finishNext = resolve
+  })
+  let reads = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/state')) {
+        reads++
+        if (reads === 2) return slow
+        if (reads === 3) return next
+        return Response.json(pending)
+      }
+      return Response.json({ code: pending.code, seat: 1, playerCount: 4 })
+    }),
+  )
+  vi.useFakeTimers()
+  render(<OnlineTable />)
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  })
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(4000)
+  })
+  const resolved = { ...pending, pendingShot: undefined }
+  await act(async () => {
+    finishSlow(Response.json(resolved))
+  })
+  const hint = screen.getByRole('status').textContent
+  await act(async () => {
+    finishNext(Response.json(resolved))
+  })
+  expect(hint).toBe('Au tour de la place 4.')
+})

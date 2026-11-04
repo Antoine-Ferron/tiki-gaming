@@ -16,15 +16,21 @@ export function OnlineTable() {
   const [error, setError] = useState<string | null>(null)
   const acting = useRef(false)
   const latestRead = useRef(0)
+  const appliedRead = useRef(0)
 
   const refresh = useCallback(async (tableCode: string) => {
     const read = ++latestRead.current
     try {
       const next = await api.getView(tableCode)
-      if (read === latestRead.current) setView(next)
+      if (read > appliedRead.current) {
+        appliedRead.current = read
+        setView(next)
+      }
     } catch (err) {
       // 409 : la partie n'a pas encore démarré, on attend.
-      if (read === latestRead.current && !(err instanceof ApiError && err.status === 409)) setError(messageOf(err))
+      if (read < appliedRead.current) return
+      appliedRead.current = read
+      if (!(err instanceof ApiError && err.status === 409)) setError(messageOf(err))
     }
   }, [])
 
