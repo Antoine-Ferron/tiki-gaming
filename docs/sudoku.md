@@ -354,6 +354,51 @@ Les assertions de `mistakes.test.ts` donnent maintenant la valeur exacte attendu
 L'objectif de 75 % (seuil `break` de `frontend/stryker.config.mjs`) est dépassé. La couverture n'a pas changé :
 c'est la précision des assertions qui a fait passer le score de 25 % à 100 %.
 
+#### Seuil bloquant dans la CI (GitHub)
+
+Le job **`Mutation (Stryker)`** de `.github/workflows/ci.yml` lance `npm run test:mutation` à chaque PR touchant le
+front (en incrémental : seuls les mutants des fichiers modifiés sont rejoués). Stryker termine en erreur quand le
+score passe sous `thresholds.break` (75 % dans `frontend/stryker.config.mjs`), donc le job échoue et la PR est
+marquée en échec.
+
+Ce qui manquait pour le Sudoku : ses fichiers n'étaient pas dans `mutate`, donc le seuil ne s'y appliquait pas.
+`logic.ts` et `mistakes.ts` y sont ajoutés (fichier de configuration commun à la plateforme, modification de deux
+lignes). Les tests du Sudoku sont ceux du dépôt entier : le score en CI est donc au moins celui mesuré ici.
+
+Vérification locale du mécanisme (mêmes fichiers, `vitest.dir = src/games/sudoku`) :
+
+| Cas | Score | Seuil | Code de sortie |
+|-----|-------|-------|----------------|
+| `logic.ts` + `mistakes.ts`, tests actuels | 100 % (32 mutants tués) | 75 | **0** (succès) |
+| `SudokuGame.tsx` seul, sous un seuil volontairement haut | 69,71 % | 99 | **1** : « Final mutation score 69.71 under breaking threshold 99 » |
+
+`SudokuGame.tsx` n'est pas dans le périmètre de la CI : son score varie d'un scan à l'autre (jusqu'à 93,8 % plus
+haut, 69,7 % ici, avec beaucoup de mutants en timeout), ce qui rendrait la PR bloquée au hasard. Les règles pures
+(`logic.ts`, `mistakes.ts`) sont, elles, déterministes.
+
+**Reste à faire côté dépôt (administrateur)** : une règle de protection (*ruleset* « Protected », branches `main`
+et `dev`) exige seulement `Frontend (format + lint + build)` et `Backend (format + lint + tests)`. Pour que le
+seuil bloque réellement la fusion, il faut y ajouter le check **`Mutation (Stryker)`** (Settings, Rules,
+Rulesets, Protected, *Require status checks to pass*). Tant que ce n'est pas fait, un échec du job est visible
+mais n'empêche pas de fusionner. Quand le front n'est pas modifié, le job est ignoré (*skipped*), ce que GitHub
+compte comme réussi.
+
+#### Rapport de la CI
+
+Le rapport HTML produit par le job `Mutation (Stryker)` de la PR #104
+([run 41845454002](https://github.com/EAnathos/tiki-gaming/actions/runs/41845454002), commit `6c13af6`, tous les
+jobs en succès) est versionné dans [`docs/sudoku/stryker-mutation-ci.html`](sudoku/stryker-mutation-ci.html)
+(à ouvrir dans un navigateur). C'est l'artefact `rapport-mutation-frontend`, sans modification.
+
+| Périmètre                         | Score                                    |
+|-----------------------------------|------------------------------------------|
+| `sudoku/logic.ts`                 | 100 % (12 mutants tués)                  |
+| `sudoku/mistakes.ts`              | 100 % (20 mutants tués)                  |
+| Plateforme entière (`mutate` CI)  | **98,33 %** (354 tués, 6 survivants)     |
+
+Seuil `thresholds.break` : 75 %, franchi. Le rapport est une photo du run ci-dessus : pour un résultat à jour,
+télécharger l'artefact du dernier run de la CI.
+
 Pour rejouer un scan : un fichier de configuration qui reprend `frontend/stryker.config.mjs` avec
 `mutate: ['src/games/sudoku/mistakes.ts']` et, pour isoler les tests unitaires, un `vitest.configFile` dont
 `test.include` ne liste que `src/games/sudoku/mistakes.test.ts` (ou `vitest: { dir: 'src/games/sudoku' }` pour tous

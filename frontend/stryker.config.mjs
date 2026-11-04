@@ -14,6 +14,9 @@ export default {
     'src/games/scoreQueue.ts',
     'src/games/sdk.ts',
     'src/lib/validation.ts',
+    // Sudoku : règles pures (la limite d'erreurs et le format du temps), sous le même seuil de 75 %.
+    'src/games/sudoku/logic.ts',
+    'src/games/sudoku/mistakes.ts',
     '!src/**/*.test.ts',
   ],
   coverageAnalysis: 'perTest',
