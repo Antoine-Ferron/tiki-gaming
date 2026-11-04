@@ -54,3 +54,21 @@ de production. Docker Desktop a été démarré localement pour cette étape.
 Références techniques : [réseau Testcontainers](https://java.testcontainers.org/features/networking/),
 [attente de disponibilité](https://java.testcontainers.org/features/startup_and_waits/),
 [tables et filtres PostgREST](https://docs.postgrest.org/en/stable/references/api/tables_views.html).
+
+## RED observé
+
+- Préparation `1dd018b` : compilation et vérification des 16 noms/versions de
+  migration réussies, avant les tests.
+- Tests du contrat HTTP : **25 cas, 25 échecs attendus, 0 erreur, 0 ignoré**.
+- Intégration réelle : **52 cas, 33 échecs attendus, 0 erreur, 0 ignoré**.
+  Les conteneurs démarrent, les 16 migrations sont appliquées et les contrôles
+  d'accès déjà préparés passent. L'adaptateur est encore un squelette et les
+  contraintes métier ne sont pas encore implémentées.
+- Les rôles réservés de Supabase sont initialisés par le script de qualité
+  monté dans le conteneur, en `supabase_admin`, comme dans Docker Compose. Une
+  première tentative via JDBC en `postgres` avait été refusée ; elle ne compte
+  pas comme RED métier et a été corrigée avant le décompte ci-dessus.
+
+Le RED s'exécute avec `mvn ... -Dtest=SupabaseMatchRepositoryTest test`, puis
+`mvn ... -Pintegration -Dit.test=SupabaseMatchRepositoryIT
+failsafe:integration-test failsafe:verify` après `test-compile`.
