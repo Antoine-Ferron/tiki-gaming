@@ -54,4 +54,26 @@ class EchecsServiceTest {
                 .hasMessageStartingWith("Coup refusé : ")
                 .hasMessageContaining(reason);
     }
+
+    @ParameterizedTest(name = "fen « {0} », de « {1} » vers « {2} »")
+    @CsvSource({
+        "abc, e2, e4", // FEN mal écrite
+        "'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', z9, e4", // case de départ hors échiquier
+        "'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', e2, e44", // case d'arrivée mal écrite
+        ", e2, e4", // FEN absente (null)
+        "'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', , e4" // case absente (null)
+    })
+    @DisplayName("une entrée mal écrite ou absente devient une erreur 400, distincte d'un coup refusé")
+    void uneEntreeMalEcriteDevientUneErreur400(String fen, String from, String to) {
+        // Act + Assert : pour jouer comme pour demander les cases
+        assertThatThrownBy(() -> service.play(fen, from, to))
+                .isInstanceOfSatisfying(
+                        EchecsInvalidInputException.class,
+                        e -> assertThat(e.status()).isEqualTo(HttpStatus.BAD_REQUEST));
+        if (!"e44".equals(to)) {
+            assertThatThrownBy(() -> service.destinations(fen, from))
+                    .isInstanceOf(EchecsInvalidInputException.class)
+                    .hasMessageStartingWith("Entrée invalide : ");
+        }
+    }
 }
