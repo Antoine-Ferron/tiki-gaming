@@ -69,12 +69,15 @@ Les seuils (`thresholds`) sont les SLO : si l'un est dépassé, k6 sort en erreu
 | Profil | Requêtes | Erreurs | Classement P95 / P99 | Scores P95 / P99 | Verdict |
 |--------|----------|---------|----------------------|------------------|---------|
 | `smoke` | 10 | 0 % | 9,8 / 9,9 ms | 4,9 / 4,9 ms | SLO tenus |
-| `load` (10 s) | 1 201 | 0 % | 8,2 / 13,3 ms | 4,4 / 8,2 ms | SLO tenus |
+| `load` (30 s, comme en CI) | 3 602 | 0 % | 8,1 / 11,2 ms | 31,8 / 116,1 ms | SLO tenus |
 | `spike` (×10) | 32 034 | 8,2 % | 23,5 / 31,7 s | 22,6 / 30,8 s | **SLO violés** |
+| `load` juste après le spike | — | 0 % | 592,7 / 773,1 ms | 562,3 / 698,9 ms | **SLO violés** |
 
 Le pic ×10 (≈ 1 000 req/s sur le classement) sature l'unique PostgREST local : les requêtes s'accumulent, la latence
 explose puis des erreurs apparaissent. C'est la charge de rupture de cet environnement, pas de la production
-(Supabase mutualise et met à l'échelle). Pistes si ce pic devenait réaliste : mettre le classement en cache
+(Supabase mutualise et met à l'échelle). Le run `load` lancé juste après montre un second effet : les milliers de
+scores insérés pendant le pic ralentissent la vue `leaderboard`, qui agrège toute la table à chaque lecture ; sur une
+base réinitialisée, les SLO sont de nouveau tenus. Pistes si ce pic devenait réaliste : mettre le classement en cache
 (il change seulement à chaque fin de partie), ou le servir par une vue matérialisée.
 
 ## Résilience : quand une dépendance tombe
