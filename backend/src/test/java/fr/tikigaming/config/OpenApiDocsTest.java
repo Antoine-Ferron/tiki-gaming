@@ -94,7 +94,9 @@ class OpenApiDocsTest {
                                     containsString("mini-gta"),
                                     containsString("SDV Civilisation"),
                                     containsString("rush-hour")))))
-                    .andExpect(jsonPath("$.paths['/api/games/sdv-civilisation/games/current/turns'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/sdv-civilisation/games/current/turns'].post.summary",
+                            not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/{gameId}'].get.summary", not(emptyOrNullString())))
