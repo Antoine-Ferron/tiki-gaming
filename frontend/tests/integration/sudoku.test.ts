@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import pg from 'pg'
 import { beforeEach, expect, inject, test } from 'vitest'
 import { MIGRATIONS_DIR, applyMigrations } from '../../scripts/migrations.mjs'
-import { as, createUser, describeDb, useDatabase } from './db'
+import { as, asServer, createUser, describeDb, useDatabase } from './db'
 
 // Le Sudoku sur une vraie base : le conteneur PostgreSQL et le rejeu des migrations viennent de globalSetup.ts.
 // Le plafond (6864) est celui de ScoreCalculator en difficile, aligné avec scoreLimits (games.max_score).
@@ -153,9 +153,9 @@ describeDb('sudoku : scores et atomicité', () => {
   const db = useDatabase()
   let alice: string
 
-  // user_id est rempli par auth.uid() : le joueur ne le choisit pas.
+  // Seul le backend écrit les scores (POST /api/scores), pour le compte du joueur de la session.
   const insertScore = (score: number) =>
-    db.query(`insert into public.scores (game_slug, score) values ('sudoku', $1)`, [score])
+    db.query(`insert into public.scores (user_id, game_slug, score) values ($1, 'sudoku', $2)`, [alice, score])
   const scoresOfAlice = async () =>
     (await db.query('select score from public.scores where user_id = $1 order by id', [alice])).rows.map((r) =>
       Number(r.score),
@@ -169,19 +169,19 @@ describeDb('sudoku : scores et atomicité', () => {
 
   // Valeurs limites autour du plafond : 0 accepté, 6864 accepté, 6865 refusé, -1 refusé
   test.each([0, 1, MAX_SCORE])('accepte le score %d', async (score) => {
-    await as(db, alice, () => insertScore(score))
+    await asServer(db, () => insertScore(score))
 
     expect(await scoresOfAlice()).toEqual([score])
   })
 
   test('refuse un score au-dessus du plafond, sans rien écrire', async () => {
-    await expect(as(db, alice, () => insertScore(MAX_SCORE + 1))).rejects.toMatchObject({ code: '42501' })
+    await expect(asServer(db, () => insertScore(MAX_SCORE + 1))).rejects.toMatchObject({ code: '23514' })
 
     expect(await scoresOfAlice()).toEqual([])
   })
 
   test('refuse un score négatif', async () => {
-    await expect(as(db, alice, () => insertScore(-1))).rejects.toMatchObject({ code: '23514' })
+    await expect(asServer(db, () => insertScore(-1))).rejects.toMatchObject({ code: '23514' })
   })
 
   test('fin de partie atomique : si le score est refusé, la sauvegarde effacée dans la même étape revient', async () => {
@@ -192,11 +192,11 @@ describeDb('sudoku : scores et atomicité', () => {
 
     // Effacer la sauvegarde puis envoyer le score, en une seule étape : l'échec annule aussi l'effacement.
     await expect(
-      as(db, alice, async () => {
+      asServer(db, async () => {
         await db.query(`delete from public.game_saves where user_id = $1 and game_slug = 'sudoku'`, [alice])
         await insertScore(MAX_SCORE + 1)
       }),
-    ).rejects.toMatchObject({ code: '42501' })
+    ).rejects.toMatchObject({ code: '23514' })
 
     expect(await savesOfAlice()).toEqual([{ data: { gameId: 'g1' } }])
     expect(await scoresOfAlice()).toEqual([])
@@ -208,7 +208,7 @@ describeDb('sudoku : scores et atomicité', () => {
       { gameId: 'g1' },
     ])
 
-    await as(db, alice, async () => {
+    await asServer(db, async () => {
       await db.query(`delete from public.game_saves where user_id = $1 and game_slug = 'sudoku'`, [alice])
       await insertScore(2354)
     })
@@ -218,8 +218,8 @@ describeDb('sudoku : scores et atomicité', () => {
   })
 
   test('le classement du Sudoku garde le meilleur score du joueur et compte ses parties', async () => {
-    await as(db, alice, () => insertScore(1166))
-    await as(db, alice, () => insertScore(2354))
+    await asServer(db, () => insertScore(1166))
+    await asServer(db, () => insertScore(2354))
 
     const { rows } = await as(db, null, () =>
       db.query(`select username, best_score, games_played from public.leaderboard where game_slug = 'sudoku'`),
