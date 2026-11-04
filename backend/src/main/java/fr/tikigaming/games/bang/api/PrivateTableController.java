@@ -255,6 +255,17 @@ public class PrivateTableController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{code}/shots/{cardId}/targets/{targetSeat}")
+    @Operation(summary = "Tirer sur un joueur")
+    ResponseEntity<Void> fire(
+            @PathVariable String code,
+            @PathVariable String cardId,
+            @PathVariable int targetSeat,
+            HttpServletRequest request) {
+        tables.fire(code, connectedAccountId(request), cardId, targetSeat);
+        return ResponseEntity.noContent().build();
+    }
+
     private static String connectedAccountId(HttpServletRequest request) {
         AuthUser user = AuthSession.currentUser(request);
         if (user == null) throw new AuthException(401, "Non connecté");

@@ -4,6 +4,7 @@ import fr.tikigaming.games.bang.cards.Role;
 import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.GameState;
+import fr.tikigaming.games.bang.model.PendingShot;
 import fr.tikigaming.games.bang.model.PlayerGameView;
 import fr.tikigaming.games.bang.model.TableSeat;
 import java.time.Clock;
@@ -136,7 +137,8 @@ public class PrivateTableService {
                                 List.of(),
                                 player.hand().size(),
                                 player.roleCard().role() == Role.SHERIFF ? Role.SHERIFF : null))
-                        .toList());
+                        .toList(),
+                table.pendingShot);
     }
 
     public synchronized void draw(String code, String accountId) {
@@ -231,6 +233,32 @@ public class PrivateTableService {
         table.lastActivity = clock.instant();
     }
 
+    public synchronized void fire(String code, String accountId, String cardId, int targetSeat) {
+        Table table = activeTable(code, accountId);
+        GameState game = table.game;
+        ShotOutcome outcome;
+        try {
+            outcome = shotRules(game).fire(game, game.currentSeat(), cardId, targetSeat, 0);
+        } catch (IllegalArgumentException | IllegalStateException refused) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, refused.getMessage());
+        }
+        table.game = applyShotOutcome(outcome);
+        table.pendingShot = new PendingShot(UUID.randomUUID().toString(), game.currentSeat(), targetSeat);
+        table.lastActivity = clock.instant();
+    }
+
+    private static ShotRules shotRules(GameState game) {
+        return new ShotRules((from, to) -> PlayerDistance.between(game, from, to));
+    }
+
+    private static GameState applyShotOutcome(ShotOutcome outcome) {
+        GameState state = outcome.state();
+        List<CardInstance> discarded = new ArrayList<>(state.discardPile());
+        discarded.addAll(outcome.discarded());
+        return new GameState(
+                state.players(), state.drawPile(), List.copyOf(discarded), state.currentSeat(), state.phase());
+    }
+
     private Table activeTable(String code, String accountId) {
         purgeInactive();
         code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
@@ -263,6 +291,7 @@ public class PrivateTableService {
         private final List<String> players = new ArrayList<>();
         private Instant lastActivity;
         private GameState game;
+        private PendingShot pendingShot;
 
         private Table(String creator, Instant now) {
             players.add(creator);
