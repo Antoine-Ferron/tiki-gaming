@@ -16,6 +16,7 @@ import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.auth.SupabaseAuthClient;
 import fr.tikigaming.config.ApiException;
+import fr.tikigaming.games.bang.engine.PrivateTableService;
 import fr.tikigaming.scores.SupabaseScoresClient;
 import java.io.IOException;
 import java.net.URI;
@@ -37,7 +38,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 /**
  * Vérification fournisseur du contrat Pact écrit par le front (frontend/pacts, tests/contract). Chaque interaction
  * est rejouée en HTTP contre l'application Spring complète (sécurité, CSRF, validation, sérialisation) ; seuls les
- * appels à Supabase sont simulés. Un champ renommé ou un statut changé côté backend fait échouer ce test.
+ * appels à Supabase et la frontière du service BANG! sont simulés. Le moteur BANG! réel est vérifié par ses
+ * tests HTTP. Un champ renommé ou un statut changé côté backend fait échouer ce test.
  */
 @Provider("tiki-backend")
 @PactFolder("../frontend/pacts")
@@ -64,6 +66,9 @@ class PactProviderTest {
 
     @MockitoBean
     private SupabaseScoresClient supabaseScores;
+
+    @MockitoBean
+    private PrivateTableService bangTables;
 
     /** Cookies de la session ouverte par l'état du contrat, et jeton CSRF qui va avec. */
     private final Map<String, String> cookies = new LinkedHashMap<>();
