@@ -106,6 +106,12 @@ Une sauvegarde JSON par joueur et par jeu.
 | `data`       | `jsonb`       | défaut `{}`                                                    |
 | `updated_at` | `timestamptz` | maintenu par le trigger `game_saves_set_updated_at`            |
 
+Un jeu arbitré par le serveur y écrit lui-même, avec la clé service. Pour SDV Civilisation, `data` vaut
+`{ "version": n, "sealed": "…" }` : la partie complète (mains des IA comprises) est chiffrée et authentifiée
+par le backend (AES-GCM, clé dérivée de son secret), pour que le joueur, qui peut lire sa ligne, ne puisse ni
+la lire ni la modifier. `version` sert de verrou optimiste : le tour suivant n'est écrit que si la ligne est
+encore à la version attendue.
+
 ### Vue `leaderboard`
 
 Meilleur score par joueur et par jeu (`best_score`, `games_played`, `last_played_at`, avec `username`

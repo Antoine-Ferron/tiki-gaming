@@ -66,12 +66,13 @@ Seules les règles listées ici sont implémentées (et testées) : tout le rest
 
 - Chaque joueur dispose de **60 secondes** pour choisir sa carte.
 - Pendant les **10 dernières secondes**, le tour est signalé comme **bientôt fini**.
-- À **60 secondes pile**, le tour est **expiré** : la carte choisie (ou la première de la main) est
-  défaussée automatiquement et le joueur gagne 3 pièces.
-- Le **serveur** fixe l'heure limite officielle du tour et l'envoie aux joueurs ; chaque client affiche
-  son compte à rebours à partir de cette heure limite.
-- Un joueur qui laisse expirer son tour sans jouer est signalé **une seule fois** au journal d'audit
-  (inactivité).
+- À **60 secondes pile**, le tour est **expiré** : une carte de la main, **tirée au hasard**, est défaussée
+  automatiquement (le joueur gagne 3 pièces) et les IA jouent leur tour.
+- Le **serveur** fixe l'heure limite officielle du tour ; le client affiche le temps restant qu'il reçoit.
+- Le serveur vérifie l'heure limite à chaque requête du joueur : une partie quittée puis reprise après
+  l'heure limite a perdu la carte de ce tour (une seule), et reprend au tour suivant avec un nouveau
+  minuteur. Un coup envoyé après l'heure limite est refusé.
+- Un joueur qui laisse expirer son tour est signalé **une seule fois** au journal d'audit (inactivité).
 
 ## Trésor
 
@@ -231,112 +232,98 @@ Effets de carte permettant de rejouer une carte ou une action supplémentaire.
 - [x] Le commerce avec les voisins et les chaînes de construction sont appliqués.
 - [x] Les conflits militaires sont résolus à la fin de chaque âge.
 - [x] Le score final détaillé par catégorie s'affiche en fin de partie et est envoyé à `ctx.submitScore`.
-- [ ] Une partie en cours est sauvegardée et peut être reprise.
-- [ ] Chaque règle ci-dessus est couverte par un test unitaire.
+- [x] Une partie en cours est sauvegardée et peut être reprise.
+- [x] Chaque règle ci-dessus est couverte par un test unitaire.
 
 ## Avancement
 
 Cocher une ligne quand la règle est implémentée **et** testée.
 
-Répartition : le **back** fait autorité sur la partie (trésor, commerce, temps de tour officiel) ; le
-**front** prévisualise et affiche (devis d'achat, compte à rebours) sans jamais modifier l'état de la partie.
+Répartition : le **back** arbitre la partie (règles, IA, mélange, commerce, minuteur, score) et l'enregistre ;
+le **front** affiche la vue que le serveur lui renvoie et lui envoie le coup choisi. Aucune règle n'existe en
+double : le front n'a plus de moteur.
 
 ### Mise en place
 
-- [x] 3 à 7 joueurs, 3 pièces chacun au départ (`setup.ts`)
-- [x] Voisins de gauche et de droite, assis en cercle (`setup.ts`)
-- [x] Tirage des plateaux de merveille et ressource de départ (`wonders.ts`, `game.ts`)
-- [x] Paquets des trois âges, mélangés et distribués (`game.ts`, catalogue réduit `cards.ts`)
+- [x] 3 pièces chacun, un plateau merveille différent, le joueur choisit le sien (`Engine.create`)
+- [x] Voisins de gauche et de droite, assis en cercle (`GameState.leftOf` / `rightOf`)
+- [x] Paquets des trois âges, mélangés et distribués, 7 cartes chacun (`Engine`, catalogue `Cards`, `Wonders`)
 
 ### Tour de jeu
 
-- [x] Temps de tour officiel et heure limite, sur une horloge injectée (back `TurnTimer.java`)
-- [x] Compte à rebours affiché à partir de l'heure limite (front `turnCountdown.ts`)
-- [x] Signalement d'inactivité, une seule fois, à l'expiration du tour (front `turnCountdown.ts`)
-- [ ] Défausse automatique à l'expiration du tour
-- [x] Choix simultané des cartes et passage des mains selon l'âge (`game.ts`)
-- [x] Défausser une carte pour 3 pièces (`game.ts`)
-- [x] Fin d'âge après 6 tours, dernière carte défaussée (`game.ts`)
+- [x] Choix simultané des cartes et passage des mains selon l'âge (`Engine.play`, `Engine.passesLeft`)
+- [x] Construire, bâtir une étape de merveille, défausser pour 3 pièces (`Engine.play`)
+- [x] Fin d'âge après 6 tours, dernière carte défaussée (`Engine.play`)
+- [x] Temps de tour officiel, repris depuis l'heure limite enregistrée (`TurnTimer.start` / `resume`)
+- [x] Défausse aléatoire à l'expiration du tour et signalement d'inactivité (`Engine.timeOut`)
+- [x] Minuteur affiché, alerte dans les 10 dernières secondes (front `TurnTimer.tsx`, `turnCountdown.ts`)
 
 ### Économie
 
-- [x] Trésor : crédit, débit, transfert, jamais négatif (back `Treasury.java`)
-- [x] Audit anti-triche au franchissement du seuil critique de 30 pièces (back `Treasury.java`)
-- [x] Achat de ressources à un voisin au prix standard de 2 pièces (back `Trade.java`)
-- [x] Devis d'achat : prix et achat possible ou non, sans débit (front `tradeQuote.ts`)
-- [x] Achat des ressources manquantes aux voisins qui les produisent, pendant une construction (front `game.ts`)
+- [x] Trésor : crédit, débit, transfert, jamais négatif (`Treasury`)
+- [x] Audit anti-triche au franchissement du seuil critique de 30 pièces (`Treasury`)
+- [x] Achat des ressources manquantes aux voisins, gauche puis droite, 2 pièces l'unité (`Payments`, `Trade`)
 - [ ] Prix réduit à 1 pièce (cartes jaunes)
 
 ### Construction
 
-- [x] Payer le coût d'une carte : pièces, ressources produites et commerce (`game.ts`)
-- [x] Refuser une carte déjà construite, impayable ou absente de la main (`game.ts`)
-- [x] Chaînes de construction gratuites (`game.ts`)
-- [x] Étapes de merveille dans l'ordre, carte posée face cachée sans effet (`game.ts`)
-- [x] Guildes : points selon les cartes des voisins (`score.ts`)
+- [x] Payer le coût d'une carte : pièces, ressources produites et commerce (`Payments.build`)
+- [x] Refuser une carte déjà construite, impayable ou absente de la main (`Payments`, `Engine.play`)
+- [x] Chaînes de construction gratuites (`Payments.chained`)
+- [x] Étapes de merveille dans l'ordre, carte posée face cachée sans effet (`Payments.wonder`, `PlayerState`)
 
 ### Fin d'âge et score
 
-- [x] Conflits militaires (`game.ts`)
-- [x] Score de science (back `ScienceScore.java`, front `score.ts`)
-- [x] Score final par catégorie et départage par les pièces (`score.ts`)
-- [x] Envoi du score en fin de partie (`ctx.submitScore`)
+- [x] Conflits militaires contre chaque voisin, +1 / +3 / +5 ou −1 (`Engine`)
+- [x] Science (`ScienceScore`), guildes, trésor, merveille et bâtiments civils (`Scoring.finalScore`)
+- [x] Classement final et départage par les pièces (`Scoring.ranking`)
+- [x] Score enregistré par le serveur pour un joueur connecté (`SupabaseGames.record`, table `scores`)
 
 ### Plateforme
 
-- [x] Déclaration du jeu (`index.ts`, `registry.ts`) et migration du catalogue
-- [x] Premier écran : table de jeu (joueur connecté + places libres, voisins) et classement (`SdvCivilisationGame.tsx`)
-- [x] Places libres complétées par des IA en attendant le multijoueur (`bots.ts`)
-- [x] Décisions des IA : construire la meilleure carte payable, sinon défausser (`ai.ts`)
+- [x] API REST de la partie, documentée dans Swagger (`SdvCivilisationController`)
+- [x] Partie sauvegardée à chaque tour et reprise : session pour un invité, `game_saves` (scellée) pour un compte
+- [x] Coup envoyé en double ou depuis un autre onglet refusé (409, version de la partie)
+- [x] IA : construire la meilleure carte payable, sinon une étape de merveille, sinon défausser (`Ai`)
 - [ ] Salle d'attente et parties en ligne entre joueurs
-- [ ] Sauvegarde et reprise de partie
-- [x] Interface jouable : main face visible, construire ou défausser, dernier tour, fin de partie (`SdvCivilisationGame.tsx`)
-- [x] Repères visuels : à qui de jouer, cartes constructibles / achat aux voisins / impossibles, cartes jouées posées sur la table (animées), pile de défausse, journal du dernier tour et des conflits
-- [x] Règles du jeu à l'écran et plein écran (`RulesDialog.tsx`)
-- [x] Plateau de merveille à l'écran : avancement sur chaque siège, détail dans la barre latérale (`WonderPanel.tsx`)
-- [x] Choix de la merveille avant la partie ; les IA reçoivent les autres plateaux (`WonderPicker.tsx`)
-- [x] Interface d'après la maquette : voisins à gauche et à droite (production achetable en pointillés, bâtiments,
-      duel en cours), centre de la table (paquets, défausse, cartes du tour face cachée), cité du joueur (merveille,
-      production, trésor, duels par voisin, science, bâtiments par couleur), main, trois actions et journal
-- [x] Icônes vectorielles du jeu, expliquées dans les règles (`GameIcon.tsx`)
+- [x] Interface : voisins, cité, main, trois actions, journal, règles, plein écran, animations du tour (front)
 
 ### Architecture testable
 
-La logique du jeu ne dépend que d'interfaces pures, sans I/O. Les deux côtés ont les mêmes quatre
-contrats, chacun utilisé pour son propre rôle, avec ses implémentations de production et ses doublures.
+Back : package `fr.tikigaming.games.sdv_civilisation` (domaine, sans Spring) et son sous-package `api`
+(service, contrôleur, stockages). Les contrats sont des interfaces pures ; chaque test dit en commentaire quelle
+doublure il utilise.
 
-#### Back (JUnit 5) : arbitre de la partie
+| Contrat             | Utilisé par                            | Production                          | Doublures de test                                        |
+| ------------------- | -------------------------------------- | ----------------------------------- | -------------------------------------------------------- |
+| `Shuffler`          | `Engine` (paquets, défausse au hasard) | `RandomShuffler` (`SecureRandom`)   | Stub `FixedShuffler.KEEP` / `REVERSE`                    |
+| `CurrencyConverter` | `Payments`, `Trade`                    | `StandardTrade` (2 pièces)          | Stub `FixedRateConverter`, spy Mockito, `Dummy`          |
+| `TreasuryRegistry`  | `Treasury`                             | `MapTreasuryRegistry` (tour joué)   | Fake `InMemoryTreasuryRegistry`                          |
+| `AuditNotifier`     | `Treasury`, `Engine.timeOut`           | `LogAuditNotifier` (SLF4J)          | Mock Mockito, `Dummy`                                    |
+| `Clock`             | `TurnTimer`, service                   | `SystemClock`                       | Fake `FakeClock` (avancée à la main)                     |
+| `GameStore`         | service (une partie par joueur)        | `SessionGameStore`, `SupabaseGames` | Fake `InMemoryGameStore`, stub « course perdue »         |
+| `ScoreRecorder`     | service (fin de partie)                | `SupabaseGames` (table `scores`)    | Spy `RecordingScoreRecorder`, dummy `DummyScoreRecorder` |
 
-Package `fr.tikigaming.games.sdv_civilisation` ; doublures dans le même package, sous `src/test/java`.
-
-| Contrat             | Utilisé par                              | Production                                 | Doublure de test                             |
-| ------------------- | ---------------------------------------- | ------------------------------------------ | -------------------------------------------- |
-| `CurrencyConverter` | `Trade` (prix de l'achat)                | `StandardTrade` (2 pièces)                 | Stub `FixedRateConverter` (taux figé)        |
-| `TreasuryRegistry`  | `Treasury` (pièces des joueurs)          | à venir (persistance de la partie)         | Fake `InMemoryTreasuryRegistry` (en mémoire) |
-| `AuditNotifier`     | `Treasury` (seuil critique de 30 pièces) | `LogAuditNotifier` (SLF4J)                 | Mock Mockito (`verify(audit, times(1))`)     |
-| `Clock`             | `TurnTimer` (heure limite officielle)    | `SystemClock` (`System.currentTimeMillis`) | Fake `FakeClock` (avancée à la main)         |
-
-#### Front (Vitest) : affichage
-
-Contrats dans `ports.ts`, production dans `adapters.ts`, tests et doublures dans `test/` (`test/fakes.ts`).
-
-| Contrat             | Utilisé par                               | Production                   | Doublure de test                         |
-| ------------------- | ----------------------------------------- | ---------------------------- | ---------------------------------------- |
-| `CurrencyConverter` | `quotePurchase` (prix du devis)           | `standardTrade` (2 pièces)   | Stub `fixedRate` (taux figé)             |
-| `TreasuryRegistry`  | `quotePurchase` (pièces de l'acheteur)    | `playersTreasury` (`Player`) | Fake `FakeTreasuryRegistry` (en mémoire) |
-| `AuditNotifier`     | `createCountdown` (inactivité)            | `loggerAudit` (Pino)         | Mock `vi.fn()` (appel vérifié)           |
-| `Clock`             | `createCountdown` (temps restant affiché) | `systemClock` (`Date.now()`) | Fake `FakeClock` (avancée à la main)     |
+Front : `ports.ts` (`GameServer`), production `adapters.ts` (`httpGameServer`, client `lib/api`), fake
+`test/fakes.ts` (`FakeGameServer`, méthodes espionnées avec `vi.fn`).
 
 ## Tests
 
-| Côté  | Emplacement                                                           | Lancer                        |
-| ----- | --------------------------------------------------------------------- | ----------------------------- |
-| Front | `frontend/src/games/sdv-civilisation/test/*.test.ts(x)` (Vitest)      | `npm test` dans `frontend/`   |
-| BDD   | `frontend/src/games/sdv-civilisation/test/partie.feature` (Gherkin)   | `npm test` dans `frontend/`   |
-| Back  | `backend/src/test/java/fr/tikigaming/games/sdv_civilisation/` (JUnit) | `mvn -f backend/pom.xml test` |
+| Niveau      | Emplacement (sous `backend/src/test/java/fr/tikigaming/games/sdv_civilisation/`)            | Lancer                        |
+| ----------- | ------------------------------------------------------------------------------------------- | ----------------------------- |
+| Unitaires   | `*Test.java` du domaine, `api/SdvCivilisationServiceTest.java`, `api/SealedStateTest.java`… | `mvn -f backend/pom.xml test` |
+| Intégration | `api/SdvCivilisationApiIntegrationTest.java`, `api/SupabaseGamesIntegrationTest.java`       | `mvn -f backend/pom.xml test` |
+| Contrat     | `api/GameViewContractTest.java`, qui fige `frontend/…/test/contract/*.json`                 | `mvn -f backend/pom.xml test` |
+| Front       | `frontend/src/games/sdv-civilisation/test/*.test.ts(x)` (Vitest)                            | `npm test` dans `frontend/`   |
 
-Les règles de la partie sont décrites en Gherkin dans `partie.feature` (Soit / Quand / Alors), à partir
-d'un atelier « 3 amigos » résumé en tête du fichier. Les étapes (`partie.steps.test.ts`) appellent le
-moteur de partie, jamais l'écran. Doublures utilisées : stubs (`identityShuffler`, `fixedRate`), fakes
-(`FakeScores`, registre et horloge en mémoire) et mocks (`vi.fn` / `vi.spyOn` sur le convertisseur,
-`submitScore` et `onReplay`).
+- Les tests JUnit suivent le TDD : chaque règle a un commit `[TDD rouge]` (le test seul, qui échoue) puis un
+  commit `[TDD vert]` (le code qui le fait passer) ; `git log --grep "TDD"` les liste.
+- Chaque test est écrit en Étant donné / Quand / Alors (commentaires Gherkin), comme les scénarios de
+  [`partie.feature`](partie.feature), issus de l'atelier « 3 amigos » et vérifiés côté serveur.
+- Intégration sans conteneur ni réseau : l'application Spring complète est appelée par MockMvc (sécurité,
+  CSRF, session, JSON), et l'API REST de Supabase est simulée par `MockRestServiceServer`.
+- Pas de test flaky : horloge et mélange figés, aucune attente réelle, aucun appel réseau, chaque test avec ses
+  propres sessions et comptes.
+- Contrat : le JSON envoyé par le serveur pour une partie type est figé dans `test/contract/` ; les tests du
+  front s'en servent comme réponses de leur faux serveur. Après un changement de format :
+  `mvn test -Dcontract.update=true` dans `backend/`, puis `npm run format` dans `frontend/`.
