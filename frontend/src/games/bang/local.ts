@@ -62,14 +62,29 @@ function withActive(game: LocalGame, change: Partial<LocalPlayer>): LocalPlayer[
 }
 
 /** Les deux premières cartes de la pioche vont dans la main du joueur actif, qui passe en phase de jeu. */
-export function draw(game: LocalGame): LocalGame {
+export function draw(game: LocalGame, shuffle: Shuffle = shuffleAtRandom): LocalGame {
   if (game.phase !== 'DRAW') throw new Error('Tu as déjà pioché ce tour-ci.')
-  if (game.drawPile.length < 2) throw new Error('La pioche ne contient pas assez de cartes.')
+  if (game.drawPile.length + game.discardPile.length < 2) throw new Error('La pioche ne contient pas assez de cartes.')
+  let pile = [...game.drawPile]
+  let discarded = [...game.discardPile]
+  const recycle = () => {
+    if (pile.length === 0 && discarded.length > 0) {
+      pile = shuffle(discarded)
+      discarded = []
+    }
+  }
+  const drawn: ViewCard[] = []
+  recycle()
+  for (let index = 0; index < 2; index++) {
+    drawn.push(pile.shift()!)
+    recycle()
+  }
   const player = activeOf(game)
   return {
     ...game,
-    players: withActive(game, { hand: [...player.hand, ...game.drawPile.slice(0, 2)] }),
-    drawPile: game.drawPile.slice(2),
+    players: withActive(game, { hand: [...player.hand, ...drawn] }),
+    drawPile: pile,
+    discardPile: discarded,
     phase: 'PLAY',
   }
 }
