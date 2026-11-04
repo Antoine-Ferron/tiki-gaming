@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ShotRulesTest {
 
@@ -185,13 +186,83 @@ class ShotRulesTest {
     @ParameterizedTest
     @CsvSource({"4, 3", "2, 1", "1, 0"})
     void acceptingTheShotCostsExactlyOneLifePoint(int health, int expected) {
-        GameState state =
-                state(1, player(1, BangCharacter.BART_CASSIDY, 4), player(2, BangCharacter.BART_CASSIDY, health));
+        GameState state = damageState(BangCharacter.BART_CASSIDY, health);
 
         ShotOutcome outcome = rules.respond(state, 2, null);
 
         assertThat(seat(outcome.state(), 2).health()).isEqualTo(expected);
         assertThat(outcome.discarded()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 4})
+    void nonLethalDamageTransfersExactlyOneExistingCardFromDeckToBart(int health) {
+        GameState before = damageState(BangCharacter.BART_CASSIDY, health);
+        CardInstance bonus = before.drawPile().getFirst();
+
+        ShotOutcome outcome = rules.respond(before, 2, null);
+
+        assertThat(seat(outcome.state(), 2).health()).isEqualTo(health - 1);
+        assertThat(seat(outcome.state(), 2).hand()).containsExactly(missed, bonus);
+        assertThat(seat(outcome.state(), 2).hand().getLast()).isSameAs(bonus);
+        assertThat(outcome.state().drawPile()).containsExactly(before.drawPile().getLast());
+        assertThat(outcome.state().discardPile()).isEqualTo(before.discardPile());
+        assertThat(outcome.discarded()).isEmpty();
+        assertThat(outcome.state().currentSeat()).isEqualTo(before.currentSeat());
+        assertThat(outcome.state().phase()).isEqualTo(before.phase());
+        assertThat(seat(before, 2).health()).isEqualTo(health);
+        assertThat(seat(before, 2).hand()).containsExactly(missed);
+        assertThat(before.drawPile()).hasSize(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1})
+    void bartDoesNotDrawWhenNoLifeIsLostOrTheDamageIsLethal(int health) {
+        GameState before = damageState(BangCharacter.BART_CASSIDY, health);
+
+        ShotOutcome outcome = rules.respond(before, 2, null);
+
+        assertThat(seat(outcome.state(), 2).health()).isZero();
+        assertThat(seat(outcome.state(), 2).hand()).containsExactly(missed);
+        assertThat(outcome.state().drawPile()).isEqualTo(before.drawPile());
+        assertThat(outcome.state().discardPile()).isEqualTo(before.discardPile());
+        assertThat(outcome.discarded()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = BangCharacter.class, mode = EnumSource.Mode.EXCLUDE, names = "BART_CASSIDY")
+    void damageOnOtherCharactersNeverDrawsABonusCard(BangCharacter character) {
+        GameState before = damageState(character, 3);
+
+        ShotOutcome outcome = rules.respond(before, 2, null);
+
+        assertThat(seat(outcome.state(), 2).health()).isEqualTo(2);
+        assertThat(seat(outcome.state(), 2).hand()).containsExactly(missed);
+        assertThat(outcome.state().drawPile()).isEqualTo(before.drawPile());
+        assertThat(outcome.discarded()).isEmpty();
+    }
+
+    @Test
+    void dodgingNeverAwardsBartABonusCard() {
+        GameState before = damageState(BangCharacter.BART_CASSIDY, 4);
+
+        ShotOutcome outcome = rules.respond(before, 2, missed.id());
+
+        assertThat(seat(outcome.state(), 2).health()).isEqualTo(4);
+        assertThat(seat(outcome.state(), 2).hand()).isEmpty();
+        assertThat(outcome.state().drawPile()).isEqualTo(before.drawPile());
+        assertThat(outcome.discarded()).containsExactly(missed);
+    }
+
+    private GameState damageState(BangCharacter character, int health) {
+        return new GameState(
+                List.of(player(1, BangCharacter.WILLY_THE_KID, 4, bang), player(2, character, health, missed)),
+                List.of(
+                        new CardInstance("first-draw", CardType.BANG),
+                        new CardInstance("second-draw", CardType.MISSED)),
+                List.of(new CardInstance("old-discard", CardType.BANG)),
+                1,
+                GameState.Phase.PLAY);
     }
 
     @Test
@@ -219,14 +290,20 @@ class ShotRulesTest {
         CardInstance discarded = new CardInstance("discarded", CardType.MISSED);
         GameState before = new GameState(table(missed).players(), List.of(draw), List.of(discarded), 1, phase);
 
-        for (ShotOutcome outcome : List.of(
-                rules.fire(before, 1, "bang-1", 2, 0),
-                rules.respond(before, 2, "missed-1"),
-                rules.respond(before, 2, null))) {
+        for (ShotOutcome outcome :
+                List.of(rules.fire(before, 1, "bang-1", 2, 0), rules.respond(before, 2, "missed-1"))) {
             assertThat(outcome.state().phase()).isEqualTo(phase);
             assertThat(outcome.state().currentSeat()).isEqualTo(1);
             assertThat(outcome.state().drawPile()).containsExactly(draw);
             assertThat(outcome.state().discardPile()).containsExactly(discarded);
         }
+        ShotOutcome accepted = rules.respond(before, 2, null);
+        assertThat(accepted.state().phase()).isEqualTo(phase);
+        assertThat(accepted.state().currentSeat()).isEqualTo(1);
+        assertThat(accepted.state().drawPile()).isEmpty();
+        assertThat(accepted.state().discardPile()).containsExactly(discarded);
+        assertThat(seat(accepted.state(), 2).health()).isEqualTo(3);
+        assertThat(seat(accepted.state(), 2).hand()).containsExactly(missed, draw);
+        assertThat(accepted.discarded()).isEmpty();
     }
 }

@@ -15,10 +15,16 @@ public class ShotRules {
     private static final int BASE_RANGE = 1;
 
     private final IntBinaryOperator distance;
+    private final CardDraw cardDraw;
 
     /** @param distance distance entre deux sièges (#58) */
     public ShotRules(IntBinaryOperator distance) {
+        this(distance, new CardDraw());
+    }
+
+    ShotRules(IntBinaryOperator distance, CardDraw cardDraw) {
         this.distance = distance;
+        this.cardDraw = cardDraw;
     }
 
     /** Le joueur au tour {@code shooterSeat} joue un BANG ! sur {@code targetSeat}. {@code shotsThisTurn} : tirs déjà faits. */
@@ -46,7 +52,10 @@ public class ShotRules {
         if (missedCardId != null) {
             return discard(state, target, usableAs(target, missedCardId, CardType.MISSED));
         }
-        return new ShotOutcome(replace(state, withHealth(target, Math.max(0, target.health() - 1))), List.of());
+        int health = Math.max(0, target.health() - 1);
+        int bonus = health > 0 ? target.character().cardsDrawnOnLifeLost(target.health() - health) : 0;
+        GameState damaged = replace(state, withHealth(target, health));
+        return new ShotOutcome(cardDraw.draw(damaged, targetSeat, bonus), List.of());
     }
 
     private static GameState.Player player(GameState state, int seat) {

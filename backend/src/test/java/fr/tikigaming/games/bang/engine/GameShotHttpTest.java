@@ -627,6 +627,74 @@ class GameShotHttpTest {
         view(code, 1).andExpect(jsonPath("$.pendingShot").doesNotExist());
     }
 
+    @Test
+    void bartReceivesTheFirstDrawCardWhenAcceptingANonLethalShot() throws Exception {
+        String code = startedTable(
+                preparedGame(BangCharacter.CALAMITY_JANET, BangCharacter.BART_CASSIDY, GameState.Phase.PLAY));
+        GameState before = tables.game(code);
+        CardInstance bonus = before.drawPile().getFirst();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+
+        command(code, "shots/" + shot + "/accept", 2).andExpect(status().isNoContent());
+
+        view(code, 2)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.players[1].health").value(3))
+                .andExpect(jsonPath("$.hand[1].id").value(bonus.id()))
+                .andExpect(jsonPath("$.hand[1].type").value(bonus.type().name()))
+                .andExpect(jsonPath("$.currentSeat").value(1))
+                .andExpect(jsonPath("$.phase").value("PLAY"))
+                .andExpect(jsonPath("$.pendingShot").doesNotExist());
+        GameState after = tables.game(code);
+        assertThat(after.players().get(1).hand()).containsExactly(card("missed-2", CardType.MISSED), bonus);
+        assertThat(after.drawPile())
+                .containsExactlyElementsOf(
+                        before.drawPile().subList(1, before.drawPile().size()));
+        assertThat(after.discardPile()).containsExactly(card("old", CardType.MISSED), card("bang-1", CardType.BANG));
+        assertThat(before.players().get(1).hand()).containsExactly(card("missed-2", CardType.MISSED));
+        assertThat(before.drawPile()).hasSize(10);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"dodge", "lethal"})
+    void bartDoesNotReceiveABonusAfterADodgeOrLethalDamage(String action) throws Exception {
+        GameState initial =
+                preparedGame(BangCharacter.CALAMITY_JANET, BangCharacter.BART_CASSIDY, GameState.Phase.PLAY);
+        if (action.equals("lethal")) {
+            List<GameState.Player> players = new ArrayList<>(initial.players());
+            GameState.Player bart = players.get(1);
+            players.set(
+                    1,
+                    new GameState.Player(
+                            bart.accountId(),
+                            bart.seat(),
+                            bart.roleCard(),
+                            bart.character(),
+                            1,
+                            bart.maxHealth(),
+                            bart.hand()));
+            initial = new GameState(
+                    List.copyOf(players),
+                    initial.drawPile(),
+                    initial.discardPile(),
+                    initial.currentSeat(),
+                    initial.phase());
+        }
+        String code = startedTable(initial);
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+
+        command(code, "shots/" + shot + (action.equals("dodge") ? "/dodge/missed-2" : "/accept"), 2)
+                .andExpect(status().isNoContent());
+
+        GameState after = tables.game(code);
+        assertThat(after.players().get(1).health()).isEqualTo(action.equals("dodge") ? 4 : 0);
+        assertThat(after.players().get(1).hand()).hasSize(action.equals("dodge") ? 0 : 1);
+        assertThat(after.drawPile()).isEqualTo(initial.drawPile());
+        view(code, 2).andExpect(jsonPath("$.pendingShot").doesNotExist());
+    }
+
     private String pendingId(String code) throws Exception {
         return json.readTree(view(code, 2)
                         .andExpect(status().isOk())
