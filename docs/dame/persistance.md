@@ -43,8 +43,8 @@ jeux. Les quatre commits unitaires sont conservés dans leur ordre après rebase
 
 Sous-étapes avec commits distincts : préparation du schéma et de l'outillage,
 tests RED, contraintes SQL, adaptateur GREEN, puis branchement CI et preuves.
-La migration initiale est volontairement incomplète pendant RED ; elle sera
-complétée avant toute publication. Aucune migration déjà fusionnée n'est modifiée.
+La migration initiale était volontairement incomplète pendant RED ; elle a été
+complétée au GREEN SQL. Aucune migration déjà fusionnée n'est modifiée.
 
 Deux dépendances de test sont ajoutées à Maven : Testcontainers (conteneurs réels)
 et le pilote PostgreSQL (migrations et assertions SQL), versions gérées par le BOM
@@ -97,3 +97,26 @@ branches couvertes** ; moteur et rencontres restent à 100 % lignes/branches.
 
 La suite PostgreSQL collective `CI=true npm run test:integration` passe également :
 **57 cas dans 4 fichiers**, avec la nouvelle migration, aucun test ignoré.
+
+## Renforcement par mutation
+
+Le premier PIT passe le seuil mais révèle deux réponses incohérentes insuffisamment
+couvertes : plusieurs lignes pourtant valides pour un seul UUID, et une clôture
+renvoyant l'UUID d'une autre rencontre. Deux tests dédiés les refusent désormais.
+Deux entrées de corps uniquement composé d'espaces complètent aussi les cas
+invalides. Aucun code de production ni paramètre PIT n'est changé.
+
+Après renforcement : **29 tests HTTP**, **1 085 tests backend et 52 tests
+d'intégration réussis**, zéro erreur ou ignoré. La persistance couvre désormais
+**70/70 lignes et 18/18 branches**.
+
+PIT mesure **27/28 mutants tués (96,43 %) sur la persistance**, **22/22 sur les
+rencontres**, et **262/270 (97,04 %) sur le profil collectif**. Aucun timeout,
+mutant non couvert ou erreur. Les sept survivants historiques du moteur restent
+analysés dans [mutation.md](mutation.md).
+
+Le seul survivant de la persistance supprime le précontrôle `body.isBlank()` dans
+`rows`. Le parseur refuse ensuite ces corps comme JSON sans tableau et le service
+renvoie toujours `MatchStorageException` : même contrat observable. Les tests
+ne figent pas le détail interne de la cause pour tuer cette redondance. Aucune
+exclusion ne masque le mutant. PIT mesure le code Java, pas les contraintes SQL.

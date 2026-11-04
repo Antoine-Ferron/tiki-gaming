@@ -171,7 +171,7 @@ class SupabaseMatchRepositoryTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "null", "{}", "[{}]", "[", "[{},{}]"})
+    @ValueSource(strings = {"", " ", "\n\t", "null", "{}", "[{}]", "[", "[{},{}]"})
     void invalidResponsesAreNotTreatedAsMissingMatches(String body) {
         server.expect(requestTo(LOOKUP)).andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 
@@ -184,5 +184,25 @@ class SupabaseMatchRepositoryTest {
         server.expect(requestTo(LOOKUP)).andRespond(withSuccess("[" + otherRow + "]", MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> repository.findById(ID)).isInstanceOf(MatchStorageException.class);
+    }
+
+    @Test
+    void twoOtherwiseValidRowsAreRefused() {
+        server.expect(requestTo(LOOKUP))
+                .andRespond(withSuccess("[" + ROW + "," + ROW + "]", MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> repository.findById(ID)).isInstanceOf(MatchStorageException.class);
+    }
+
+    @Test
+    void closingAnotherIdentifierIsNotReportedAsASuccess() {
+        String otherRow = ROW.replace("000000000018", "000000000019")
+                .replace("IN_PROGRESS", "WHITE_WON")
+                .replace("null", "\"" + END + "\"");
+        server.expect(requestTo(CLOSING)).andRespond(withSuccess("[" + otherRow + "]", MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> repository.save(
+                        Match.start(ID, "Cherif", "Amadou", START).finish(GameStatus.WHITE_WON, END)))
+                .isInstanceOf(MatchStorageException.class);
     }
 }
