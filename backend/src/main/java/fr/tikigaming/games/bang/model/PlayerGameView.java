@@ -4,10 +4,22 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import fr.tikigaming.games.bang.cards.BangCharacter;
 import fr.tikigaming.games.bang.cards.CardType;
 import fr.tikigaming.games.bang.cards.Role;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 /** Seules les informations auxquelles le compte connecté a droit. */
-public record PlayerGameView(String code, int seat, int currentSeat, Role role, List<Card> hand, List<Player> players) {
+public record PlayerGameView(
+        String code,
+        int seat,
+        int currentSeat,
+
+        @Schema(description = "Rôle privé du compte connecté")
+        Role role,
+
+        @Schema(description = "Cartes en main du compte connecté uniquement")
+        List<Card> hand,
+
+        List<Player> players) {
     public record Card(String id, CardType type) {}
 
     public record Player(
@@ -15,7 +27,15 @@ public record PlayerGameView(String code, int seat, int currentSeat, Role role, 
             BangCharacter character,
             int health,
             int maxHealth,
+
+            @Schema(description = "Cartes posées, toujours vide au démarrage")
             List<Card> playedCards,
+
             int handCount,
-            @JsonInclude(JsonInclude.Include.NON_NULL) Role role) {}
+
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+            @Schema(
+                    description = "SHERIFF pour le Shérif ; absent pour les autres joueurs",
+                    allowableValues = "SHERIFF")
+            Role role) {}
 }

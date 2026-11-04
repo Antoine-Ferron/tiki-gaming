@@ -216,6 +216,42 @@ class PrivateTablesHttpTest {
     }
 
     @Test
+    void swaggerDocumentsThePrivateViewAndItsAccessErrors() throws Exception {
+        String path = "$.paths['" + TABLES + "/{code}/state'].get";
+        ResultActions docs = mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(path + ".tags[0]").value("bang"))
+                .andExpect(jsonPath(path + ".summary", not(emptyOrNullString())))
+                .andExpect(jsonPath(path + ".description", containsString("ne renouvelle pas")))
+                .andExpect(jsonPath(path + ".parameters[*].name", org.hamcrest.Matchers.contains("code")))
+                .andExpect(jsonPath(path + ".responses['200'].content['*/*'].schema['$ref']")
+                        .value("#/components/schemas/PlayerGameView"))
+                .andExpect(jsonPath(
+                        "$.components.schemas.PlayerGameView.properties", org.hamcrest.Matchers.aMapWithSize(6)))
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.code")
+                        .exists())
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.seat")
+                        .exists())
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.currentSeat")
+                        .exists())
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.role")
+                        .exists())
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.hand")
+                        .exists())
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.players")
+                        .exists())
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.role.description")
+                        .value("Rôle privé du compte connecté"))
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.hand.description")
+                        .value("Cartes en main du compte connecté uniquement"));
+
+        for (int error : List.of(401, 403, 404, 409)) {
+            docs.andExpect(jsonPath(path + ".responses['" + error + "'].content.*.schema['$ref']")
+                    .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
+        }
+    }
+
+    @Test
     void swaggerDocumentsStartingWithoutExposingTheServerState() throws Exception {
         String path = "$.paths['" + TABLES + "/{code}/start'].post";
         ResultActions docs = mvc.perform(get("/v3/api-docs"))
