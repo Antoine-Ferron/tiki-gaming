@@ -81,23 +81,30 @@ public final class MoveGenerator {
         return destinations;
     }
 
-    /** Le pion : avance d'une case, ou de deux depuis sa rangée de départ ; prend en diagonale vers l'avant. */
+    /**
+     * Le pion : avance d'une case vers le camp adverse, ou de deux depuis sa rangée de départ ; prend en diagonale
+     * vers l'avant. Les blancs montent (rangée 2 au départ), les noirs descendent (rangée 7).
+     */
     private static Set<Square> pawnDestinations(Position position, Square from, Color color) {
+        int forward = color == Color.WHITE ? 1 : -1;
+        int startRank = color == Color.WHITE ? 1 : BOARD_SIZE - 2;
         Set<Square> destinations = new HashSet<>();
-        Square oneStep = new Square(from.file(), from.rank() + 1);
+        Square oneStep = new Square(from.file(), from.rank() + forward);
         if (position.pieceAt(oneStep).isEmpty()) {
             destinations.add(oneStep);
-            Square twoSteps = new Square(from.file(), from.rank() + 2);
-            if (from.rank() == 1 && position.pieceAt(twoSteps).isEmpty()) {
-                destinations.add(twoSteps);
+            if (from.rank() == startRank) {
+                Square twoSteps = new Square(from.file(), from.rank() + 2 * forward);
+                if (position.pieceAt(twoSteps).isEmpty()) {
+                    destinations.add(twoSteps);
+                }
             }
         }
         for (int side : new int[] {-1, 1}) {
             int file = from.file() + side;
-            if (!isOnBoard(file, from.rank() + 1)) {
+            if (!isOnBoard(file, from.rank() + forward)) {
                 continue;
             }
-            Square diagonal = new Square(file, from.rank() + 1);
+            Square diagonal = new Square(file, from.rank() + forward);
             if (position.pieceAt(diagonal).isPresent() && !isOccupiedBy(position, diagonal, color)) {
                 destinations.add(diagonal);
             }
