@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError } from '@/lib/api'
 import * as api from './api'
 import type { GameView } from './board/view'
@@ -14,6 +14,7 @@ export function OnlineTable() {
   const [joinCode, setJoinCode] = useState('')
   const [view, setView] = useState<GameView | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const acting = useRef(false)
 
   const refresh = useCallback(async (tableCode: string) => {
     try {
@@ -32,13 +33,17 @@ export function OnlineTable() {
 
   /** Lance une action, affiche son erreur éventuelle, puis relit la vue. */
   async function run(action: () => Promise<unknown>) {
+    if (acting.current) return
+    acting.current = true
     try {
       await action()
       setError(null)
     } catch (err) {
       setError(messageOf(err))
+    } finally {
+      if (code) await refresh(code)
+      acting.current = false
     }
-    if (code) await refresh(code)
   }
 
   /** Entre dans la table, puis lit tout de suite sa vue (la relecture périodique prend ensuite le relais). */
