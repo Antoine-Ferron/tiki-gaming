@@ -4,8 +4,13 @@ import { difficultyOf } from './difficulty'
 import { getLevel, levels } from './levels'
 import { solve } from './solver'
 
-// Minimum de coups de chaque niveau, calculé une seule fois par le solveur (vérité des données).
-const optimalOf = new Map(levels.map((level) => [level.id, solve(parseBoard(level.map))?.length ?? null]))
+// Minimum de coups de chaque niveau, calculé par le solveur (vérité des données) au premier besoin, dans un test, puis
+// gardé. Calculé au chargement du fichier, il rendrait « statiques » les mutants du solveur pour Stryker.
+const optimalCache = new Map<number, number | null>()
+function optimalOf(id: number): number | null {
+  if (!optimalCache.has(id)) optimalCache.set(id, solve(parseBoard(getLevel(id).map))?.length ?? null)
+  return optimalCache.get(id)!
+}
 
 /** Difficulté attendue d'après le numéro du niveau (N2). */
 function expectedDifficulty(id: number) {
@@ -33,7 +38,7 @@ describe('catalogue des niveaux (N1, N2, N6)', () => {
 
   test.each(levels.map((level) => level.id))('le niveau %i est valide et résoluble', (id) => {
     // Act
-    const optimal = optimalOf.get(id)
+    const optimal = optimalOf(id)
 
     // Assert
     expect(optimal).not.toBeNull()
@@ -41,7 +46,7 @@ describe('catalogue des niveaux (N1, N2, N6)', () => {
 
   test.each(levels.map((level) => level.id))('le niveau %i a la difficulté attendue pour son numéro', (id) => {
     // Act
-    const difficulty = difficultyOf(optimalOf.get(id) ?? 0)
+    const difficulty = difficultyOf(optimalOf(id) ?? 0)
 
     // Assert
     expect(difficulty).toBe(expectedDifficulty(id))
@@ -49,7 +54,7 @@ describe('catalogue des niveaux (N1, N2, N6)', () => {
 
   test('le minimum de coups ne diminue jamais d’un niveau au suivant', () => {
     // Act
-    const optimals = levels.map((level) => optimalOf.get(level.id) ?? 0)
+    const optimals = levels.map((level) => optimalOf(level.id) ?? 0)
 
     // Assert
     expect(optimals).toEqual([...optimals].sort((a, b) => a - b))
