@@ -14,7 +14,8 @@ class LevelsTest {
      * Minimum de coups de chaque niveau, de 1 à 20. Même liste que frontend/src/games/rush-hour/domain/levels.test.ts :
      * si un niveau change d'un seul côté, l'une des deux suites échoue.
      */
-    static final List<Integer> MINIMUMS = List.of(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 22, 24, 26);
+    static final List<Integer> MINIMUMS =
+            List.of(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17, 18, 19, 20, 22, 24, 26);
 
     @Test
     void serverKnowsTheSameTwentyLevelsAsTheGame() {
