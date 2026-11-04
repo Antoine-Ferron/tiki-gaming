@@ -99,13 +99,13 @@ Dans l'ordre des commits :
 
 | | Avant | Après |
 |---|---|---|
-| MSI front (domaine + `drag.ts`) | 98,65 % (6 survivants) | **100 %** (436 mutants neutralisés) |
+| MSI front (domaine + `drag.ts`) | 98,65 % (6 survivants) | **100 %** (471 mutants neutralisés, voir § 8) |
 | MSI back (`rush_hour`) | 95 % (8 survivants) | **97 %** (4 survivants, tous équivalents) |
 | MSI back, projet entier (configuration CI) | — | **97 %** (392 / 403) |
 | Rush Hour dans la mutation de la CI | non | **oui** |
-| Cas limites non testés trouvés | — | **4** |
-| Bouts de code inutiles supprimés | — | **2** |
-| Tests Vitest Rush Hour | 295 | **308** |
+| Cas limites non testés trouvés | — | **7** (4 + 3 révélés au § 8) |
+| Bouts de code inutiles supprimés | — | **4** (2 + 2 révélés au § 8) |
+| Tests Vitest Rush Hour | 295 | **311** |
 
 ## 7. Ce qu'il faut en retenir
 
@@ -114,4 +114,38 @@ Dans l'ordre des commits :
 - **Un mutant survivant n'est pas toujours un test manquant.** Ça peut être du code en trop (supprimé ici) ou un mutant équivalent (assumé et documenté).
 - **La mutation a aussi testé l'outillage.** Elle a trouvé un test qui ne marchait que depuis un dossier précis, avant qu'il ne casse la CI.
 
-**Coût.** La campagne complète du front prend environ 6 minutes en local, dont 61 % pour les mutants « statiques » (des valeurs définies au niveau du module, qui obligent à relancer toute la suite de tests). Le back prend environ 1 minute. Sur les PR, la CI lance Stryker et Pitest en mode **incrémental** : seuls les mutants des fichiers modifiés sont rejoués.
+## 8. Coût de la mutation en CI : de plus de 20 minutes à quelques minutes
+
+### Ce qu'on a observé
+
+Sur la PR, le job **Mutation (Stryker)** a dépassé **20 minutes**, contre 1 à 4 minutes pour les autres PR. Le nombre de tests unitaires n'y était pour rien : les 311 tests de Rush Hour tournent en 3 secondes, et Stryker ne relance pour chaque mutant que les tests qui couvrent sa ligne (`coverageAnalysis: 'perTest'`).
+
+### Diagnostic
+
+1. **Des mutants « statiques ».** Pour Stryker, un mutant est statique quand son code s'exécute **au chargement** d'un fichier de test, hors de tout test. Il ne sait alors plus quels tests le couvrent et relance **toute la suite** pour chacun. Chez nous, **295 mutants sur 477** l'étaient. Trois fichiers de test calculaient des données au chargement : la solution des 20 niveaux (`levels.test.ts`), le niveau 1 et sa solution (`RushHourGame.test.tsx`), un plateau dans le corps d'un `describe` (`moves.test.ts`). Un quatrième préchauffait le générateur dans un `beforeAll`, que Stryker compte aussi comme statique.
+2. **Un cache incrémental invalidé.** La clé du cache de Stryker contient l'empreinte de `stryker.config.mjs`. En ajoutant Rush Hour à cette configuration, on a changé la clé : le job est reparti de zéro et a rejoué **tous** les mutants, ceux de la plateforme compris.
+3. **Une machine plus petite.** La machine GitHub a 4 cœurs, contre 16 en local : une campagne de 6 minutes en local en dure facilement plus de 20 là-bas.
+
+### Corrections
+
+- **Données de test calculées au premier usage, dans un test** (une petite fonction `lazy`, ou un calcul dans chaque test), et un délai de 30 s par test au lieu du préchauffage. Le comportement testé ne change pas : 311 tests verts, y compris dans un ordre aléatoire.
+- **Clé de secours pour le cache Stryker dans la CI** (`stryker-${{ runner.os }}-`). Après un changement de configuration, le job reprend le dernier rapport incrémental et ne rejoue que les mutants nouveaux ou touchés.
+
+| Campagne Stryker Rush Hour (en local) | Avant | Après |
+|---|---|---|
+| Mutants statiques | 295 | **7** |
+| Durée | 5 min 47 | **3 min 02** |
+| Score de mutation | 100 % | **100 %** (471 mutants : 413 tués, 58 timeouts) |
+
+### Effet inattendu : de faux « tués » révélés
+
+En supprimant les calculs faits au chargement, **6 mutants de `board.ts` sont passés de « tué » à « survivant »**. Avant, un mutant qui cassait le parseur faisait planter le **chargement** d'un fichier de test entier, et Stryker comptait ça comme une victoire. Le mutant était tué pour une mauvaise raison. Une fois chaque mutant testé seulement par les tests qui le couvrent, les vrais trous sont apparus :
+
+- **3 tests manquants** : un véhicule vertical en pointillés, en L, ou décalé d'une colonne. Seul le cas horizontal était testé. Les tests sont ajoutés ;
+- **3 mutants équivalents**, et le code concerné est supprimé :
+  - les ancres `^` et `$` de la regex sont inutiles, puisqu'on teste un seul caractère à la fois ;
+  - en horizontal, vérifier que toutes les cases sont sur la même ligne ne sert à rien, puisque c'est ce qui définit « horizontal ».
+
+**À retenir.** Un score de mutation peut lui aussi mentir, quand des mutants sont tués par effet de bord. Mesurer le *pourquoi* d'un mutant tué compte autant que le score.
+
+Les 3 mutants équivalents du générateur (cache, positions déjà gagnées jamais tirées) peuvent apparaître comme survivants selon l'ordre d'exécution, parce que le cache des dispositions est partagé entre les tests d'un même processus. Ils n'ont pas d'effet sur ce que voit le joueur.
