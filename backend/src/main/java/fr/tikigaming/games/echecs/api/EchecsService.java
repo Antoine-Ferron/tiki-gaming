@@ -13,10 +13,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class EchecsService {
 
-    /** Les cases où peut aller la pièce posée en {@code from}. */
+    /** Les cases où peut aller la pièce posée en {@code from}, triées (réponse stable pour l'API). */
     public List<String> destinations(String fen, String from) {
         return MoveGenerator.destinations(Fen.parse(fen), Square.of(from)).stream()
                 .map(Square::toString)
+                .sorted()
                 .toList();
     }
 }
