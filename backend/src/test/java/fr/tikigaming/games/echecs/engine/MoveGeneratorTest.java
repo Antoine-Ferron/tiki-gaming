@@ -82,6 +82,16 @@ class MoveGeneratorTest {
         assertThat(MoveGenerator.destinations(position, Square.of("b1"))).isEqualTo(squares("a3", "c3"));
     }
 
+    @Test
+    @DisplayName("une case vide n'a aucune destination")
+    void uneCaseVideNaAucuneDestination() {
+        // Arrange
+        Position position = Fen.parse("4k3/8/8/8/8/8/8/4K3 w - - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of("d4"))).isEmpty();
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
