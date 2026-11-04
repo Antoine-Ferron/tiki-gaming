@@ -86,6 +86,9 @@ CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, r
 | [docs/ci.md](docs/ci.md)                             | La CI étape par étape : ce qui est vérifié, les seuils, que faire quand un check échoue |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                   | Branches, PR, commits, création d'un jeu                    |
 | [quality/README.md](quality/README.md)               | Qualimétrie : SonarQube, charge k6 (P95), scan DAST ZAP     |
+| [docs/slo.md](docs/slo.md)                           | SLI / SLO / SLA, budget d'erreur, profils k6, résilience (timeouts, disjoncteur, Toxiproxy) |
+| [specs/rtm-matrix.md](specs/rtm-matrix.md)           | Matrice de traçabilité : exigences ↔ tests ↔ anomalies, vérifiée en CI |
+| [specs/cahier-de-recette.md](specs/cahier-de-recette.md) | Recette utilisateur (UAT) : critères d'entrée et de sortie, fiches, procès-verbal |
 
 ## Contribuer
 

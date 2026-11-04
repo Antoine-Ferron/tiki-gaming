@@ -2,7 +2,7 @@
 
 Ce qui se passe, étape par étape, entre le moment où tu pousses du code et celui où ta PR peut être fusionnée.
 
-Fichiers de référence : `.github/workflows/ci.yml` (12 jobs), `.github/workflows/codeql.yml` (CodeQL) et, pour
+Fichiers de référence : `.github/workflows/ci.yml` (13 jobs), `.github/workflows/codeql.yml` (CodeQL) et, pour
 les outils de qualimétrie, [quality/README.md](../quality/README.md). Les règles d'équipe sont dans
 [CONTRIBUTING.md](../CONTRIBUTING.md#intégration-continue).
 
@@ -12,6 +12,7 @@ les outils de qualimétrie, [quality/README.md](../quality/README.md). Les règl
 flowchart LR
     PUSH["Push / PR<br/>vers dev ou main"] --> CH["Changes<br/>zones modifiées"]
     PUSH --> SEC["Security"]
+    PUSH --> RTM["Traçabilité (RTM)"]
     PUSH --> CQ["CodeQL"]
     CH --> FE["Frontend"]
     CH --> BE["Backend"]
@@ -22,7 +23,7 @@ flowchart LR
     MF & MB & E2E --> PERF["Performance k6"]
     MF & MB & E2E --> DAST["DAST ZAP"]
     MF & MB & E2E --> SQ["SonarQube"]
-    SEC & PERF & DAST & SQ --> V["CI (verdict)"]
+    SEC & RTM & PERF & DAST & SQ --> V["CI (verdict)"]
     V --> GATE{{"Checks obligatoires<br/>+ 1 relecture"}}
     GATE --> MERGE["Fusion<br/>(squash)"]
 ```
@@ -33,7 +34,7 @@ minutes de mutation ou de tests de charge sur du code qui ne passe pas le lint.
 
 | Palier | Jobs | Ce qu'il prouve |
 |--------|------|-----------------|
-| 1. Statique et unitaires | `Frontend`, `Backend` (et `Security`, `CodeQL` en parallèle, toujours) | le code est formaté, typé, et ses tests unitaires passent avec la couverture minimale |
+| 1. Statique et unitaires | `Frontend`, `Backend` (et `Traçabilité (RTM)`, `Security`, `CodeQL` en parallèle, toujours) | le code est formaté, typé ; tests unitaires, propriétés, contrat Pact et chaos passent avec la couverture minimale ; chaque exigence est tracée |
 | 2. Intégration | `Integration` | les migrations, la RLS et les triggers marchent sur un vrai PostgreSQL |
 | 3. Robustesse des tests et parcours | `Mutation (Stryker)`, `Mutation (Pitest)`, `E2E` | les tests détectent vraiment les bugs ; les parcours joueur et l'accessibilité tiennent |
 | 4. Non fonctionnel et quality gate | `Performance (k6)`, `DAST (ZAP baseline)`, `SonarQube Cloud` | performance, sécurité dynamique et qualimétrie |
@@ -50,13 +51,14 @@ vont jusqu'au bout : un seul run donne tous les problèmes du palier. Un job arr
 | 2 | Détection des zones modifiées | `Changes` | — |
 | 3 | Installation et caches | tous | — |
 | 4 | Formatage et lint du front | `Frontend` | code non formaté, erreur ESLint |
-| 5 | Tests unitaires et couverture du front | `Frontend` | test rouge, couverture sous le seuil |
+| 5 | Tests unitaires et couverture du front, contrat Pact | `Frontend` | test rouge, couverture sous le seuil, contrat pas à jour |
 | 6 | Build du front | `Frontend` | erreur de type TypeScript, build en échec |
-| 7 | Vérification complète du backend | `Backend` | Checkstyle, test rouge, couverture JaCoCo, formatage |
+| 7 | Vérification complète du backend | `Backend` | Checkstyle, test rouge (dont Pact provider et chaos), couverture JaCoCo, formatage |
+| 7 bis | Matrice de traçabilité | `Traçabilité (RTM)` | exigence sans test, preuve introuvable, échec sans anomalie |
 | 8 | Tests d'intégration base de données | `Integration` | migration ou règle RLS cassée |
 | 9 | Tests de mutation | `Mutation (Stryker)`, `Mutation (Pitest)` | moins de 75 % de mutants tués |
 | 10 | Tests de bout en bout et accessibilité | `E2E` | parcours cassé, violation WCAG 2.1 AA |
-| 11 | Tests de charge | `Performance (k6)` | P95 ≥ 300 ms, plus de 1 % d'erreurs |
+| 11 | Tests de charge | `Performance (k6)` | P95 ≥ 300 ms ou P99 ≥ 500 ms, plus de 1 % d'erreurs |
 | 12 | Scan de sécurité dynamique | `DAST (ZAP baseline)` | alerte de sécurité non acceptée |
 | 13 | Vulnérabilités des dépendances | `Security` | vulnérabilité « high » ou plus |
 | 14 | Analyse statique de sécurité | `CodeQL` | (alertes dans l'onglet *Security*) |
@@ -70,7 +72,9 @@ vont jusqu'au bout : un seul run donne tous les problèmes du palier. Un job arr
 La CI démarre sur :
 
 - **chaque PR** qui vise `dev` ou `main`, à chaque nouveau commit poussé dessus ;
-- **chaque push** sur `dev` ou `main`, c'est-à-dire après chaque fusion.
+- **chaque push** sur `dev` ou `main`, c'est-à-dire après chaque fusion ;
+- **chaque nuit à 2 h UTC** sur la branche par défaut, et à la demande (*Run workflow*) : tous les jobs tournent,
+  quelle que soit la zone modifiée, et la mutation est complète (palier « nuit » : validation exhaustive).
 
 CodeQL tourne en plus **chaque lundi à 6 h UTC**, même sans changement : de nouvelles règles de détection sortent
 régulièrement.
@@ -147,6 +151,19 @@ Tous les tests Vitest doivent passer, **et** la couverture doit rester au-dessus
 Le seuil global est placé juste sous la couverture actuelle : il empêche toute régression. On le relève quand la
 couverture monte, on ne le baisse jamais.
 
+Ces tests comprennent les **propriétés et le fuzzing** (`*.property.test.ts`, fast-check) : des règles vérifiées
+sur des centaines d'entrées générées, réduites au plus petit contre-exemple en cas d'échec.
+
+Puis le **contrat Pact** (consumer) :
+
+```bash
+npm run test:contract   # tests/contract : écrit pacts/tiki-frontend-tiki-backend.json
+```
+
+Le vrai code du front (adaptateur des scores, session, client HTTP) appelle un faux backend Pact qui enregistre
+chaque requête et la réponse attendue. Le contrat est versionné : si le régénérer le modifie, la CI échoue
+(« Contrat Pact à jour ») jusqu'à ce qu'il soit commité, et le job `Backend` le rejoue.
+
 ## 6. Build du front (`Frontend`)
 
 ```bash
@@ -167,10 +184,25 @@ mvn -B verify
 
 1. **Checkstyle** : imports inutiles, nommage, erreurs probables (`backend/checkstyle.xml`) ;
 2. **compilation** du code et des tests (Java 21, Spring Boot 4.1) ;
-3. **tests** JUnit 5, y compris ceux qui démarrent l'application complète (Swagger) ;
+3. **tests** JUnit 5, y compris ceux qui démarrent l'application complète (Swagger), dont :
+   - **Pact provider** (`PactProviderTest`) : chaque interaction du contrat du front est rejouée en HTTP contre
+     l'application (sécurité, CSRF, validation) ; seuls les appels à Supabase sont simulés ;
+   - **chaos** (`SupabaseScoresChaosTest`) : Toxiproxy (Testcontainers) injecte latence et coupure entre le
+     client des scores et un faux Supabase ; timeouts et disjoncteur doivent tenir ([SLO](slo.md#résilience--quand-une-dépendance-tombe)) ;
 4. **couverture JaCoCo** : au moins 52 % des lignes et 64 % des branches sur tout le backend, et 95 % (lignes et
-   branches) sur le cœur métier (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`) ;
+   branches) sur le cœur métier (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`, `CircuitBreaker`) ;
 5. **Spotless** : le code doit être formaté (palantir-java-format). Pour corriger : `mvn spotless:apply`.
+
+### Traçabilité (`Traçabilité (RTM)`)
+
+```bash
+npm run rtm:check   # dans frontend/
+```
+
+Lit [specs/rtm-matrix.md](../specs/rtm-matrix.md) et échoue sur toute rupture de chaîne : exigence sans cas
+nominal ou sans cas d'erreur, cas rattaché à une exigence inconnue, preuve introuvable (fichier absent ou titre de
+test absent du fichier), cas `FAILED`/`BLOCKED` sans anomalie, anomalie sans sévérité, priorité ou correctif. Il
+tourne à chaque run, sans dépendance : renommer un test côté front ou backend casse la matrice.
 
 ## 8. Tests d'intégration base de données (`Integration`)
 
@@ -227,17 +259,18 @@ code est exécuté par les tests, mais rien ne vérifie vraiment son comportemen
 ## 10. Tests de bout en bout et accessibilité (`E2E`)
 
 ```bash
-npx playwright install --with-deps chromium   # une fois
+npx playwright install --with-deps chromium firefox webkit   # une fois
 npm run test:e2e                              # dans frontend/
 ```
 
-**Playwright** pilote un vrai navigateur Chromium sur l'application, comme le ferait un joueur
-(`frontend/e2e/lobby.spec.ts`) :
+**Playwright** pilote les trois moteurs de rendu (Chromium, Firefox, WebKit) sur l'application, comme le ferait un
+joueur (`frontend/e2e/lobby.spec.ts`, `compte.spec.ts`) :
 
 - de l'accueil au Clicker : avertissement invité et classement ;
 - une partie complète : score affiché, invitation à se connecter, sauvegarde sur l'appareil ;
 - une page réservée aux comptes renvoie vers la connexion, un jeu inconnu affiche la page introuvable ;
-- Supabase en panne : message lisible, le jeu reste jouable.
+- Supabase en panne : message lisible, le jeu reste jouable ;
+- l'inscription avec Google part vers le backend ; un joueur supprime son compte (RGPD).
 
 Le backend et Supabase sont **simulés** par interception réseau : le test ne dépend d'aucun service externe.
 
@@ -254,7 +287,8 @@ La CI monte une copie miniature de la plateforme :
 2. **PostgREST**, l'API REST de Supabase, avec la même RLS ;
 3. le **backend Java**, avec des secrets factices : il n'appelle aucun service externe.
 
-**k6** envoie ensuite un débit constant de requêtes, pendant 30 s par défaut :
+**k6** envoie ensuite un débit constant de requêtes (profil `load`), pendant 30 s par défaut. Les autres
+profils (`smoke`, `stress`, `spike`, `soak`) se lancent en local ; objectifs et résultats dans [slo.md](slo.md) :
 
 | Scénario | Débit | Requête |
 |----------|-------|---------|
@@ -262,8 +296,8 @@ La CI monte une copie miniature de la plateforme :
 | `submit_score` | 20 req/s | envoi de score par un joueur connecté |
 | `session` | 50 req/s | `GET /api/auth/session` du backend |
 
-Seuils bloquants (`quality/k6/lobby.js`) : **P95 < 300 ms** pour chaque scénario (95 % des requêtes répondent en
-moins de 300 ms), **moins de 1 %** d'erreurs et **plus de 99 %** de vérifications réussies. Résumé en artefact
+Seuils bloquants (`quality/k6/lobby.js`), qui sont les SLO : **P95 < 300 ms** et **P99 < 500 ms** pour chaque
+scénario, **moins de 1 %** d'erreurs et **plus de 99 %** de vérifications réussies. Résumé en artefact
 (`rapport-k6`).
 
 ## 12. Scan de sécurité dynamique (`DAST (ZAP baseline)`)
