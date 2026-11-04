@@ -62,6 +62,26 @@ class MoveGeneratorTest {
         assertThat(destinations).isEqualTo(squares("b3", "b5", "c2", "c6", "e2", "f3", "f5"));
     }
 
+    @Test
+    @DisplayName("un cavalier peut prendre une pièce adverse (règle D1)")
+    void unCavalierPeutPrendreUnePieceAdverse() {
+        // Arrange : pion noir en e6
+        Position position = Fen.parse("4k3/8/4p3/8/3N4/8/8/4K3 w - - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of("d4"))).contains(Square.of("e6"));
+    }
+
+    @Test
+    @DisplayName("un cavalier saute par-dessus les pièces : en b1 au départ, il va en a3 et c3")
+    void unCavalierSauteParDessusLesPieces() {
+        // Arrange : position de départ, le cavalier b1 est entouré de pions
+        Position position = Fen.parse("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of("b1"))).isEqualTo(squares("a3", "c3"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
