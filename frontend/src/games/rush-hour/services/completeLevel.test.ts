@@ -129,4 +129,18 @@ describe('completeLevel', () => {
     await expect(finishing).rejects.toMatchObject({ code: 'queued' })
     expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 1000 } })
   })
+
+  test('garde les statistiques du mode Génération déjà sauvegardées', async () => {
+    // Arrange
+    const deps = fakeDeps()
+    const generated = { facile: { won: 3, best: 1000 } }
+    deps.saves.data.set('rush-hour', { version: 1, best: {}, generated })
+    const ctx = createGameContext(game, player, deps)
+
+    // Act
+    await completeLevel(ctx, { level: 1, optimal: 2, moves: moves(2), hintsUsed: 0, durationMs: 1000 })
+
+    // Assert
+    expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 1000 }, generated })
+  })
 })
