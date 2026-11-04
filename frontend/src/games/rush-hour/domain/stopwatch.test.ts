@@ -1,16 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { type Clock, Stopwatch } from './stopwatch'
-
-/** Doublure d'horloge : le temps n'avance que quand le test le décide (pas de Date.now, pas de sleep). */
-class ManualClock implements Clock {
-  constructor(private ms = 0) {}
-  now() {
-    return this.ms
-  }
-  advance(ms: number) {
-    this.ms += ms
-  }
-}
+import { ManualClock } from '../testing/manualClock'
+import { Stopwatch } from './stopwatch'
 
 describe('Stopwatch', () => {
   test('mesure le temps écoulé depuis le début de la partie', () => {

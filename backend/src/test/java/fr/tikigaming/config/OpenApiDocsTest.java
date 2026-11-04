@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -46,12 +47,12 @@ class OpenApiDocsTest {
         MockMvc mvc;
 
         @Test
-        void exposesEveryAuthEndpointWithASummary() throws Exception {
+        void exposesEveryEndpointWithASummary() throws Exception {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.info.title").value("Tiki Gaming API"))
-                    // 8 routes d'authentification + 5 routes du jeu SDV Civilisation
-                    .andExpect(jsonPath("$.paths", aMapWithSize(13)))
+                    // 25 routes de la plateforme et des autres jeux + 5 routes de SDV Civilisation
+                    .andExpect(jsonPath("$.paths", aMapWithSize(30)))
                     .andExpect(jsonPath("$.paths['/api/auth/session'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/google'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/login'].post.summary", not(emptyOrNullString())))
@@ -60,9 +61,44 @@ class OpenApiDocsTest {
                     .andExpect(jsonPath("$.paths['/api/auth/password/reset'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/password'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/logout'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}/guesses")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/mastermind/{id}/restart")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/bang/tables")))
+                    .andExpect(jsonPath("$.paths", hasKey("/api/games/bang/tables/{code}/join")))
+                    .andExpect(jsonPath("$.paths['/api/games/mini-gta/world'].get.summary", not(emptyOrNullString())))
+                    .andExpect(
+                            jsonPath("$.paths['/api/games/mini-gta/missions'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/mini-gta/weapons'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/mini-gta/route'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/mini-gta/missions/{id}/complete'].post.summary",
+                            not(emptyOrNullString())))
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/mini-gta/shop/purchase'].post.summary", not(emptyOrNullString())))
+                    .andExpect(
+                            jsonPath("$.paths['/api/games/mini-gta/respawn'].post.summary", not(emptyOrNullString())))
+                    // Chaque endpoint porte le tag de son contrôleur : la plateforme ou le slug du jeu.
                     .andExpect(jsonPath(
                             "$.paths.*.*.tags[*]",
-                            everyItem(anyOf(containsString("Authentification"), containsString("SDV Civilisation")))));
+                            everyItem(anyOf(
+                                    containsString("Authentification"),
+                                    containsString("mastermind"),
+                                    containsString("bang"),
+                                    containsString("sudoku"),
+                                    containsString("mini-gta"),
+                                    containsString("SDV Civilisation")))))
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/sdv-civilisation/games/current/turns'].post.summary",
+                            not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/{gameId}'].get.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/sudoku/{gameId}/moves'].post.summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.tags[*]", hasItem("sudoku")))
+                    .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.tags[*]", hasItem("sudoku")));
         }
 
         @Test

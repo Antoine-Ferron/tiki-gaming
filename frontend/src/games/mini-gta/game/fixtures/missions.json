@@ -1,0 +1,68 @@
+[
+  {
+    "id": "express",
+    "title": "Colis express",
+    "brief": "Un client pressé. Récupère le colis en voiture et livre-le avant la fin du chrono.",
+    "reward": 800,
+    "giver": { "x": 39.0, "z": 268.0 },
+    "steps": [
+      {
+        "type": "goto",
+        "text": "Récupère le colis (en véhicule)",
+        "pos": { "x": -430.0, "z": -359.5 },
+        "radius": 5.0,
+        "inVehicle": true
+      },
+      {
+        "type": "deliver",
+        "text": "Livre le colis au client",
+        "pos": { "x": 561.5, "z": 768.5 },
+        "radius": 6.0,
+        "timeLimit": 172.0
+      }
+    ]
+  },
+  {
+    "id": "chase",
+    "title": "La fuite",
+    "brief": "Un mauvais payeur vient de filer en sportive. Rattrape-le et mets fin à sa course.",
+    "reward": 1500,
+    "giver": { "x": 312.0, "z": 115.0 },
+    "steps": [{ "type": "destroy", "text": "Arrête la voiture de la cible", "tag": "target" }]
+  },
+  {
+    "id": "port",
+    "title": "Contrat au port",
+    "brief": "Un trafiquant tient un entrepôt sur les docks. Élimine-le, puis disparais.",
+    "reward": 2500,
+    "giver": { "x": -310.0, "z": 476.0 },
+    "steps": [
+      {
+        "type": "goto",
+        "text": "Rends-toi à l'entrepôt du port",
+        "pos": { "x": -585.6034924295731, "z": 493.0 },
+        "radius": 30.0
+      },
+      { "type": "eliminate", "text": "Élimine le trafiquant", "tags": ["boss"] },
+      { "type": "escape", "text": "Sème la police" }
+    ]
+  },
+  {
+    "id": "special",
+    "title": "Commande spéciale",
+    "brief": "Un collectionneur veut une sportive dorée garée en ville. Vole-la, sème les flics et ramène-la au garage sans trop l'abîmer.",
+    "reward": 3000,
+    "giver": { "x": 428.0, "z": 597.0 },
+    "steps": [
+      { "type": "enterVehicle", "text": "Vole la sportive dorée", "tag": "special" },
+      { "type": "escape", "text": "Sème la police" },
+      {
+        "type": "deliver",
+        "text": "Ramène la voiture au garage",
+        "pos": { "x": 472.0, "z": 609.75 },
+        "radius": 6.0,
+        "requireTag": "special"
+      }
+    ]
+  }
+]
