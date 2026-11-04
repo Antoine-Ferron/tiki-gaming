@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class GameTest {
 
@@ -52,6 +54,16 @@ class GameTest {
         assertThatThrownBy(() -> play(START, "e7", "e5"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("trait");
+    }
+
+    @ParameterizedTest(name = "{0} → {1} est refusé")
+    @CsvSource({"e2, e5", "b1, b3", "e1, e2", "a1, a3"})
+    @DisplayName("un coup vers une case que la pièce ne peut pas atteindre est refusé")
+    void unCoupVersUneCaseInaccessibleEstRefuse(String from, String to) {
+        // Act + Assert : trop loin pour le pion, mauvais saut pour le cavalier, case amie, tour bloquée
+        assertThatThrownBy(() -> play(START, from, to))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("inaccessible");
     }
 
     private static Position play(String fen, String from, String to) {
