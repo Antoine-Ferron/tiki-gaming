@@ -121,6 +121,16 @@ class MoveGeneratorTest {
                 .hasSize(expected);
     }
 
+    @Test
+    @DisplayName("un cavalier dans le coin opposé (h8) n'a que 2 cases (sortie par la colonne h)")
+    void unCavalierDansLeCoinH8NaQue2Cases() {
+        // Arrange
+        Position position = Fen.parse("4k2N/8/8/8/8/8/8/4K3 w - - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of("h8"))).isEqualTo(squares("f7", "g6"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
