@@ -99,7 +99,7 @@ Swagger donne ensuite un rouge de documentation : le contrat attend le bonus con
 à la survie, mais la description l'annonce encore absent. Après mise à jour de Swagger et des
 documents BANG!, **356 tests ciblés BANG!/Swagger passent**, sans échec ni test ignoré.
 
-## Vérification finale
+## Vérification du raccordement initial (`76bbc60`)
 
 Le 4 novembre 2026, depuis `backend/`, avec Java 25.0.3 et la cible de compilation Java 21 du dépôt :
 
@@ -147,7 +147,7 @@ Aucun push, aucune intégration vers la branche commune et aucune fermeture d'is
 | `d50e7c9` | Doublons, réponses anciennes/concurrentes, vues privées et jeu physique. |
 | `9a817e1` | Swagger et documentation du pouvoir et du recyclage. |
 
-Le commit documentaire final ajoute ce bilan de validation, sans nouveau changement du moteur.
+Le commit `76bbc60` ajoute ce bilan de validation, sans nouveau changement du moteur.
 
 ## Correction du recyclage immédiat — revue de `76bbc60`
 
@@ -170,3 +170,37 @@ Le test qui attendait l'absence de mélange à la dernière carte a été corrig
 de piles après le dernier bonus de Bart ont été actualisées sans supprimer leurs assertions.
 Le contrôle de quantité insuffisante, la demande de zéro carte, la pioche initialement vide
 et la pioche traversant les deux piles restent couverts.
+
+### Validation de la correction du recyclage
+
+La branche commune a apporté les travaux de plateau/catalogue #60 et #61 à `c6de4b5`.
+Ils ont été intégrés sans conflit dans `30a22a7`, avant la correction. Le dernier `dev`
+(`350911e`) était déjà inclus. Les fichiers reçus de la branche commune sont conservés
+à l'identique ; cartes, catalogues, personnages et contrats serveur de Colleen sont inchangés.
+
+| Contrôle après correction | Résultat local |
+| --- | --- |
+| Tous les tests BANG! et Swagger | **359 réussis**, zéro échec, erreur ou test ignoré. |
+| `mvn clean verify` | **6 568 cas : 6 567 réussis, zéro échec/erreur, un ignoré**. |
+| Pact fournisseur | **6 interactions réussies**, aucune ignorée. |
+| Chaos Docker/Toxiproxy | **4 tests réussis**, aucun ignoré. |
+| Checkstyle, Spotless et seuils JaCoCo | Succès sans modification des seuils. |
+| Frontend intégré : `format:check`, `lint`, tests BANG! et `build` | Succès ; **154 tests BANG! réussis**. Le build signale la taille de certains chunks. |
+
+L'unique cas ignoré reste le scénario BDD Échecs marqué `@en-cours` dans `dev`.
+Les premières alertes Prettier du frontend étaient uniquement dues aux fins de ligne Windows :
+leur normalisation locale ne produit aucune différence de contenu Git et le contrôle final passe.
+
+La validation utilise Java 25.0.3 avec la cible de compilation Java 21 du dépôt. Aucun E2E
+navigateur, test de charge/DAST, CodeQL/Sonar ou mutation testing n'est relancé pour cette
+correction ; les tests HTTP ne sont pas présentés comme des E2E navigateur.
+
+Les dernières références distantes ont été récupérées ; les deux contrôles d'ascendance
+vers `origin/dev` et `origin/game/bang/implementation` réussissent. Aucun push, aucune
+fusion vers la branche commune et aucune fermeture d'issue ne sont effectués.
+
+Commits de cette correction :
+
+- `30a22a7` : intégration de la dernière branche commune sur la branche de travail.
+- `8c42e0a` : correctif de cinq lignes dans `CardDraw`, attentes corrigées et preuves rouge/vert.
+- Le commit documentaire final consigne les résultats ci-dessus sans modifier le moteur.
