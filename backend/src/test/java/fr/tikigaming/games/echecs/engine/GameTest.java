@@ -112,6 +112,24 @@ class GameTest {
         assertThat(Fen.toFen(after).split(" ")[2]).isEqualTo(expected);
     }
 
+    @ParameterizedTest(name = "{1} → {2}")
+    @CsvSource({
+        // double pas blanc : la case sautée (e3) devient la case de prise en passant
+        "'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', e2, e4,"
+                + " 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'",
+        // double pas noir : case c6
+        "'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1', c7, c5,"
+                + " 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2'",
+        // tout autre coup efface la case de prise en passant
+        "'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2', g1, f3,"
+                + " 'rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2'"
+    })
+    @DisplayName("la FEN après un coup : case de prise en passant après un double pas, effacée sinon")
+    void laFenApresUnCoupIndiqueLaPriseEnPassant(String fen, String from, String to, String expected) {
+        // Act + Assert
+        assertThat(Fen.toFen(play(fen, from, to))).isEqualTo(expected);
+    }
+
     private static Position play(String fen, String from, String to) {
         return Game.play(Fen.parse(fen), Square.of(from), Square.of(to));
     }
