@@ -273,6 +273,9 @@ public class PrivateTableService {
         if (!table.players.get(table.game.currentSeat() - 1).equals(accountId)) {
             throw new PrivateTableException(HttpStatus.FORBIDDEN, "Ce n'est pas ton tour.");
         }
+        if (table.pendingShot != null) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "La cible doit d'abord répondre au tir en attente.");
+        }
         return table;
     }
 

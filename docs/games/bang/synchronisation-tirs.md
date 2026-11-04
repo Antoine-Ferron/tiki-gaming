@@ -1,0 +1,18 @@
+# BANG! — Synchronisation des tirs (#59)
+
+Implémentation de l'[issue #59](https://github.com/EAnathos/tiki-gaming/issues/59),
+depuis `game/bang/implementation` contenant la #58 et `origin/dev` à `41d1b41`.
+
+## Journal TDD outside-in
+
+Les tests HTTP utilisent Spring MVC et la sécurité réelle. La distribution initiale est un double
+contrôlable qui fournit des records de domaine réels ; `ShotRules` et `PlayerDistance` restent réels.
+Le test du contrôleur simule son service pour vérifier la collaboration et l'identité de session.
+Ces tests HTTP ne sont pas des E2E navigateur.
+
+| Étape | Rouge observé avant le code | Vert stabilisé |
+| --- | --- | --- |
+| Consommer une carte et publier un tir en attente | HTTP : `204` attendu, `404` reçu. Contrôleur : appel `fire` attendu mais absent. Service : main attendue vide, BANG! encore présent. | 13 tests (HTTP, contrôleur, service, projection privée), commit `ffcc0d6`. |
+| Verrouiller les actions du tireur pendant l'attente | Second tir : `409` attendu, `204` reçu. | 14 tests ciblés, dont les refus sans mutation de tirer, terminer, piocher et défausser. |
+
+Le blocage initial du lanceur Java dans l'environnement restreint n'est pas compté comme rouge métier.

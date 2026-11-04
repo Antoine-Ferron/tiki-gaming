@@ -78,6 +78,26 @@ class GameShotHttpTest {
         assertThat(after.players().subList(1, 4)).isEqualTo(before.players().subList(1, 4));
     }
 
+    @Test
+    void waitingForTheTargetLocksTheShootersOtherActionsWithoutMutation() throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        GameState waiting = tables.game(code);
+        String pending = json.readTree(view(code, 1).andReturn().getResponse().getContentAsString())
+                .path("pendingShot")
+                .path("id")
+                .asString();
+
+        command(code, "shots/bang-2/targets/4", 1).andExpect(status().isConflict());
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isConflict());
+        command(code, "turn/end", 1).andExpect(status().isConflict());
+        command(code, "turn/draw", 1).andExpect(status().isConflict());
+        command(code, "turn/discard/bang-2", 1).andExpect(status().isConflict());
+
+        assertThat(tables.game(code)).isSameAs(waiting);
+        view(code, 2).andExpect(jsonPath("$.pendingShot.id").value(pending));
+    }
+
     private String startedTable() throws Exception {
         doReturn(new GameState(
                         List.of(
