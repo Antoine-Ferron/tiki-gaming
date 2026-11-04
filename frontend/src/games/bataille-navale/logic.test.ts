@@ -4,13 +4,19 @@ import {
   GRID_SIZE,
   canPlaceShip,
   computeScore,
+  computeUnlocks,
   coordKey,
   fireAndSubmitIfOver,
   fireShot,
+  fireVolley,
+  fireVolleyAndSubmitIfOver,
   isFleetSunk,
   isInBounds,
   placeFleetRandomly,
+  scanZone,
   shipCoords,
+  sunkShips,
+  zoneCoords,
   type PlacedShip,
 } from './logic'
 
@@ -195,6 +201,115 @@ describe('fireAndSubmitIfOver', () => {
     const outcome = await fireAndSubmitIfOver(fleet, shots, { row: 0, col: 0 }, submitScore)
 
     expect(outcome.result).toBe('repeat')
+    expect(submitScore).not.toHaveBeenCalled()
+  })
+})
+
+describe('zoneCoords', () => {
+  it('builds a 3x3 block centered on the given cell', () => {
+    expect(zoneCoords({ row: 5, col: 5 })).toHaveLength(9)
+    expect(zoneCoords({ row: 5, col: 5 })).toContainEqual({ row: 4, col: 4 })
+    expect(zoneCoords({ row: 5, col: 5 })).toContainEqual({ row: 6, col: 6 })
+  })
+
+  it('clips the block to the grid near an edge or corner', () => {
+    expect(zoneCoords({ row: 0, col: 0 })).toHaveLength(4)
+    expect(zoneCoords({ row: 0, col: 5 })).toHaveLength(6)
+  })
+})
+
+describe('scanZone', () => {
+  it('reports occupied cells within the zone without marking them as shot', () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 }) // (0,0) et (0,1)
+    const zone = zoneCoords({ row: 0, col: 0 })
+    expect(scanZone(fleet, zone).map(coordKey).sort()).toEqual(['0,0', '0,1'])
+  })
+
+  it('reports no occupied cell when the zone misses every ship', () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 })
+    expect(scanZone(fleet, zoneCoords({ row: 9, col: 9 }))).toEqual([])
+  })
+})
+
+describe('fireVolley', () => {
+  it('fires every target in order and reports a result for each', () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 }) // (0,0) et (0,1)
+    const shots = new Set<string>()
+    const outcomes = fireVolley(fleet, shots, [
+      { row: 0, col: 0 },
+      { row: 5, col: 5 },
+      { row: 0, col: 1 },
+    ])
+    expect(outcomes.map((o) => o.result)).toEqual(['hit', 'miss', 'hit'])
+    expect(outcomes[2].sunk).toEqual(fleet[0].ship)
+  })
+
+  it('reports repeat for a cell already targeted earlier in the same volley', () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 })
+    const shots = new Set<string>()
+    const outcomes = fireVolley(fleet, shots, [
+      { row: 0, col: 0 },
+      { row: 0, col: 0 },
+    ])
+    expect(outcomes.map((o) => o.result)).toEqual(['hit', 'repeat'])
+  })
+})
+
+describe('sunkShips', () => {
+  it('lists only the ships whose every cell has been hit', () => {
+    const fleet = placeFleetRandomly(stubRandom([0, 0, 0, 0, 0.1, 0, 0, 0.2, 0, 0, 0.3, 0, 0, 0.4, 0]))
+    const shots = new Set(fleet[0].coords.map(coordKey))
+    expect(sunkShips(fleet, shots)).toEqual([fleet[0].ship])
+  })
+
+  it('is empty when no ship is fully hit', () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 })
+    expect(sunkShips(fleet, new Set([coordKey({ row: 0, col: 0 })]))).toEqual([])
+  })
+})
+
+describe('computeUnlocks', () => {
+  it('unlocks nothing early in the game', () => {
+    expect(computeUnlocks(0, 0)).toEqual({ salvo: false, radar: false, nuke: false })
+  })
+
+  it('unlocks salvo once a ship is sunk, independently of shot count', () => {
+    expect(computeUnlocks(0, 1)).toEqual({ salvo: true, radar: false, nuke: false })
+  })
+
+  it('unlocks radar then nuke as shots accumulate', () => {
+    expect(computeUnlocks(5, 0)).toEqual({ salvo: false, radar: true, nuke: false })
+    expect(computeUnlocks(10, 0)).toEqual({ salvo: false, radar: true, nuke: true })
+  })
+})
+
+describe('fireVolleyAndSubmitIfOver', () => {
+  it('soumet le score une seule fois quand la volée coule le dernier navire', async () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 }) // Torpilleur, taille 2 : (0,0) et (0,1)
+    const shots = new Set<string>()
+    const submitScore = vi.fn().mockResolvedValue(true)
+
+    const { outcomes, gameOver } = await fireVolleyAndSubmitIfOver(
+      fleet,
+      shots,
+      [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+      submitScore,
+    )
+
+    expect(outcomes.map((o) => o.result)).toEqual(['hit', 'hit'])
+    expect(gameOver).toBe(true)
+    expect(submitScore).toHaveBeenCalledTimes(1)
+    expect(submitScore).toHaveBeenCalledWith(computeScore(2, 2), { shots: 2, hits: 2 })
+  })
+
+  it("ne soumet aucun score tant que la flotte adverse n'est pas entièrement coulée", async () => {
+    const fleet = buildFleetAt({ row: 0, col: 0 })
+    const shots = new Set<string>()
+    const submitScore = vi.fn().mockResolvedValue(true)
+
+    const { gameOver } = await fireVolleyAndSubmitIfOver(fleet, shots, [{ row: 0, col: 0 }], submitScore)
+
+    expect(gameOver).toBe(false)
     expect(submitScore).not.toHaveBeenCalled()
   })
 })

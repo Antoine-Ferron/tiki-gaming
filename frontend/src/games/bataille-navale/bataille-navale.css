@@ -1,19 +1,196 @@
+.bataille-navale {
+  --bn-water: #16304d;
+  --bn-hit: #ef4444;
+  --bn-miss: #64748b;
+  --bn-ship: #475569;
+  --bn-radar: #22d3ee;
+  display: grid;
+  gap: 1rem;
+}
+
+.bn-mode-choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.bn-augmented-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* --- Grille 10x10, partagée par le placement, le tir et l'affichage de sa propre flotte --- */
+
 .bn-grid {
   display: grid;
-  grid-template-columns: repeat(10, 2rem);
+  grid-template-columns: repeat(10, minmax(1.75rem, 2rem));
   gap: 2px;
 }
 
 .bn-cell {
-  width: 2rem;
-  height: 2rem;
+  width: 100%;
+  aspect-ratio: 1;
   padding: 0;
+  border-radius: 4px;
+  background: var(--bn-water);
+  border: 1px solid var(--muted);
+}
+
+.bn-cell:disabled {
+  cursor: default;
 }
 
 .bn-cell.hit {
-  background: #c0392b;
+  background: var(--bn-hit);
+  border-color: var(--bn-hit);
+  animation: bn-pop 0.25s ease-out;
 }
 
 .bn-cell.miss {
-  background: #7f8c8d;
+  background: var(--bn-miss);
+  border-color: var(--bn-miss);
+  animation: bn-pop 0.25s ease-out;
+}
+
+.bn-cell.radar {
+  background: color-mix(in srgb, var(--bn-radar) 35%, transparent);
+  border-color: var(--bn-radar);
+}
+
+.bn-cell.selected {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  border-color: var(--accent);
+}
+
+/* --- Placement --- */
+
+.bn-placement {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(220px, 1fr);
+  gap: 1.5rem;
+}
+
+.bn-cell-placement.ship {
+  background: var(--bn-ship);
+  border-color: var(--bn-ship);
+}
+
+.bn-cell-placement.preview-valid {
+  background: color-mix(in srgb, var(--success) 35%, transparent);
+  border-color: var(--success);
+}
+
+.bn-cell-placement.preview-invalid {
+  background: color-mix(in srgb, var(--error) 35%, transparent);
+  border-color: var(--error);
+}
+
+.bn-fleet-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.bn-fleet-list li.placed {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.bn-placement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* --- Tir : bonus du mode augmenté --- */
+
+.bn-bonus-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.bn-bonus-bar button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+/* --- Mon propre plateau (lecture seule, mode en ligne) --- */
+
+.bn-grid-own .bn-cell-own {
+  background: var(--bn-water);
+  border: 1px solid var(--border);
+}
+
+.bn-grid-own .bn-cell-own.ship {
+  background: var(--bn-ship);
+  border-color: var(--bn-ship);
+}
+
+.bn-grid-own .bn-cell-own.hit {
+  background: var(--bn-hit);
+  border-color: var(--bn-hit);
+}
+
+.bn-grid-own .bn-cell-own.miss {
+  background: color-mix(in srgb, var(--bn-miss) 50%, transparent);
+}
+
+.bn-boards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+/* --- Passation, fin de partie --- */
+
+.bn-pass,
+.bn-over {
+  animation: bn-fade-in 0.3s ease-out;
+}
+
+@keyframes bn-pop {
+  from {
+    transform: scale(0.5);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bn-fade-in {
+  from {
+    transform: translateY(4px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bn-cell.hit,
+  .bn-cell.miss,
+  .bn-pass,
+  .bn-over {
+    animation: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .bn-placement {
+    grid-template-columns: 1fr;
+  }
 }

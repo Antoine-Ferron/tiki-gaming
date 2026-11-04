@@ -1,147 +1,565 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
-import type { GameProps, LeaderboardEntry } from '../types'
+import type { RealtimeConnection } from '../ports'
+import type { GameContext, GameProps, LeaderboardEntry } from '../types'
+import FleetPlacementBoard from './FleetPlacementBoard'
 import {
   GRID_SIZE,
+  computeUnlocks,
   coordKey,
-  fireAndSubmitIfOver,
-  placeFleetRandomly,
+  fireVolleyAndSubmitIfOver,
+  scanZone,
+  zoneCoords,
   type Coord,
   type PlacedShip,
   type Ship,
+  type VolleyShot,
 } from './logic'
+import type { Bonus } from './network'
+import { useNetGame } from './useNetGame'
 import './bataille-navale.css'
 
-type Player = 1 | 2
-type Phase = 'idle' | 'pass' | 'turn' | 'over'
-type LastShot = { target: Coord; result: 'hit' | 'miss'; sunk?: Ship }
+type Seat = 1 | 2
+type Mode = 'local' | 'online' | null
+
+type PlayerState = {
+  fleet: PlacedShip[]
+  shotsOnOpponent: Set<string>
+  resultsOnOpponent: Map<string, 'hit' | 'miss'>
+  radarRevealsOnOpponent: Set<string>
+  hits: number
+  shipsSunk: number
+  usedBonuses: Set<Bonus>
+}
+
+function emptyPlayerState(): PlayerState {
+  return {
+    fleet: [],
+    shotsOnOpponent: new Set(),
+    resultsOnOpponent: new Map(),
+    radarRevealsOnOpponent: new Set(),
+    hits: 0,
+    shipsSunk: 0,
+    usedBonuses: new Set(),
+  }
+}
+
+/** Bonus débloqués (par mes tirs/navires coulés) et pas encore utilisés : seuls ceux-ci sont jouables. */
+function unlockedBonuses(shotsFired: number, shipsSunk: number, used: ReadonlySet<Bonus>): Bonus[] {
+  const unlocks = computeUnlocks(shotsFired, shipsSunk)
+  return (['salvo', 'radar', 'nuke'] as const).filter((b) => unlocks[b] && !used.has(b))
+}
+
+function describeOutcomes(outcomes: VolleyShot[]): string {
+  const sunkNames = outcomes.flatMap((o) => (o.sunk ? [o.sunk.name] : []))
+  if (outcomes.length === 1) {
+    if (outcomes[0].result !== 'hit') return "À l'eau."
+    return sunkNames.length ? `${sunkNames[0]} coulé !` : 'Touché !'
+  }
+  const hits = outcomes.filter((o) => o.result === 'hit').length
+  const summary = `${hits} touché(s) sur ${outcomes.length}.`
+  return sunkNames.length ? `${summary} ${sunkNames.join(', ')} coulé(s) !` : summary
+}
+
+const BONUS_LABELS: Record<Bonus, string> = {
+  salvo: 'Salve (3 tirs)',
+  radar: 'Radar (zone 3×3)',
+  nuke: 'Frappe nucléaire (bloc 3×3)',
+}
+
+type FiringBoardProps = {
+  label: string
+  disabled: boolean
+  results: ReadonlyMap<string, 'hit' | 'miss'>
+  radarHints: ReadonlySet<string>
+  bonuses: Bonus[]
+  onFire: (targets: Coord[], bonus?: 'salvo' | 'nuke') => void
+  onRadar: (zone: Coord[]) => void
+}
+
+/**
+ * Grille sur laquelle on tire, partagée par le mode local et le mode en ligne. Un bonus « armé » change ce que
+ * le prochain clic déclenche : frappe/radar visent une zone 3×3 autour de la case cliquée, salve accumule 3
+ * cases avant d'envoyer un seul tir groupé.
+ */
+function FiringBoard({ label, disabled, results, radarHints, bonuses, onFire, onRadar }: FiringBoardProps) {
+  const [armed, setArmed] = useState<'normal' | Bonus>('normal')
+  const [selected, setSelected] = useState<Coord[]>([])
+
+  function toggleBonus(bonus: Bonus) {
+    setSelected([])
+    setArmed((current) => (current === bonus ? 'normal' : bonus))
+  }
+
+  function clickCell(cell: Coord) {
+    if (disabled || results.has(coordKey(cell))) return
+    if (armed === 'nuke') {
+      onFire(zoneCoords(cell), 'nuke')
+      setArmed('normal')
+      return
+    }
+    if (armed === 'radar') {
+      onRadar(zoneCoords(cell))
+      setArmed('normal')
+      return
+    }
+    if (armed === 'salvo') {
+      const next = [...selected, cell]
+      if (next.length >= 3) {
+        onFire(next, 'salvo')
+        setSelected([])
+        setArmed('normal')
+      } else {
+        setSelected(next)
+      }
+      return
+    }
+    onFire([cell])
+  }
+
+  const selectedKeys = new Set(selected.map(coordKey))
+
+  return (
+    <div className="bn-firing-board">
+      {bonuses.length > 0 && (
+        <div className="bn-bonus-bar">
+          {bonuses.map((bonus) => (
+            <button
+              key={bonus}
+              type="button"
+              className="small"
+              disabled={disabled}
+              aria-pressed={armed === bonus}
+              onClick={() => toggleBonus(bonus)}
+            >
+              {BONUS_LABELS[bonus]}
+            </button>
+          ))}
+        </div>
+      )}
+      {armed === 'salvo' && <p className="muted">Choisis encore {3 - selected.length} case(s) pour la salve.</p>}
+      {armed === 'nuke' && <p className="muted">Choisis le centre de la frappe nucléaire.</p>}
+      {armed === 'radar' && <p className="muted">Choisis le centre de la zone à scanner.</p>}
+
+      <div className="bn-grid" role="grid" aria-label={label}>
+        {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
+          const cell: Coord = { row: Math.floor(i / GRID_SIZE), col: i % GRID_SIZE }
+          const key = coordKey(cell)
+          const result = results.get(key)
+          const classes = ['bn-cell']
+          if (result) classes.push(result)
+          else if (radarHints.has(key)) classes.push('radar')
+          else if (selectedKeys.has(key)) classes.push('selected')
+          return (
+            <button
+              key={key}
+              type="button"
+              className={classes.join(' ')}
+              disabled={disabled || !!result}
+              onClick={() => clickCell(cell)}
+              aria-label={`Case ${cell.row + 1},${cell.col + 1}${result ? `, ${result === 'hit' ? 'touché' : 'à l’eau'}` : ''}`}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Mon propre plateau : lecture seule, montre mes navires et les cases où l'adversaire a tiré. */
+function OwnBoard({ fleet, shotsOnMe }: { fleet: PlacedShip[]; shotsOnMe: ReadonlySet<string> }) {
+  const shipCells = new Set(fleet.flatMap((p) => p.coords.map(coordKey)))
+  return (
+    <div className="bn-grid bn-grid-own" role="grid" aria-label="Ta flotte">
+      {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
+        const cell: Coord = { row: Math.floor(i / GRID_SIZE), col: i % GRID_SIZE }
+        const key = coordKey(cell)
+        const hasShip = shipCells.has(key)
+        const shot = shotsOnMe.has(key)
+        const classes = ['bn-cell', 'bn-cell-own']
+        if (hasShip) classes.push('ship')
+        if (shot) classes.push(hasShip ? 'hit' : 'miss')
+        return (
+          <div
+            key={key}
+            className={classes.join(' ')}
+            aria-label={`Case ${cell.row + 1},${cell.col + 1}${hasShip ? ', ton navire' : ''}${shot ? (hasShip ? ', touché' : ", à l'eau") : ''}`}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+type OnlineBattleProps = {
+  connection: RealtimeConnection
+  myFleet: PlacedShip[]
+  augmented: boolean
+  ctx: GameContext
+  onExit: () => void
+  onGameOver: () => void
+}
+
+function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver }: OnlineBattleProps) {
+  const { state, ready, fire, useRadar } = useNetGame(connection, myFleet, augmented, ctx)
+
+  useEffect(() => {
+    ready()
+    // Envoyé une seule fois, au montage : ma flotte est déjà placée à ce stade.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (state.phase === 'over') onGameOver()
+  }, [state.phase, onGameOver])
+
+  if (state.disconnected) {
+    return (
+      <div className="card bn-over">
+        <h2>Connexion perdue</h2>
+        <p className="error">L'adversaire a quitté la partie, ou la connexion a été coupée.</p>
+        <button type="button" className="big" onClick={onExit}>
+          Retour au menu
+        </button>
+      </div>
+    )
+  }
+
+  if (state.phase === 'placement') {
+    return (
+      <div className="card">
+        <h2>En attente de l'adversaire</h2>
+        <p className="muted">Code de la partie : {connection.code}</p>
+        <p>Ta flotte est placée. La bataille commence dès que l'adversaire a placé la sienne.</p>
+      </div>
+    )
+  }
+
+  const bonuses = unlockedBonuses(state.shotsOnOpponent.size, state.shipsSunkByMe, state.usedBonuses)
+
+  return (
+    <div className="bn-online-battle">
+      {state.phase === 'over' && (
+        <div className="card bn-over">
+          <h2>{state.winnerSeat === state.mySeat ? 'Tu as gagné !' : "L'adversaire a gagné."}</h2>
+          <button type="button" className="big" onClick={onExit}>
+            Retour au menu
+          </button>
+          {ctx.isGuest && <p className="muted">Connecte-toi pour apparaître au classement.</p>}
+        </div>
+      )}
+      {state.phase === 'battle' && (
+        <div className="card bn-board">
+          <h2>{state.turnSeat === state.mySeat ? 'À toi de tirer' : "Au tour de l'adversaire"}</h2>
+          <div className="bn-boards">
+            <div>
+              <h3>Flotte adverse</h3>
+              <FiringBoard
+                label="Grille adverse"
+                disabled={state.turnSeat !== state.mySeat}
+                results={state.resultsOnOpponent}
+                radarHints={state.radarRevealsOnOpponent}
+                bonuses={bonuses}
+                onFire={fire}
+                onRadar={useRadar}
+              />
+            </div>
+            <div>
+              <h3>Ta flotte</h3>
+              <OwnBoard fleet={myFleet} shotsOnMe={state.shotsOnMe} />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function BatailleNavaleGame({ ctx }: GameProps) {
-  const [phase, setPhase] = useState<Phase>('idle')
-  const [current, setCurrent] = useState<Player>(1)
-  const [fleet1, setFleet1] = useState<PlacedShip[]>([])
-  const [fleet2, setFleet2] = useState<PlacedShip[]>([])
-  const [shotsOn1, setShotsOn1] = useState<Set<string>>(new Set())
-  const [shotsOn2, setShotsOn2] = useState<Set<string>>(new Set())
-  const [lastShot, setLastShot] = useState<LastShot | null>(null)
-  const [winner, setWinner] = useState<Player | null>(null)
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [mode, setMode] = useState<Mode>(null)
+  const [augmented, setAugmented] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
 
   const refreshLeaderboard = useCallback(() => {
     ctx
       .getLeaderboard(10)
       .then(setLeaderboard)
-      .catch((e) => setError(e.message))
+      .catch((e) => setError((e as Error).message))
   }, [ctx])
 
   useEffect(() => {
     refreshLeaderboard()
   }, [refreshLeaderboard])
 
-  function start() {
-    setFleet1(placeFleetRandomly())
-    setFleet2(placeFleetRandomly())
-    setShotsOn1(new Set())
-    setShotsOn2(new Set())
+  // --- Mode local (passe-et-joue) ---------------------------------------------------------------
+  const [localPhase, setLocalPhase] = useState<'placement' | 'battle' | 'over'>('placement')
+  const [placingPlayer, setPlacingPlayer] = useState<Seat>(1)
+  const [current, setCurrent] = useState<Seat>(1)
+  const [winner, setWinner] = useState<Seat | null>(null)
+  const [players, setPlayers] = useState<Record<Seat, PlayerState>>({ 1: emptyPlayerState(), 2: emptyPlayerState() })
+  const [pass, setPass] = useState<{ message: string; onReady: () => void } | null>(null)
+
+  function startLocal() {
+    setMode('local')
+    setLocalPhase('placement')
+    setPlacingPlayer(1)
+    setPlayers({ 1: emptyPlayerState(), 2: emptyPlayerState() })
     setCurrent(1)
     setWinner(null)
-    setLastShot(null)
+    setPass(null)
     setError(null)
-    setPhase('turn')
   }
 
-  async function fire(target: Coord) {
-    const opponentFleet = current === 1 ? fleet2 : fleet1
-    const shots = current === 1 ? shotsOn2 : shotsOn1
+  function completeLocalPlacement(fleet: PlacedShip[]) {
+    setPlayers((prev) => ({ ...prev, [placingPlayer]: { ...emptyPlayerState(), fleet } }))
+    if (placingPlayer === 1) {
+      setPass({
+        message: "Passe l'appareil au joueur 2 pour qu'il place sa flotte.",
+        onReady: () => {
+          setPass(null)
+          setPlacingPlayer(2)
+        },
+      })
+    } else {
+      setPass({
+        message: 'Passe l’appareil pour commencer la bataille.',
+        onReady: () => {
+          setPass(null)
+          setLocalPhase('battle')
+        },
+      })
+    }
+  }
 
+  function passToNext(target: Seat, message: string) {
+    setPass({
+      message,
+      onReady: () => {
+        setPass(null)
+        setCurrent(target)
+      },
+    })
+  }
+
+  async function localFire(targets: Coord[], bonus?: 'salvo' | 'nuke') {
+    const shooter = current
+    const target: Seat = shooter === 1 ? 2 : 1
+    const shots = new Set(players[shooter].shotsOnOpponent)
     try {
-      const outcome = await fireAndSubmitIfOver(opponentFleet, shots, target, (score, metadata) =>
-        ctx.submitScore(score, { ...metadata, winner: current }),
+      const { outcomes, gameOver } = await fireVolleyAndSubmitIfOver(players[target].fleet, shots, targets, (score, metadata) =>
+        ctx.submitScore(score, { ...metadata, winner: shooter }),
       )
-      if (outcome.result === 'repeat') return
-
-      const nextShots = new Set(shots)
-      if (current === 1) setShotsOn2(nextShots)
-      else setShotsOn1(nextShots)
-      setLastShot({ target, result: outcome.result, sunk: outcome.sunk })
-
-      if (outcome.gameOver) {
-        setWinner(current)
-        setPhase('over')
+      const resultsOnOpponent = new Map(players[shooter].resultsOnOpponent)
+      let newHits = 0
+      const sunkThisVolley: Ship[] = []
+      for (const outcome of outcomes) {
+        if (outcome.result !== 'repeat') resultsOnOpponent.set(coordKey(outcome.target), outcome.result)
+        if (outcome.result === 'hit') newHits++
+        if (outcome.sunk) sunkThisVolley.push(outcome.sunk)
+      }
+      setPlayers((prev) => ({
+        ...prev,
+        [shooter]: {
+          ...prev[shooter],
+          shotsOnOpponent: shots,
+          resultsOnOpponent,
+          hits: prev[shooter].hits + newHits,
+          shipsSunk: prev[shooter].shipsSunk + sunkThisVolley.length,
+          usedBonuses: bonus ? new Set(prev[shooter].usedBonuses).add(bonus) : prev[shooter].usedBonuses,
+        },
+      }))
+      if (gameOver) {
+        setWinner(shooter)
+        setLocalPhase('over')
         refreshLeaderboard()
       } else {
-        setPhase('pass')
+        passToNext(target, describeOutcomes(outcomes))
       }
     } catch (e) {
       setError((e as Error).message)
     }
   }
 
-  function passToNext() {
-    setCurrent((p) => (p === 1 ? 2 : 1))
-    setLastShot(null)
-    setPhase('turn')
+  function localRadar(zone: Coord[]) {
+    const shooter = current
+    const target: Seat = shooter === 1 ? 2 : 1
+    const occupied = scanZone(players[target].fleet, zone)
+    setPlayers((prev) => ({
+      ...prev,
+      [shooter]: {
+        ...prev[shooter],
+        radarRevealsOnOpponent: new Set([...prev[shooter].radarRevealsOnOpponent, ...occupied.map(coordKey)]),
+        usedBonuses: new Set(prev[shooter].usedBonuses).add('radar'),
+      },
+    }))
+    passToNext(
+      target,
+      occupied.length > 0 ? `Radar : ${occupied.length} case(s) occupée(s) détectée(s).` : 'Radar : rien détecté dans la zone.',
+    )
   }
 
-  const opponentFleet = current === 1 ? fleet2 : fleet1
-  const myShots = current === 1 ? shotsOn2 : shotsOn1
+  // --- Mode en ligne ------------------------------------------------------------------------------
+  const [onlineConnection, setOnlineConnection] = useState<RealtimeConnection | null>(null)
+  const [onlineFleet, setOnlineFleet] = useState<PlacedShip[] | null>(null)
+  const [joinCode, setJoinCode] = useState('')
+  const [onlineBusy, setOnlineBusy] = useState(false)
+
+  function startOnline() {
+    setMode('online')
+    setOnlineConnection(null)
+    setOnlineFleet(null)
+    setJoinCode('')
+    setError(null)
+  }
+
+  async function createOnlineRoom() {
+    setOnlineBusy(true)
+    setError(null)
+    try {
+      setOnlineConnection(await ctx.realtime.createRoom(2))
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setOnlineBusy(false)
+    }
+  }
+
+  async function joinOnlineRoom() {
+    setOnlineBusy(true)
+    setError(null)
+    try {
+      setOnlineConnection(await ctx.realtime.joinRoom(joinCode.trim()))
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setOnlineBusy(false)
+    }
+  }
+
+  function exitOnline() {
+    onlineConnection?.close()
+    setOnlineConnection(null)
+    setOnlineFleet(null)
+    setMode(null)
+  }
+
+  function backToMenu() {
+    setMode(null)
+    setError(null)
+  }
 
   return (
     <div className="bataille-navale">
-      {phase === 'idle' && (
+      {mode === null && (
         <div className="card bn-intro">
           <h2>Bataille navale</h2>
-          <p>
-            À deux, sur le même appareil. Chaque joueur reçoit une flotte placée au hasard. À tour de rôle, on tire sur
-            la grille adverse jusqu'à couler toute la flotte de l'autre.
-          </p>
-          <button onClick={start}>Nouvelle partie</button>
+          <p>Coule la flotte adverse avant qu'elle ne coule la tienne.</p>
+          <label className="bn-augmented-toggle">
+            <input type="checkbox" checked={augmented} onChange={(e) => setAugmented(e.target.checked)} />
+            Mode augmenté (salve, radar, frappe nucléaire)
+          </label>
+          <div className="bn-mode-choice">
+            <button type="button" className="big" onClick={startLocal}>
+              Solo (même appareil)
+            </button>
+            {ctx.isGuest ? (
+              <p className="muted">Connecte-toi pour jouer en ligne contre un autre joueur.</p>
+            ) : (
+              <button type="button" className="big" onClick={startOnline}>
+                En ligne
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {phase === 'pass' && (
+      {mode === 'local' && pass && (
         <div className="card bn-pass">
-          <h2>Passe l'appareil au joueur {current === 1 ? 2 : 1}</h2>
-          {lastShot && (
-            <p className={lastShot.result === 'hit' ? 'success' : 'muted'}>
-              {lastShot.sunk ? `${lastShot.sunk.name} coulé !` : lastShot.result === 'hit' ? 'Touché !' : "À l'eau."}
-            </p>
-          )}
-          <button onClick={passToNext}>Je suis prêt</button>
+          <h2>Passe l'appareil</h2>
+          <p>{pass.message}</p>
+          <button type="button" className="big" onClick={pass.onReady}>
+            Je suis prêt
+          </button>
         </div>
       )}
 
-      {phase === 'turn' && (
+      {mode === 'local' && !pass && localPhase === 'placement' && (
+        <div className="card">
+          <h2>Le joueur {placingPlayer} place sa flotte</h2>
+          <FleetPlacementBoard onComplete={completeLocalPlacement} />
+        </div>
+      )}
+
+      {mode === 'local' && !pass && localPhase === 'battle' && (
         <div className="card bn-board">
           <h2>Au tour du joueur {current}</h2>
-          <div className="bn-grid" role="grid" aria-label={`Grille du joueur ${current === 1 ? 2 : 1}`}>
-            {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
-              const target: Coord = { row: Math.floor(i / GRID_SIZE), col: i % GRID_SIZE }
-              const key = coordKey(target)
-              const shot = myShots.has(key)
-              const hit = shot && opponentFleet.some((p) => p.coords.some((c) => coordKey(c) === key))
-              return (
-                <button
-                  key={key}
-                  className={`bn-cell${shot ? (hit ? ' hit' : ' miss') : ''}`}
-                  disabled={shot}
-                  onClick={() => fire(target)}
-                  aria-label={`Case ${target.row + 1},${target.col + 1}`}
-                />
-              )
-            })}
-          </div>
+          <FiringBoard
+            label={`Grille du joueur ${current === 1 ? 2 : 1}`}
+            disabled={false}
+            results={players[current].resultsOnOpponent}
+            radarHints={players[current].radarRevealsOnOpponent}
+            bonuses={augmented ? unlockedBonuses(players[current].shotsOnOpponent.size, players[current].shipsSunk, players[current].usedBonuses) : []}
+            onFire={localFire}
+            onRadar={localRadar}
+          />
           {error && <p className="error">{error}</p>}
         </div>
       )}
 
-      {phase === 'over' && winner && (
+      {mode === 'local' && localPhase === 'over' && winner && (
         <div className="card bn-over">
           <h2>Le joueur {winner} a gagné !</h2>
-          <button onClick={start}>Rejouer</button>
+          <button type="button" className="big" onClick={startLocal}>
+            Rejouer
+          </button>
+          <button type="button" className="link" onClick={backToMenu}>
+            Changer de mode
+          </button>
           {ctx.isGuest && <p className="muted">Connecte-toi pour apparaître au classement.</p>}
         </div>
+      )}
+
+      {mode === 'online' && !onlineConnection && (
+        <div className="card">
+          <h2>Partie en ligne</h2>
+          <button type="button" className="big" disabled={onlineBusy} onClick={createOnlineRoom}>
+            Créer une partie
+          </button>
+          <div className="divider">ou</div>
+          <div className="form">
+            <label htmlFor="bn-join-code">Code de la partie</label>
+            <input id="bn-join-code" value={joinCode} onChange={(e) => setJoinCode(e.target.value)} />
+            <button type="button" disabled={onlineBusy || !joinCode.trim()} onClick={joinOnlineRoom}>
+              Rejoindre
+            </button>
+          </div>
+          <button type="button" className="link" onClick={backToMenu}>
+            Changer de mode
+          </button>
+          {error && <p className="error">{error}</p>}
+        </div>
+      )}
+
+      {mode === 'online' && onlineConnection && !onlineFleet && (
+        <div className="card">
+          <h2>Place ta flotte</h2>
+          <p className="muted">
+            Code de la partie : <strong>{onlineConnection.code}</strong> (partage-le pour inviter quelqu'un).
+          </p>
+          <FleetPlacementBoard onComplete={setOnlineFleet} />
+        </div>
+      )}
+
+      {mode === 'online' && onlineConnection && onlineFleet && (
+        <OnlineBattle
+          connection={onlineConnection}
+          myFleet={onlineFleet}
+          augmented={augmented}
+          ctx={ctx}
+          onExit={exitOnline}
+          onGameOver={refreshLeaderboard}
+        />
       )}
 
       <div className="card">

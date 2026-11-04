@@ -1,0 +1,235 @@
+import { describe, expect, it } from 'vitest'
+import { coordKey, shipCoords, type Coord, type PlacedShip } from './logic'
+import {
+  applyLocalIntent,
+  applyRemoteEvent,
+  availableBonuses,
+  createNetState,
+  type NetState,
+  type RemoteEvent,
+} from './network'
+
+/** Torpilleur (taille 2) en (0,0)-(0,1) : assez pour tester touché/coulé sans détailler toute la flotte. */
+function fleetAt(start: Coord): PlacedShip[] {
+  return [{ ship: { name: 'Torpilleur', size: 2 }, coords: shipCoords(start, 2, 'horizontal') }]
+}
+
+const myFleet = fleetAt({ row: 0, col: 0 })
+
+describe('createNetState', () => {
+  it('starts in placement, seat 1 to begin, nothing fired yet', () => {
+    const state = createNetState(1, myFleet, false)
+    expect(state.phase).toBe('placement')
+    expect(state.turnSeat).toBe(1)
+    expect(state.readySeats.size).toBe(0)
+    expect(state.winnerSeat).toBeNull()
+  })
+})
+
+describe('READY handshake', () => {
+  it('sends my own READY without touching readySeats yet', () => {
+    const state = createNetState(1, myFleet, false)
+    const { state: next, outbox } = applyLocalIntent(state, { kind: 'READY' })
+    expect(outbox).toEqual([{ type: 'READY', data: { by: 1 } }])
+    expect(next.readySeats.size).toBe(0)
+  })
+
+  it('moves to battle once both seats have sent READY (mine included, as an echo)', () => {
+    let state = createNetState(1, myFleet, false)
+    state = applyRemoteEvent(state, { type: 'READY', payload: { by: 1 } }).state
+    expect(state.phase).toBe('placement')
+    state = applyRemoteEvent(state, { type: 'READY', payload: { by: 2 } }).state
+    expect(state.phase).toBe('battle')
+  })
+
+  it('does nothing once placement is already done', () => {
+    const state = createNetState(1, myFleet, false)
+    const { outbox } = applyLocalIntent({ ...state, phase: 'battle' }, { kind: 'READY' })
+    expect(outbox).toEqual([])
+  })
+})
+
+function battleState(overrides: Partial<NetState> = {}): NetState {
+  return { ...createNetState(1, myFleet, false), phase: 'battle', ...overrides }
+}
+
+describe('FIRE — echo of my own shot is ignored', () => {
+  it('produces no outbox and no state change when I receive my own FIRE back', () => {
+    const state = battleState()
+    const { state: next, outbox } = applyRemoteEvent(state, {
+      type: 'FIRE',
+      payload: { by: 1, targets: [{ row: 0, col: 0 }] },
+    })
+    expect(outbox).toEqual([])
+    expect(next).toBe(state)
+  })
+})
+
+describe('FIRE — I am the target, I compute and reply', () => {
+  it('replies with a miss for an empty cell, without ending the game', () => {
+    const state = battleState()
+    const { outbox } = applyRemoteEvent(state, { type: 'FIRE', payload: { by: 2, targets: [{ row: 5, col: 5 }] } })
+    expect(outbox).toEqual([
+      { type: 'FIRE_RESULT', data: { by: 2, targets: [{ row: 5, col: 5 }], results: ['miss'], sunk: [], gameOver: false } },
+    ])
+  })
+
+  it('replies with a hit and sunk ship once every one of its cells is targeted', () => {
+    const state = battleState({ shotsOnMe: new Set([coordKey({ row: 0, col: 0 })]) })
+    const { outbox } = applyRemoteEvent(state, { type: 'FIRE', payload: { by: 2, targets: [{ row: 0, col: 1 }] } })
+    const [event] = outbox
+    expect(event.data).toMatchObject({ results: ['hit'], sunk: [myFleet[0].ship], gameOver: true })
+  })
+
+  it('does not mutate shotsOnMe directly: the state only changes once FIRE_RESULT is applied', () => {
+    const state = battleState()
+    const { state: next } = applyRemoteEvent(state, { type: 'FIRE', payload: { by: 2, targets: [{ row: 0, col: 0 }] } })
+    expect(next.shotsOnMe.size).toBe(0)
+  })
+})
+
+describe('FIRE_RESULT — applied identically by both sides', () => {
+  it('as the shooter: records the hit on my view of the opponent, flips the turn to them', () => {
+    const state = battleState({ turnSeat: 1 })
+    const event: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: { by: 1, targets: [{ row: 3, col: 3 }], results: ['hit'], sunk: [], gameOver: false },
+    }
+    const { state: next } = applyRemoteEvent(state, event)
+    expect(next.shotsOnOpponent.has(coordKey({ row: 3, col: 3 }))).toBe(true)
+    expect(next.hitsOnOpponent).toBe(1)
+    expect(next.turnSeat).toBe(2)
+    expect(next.shotsOnMe.size).toBe(0)
+  })
+
+  it('as the target (my own echo of the result I computed): records it on my own board, flips the turn to me', () => {
+    const state = battleState({ turnSeat: 2 })
+    const event: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: { by: 2, targets: [{ row: 0, col: 0 }], results: ['hit'], sunk: [], gameOver: false },
+    }
+    const { state: next } = applyRemoteEvent(state, event)
+    expect(next.shotsOnMe.has(coordKey({ row: 0, col: 0 }))).toBe(true)
+    expect(next.shotsOnOpponent.size).toBe(0)
+    expect(next.hitsOnOpponent).toBe(0) // ce n'est pas moi qui ai tiré : mon compteur de touches ne bouge pas
+    expect(next.turnSeat).toBe(1)
+  })
+
+  it('ends the game and queues a score submission only for the winning shooter', () => {
+    const state = battleState({ turnSeat: 1, shotsOnOpponent: new Set([coordKey({ row: 1, col: 1 })]), hitsOnOpponent: 1 })
+    const event: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: { by: 1, targets: [{ row: 2, col: 2 }], results: ['hit'], sunk: [myFleet[0].ship], gameOver: true },
+    }
+    const { state: next } = applyRemoteEvent(state, event)
+    expect(next.phase).toBe('over')
+    expect(next.winnerSeat).toBe(1)
+    expect(next.shipsSunkByMe).toBe(1)
+    expect(next.pendingSubmit).toEqual({ shots: 2, hits: 2 })
+  })
+
+  it('ends the game without queuing a submission for the losing side', () => {
+    const state = battleState({ turnSeat: 2 })
+    const event: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: { by: 2, targets: [{ row: 0, col: 1 }], results: ['hit'], sunk: [myFleet[0].ship], gameOver: true },
+    }
+    const { state: next } = applyRemoteEvent(state, event)
+    expect(next.phase).toBe('over')
+    expect(next.winnerSeat).toBe(2)
+    expect(next.pendingSubmit).toBeNull()
+  })
+})
+
+describe('FIRE — turn guard', () => {
+  it('refuses to fire when it is not my turn', () => {
+    const state = battleState({ turnSeat: 2 })
+    const { state: next, outbox } = applyLocalIntent(state, { kind: 'FIRE', targets: [{ row: 0, col: 0 }] })
+    expect(outbox).toEqual([])
+    expect(next).toBe(state)
+  })
+
+  it('sends a FIRE with every targeted cell when it is my turn (salvo = several targets at once)', () => {
+    const state = battleState({ turnSeat: 1 })
+    const targets = [{ row: 1, col: 1 }, { row: 2, col: 2 }, { row: 3, col: 3 }]
+    const { outbox } = applyLocalIntent(state, { kind: 'FIRE', targets, bonus: 'salvo' })
+    expect(outbox).toEqual([{ type: 'FIRE', data: { by: 1, targets } }])
+  })
+
+  it('marks the bonus as used immediately, locally, without waiting for a network round-trip', () => {
+    const state = battleState({ turnSeat: 1 })
+    const { state: next } = applyLocalIntent(state, { kind: 'FIRE', targets: [{ row: 1, col: 1 }], bonus: 'nuke' })
+    expect(next.usedBonuses.has('nuke')).toBe(true)
+  })
+})
+
+describe('RADAR', () => {
+  it('ignores the echo of my own scan', () => {
+    const state = battleState()
+    const { state: next, outbox } = applyRemoteEvent(state, { type: 'RADAR', payload: { by: 1, zone: [] } })
+    expect(outbox).toEqual([])
+    expect(next).toBe(state)
+  })
+
+  it('as the scanned side, replies with which cells of the zone are occupied, without marking them shot', () => {
+    const state = battleState()
+    const zone = [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 9, col: 9 }]
+    const { outbox } = applyRemoteEvent(state, { type: 'RADAR', payload: { by: 2, zone } })
+    expect(outbox).toEqual([
+      {
+        type: 'RADAR_RESULT',
+        data: { by: 2, zone, occupied: [{ row: 0, col: 0 }, { row: 0, col: 1 }] },
+      },
+    ])
+  })
+
+  it('as the scanner, records the revealed cells and the turn passes on', () => {
+    const state = battleState({ turnSeat: 1 })
+    const occupied = [{ row: 4, col: 4 }]
+    const { state: next } = applyRemoteEvent(state, {
+      type: 'RADAR_RESULT',
+      payload: { by: 1, zone: occupied, occupied },
+    })
+    expect(next.radarRevealsOnOpponent.has(coordKey({ row: 4, col: 4 }))).toBe(true)
+    expect(next.turnSeat).toBe(2)
+  })
+
+  it('marks radar as used locally as soon as I send it', () => {
+    const state = battleState({ turnSeat: 1 })
+    const { state: next } = applyLocalIntent(state, { kind: 'RADAR', zone: [{ row: 0, col: 0 }] })
+    expect(next.usedBonuses.has('radar')).toBe(true)
+  })
+})
+
+describe('availableBonuses', () => {
+  it('is empty outside augmented mode, whatever the progress', () => {
+    const state = battleState({ augmented: false, shipsSunkByMe: 5, shotsOnOpponent: new Set(Array.from({ length: 20 }, (_, i) => `0,${i}`)) })
+    expect(availableBonuses(state)).toEqual([])
+  })
+
+  it('unlocks progressively: salvo after a sink, radar then nuke after enough shots', () => {
+    const base = battleState({ augmented: true })
+    expect(availableBonuses(base)).toEqual([])
+    expect(availableBonuses({ ...base, shipsSunkByMe: 1 })).toEqual(['salvo'])
+
+    const fiveShots = new Set(Array.from({ length: 5 }, (_, i) => `0,${i}`))
+    expect(availableBonuses({ ...base, shipsSunkByMe: 1, shotsOnOpponent: fiveShots })).toEqual(['salvo', 'radar'])
+
+    const tenShots = new Set(Array.from({ length: 10 }, (_, i) => `0,${i}`))
+    expect(availableBonuses({ ...base, shipsSunkByMe: 1, shotsOnOpponent: tenShots })).toEqual(['salvo', 'radar', 'nuke'])
+  })
+
+  it('excludes a bonus already used even if still unlocked', () => {
+    const state = battleState({ augmented: true, shipsSunkByMe: 1, usedBonuses: new Set(['salvo']) })
+    expect(availableBonuses(state)).toEqual([])
+  })
+})
+
+describe('PLAYER_LEFT', () => {
+  it('ends the game with no resume: just flags disconnected', () => {
+    const state = battleState()
+    const { state: next, outbox } = applyRemoteEvent(state, { type: 'PLAYER_LEFT', payload: {} })
+    expect(next.disconnected).toBe(true)
+    expect(outbox).toEqual([])
+  })
+})

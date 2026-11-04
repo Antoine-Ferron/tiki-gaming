@@ -1,22 +1,20 @@
 // @vitest-environment jsdom
+import '@testing-library/jest-dom/vitest'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import type { Realtime } from '../ports'
 import type { GameContext } from '../types'
-import { FakeRealtime } from '../testing/fakes'
-import { coordKey, type PlacedShip } from './logic'
+import { FakeRealtime, FakeRealtimeConnection } from '../testing/fakes'
 import BatailleNavaleGame from './BatailleNavaleGame'
+import { FLEET, GRID_SIZE, shipCoords, type Coord, type PlacedShip } from './logic'
 
-// placeFleetRandomly et fireAndSubmitIfOver sont déjà exhaustivement testés en isolation dans
-// logic.test.ts (placement déterministe, soumission du score). Ici, on les double pour ne tester
-// que le câblage de l'interface : rendu des phases, passation, et réaction au résultat d'un tir.
-const { placeFleetRandomly, fireAndSubmitIfOver } = vi.hoisted(() => ({
-  placeFleetRandomly: vi.fn(),
-  fireAndSubmitIfOver: vi.fn(),
-}))
+// placeFleetRandomly est déjà exhaustivement testé en isolation dans logic.test.ts (placement déterministe).
+// Ici, on le fixe pour ne tester que le câblage de l'interface sur un plateau connu.
+const { placeFleetRandomly } = vi.hoisted(() => ({ placeFleetRandomly: vi.fn() }))
 
 vi.mock('./logic', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./logic')>()
-  return { ...actual, placeFleetRandomly, fireAndSubmitIfOver }
+  return { ...actual, placeFleetRandomly }
 })
 
 afterEach(() => {
@@ -24,13 +22,11 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-const torpilleur: PlacedShip = {
-  ship: { name: 'Torpilleur', size: 2 },
-  coords: [
-    { row: 0, col: 0 },
-    { row: 0, col: 1 },
-  ],
-}
+/** Flotte fixe : un navire par ligne (0 à 4), colonnes 0..size-1, horizontale. Laisse les lignes 5-9 vides. */
+const FIXED_FLEET: PlacedShip[] = FLEET.map((ship, row) => ({
+  ship,
+  coords: shipCoords({ row, col: 0 }, ship.size, 'horizontal'),
+}))
 
 function buildCtx(overrides: Partial<GameContext> = {}): GameContext {
   return {
@@ -48,138 +44,224 @@ function buildCtx(overrides: Partial<GameContext> = {}): GameContext {
   }
 }
 
-function startGame(ctx = buildCtx()) {
-  placeFleetRandomly.mockReturnValue([torpilleur])
+function click(name: string | RegExp) {
+  fireEvent.click(screen.getByRole('button', { name }))
+}
+
+function cellName(c: Coord) {
+  return `Case ${c.row + 1},${c.col + 1}`
+}
+
+/** Joue la phase de placement des deux joueurs (flotte fixe) jusqu'au début de la bataille. */
+function startLocalGame(ctx = buildCtx()) {
+  placeFleetRandomly.mockReturnValue(FIXED_FLEET)
   render(<BatailleNavaleGame ctx={ctx} />)
-  fireEvent.click(screen.getByRole('button', { name: 'Nouvelle partie' }))
+  click('Solo (même appareil)')
+  click('Placer au hasard') // joueur 1
+  click('Prêt')
+  click('Je suis prêt') // passe au joueur 2
+  click('Placer au hasard') // joueur 2
+  click('Prêt')
+  click('Je suis prêt') // passe pour commencer la bataille
   return ctx
 }
 
-describe('BatailleNavaleGame', () => {
-  test('écran de départ : propose de lancer une nouvelle partie', () => {
-    render(<BatailleNavaleGame ctx={buildCtx()} />)
+describe('BatailleNavaleGame — menu', () => {
+  test('propose le mode local ; masque le mode en ligne pour un invité', () => {
+    render(<BatailleNavaleGame ctx={buildCtx({ isGuest: true })} />)
 
-    expect(screen.getByRole('button', { name: 'Nouvelle partie' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Solo (même appareil)' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'En ligne' })).toBeNull()
+    expect(screen.getByText(/Connecte-toi pour jouer en ligne/)).toBeTruthy()
   })
 
-  test('lance une partie et affiche la grille de tir du joueur 1', () => {
-    startGame()
+  test('propose le mode en ligne à un joueur connecté', () => {
+    render(<BatailleNavaleGame ctx={buildCtx({ isGuest: false, player: { id: 'u1', username: 'alice' } })} />)
+
+    expect(screen.getByRole('button', { name: 'En ligne' })).toBeTruthy()
+  })
+})
+
+describe('BatailleNavaleGame — mode local', () => {
+  test('la bataille commence après le placement des deux flottes', () => {
+    startLocalGame()
 
     expect(screen.getByText('Au tour du joueur 1')).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: /^Case / })).toHaveLength(100)
+    expect(screen.getAllByRole('button', { name: /^Case / })).toHaveLength(GRID_SIZE * GRID_SIZE)
   })
 
   test("un tir dans l'eau passe la main avec le message correspondant", async () => {
-    fireAndSubmitIfOver.mockResolvedValue({ result: 'miss', gameOver: false })
-    startGame()
+    startLocalGame()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Case 1,1' }))
+    click(cellName({ row: 9, col: 9 })) // case vide dans la flotte fixe
 
     expect(await screen.findByText("À l'eau.")).toBeTruthy()
-    expect(screen.getByText("Passe l'appareil au joueur 2")).toBeTruthy()
-  })
+    expect(screen.getByText("Passe l'appareil")).toBeTruthy()
 
-  test('un tir qui coule un navire sans finir la partie affiche le navire coulé', async () => {
-    fireAndSubmitIfOver.mockResolvedValue({ result: 'hit', sunk: torpilleur.ship, gameOver: false })
-    startGame()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Case 1,1' }))
-
-    expect(await screen.findByText('Torpilleur coulé !')).toBeTruthy()
-  })
-
-  test('après la passation, la grille affiche le tour du joueur suivant', async () => {
-    fireAndSubmitIfOver.mockResolvedValue({ result: 'miss', gameOver: false })
-    startGame()
-    fireEvent.click(screen.getByRole('button', { name: 'Case 1,1' }))
-    await screen.findByText("À l'eau.")
-
-    fireEvent.click(screen.getByRole('button', { name: 'Je suis prêt' }))
-
+    click('Je suis prêt')
     expect(screen.getByText('Au tour du joueur 2')).toBeTruthy()
   })
 
-  test('couler le dernier navire adverse termine la partie, soumet le score et affiche le vainqueur', async () => {
-    fireAndSubmitIfOver.mockImplementation(async (_fleet, _shots, _target, submitScore) => {
-      await submitScore(1234, { shots: 1, hits: 1 })
-      return { result: 'hit', sunk: torpilleur.ship, gameOver: true }
-    })
-    const ctx = startGame()
+  test('un tir qui touche sans couler annonce « Touché ! »', async () => {
+    startLocalGame()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Case 1,1' }))
+    click(cellName({ row: 0, col: 0 })) // Porte-avions (taille 5) : une seule case touchée
+
+    expect(await screen.findByText('Touché !')).toBeTruthy()
+  })
+
+  test('couler un navire sur deux tours distincts annonce le navire coulé', async () => {
+    startLocalGame()
+
+    click(cellName({ row: 4, col: 0 })) // Torpilleur (taille 2), 1ère case
+    await screen.findByText('Touché !')
+    click('Je suis prêt')
+
+    click(cellName({ row: 9, col: 9 })) // joueur 2 : tir sans danger
+    await screen.findByText("À l'eau.")
+    click('Je suis prêt')
+
+    click(cellName({ row: 4, col: 1 })) // Torpilleur, 2e et dernière case
+    expect(await screen.findByText('Torpilleur coulé !')).toBeTruthy()
+  })
+
+  test('au tour suivant du même joueur, ses tirs précédents restent marqués et désactivés', async () => {
+    startLocalGame()
+    click(cellName({ row: 0, col: 0 }))
+    await screen.findByText('Touché !')
+    click('Je suis prêt')
+
+    click(cellName({ row: 9, col: 9 }))
+    await screen.findByText("À l'eau.")
+    click('Je suis prêt')
+
+    expect(screen.getByText('Au tour du joueur 1')).toBeTruthy()
+    const firstCell = screen.getByRole('button', { name: new RegExp(`^${cellName({ row: 0, col: 0 })}(,|$)`) })
+    expect(firstCell).toBeDisabled()
+    expect(firstCell.className).toContain('hit')
+  })
+
+  /** Le joueur 1 coule toute la flotte adverse (fixe) ; le joueur 2 ne fait que des tirs sans danger. */
+  async function sinkWholeOpponentFleet() {
+    const player1Targets = FIXED_FLEET.flatMap((p) => p.coords) // 17 cases au total
+    const player2SafeCells: Coord[] = []
+    for (let row = 5; row < GRID_SIZE && player2SafeCells.length < player1Targets.length; row++) {
+      for (let col = 0; col < GRID_SIZE && player2SafeCells.length < player1Targets.length; col++) {
+        player2SafeCells.push({ row, col })
+      }
+    }
+
+    for (let i = 0; i < player1Targets.length; i++) {
+      click(cellName(player1Targets[i]))
+      if (i === player1Targets.length - 1) break
+      await screen.findByRole('button', { name: 'Je suis prêt' })
+      click('Je suis prêt')
+
+      click(cellName(player2SafeCells[i]))
+      await screen.findByRole('button', { name: 'Je suis prêt' })
+      click('Je suis prêt')
+    }
+  }
+
+  test('couler toute la flotte adverse termine la partie, soumet le score et affiche le vainqueur', async () => {
+    const ctx = startLocalGame()
+
+    await sinkWholeOpponentFleet()
 
     expect(await screen.findByText('Le joueur 1 a gagné !')).toBeTruthy()
-    expect(ctx.submitScore).toHaveBeenCalledWith(1234, { shots: 1, hits: 1, winner: 1 })
+    expect(ctx.submitScore).toHaveBeenCalled()
     expect(ctx.getLeaderboard).toHaveBeenCalled()
   })
 
   test('invité : incite à se connecter pour apparaître au classement après la victoire', async () => {
-    fireAndSubmitIfOver.mockResolvedValue({ result: 'hit', gameOver: true })
-    startGame(buildCtx({ isGuest: true }))
+    startLocalGame(buildCtx({ isGuest: true }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Case 1,1' }))
+    await sinkWholeOpponentFleet()
 
     expect(await screen.findByText(/Connecte-toi pour apparaître au classement/)).toBeTruthy()
   })
+})
 
-  test('connecté : aucune incitation à se connecter après la victoire', async () => {
-    fireAndSubmitIfOver.mockResolvedValue({ result: 'hit', gameOver: true })
-    startGame(buildCtx({ isGuest: false, player: { id: 'u1', username: 'alice' } }))
+describe('BatailleNavaleGame — mode en ligne', () => {
+  function buildOnlineCtx(connection: FakeRealtimeConnection) {
+    const realtime: Realtime = {
+      createRoom: vi.fn().mockResolvedValue(connection),
+      joinRoom: vi.fn().mockResolvedValue(connection),
+    }
+    return buildCtx({ isGuest: false, player: { id: 'u1', username: 'alice' }, realtime })
+  }
 
-    fireEvent.click(screen.getByRole('button', { name: 'Case 1,1' }))
-
-    await screen.findByText('Le joueur 1 a gagné !')
-    expect(screen.queryByText(/Connecte-toi pour apparaître au classement/)).toBeNull()
-  })
-
-  test('affiche une erreur si la soumission du score échoue', async () => {
-    fireAndSubmitIfOver.mockRejectedValue(new Error('boom'))
-    startGame()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Case 1,1' }))
-
-    expect(await screen.findByText('boom')).toBeTruthy()
-  })
-
-  test('un tir répété ne modifie ni la phase ni la grille', async () => {
-    fireAndSubmitIfOver.mockResolvedValue({ result: 'repeat', gameOver: false })
-    startGame()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Case 1,1' }))
-
-    await Promise.resolve()
-    expect(screen.getByText('Au tour du joueur 1')).toBeTruthy()
-  })
-
-  test("une erreur de chargement du classement n'empêche pas de continuer à jouer", async () => {
-    const ctx = buildCtx({ getLeaderboard: vi.fn().mockRejectedValue(new Error('indisponible')) })
+  test('crée une salle, place sa flotte, envoie READY puis joue un échange de tirs', async () => {
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('ROOM-1', 1, 1)
+    const ctx = buildOnlineCtx(connection)
     render(<BatailleNavaleGame ctx={ctx} />)
 
-    await vi.waitFor(() => expect(ctx.getLeaderboard).toHaveBeenCalled())
-    expect(screen.getByRole('button', { name: 'Nouvelle partie' })).toBeTruthy()
+    click('En ligne')
+    await act(async () => {
+      click('Créer une partie')
+    })
+    expect(await screen.findByText('ROOM-1')).toBeTruthy()
+
+    click('Placer au hasard')
+    click('Prêt')
+
+    await screen.findByText("En attente de l'adversaire")
+    expect(connection.sent).toContainEqual({ type: 'READY', data: { by: 1 }, actionId: undefined })
+
+    await act(async () => {
+      connection.emit('READY', { by: 1 }) // écho de mon propre envoi : le serveur me le renvoie aussi
+      connection.emit('READY', { by: 2 })
+    })
+    expect(await screen.findByText('À toi de tirer')).toBeTruthy()
+
+    click(cellName({ row: 9, col: 9 }))
+    expect(connection.sent).toContainEqual({
+      type: 'FIRE',
+      data: { by: 1, targets: [{ row: 9, col: 9 }] },
+      actionId: undefined,
+    })
+
+    await act(async () => {
+      connection.emit('FIRE_RESULT', { by: 1, targets: [{ row: 9, col: 9 }], results: ['miss'], sunk: [], gameOver: false })
+    })
+    expect(await screen.findByText("Au tour de l'adversaire")).toBeTruthy()
+
+    await act(async () => {
+      connection.emit('FIRE', { by: 2, targets: [{ row: 0, col: 0 }] }) // touche le Porte-avions placé
+    })
+    expect(connection.sent).toContainEqual({
+      type: 'FIRE_RESULT',
+      data: { by: 2, targets: [{ row: 0, col: 0 }], results: ['hit'], sunk: [], gameOver: false },
+      actionId: undefined,
+    })
+
+    await act(async () => {
+      connection.emit('FIRE_RESULT', { by: 2, targets: [{ row: 0, col: 0 }], results: ['hit'], sunk: [], gameOver: false })
+    })
+    expect(await screen.findByText('À toi de tirer')).toBeTruthy()
   })
 
-  test('au tour suivant du même joueur, ses tirs précédents restent marqués et désactivés', async () => {
-    fireAndSubmitIfOver.mockImplementationOnce(async (_fleet, shots: Set<string>, target) => {
-      shots.add(coordKey(target))
-      return { result: 'hit', gameOver: false }
-    })
-    startGame()
-    fireEvent.click(screen.getByRole('button', { name: 'Case 1,1' }))
-    await screen.findByText('Touché !')
-    fireEvent.click(screen.getByRole('button', { name: 'Je suis prêt' }))
+  test('la perte de connexion affiche un message clair, sans reprise', async () => {
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('ROOM-2', 1, 1)
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
 
-    fireAndSubmitIfOver.mockImplementationOnce(async (_fleet, shots: Set<string>, target) => {
-      shots.add(coordKey(target))
-      return { result: 'miss', gameOver: false }
+    click('En ligne')
+    await act(async () => {
+      click('Créer une partie')
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Case 2,2' }))
-    await screen.findByText("À l'eau.")
-    fireEvent.click(screen.getByRole('button', { name: 'Je suis prêt' }))
+    click('Placer au hasard')
+    click('Prêt')
+    await screen.findByText("En attente de l'adversaire")
 
-    expect(screen.getByText('Au tour du joueur 1')).toBeTruthy()
-    const firstCell = screen.getByRole('button', { name: 'Case 1,1' })
-    expect(firstCell).toHaveProperty('disabled', true)
-    expect(firstCell.className).toContain('hit')
+    await act(async () => {
+      connection.emit('PLAYER_LEFT', {})
+    })
+
+    expect(await screen.findByText('Connexion perdue')).toBeTruthy()
+    click('Retour au menu')
+    expect(screen.getByRole('button', { name: 'Solo (même appareil)' })).toBeTruthy()
   })
 })

@@ -78,6 +78,45 @@ export function computeScore(shots: number, hits: number): number {
   return Math.max(10, 1000 + hits * 20 - misses * 10)
 }
 
+/** Cases d'un bloc carré centré sur `center` (rayon 1 = 3×3), bornées à la grille. */
+export function zoneCoords(center: Coord, radius = 1): Coord[] {
+  const coords: Coord[] = []
+  for (let row = center.row - radius; row <= center.row + radius; row++) {
+    for (let col = center.col - radius; col <= center.col + radius; col++) {
+      const c = { row, col }
+      if (isInBounds(c)) coords.push(c)
+    }
+  }
+  return coords
+}
+
+/** Cases de `zone` occupées par un navire. Ne touche pas `shots` : une case scannée reste tirable. */
+export function scanZone(fleet: PlacedShip[], zone: Coord[]): Coord[] {
+  const occupied = new Set(fleet.flatMap((p) => p.coords.map(coordKey)))
+  return zone.filter((c) => occupied.has(coordKey(c)))
+}
+
+export type VolleyShot = { target: Coord; result: ShotResult; sunk?: Ship }
+
+/** Applique `fireShot` à chaque case, dans l'ordre. Une case déjà tirée (même dans cette volée) est « repeat ». */
+export function fireVolley(fleet: PlacedShip[], shots: Set<string>, targets: Coord[]): VolleyShot[] {
+  return targets.map((target) => ({ target, ...fireShot(fleet, shots, target) }))
+}
+
+export function sunkShips(fleet: PlacedShip[], shots: Set<string>): Ship[] {
+  return fleet.filter((p) => p.coords.every((c) => shots.has(coordKey(c)))).map((p) => p.ship)
+}
+
+export type Unlocks = { salvo: boolean; radar: boolean; nuke: boolean }
+
+/**
+ * Déblocages à usage unique du mode augmenté, dérivés uniquement de mes propres tirs et navires coulés :
+ * aucun état à synchroniser entre joueurs, chaque camp calcule les siens pareil.
+ */
+export function computeUnlocks(shotsFired: number, shipsSunk: number): Unlocks {
+  return { salvo: shipsSunk >= 1, radar: shotsFired >= 5, nuke: shotsFired >= 10 }
+}
+
 export type SubmitScore = (score: number, metadata: { shots: number; hits: number }) => Promise<boolean>
 
 /**
@@ -100,4 +139,20 @@ export async function fireAndSubmitIfOver(
     await submitScore(computeScore(shots.size, hits), { shots: shots.size, hits })
   }
   return { ...outcome, gameOver }
+}
+
+/** Équivalent de `fireAndSubmitIfOver` pour plusieurs cases à la fois (salve, frappe nucléaire). */
+export async function fireVolleyAndSubmitIfOver(
+  fleet: PlacedShip[],
+  shots: Set<string>,
+  targets: Coord[],
+  submitScore: SubmitScore,
+): Promise<{ outcomes: VolleyShot[]; gameOver: boolean }> {
+  const outcomes = fireVolley(fleet, shots, targets)
+  const gameOver = isFleetSunk(fleet, shots)
+  if (gameOver) {
+    const hits = countHits(fleet, shots)
+    await submitScore(computeScore(shots.size, hits), { shots: shots.size, hits })
+  }
+  return { outcomes, gameOver }
 }
