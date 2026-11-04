@@ -1,6 +1,7 @@
 package fr.tikigaming.games.bang.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import fr.tikigaming.games.bang.cards.BangCharacter;
 import fr.tikigaming.games.bang.cards.Role;
@@ -35,6 +36,18 @@ class PlayerDistanceTest {
         assertThat(PlayerDistance.between(state, 3, 1)).isEqualTo(expected);
 
         assertThat(state).isEqualTo(table(secondHealth, fourthHealth));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"9, 1", "1, 9", "2, 1", "1, 2"})
+    void requiresBothSeatsToBelongToLivingPlayers(int fromSeat, int toSeat) {
+        GameState state = table(0, 4);
+
+        assertThatThrownBy(() -> PlayerDistance.between(state, fromSeat, toSeat))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("La distance nécessite deux joueurs vivants");
+
+        assertThat(state).isEqualTo(table(0, 4));
     }
 
     private static GameState table(int secondHealth, int fourthHealth) {

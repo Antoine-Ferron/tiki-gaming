@@ -11,7 +11,12 @@ public final class PlayerDistance {
                 .filter(player -> player.health() > 0)
                 .map(GameState.Player::seat)
                 .toList();
-        int gap = Math.abs(livingSeats.indexOf(fromSeat) - livingSeats.indexOf(toSeat));
+        int from = livingSeats.indexOf(fromSeat);
+        int to = livingSeats.indexOf(toSeat);
+        if (from < 0 || to < 0) {
+            throw new IllegalArgumentException("La distance nécessite deux joueurs vivants");
+        }
+        int gap = Math.abs(from - to);
         return Math.min(gap, livingSeats.size() - gap);
     }
 }
