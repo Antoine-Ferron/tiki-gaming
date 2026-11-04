@@ -1,6 +1,7 @@
 package fr.tikigaming.games.echecs.api;
 
 import fr.tikigaming.games.echecs.engine.Fen;
+import fr.tikigaming.games.echecs.engine.Game;
 import fr.tikigaming.games.echecs.engine.MoveGenerator;
 import fr.tikigaming.games.echecs.engine.Square;
 import java.util.List;
@@ -19,5 +20,10 @@ public class EchecsService {
                 .map(Square::toString)
                 .sorted()
                 .toList();
+    }
+
+    /** Joue le coup {@code from} → {@code to} et renvoie la FEN de la position suivante. */
+    public String play(String fen, String from, String to) {
+        return Fen.toFen(Game.play(Fen.parse(fen), Square.of(from), Square.of(to)));
     }
 }
