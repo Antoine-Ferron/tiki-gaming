@@ -67,3 +67,24 @@ Branche `game/dame/rencontres`, créée depuis `origin/dev` à `e521099`.
 Formatage limité au nouveau package puis `mvn compile` : réussis, sans nouvelle
 dépendance. Les méthodes de commande sont encore des squelettes ; ce commit
 ne prétend pas livrer la fonctionnalité.
+
+### RED exécuté
+
+```bash
+mvn -B -ntp -f backend/pom.xml '-Dtest=fr.tikigaming.games.dame.matches.*Test' test
+```
+
+Résultat : **59 cas, 57 échecs d'assertion attendus, 0 erreur, 0 ignoré**.
+Les deux comportements déjà verts concernent les données initiales et les
+homonymes. Aucun test désactivé et aucun `fail()` artificiel.
+
+- `MatchTest` : 35 cas de validation, limites, restauration et clôture immuable.
+- `MatchServiceTest` : 11 cas avec fake et vrai moteur, dont une victoire obtenue
+  par la dernière capture.
+- `MatchServiceDoublesTest` : 13 cas distinguant stubs de lecture/panne et
+  vérification d'interactions via Mockito.
+
+Le formatage et Checkstyle passent. La première exécution restreinte n'a pas pu
+initialiser l'agent Mockito ; la commande a été relancée avec les droits JVM
+nécessaires. Le décompte ci-dessus vient de cette exécution complète, sans erreur
+d'infrastructure.
