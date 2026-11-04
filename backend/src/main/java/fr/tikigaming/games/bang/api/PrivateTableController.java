@@ -6,6 +6,7 @@ import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.config.ApiExceptionHandler.ApiError;
 import fr.tikigaming.games.bang.engine.PrivateTableService;
 import fr.tikigaming.games.bang.model.GameStarted;
+import fr.tikigaming.games.bang.model.PlayerGameView;
 import fr.tikigaming.games.bang.model.TableSeat;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -128,7 +129,12 @@ public class PrivateTableController {
     }
 
     @GetMapping("/{code}/state")
-    @Operation(summary = "Consulter sa vue de la partie")
+    @Operation(
+            summary = "Consulter sa vue de la partie",
+            description = "La main et le rôle sont ceux du compte en session. Les rôles secrets des autres joueurs, "
+                    + "leurs cartes en main et la pioche ne sont jamais transmis. "
+                    + "Consulter la partie ne renouvelle pas le délai d'expiration de la table.")
+    @ApiResponse(responseCode = "200", description = "Vue privée du joueur connecté et informations publiques")
     @ApiResponse(
             responseCode = "401",
             description = "Non connecté",
@@ -145,8 +151,8 @@ public class PrivateTableController {
             responseCode = "409",
             description = "Partie non démarrée",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
-    void state(@PathVariable String code, HttpServletRequest request) {
-        tables.state(code, connectedAccountId(request));
+    PlayerGameView state(@PathVariable String code, HttpServletRequest request) {
+        return tables.state(code, connectedAccountId(request));
     }
 
     private static String connectedAccountId(HttpServletRequest request) {
