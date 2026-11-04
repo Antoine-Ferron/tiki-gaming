@@ -9,6 +9,7 @@ import { getLevel, levels } from './domain/levels'
 import { levelScore } from './domain/score'
 import { completeGenerated } from './services/completeGenerated'
 import { completeLevel } from './services/completeLevel'
+import { type LevelVerifier, serverVerifier } from './services/levelVerifier'
 import { type Progress, loadProgress } from './services/progress'
 import './rush-hour.css'
 
@@ -20,10 +21,12 @@ type Screen =
 type RushHourGameProps = GameProps & {
   /** Hasard du mode Génération : Math.random en jeu, une graine fixe dans les tests. */
   random?: () => number
+  /** Vérification d'un niveau gagné : le serveur en jeu, une doublure dans les tests. */
+  verifyLevel?: LevelVerifier
 }
 
 /** Jeu Rush Hour : écran de choix, partie sur un niveau ou un plateau généré, et classement à côté. */
-export default function RushHourGame({ ctx, random = Math.random }: RushHourGameProps) {
+export default function RushHourGame({ ctx, random = Math.random, verifyLevel = serverVerifier }: RushHourGameProps) {
   const [progress, setProgress] = useState<Progress | null>(null)
   const [screen, setScreen] = useState<Screen>({ kind: 'picker' })
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
@@ -50,7 +53,8 @@ export default function RushHourGame({ ctx, random = Math.random }: RushHourGame
     setScreen({ kind: 'generated', difficulty, map: generateBoard(difficulty, random) })
 
   async function completeLevelRun(id: number, run: FinishedRun) {
-    const { score, best } = await completeLevel(ctx, { ...run, level: id })
+    const { moves, hintsUsed, durationMs } = run
+    const { score, best } = await completeLevel(ctx, { level: id, moves, hintsUsed, durationMs }, verifyLevel)
     setProgress((p) => ({ ...p, best }))
     loadLeaderboard()
     return score
