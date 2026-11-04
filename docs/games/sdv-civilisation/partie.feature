@@ -22,6 +22,12 @@
 #
 # Les scénarios décrivent les règles, jamais l'interface (pas de clic ni de bouton) : ils restent vrais
 # quand l'écran change. Une règle par scénario, des exemples concrets plutôt que des étapes techniques.
+#
+# Le serveur arbitre la partie : chaque scénario est vérifié par un test JUnit du backend
+# (backend/src/test/java/fr/tikigaming/games/sdv_civilisation/), écrit avec les mêmes Étant donné / Quand / Alors :
+#   mise en place → SetupTest · construire, acheter, refus, chaîne → PaymentTest, TurnTest
+#   merveille, défausse, exemplaires, passage des mains → TurnTest · conflits et âges → AgeEndTest
+#   guilde, classement → ScoringTest · IA et partie complète → AiTest · minuteur → TimeoutTest
 Fonctionnalité: Partie contre les IA
   Pour jouer une vraie partie sans attendre le multijoueur
   En tant que joueur

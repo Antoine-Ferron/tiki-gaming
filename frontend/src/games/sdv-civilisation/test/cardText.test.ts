@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { fillWithBots } from '../bots'
-import { cardStatus, duel, paymentText, relevantNeeds, stageText, wonderAction } from '../cardText'
-import { createGame, wonderNeeds, wonderPayment } from '../game'
-import { fixedRate, identityShuffler } from './fakes'
+import { cardStatus, duel, paymentText, stageText, wonderAction } from '../cardText'
+import { contract } from './fakes'
 
 describe('textes affichés', () => {
   it('annonce une construction gratuite par chaîne', () => {
@@ -10,14 +8,6 @@ describe('textes affichés', () => {
 
     expect(cardStatus(chained).label).toBe('Gratuit par chaîne')
     expect(paymentText(chained, 'IA 2', 'IA 1')).toBe('Gratuit grâce à la chaîne.')
-  })
-
-  it('ne met aucune ressource en évidence pour une carte gratuite par chaîne ou déjà construite', () => {
-    const needs = [{ resource: 'stone' as const, needed: 1, own: 0, fromLeft: 0, fromRight: 0, missing: 1 }]
-    const chained = { ok: true, coins: 0, toLeft: 0, toRight: 0, chain: true } as const
-    const built = { ok: false, code: 'built', reason: 'Tu as déjà construit cette carte.' } as const
-
-    expect([relevantNeeds(chained, needs), relevantNeeds(built, needs)]).toEqual([[], []])
   })
 
   it('compare les boucliers voisin par voisin', () => {
@@ -33,13 +23,11 @@ describe('textes affichés', () => {
   })
 
   it('signale une merveille terminée', () => {
-    // Stub : mélangeur sans effet ; taux figé.
-    const game = createGame(fillWithBots(['alice']), identityShuffler)
-    const alice = { ...game.players[0], stagesBuilt: 3 }
-    const finished = { ...game, players: [alice, ...game.players.slice(1)] }
+    // Étant donné alice dont les 3 étapes sont bâties (le serveur refuse alors toute étape)
+    const alice = { ...contract.start.players[0], stagesBuilt: 3 }
+    const refused = { ok: false, code: 'wonder', reason: 'Ta merveille est déjà terminée.' } as const
 
-    expect(wonderNeeds(finished, 0)).toEqual([])
-    expect(wonderAction(alice, wonderPayment(finished, 0, fixedRate(2)), 'IA 2', 'IA 1')).toEqual({
+    expect(wonderAction(alice, refused, 'IA 2', 'IA 1')).toEqual({
       title: 'Merveille terminée',
       detail: 'Ta merveille est déjà terminée.',
     })

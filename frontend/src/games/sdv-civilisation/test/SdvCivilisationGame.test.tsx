@@ -1,159 +1,221 @@
 // @vitest-environment jsdom
 import { Suspense } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { GameError } from '@/games/errors'
 import { createGameContext } from '@/games/sdk'
 import { fakeDeps, FakeScores } from '@/games/testing/fakes'
+import { ApiError } from '@/lib/api'
 import sdvCivilisation from '..'
+import { TurnConflict } from '../ports'
 import { SdvCivilisationBoard } from '../SdvCivilisationGame'
-import { identityShuffler } from './fakes'
+import { contract, FakeGameServer } from './fakes'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
 const status = () => document.querySelector('.sdv-civilisation-status')!.textContent
+const banner = () => screen.getByRole('status').textContent
 const city = () => screen.getByRole('region', { name: 'Ta civilisation' })
-const journal = (turn: string) => {
-  click('Journal')
-  return within(screen.getByRole('list', { name: turn })).getAllByRole('listitem')
+const hand = () => screen.getAllByRole('button', { pressed: false })
+const timer = () => screen.getByRole('timer')
+
+function renderBoard(server: FakeGameServer, scores = new FakeScores({ id: 'p1', username: 'alice' })) {
+  const ctx = createGameContext(sdvCivilisation, { id: 'p1', username: 'alice' }, fakeDeps({ scores }))
+  render(<SdvCivilisationBoard ctx={ctx} server={server} tempo="off" />)
 }
 
-function renderBoard() {
-  const alice = { id: 'p1', username: 'alice' }
-  const ctx = createGameContext(sdvCivilisation, alice, fakeDeps({ scores: new FakeScores(alice) }))
-  render(<SdvCivilisationBoard ctx={ctx} shuffler={identityShuffler} tempo="off" />)
-  return ctx
-}
-
-// Fake : scores en mémoire. Stub : le mélangeur garde l'ordre (main de départ connue, IA 1 verre, IA 2 bois).
-function setup() {
-  const ctx = renderBoard()
-  click('Choisir Temple d’Ysar')
-  return ctx
+// Étant donné une partie commencée avec la Citadelle d’Orkan (fake : le serveur répond avec les vues du contrat)
+async function started(plays: FakeGameServer['saved'][] = []) {
+  const server = new FakeGameServer({ plays: plays as never })
+  renderBoard(server)
+  fireEvent.click(await screen.findByRole('button', { name: 'Choisir Citadelle d’Orkan' }))
+  await screen.findByRole('region', { name: 'Ta civilisation' })
+  return server
 }
 
 describe('SdvCivilisationGame', () => {
-  it('fait choisir la merveille, puis montre les voisins, la civilisation du joueur et sa main', () => {
-    setup()
+  it('propose les merveilles du serveur, commence la partie et montre voisins, civilisation et main', async () => {
+    // Quand le joueur choisit la Citadelle d’Orkan
+    const server = await started()
 
+    // Alors le serveur commence la partie, et l'écran montre la table qu'il a renvoyée
+    expect(server.start).toHaveBeenCalledWith('Citadelle d’Orkan')
     const left = screen.getByRole('region', { name: 'Voisin de gauche : IA 2' })
     const right = screen.getByRole('region', { name: 'Voisin de droite : IA 1' })
-    expect(within(left).getByRole('img', { name: 'Produit 1 bois' })).toBeTruthy()
-    expect(within(right).getByRole('img', { name: 'Produit 1 verre' })).toBeTruthy()
-    expect(within(city()).getByRole('img', { name: 'Produit 1 minerai' })).toBeTruthy()
-    expect(screen.getAllByRole('button', { pressed: false })).toHaveLength(7)
-    click('Journal')
-    expect(screen.getByText('Les actions de chaque tour s’afficheront ici.')).toBeTruthy()
+    expect(within(left).getByRole('img', { name: 'Produit 1 verre' })).toBeTruthy()
+    expect(within(right).getByRole('img', { name: 'Produit 1 minerai' })).toBeTruthy()
+    expect(within(city()).getByRole('img', { name: 'Produit 1 pierre' })).toBeTruthy()
+    expect(hand()).toHaveLength(7)
+    expect(status()).toBe('Âge I · Tour 1 / 6Les mains passent ← vers la gauche')
   })
 
-  it('détaille ce qui manque pour construire une carte', () => {
-    setup()
+  it('reprend la partie en cours, enregistrée par le serveur', async () => {
+    // Étant donné une partie en cours au tour 2
+    renderBoard(new FakeGameServer({ saved: contract.turnTwo }))
 
-    click(/^Bains/)
-
-    expect(screen.getByRole('button', { name: /^Bains .*Ressources manquantes$/ })).toBeTruthy()
-    const build = screen.getByRole('button', { name: /^Construire Bains/ })
-    expect(build.hasAttribute('disabled')).toBe(true)
-    expect(build.textContent).toContain('1 pierre manquant')
-    expect(within(city()).getByText('manque 1')).toBeTruthy()
+    // Alors l'écran la reprend directement, sans repasser par le choix de la merveille
+    expect(await screen.findByText('Partie reprise : âge I, tour 2.')).toBeTruthy()
+    expect(status()).toContain('Tour 2 / 6')
+    expect(hand()).toHaveLength(6)
+    expect(within(city()).getByRole('listitem', { name: 'Atelier : Science : roue' })).toBeTruthy()
   })
 
-  it('met en évidence la ressource achetée au voisin et construit la carte', () => {
-    setup()
+  it('détaille le prix calculé par le serveur et lui envoie le coup choisi', async () => {
+    const server = await started([contract.turnTwo])
 
+    // Quand le joueur regarde la Palissade, puis l'Atelier
     click(/^Palissade/)
-    expect(screen.getByRole('button', { name: /^Construire Palissade/ }).textContent).toContain('1 bois acheté à IA 2')
+    expect(screen.getByRole('button', { name: /^Construire Palissade/ }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('button', { name: /^Construire Palissade/ }).textContent).toContain('1 bois manquant')
+    click(/^Atelier/)
+    expect(screen.getByRole('button', { name: /^Construire Atelier/ }).textContent).toContain('1 verre acheté à IA 2')
     const left = screen.getByRole('region', { name: 'Voisin de gauche : IA 2' })
     expect(left.querySelector('.sdv-civilisation-token-used')).toBeTruthy()
-    click(/^Construire Palissade/)
 
-    expect(within(city()).getByRole('listitem', { name: 'Palissade : 1 bouclier' })).toBeTruthy()
-    expect(status()).toBe('Âge I · Tour 2 / 6Les mains passent ← vers la gauche')
-  })
+    // Et qu'il construit l'Atelier
+    await act(async () => click(/^Construire Atelier/))
 
-  it('construit en achetant au voisin de droite et l’écrit au journal', () => {
-    setup()
-
-    click(/^Atelier/)
-    expect(screen.getByRole('button', { name: /^Construire Atelier/ }).textContent).toContain('1 verre acheté à IA 1')
-    click(/^Construire Atelier/)
-
+    // Alors le serveur reçoit la carte en position 6 pour la version 1, et l'écran passe au tour 2
+    expect(server.play).toHaveBeenCalledWith(6, 'build', 1)
+    expect(status()).toContain('Tour 2 / 6')
     expect(within(city()).getByRole('listitem', { name: 'roue : 1' })).toBeTruthy()
-    expect(within(city()).getByText(/[-−]2/)).toBeTruthy()
-    const turn = journal('Âge I, tour 1')
-    expect(turn).toHaveLength(3)
-    expect(turn[0].textContent).toBe('Tu as construit Atelier −2 pièces')
+    click('Journal')
+    expect(within(screen.getByRole('list', { name: 'Âge I, tour 1' })).getAllByRole('listitem')[0].textContent).toBe(
+      'Tu as construit Atelier +2 pièces',
+    )
   })
 
-  it('bâtit une étape de merveille avec la carte choisie', () => {
-    setup()
-
-    click(/^Bains/)
-    expect(screen.getByRole('button', { name: /^Bâtir l’étape 1/ }).textContent).toContain('1 minerai : tu le produis')
-    click(/^Bâtir l’étape 1 de ta merveille/)
-
-    expect(within(city()).getByRole('listitem', { name: /^Étape 1 \(bâtie\)/ })).toBeTruthy()
-    expect(journal('Âge I, tour 1')[0].textContent).toBe('Tu as bâti une étape de merveille avec Bains')
-  })
-
-  it('ouvre la cité d’un voisin', () => {
-    setup()
+  it('affiche le refus du serveur pour un coup interdit, sans changer de tour', async () => {
+    const server = await started()
+    // Stub : le serveur refuse le coup
+    server.play.mockRejectedValueOnce(new ApiError(400, 'Tu as déjà construit cette carte.'))
 
     click(/^Chantier/)
-    click(/^Construire Chantier/)
-    click('Voir la cité de IA 1')
+    await act(async () => click(/^Construire Chantier/))
 
-    const dialog = screen.getByRole('dialog', { name: 'Cité de IA 1' })
-    expect(within(dialog).getByRole('list', { name: 'Bâtiments de IA 1' })).toBeTruthy()
-    click('Fermer')
-    click('Voir la cité de IA 2')
-    expect(screen.getByRole('dialog', { name: 'Cité de IA 2' })).toBeTruthy()
+    expect(screen.getByText('Tu as déjà construit cette carte.')).toBeTruthy()
+    expect(status()).toContain('Tour 1 / 6')
   })
 
-  it('envoie le score à chaque fin de partie et affiche un échec d’envoi', async () => {
-    const ctx = setup()
-    // Mock : le premier envoi échoue, le second passe par le vrai SDK (et ses scores en mémoire).
-    const submitScore = vi
-      .spyOn(ctx, 'submitScore')
-      .mockRejectedValueOnce(new GameError('network', 'Envoi impossible.'))
-    const playToTheEnd = () => {
-      while (!screen.queryByText('Fin de partie')) {
-        // Les cartes de la main sont les seuls boutons à bascule (aria-pressed).
-        fireEvent.click(screen.getAllByRole('button', { pressed: false })[0])
-        click(/^Défausser/)
-      }
-    }
+  it('se resynchronise quand le tour a déjà avancé côté serveur (409)', async () => {
+    const server = await started()
+    // Stub : le coup arrive après l'expiration du minuteur
+    server.play.mockRejectedValueOnce(
+      new TurnConflict('Temps écoulé : une carte de ta main a été défaussée au hasard.', contract.turnTwo),
+    )
 
-    playToTheEnd()
-    expect(await screen.findByText('Envoi impossible.')).toBeTruthy()
+    click(/^Chantier/)
+    await act(async () => click(/^Défausser/))
+
+    expect(screen.getByText('Temps écoulé : une carte de ta main a été défaussée au hasard.')).toBeTruthy()
+    expect(status()).toContain('Tour 2 / 6')
+  })
+
+  it('affiche le minuteur du tour et laisse le serveur défausser une carte à l’expiration', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const server = await started()
+
+    // Alors le joueur voit le temps qui lui reste, en alerte dans les 10 dernières secondes
+    expect(timer().textContent).toBe('1:00')
+    act(() => vi.advanceTimersByTime(50_000))
+    expect(timer().textContent).toBe('0:10')
+    expect(timer().className).toContain('sdv-civilisation-timer-warning')
+
+    // Quand le temps est écoulé, mais que l'horloge du serveur a une demi-seconde de retard
+    server.saved = { ...contract.start, remainingMs: 500 }
+    await act(async () => vi.advanceTimersByTime(10_000))
+    expect(server.current).toHaveBeenCalledTimes(2)
+    expect(status()).toContain('Tour 1 / 6')
+
+    // Alors l'écran redemande la partie juste après : le serveur a défaussé une carte au hasard
+    server.saved = contract.turnTwo
+    await act(async () => vi.advanceTimersByTime(600))
+    expect(server.current).toHaveBeenCalledTimes(3)
+    expect(status()).toContain('Tour 2 / 6')
+    expect(banner()).toBe('Temps écoulé : une carte de ta main a été défaussée au hasard.')
+  })
+
+  it('abandonne la partie et revient au choix de la merveille', async () => {
+    const server = await started()
+
+    await act(async () => click('Abandonner'))
+
+    expect(server.abandon).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'Choisir Citadelle d’Orkan' })).toBeTruthy()
+  })
+
+  it('montre le classement final du serveur, rafraîchit celui de la plateforme et propose de rejouer', async () => {
+    // Spy : le classement de la plateforme est relu quand la partie se termine (le serveur a enregistré le score)
+    const scores = new FakeScores({ id: 'p1', username: 'alice' })
+    const leaderboard = vi.spyOn(scores, 'leaderboard')
+    renderBoard(new FakeGameServer({ saved: contract.over }), scores)
+
+    expect(await screen.findByText('Fin de partie')).toBeTruthy()
+    expect(screen.getByText('IA 2 gagne la partie.')).toBeTruthy()
+    expect(leaderboard).toHaveBeenCalledTimes(2)
     click('Journal')
-    expect(screen.getAllByText('Conflits :')).toHaveLength(3)
     click('Fermer')
     click('Rejouer')
-    click('Choisir Phare de Sélène')
-    expect(status()).toBe('Âge I · Tour 1 / 6Les mains passent ← vers la gauche')
-    playToTheEnd()
-
-    expect(await screen.findByText('alice', { selector: '.name' })).toBeTruthy()
-    expect(submitScore).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('button', { name: 'Choisir Citadelle d’Orkan' })).toBeTruthy()
   })
 
-  it('affiche les règles, avant comme pendant la partie, et les referme avec Échap ou le bouton', () => {
-    renderBoard()
+  it('ouvre la cité d’un voisin, les règles, et passe en plein écran', async () => {
+    Object.defineProperty(document, 'fullscreenEnabled', { value: true, configurable: true })
+    const requestFullscreen = vi.fn(() => Promise.resolve())
+    const exitFullscreen = vi.fn(() => Promise.resolve())
+    HTMLElement.prototype.requestFullscreen = requestFullscreen
+    document.exitFullscreen = exitFullscreen
+    const scrollIntoView = vi.fn()
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+    await started()
+    expect(scrollIntoView).toHaveBeenCalledOnce()
 
-    click('Règles')
-    fireEvent.keyDown(document, { key: 'Enter' })
-    expect(screen.getByRole('dialog', { name: 'Règles du jeu' })).toBeTruthy()
-    fireEvent.keyDown(document, { key: 'Escape' })
-    expect(screen.queryByRole('dialog')).toBeNull()
-    click('Choisir Temple d’Ysar')
-    click('Règles')
+    click('Voir la cité de IA 1')
+    expect(
+      within(screen.getByRole('dialog', { name: 'Cité de IA 1' })).getByRole('list', { name: 'Bâtiments de IA 1' }),
+    )
     click('Fermer')
-    expect(screen.queryByRole('dialog')).toBeNull()
+    click('Voir la cité de IA 2')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    click('Règles')
+    expect(screen.getByRole('dialog', { name: 'Règles du jeu' })).toBeTruthy()
+    click('Fermer')
+
+    click('Plein écran')
+    Object.defineProperty(document, 'fullscreenElement', {
+      value: document.querySelector('.sdv-civilisation'),
+      configurable: true,
+    })
+    fireEvent(document, new Event('fullscreenchange'))
+    click('Quitter le plein écran')
+    expect(requestFullscreen).toHaveBeenCalledOnce()
+    expect(exitFullscreen).toHaveBeenCalledOnce()
   })
 
-  it('chargé depuis le catalogue, laisse l’invité choisir sa merveille et affiche une erreur de classement', async () => {
+  it('affiche une erreur si le serveur est injoignable au chargement', async () => {
+    // Stub : le serveur ne répond pas
+    const server = new FakeGameServer()
+    server.current.mockRejectedValueOnce(
+      new ApiError(0, 'Le serveur est injoignable. Vérifie ta connexion et réessaie.'),
+    )
+    renderBoard(server)
+
+    expect(await screen.findByText('Le serveur est injoignable. Vérifie ta connexion et réessaie.')).toBeTruthy()
+  })
+
+  it('chargé depuis le catalogue, parle au vrai serveur HTTP et affiche une erreur de classement', async () => {
+    // Stub : fetch répond comme le backend (aucune partie en cours), le classement est indisponible
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.endsWith('/wonders') ? Response.json(contract.wonders) : new Response(null, { status: 204 }),
+      ),
+    )
     const scores = new FakeScores()
     scores.leaderboard = () => Promise.reject(new GameError('network', 'Classement indisponible.'))
     const Game = sdvCivilisation.component
@@ -164,30 +226,6 @@ describe('SdvCivilisationGame', () => {
     )
 
     expect(await screen.findByText('Classement indisponible.')).toBeTruthy()
-    click('Choisir Jardins de Mirah')
-    expect(city().textContent).toContain('Jardins de Mirah')
-  })
-
-  it('entre et sort du plein écran', () => {
-    // jsdom n'implémente pas l'API Fullscreen : on la simule.
-    Object.defineProperty(document, 'fullscreenEnabled', { value: true, configurable: true })
-    const requestFullscreen = vi.fn(() => Promise.resolve())
-    const exitFullscreen = vi.fn(() => Promise.resolve())
-    HTMLElement.prototype.requestFullscreen = requestFullscreen
-    document.exitFullscreen = exitFullscreen
-    // Au lancement de la partie, la page défile jusqu'au plateau (absent de jsdom : on le simule ici).
-    const scrollIntoView = vi.fn()
-    HTMLElement.prototype.scrollIntoView = scrollIntoView
-    setup()
-    expect(scrollIntoView).toHaveBeenCalledOnce()
-
-    click('Plein écran')
-    const board = document.querySelector('.sdv-civilisation')
-    Object.defineProperty(document, 'fullscreenElement', { value: board, configurable: true })
-    fireEvent(document, new Event('fullscreenchange'))
-    click('Quitter le plein écran')
-
-    expect(requestFullscreen).toHaveBeenCalledOnce()
-    expect(exitFullscreen).toHaveBeenCalledOnce()
+    expect(await screen.findByRole('button', { name: 'Choisir Jardins de Mirah' })).toBeTruthy()
   })
 })
