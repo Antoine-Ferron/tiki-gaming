@@ -14,20 +14,6 @@ public final class SolutionVerifier {
 
     private SolutionVerifier() {}
 
-    /** Vrai si chaque coup est légal et si la voiture rouge touche la sortie à la fin. */
-    public static boolean isValidSolution(List<String> map, List<Move> moves) {
-        List<Board.Vehicle> vehicles = new ArrayList<>(Board.parse(map).vehicles());
-        for (Move move : moves) {
-            int index = indexOf(vehicles, move.vehicleId());
-            if (index < 0 || !canMove(vehicles, index, move.delta())) {
-                return false;
-            }
-            vehicles.set(index, shifted(vehicles.get(index), move.delta()));
-        }
-        return vehicles.stream()
-                .anyMatch(v -> v.id() == RED_CAR && v.row() == EXIT_ROW && v.col() + v.length() == SIZE);
-    }
-
     /**
      * Rejoue une partie et renvoie son nombre de coups, comptés comme le front : les glissements successifs d'un même
      * véhicule forment un seul coup (R6), un aller-retour n'en compte aucun. Refuse un coup illégal ou une partie où
