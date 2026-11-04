@@ -8,13 +8,15 @@ export function GameScreen({
   onDraw,
   onEnd,
   onDiscard,
+  onShoot,
 }: {
   view: GameView
   onDraw: () => void
   onEnd: () => void
   onDiscard: (cardId: string) => void
+  onShoot?: (cardId: string, targetSeat: number) => void
 }) {
-  // Pas de route de tir côté serveur pour l'instant : on le dit au lieu de ne rien faire.
+  // Le prototype local ne dispose pas encore des règles de tir du serveur.
   const [shotNotice, setShotNotice] = useState(false)
 
   return (
@@ -27,7 +29,13 @@ export function GameScreen({
           Le tir n'est pas encore disponible.
         </p>
       )}
-      <BangBoard view={view} onShoot={() => setShotNotice(true)} onDiscard={onDiscard} onDraw={onDraw} onEnd={onEnd} />
+      <BangBoard
+        view={view}
+        onShoot={onShoot ?? (() => setShotNotice(true))}
+        onDiscard={onDiscard}
+        onDraw={onDraw}
+        onEnd={onEnd}
+      />
     </>
   )
 }
