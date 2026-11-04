@@ -24,7 +24,7 @@ class SessionGameStoreTest {
         // Alors la session ne garde qu'un texte scellé : sérialisable (session persistée ou répliquée),
         // et sans les mains des IA en clair
         assertThat(session.getAttribute(SessionGameStore.ATTRIBUTE))
-                .isInstanceOfSatisfying(String.class, sealed -> assertThat(sealed).doesNotContain("IA 1"));
+                .isInstanceOfSatisfying(String.class, text -> assertThat(text).doesNotContain("IA 1"));
     }
 
     @Test

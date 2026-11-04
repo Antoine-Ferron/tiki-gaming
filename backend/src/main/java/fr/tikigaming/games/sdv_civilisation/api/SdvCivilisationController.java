@@ -57,10 +57,12 @@ public class SdvCivilisationController {
 
     private final SdvCivilisationService service;
     private final UserGames accounts;
+    private final SealedState sealer;
 
-    public SdvCivilisationController(SdvCivilisationService service, UserGames accounts) {
+    public SdvCivilisationController(SdvCivilisationService service, UserGames accounts, SealedState sealer) {
         this.service = service;
         this.accounts = accounts;
+        this.sealer = sealer;
     }
 
     @GetMapping("/wonders")
@@ -125,7 +127,7 @@ public class SdvCivilisationController {
     /** Partie de l'invité dans sa session, ou partie du compte connecté (tous appareils). */
     private GameStore store(HttpServletRequest request) {
         AuthUser user = AuthSession.currentUser(request);
-        return user == null ? new SessionGameStore(request.getSession(true)) : accounts.forUser(user.id());
+        return user == null ? new SessionGameStore(request.getSession(true), sealer) : accounts.forUser(user.id());
     }
 
     private static String userId(HttpServletRequest request) {
