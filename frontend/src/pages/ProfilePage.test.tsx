@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { ApiError } from '@/lib/api'
 import { player, playerProfile, renderPage } from '@/auth/testing'
 import ProfilePage from './ProfilePage'
 
@@ -23,9 +24,15 @@ const db = vi.hoisted(() => {
   return { state, supabase }
 })
 vi.mock('@/lib/supabase', () => ({ supabase: db.supabase }))
+const api = vi.hoisted(() => ({ apiDelete: vi.fn<(path: string) => Promise<void>>() }))
+vi.mock('@/lib/api', async (original) => ({
+  ...(await original<typeof import('@/lib/api')>()),
+  apiDelete: api.apiDelete,
+}))
 vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }))
 
 beforeEach(() => {
+  api.apiDelete.mockReset()
   db.state.updates = []
   db.state.error = null
 })
@@ -93,5 +100,47 @@ describe('ProfilePage', () => {
 
     expect(await screen.findByText('Impossible d’enregistrer le profil. Réessaie plus tard.')).toBeTruthy()
     expect(screen.queryByText(/connection failure/)).toBeNull()
+  })
+
+  describe('suppression du compte (RGPD)', () => {
+    const deleteButton = () =>
+      screen.getByRole('button', { name: 'Supprimer définitivement mon compte' }) as HTMLButtonElement
+    const confirmWith = (text: string) =>
+      fireEvent.change(screen.getByLabelText(/^Pour confirmer, tape ton pseudo/), { target: { value: text } })
+
+    test('explique ce qui sera effacé, et n’active le bouton qu’une fois le pseudo exact retapé', () => {
+      renderPage(<ProfilePage />, { url: '/profile', auth: signedIn })
+
+      expect(screen.getByText(/ton profil, tes scores et tes sauvegardes/)).toBeTruthy()
+      expect(deleteButton().disabled).toBe(true)
+      confirmWith('joueur_4')
+      expect(deleteButton().disabled).toBe(true)
+      confirmWith('joueur_42')
+      expect(deleteButton().disabled).toBe(false)
+    })
+
+    test('supprime le compte, ferme la session côté front et revient à l’accueil', async () => {
+      api.apiDelete.mockResolvedValue(undefined)
+      const auth = renderPage(<ProfilePage />, { url: '/profile', auth: signedIn })
+
+      confirmWith('joueur_42')
+      fireEvent.click(deleteButton())
+
+      expect((await screen.findByTestId('destination')).textContent).toContain('/ {"accountDeleted":true}')
+      expect(api.apiDelete).toHaveBeenCalledWith('/auth/account')
+      expect(auth.refreshSession).toHaveBeenCalled()
+    })
+
+    test('si la suppression échoue, l’explique et reste sur le profil, connecté', async () => {
+      api.apiDelete.mockRejectedValue(new ApiError(502, 'Le service d’authentification est indisponible.'))
+      const auth = renderPage(<ProfilePage />, { url: '/profile', auth: signedIn })
+
+      confirmWith('joueur_42')
+      fireEvent.click(deleteButton())
+
+      expect(await screen.findByText('Le service d’authentification est indisponible.')).toBeTruthy()
+      expect(auth.refreshSession).not.toHaveBeenCalled()
+      expect(deleteButton().disabled).toBe(false)
+    })
   })
 })
