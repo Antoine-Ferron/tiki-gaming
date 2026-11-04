@@ -49,6 +49,19 @@ class MoveGeneratorTest {
         assertThat(destinations).isEqualTo(squares("b2", "b6", "c3", "c5"));
     }
 
+    @Test
+    @DisplayName("un cavalier ne va pas sur une case occupée par une pièce de son camp (règle D1)")
+    void unCavalierNeVaPasSurUnePieceAmie() {
+        // Arrange : pion blanc en e6, une des cases du cavalier blanc en d4
+        Position position = Fen.parse("4k3/8/4P3/8/3N4/8/8/4K3 w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("d4"));
+
+        // Assert
+        assertThat(destinations).isEqualTo(squares("b3", "b5", "c2", "c6", "e2", "f3", "f5"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
