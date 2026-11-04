@@ -240,6 +240,16 @@ class MoveGeneratorTest {
         assertThat(MoveGenerator.destinations(position, Square.of("e3"))).isEqualTo(squares("e4"));
     }
 
+    @Test
+    @DisplayName("un pion blanc sur sa rangée de départ (e2) peut avancer d'une ou de deux cases")
+    void unPionBlancSurSaRangeeDeDepartPeutFaireUnDoublePas() {
+        // Arrange
+        Position position = Fen.parse("k7/8/8/8/8/8/4P3/7K w - - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of("e2"))).isEqualTo(squares("e3", "e4"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
