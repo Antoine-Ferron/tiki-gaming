@@ -145,6 +145,21 @@ class MoveGeneratorTest {
                 .isEqualTo(squares("d1", "d2", "d3", "d5", "d6", "d7", "d8", "a4", "b4", "c4", "e4", "f4", "g4", "h4"));
     }
 
+    @Test
+    @DisplayName("une tour s'arrête avant une pièce de son camp (règle D4 : elle ne saute pas)")
+    void uneTourSArreteAvantUnePieceAmie() {
+        // Arrange : pion blanc en d6, au-dessus de la tour blanche en d4
+        Position position = Fen.parse("k7/8/3P4/8/3R4/8/8/7K w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("d4"));
+
+        // Assert : vers le haut, seulement d5 ; ni d6 (son pion), ni d7, d8 (derrière)
+        assertThat(destinations)
+                .contains(Square.of("d5"))
+                .doesNotContain(squares("d6", "d7", "d8").toArray(Square[]::new));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
