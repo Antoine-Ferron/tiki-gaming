@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MastermindGame from './MastermindGame'
+import { FakeRealtime } from '../testing/fakes'
 import type { GameContext } from '../types'
 import { ApiError, apiGet, apiPost } from '@/lib/api'
 
@@ -40,6 +41,7 @@ function createContext(): GameContext {
     loadSave: vi.fn().mockResolvedValue(null),
     save: vi.fn().mockResolvedValue(undefined),
     clearSave: vi.fn().mockResolvedValue(undefined),
+    realtime: new FakeRealtime(),
   }
 }
 
