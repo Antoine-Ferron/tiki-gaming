@@ -31,6 +31,8 @@ export function createSwarm(
 /** Avance l'essaim de `dt` secondes vers `target` (modifie les particules en place : appelé à chaque image). */
 export function stepSwarm(swarm: Particle[], target: { x: number; y: number }, dt: number, random = Math.random) {
   const t = Math.min(dt, MAX_DT)
+  // La date d'une image (requestAnimationFrame) peut précéder le performance.now() lu au démarrage : dt < 0.
+  if (!(t > 0)) return
   for (const p of swarm) {
     p.angle += p.spin * t
     const goalX = target.x + Math.cos(p.angle) * p.orbit

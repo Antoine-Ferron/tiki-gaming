@@ -42,7 +42,7 @@ HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f quality/docker-compose.yml
 | Scénario       | Débit     | Requête                                                             |
 |----------------|-----------|---------------------------------------------------------------------|
 | `leaderboard`  | 100 req/s | Top 10 du Clicker (vue `leaderboard`), en visiteur                  |
-| `submit_score` | 20 req/s  | Envoi de score d'un joueur connecté (JWT signé, RLS + `max_score`)  |
+| `submit_score` | 20 req/s  | Insertion d'un score comme le backend (`service_role`, trigger `max_score`) |
 | `session`      | 50 req/s  | `GET /api/auth/session` du backend                                  |
 
 - **Seuils bloquants** : P95 < 300 ms pour chaque scénario, moins de 1 % d'erreurs, plus de 99 % de vérifications réussies.

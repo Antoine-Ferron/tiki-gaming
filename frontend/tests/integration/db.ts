@@ -31,15 +31,26 @@ export async function createUser(db: pg.Client, username: string): Promise<strin
  * Exécute `fn` avec les droits d'un joueur (rôle authenticated + JWT) ou d'un visiteur (anon, userId null),
  * exactement comme PostgREST le fait pour une requête du front : la RLS s'applique.
  */
-export async function as<T>(db: pg.Client, userId: string | null, fn: () => Promise<T>): Promise<T> {
+export function as<T>(db: pg.Client, userId: string | null, fn: () => Promise<T>): Promise<T> {
   const role = userId ? 'authenticated' : 'anon'
-  const claims = JSON.stringify(userId ? { sub: userId, role } : { role })
+  return withRole(db, role, userId ?? '', JSON.stringify(userId ? { sub: userId, role } : { role }), fn)
+}
+
+/**
+ * Exécute `fn` avec les droits du backend Java (clé service_role, comme pour POST /api/scores) : la RLS ne
+ * s'applique pas, seuls les privilèges, contraintes et triggers protègent les données.
+ */
+export function asServer<T>(db: pg.Client, fn: () => Promise<T>): Promise<T> {
+  return withRole(db, 'service_role', '', JSON.stringify({ role: 'service_role' }), fn)
+}
+
+async function withRole<T>(db: pg.Client, role: string, sub: string, claims: string, fn: () => Promise<T>): Promise<T> {
   await db.query('savepoint as_user')
   try {
     await db.query(
       `select set_config('role', $1, true), set_config('request.jwt.claim.sub', $2, true),
               set_config('request.jwt.claims', $3, true)`,
-      [role, userId ?? '', claims],
+      [role, sub, claims],
     )
     const result = await fn()
     await db.query(

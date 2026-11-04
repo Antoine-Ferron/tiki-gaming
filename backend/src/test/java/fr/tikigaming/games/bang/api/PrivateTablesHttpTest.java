@@ -168,9 +168,10 @@ class PrivateTablesHttpTest {
                     .getResponse()
                     .getContentAsString();
             JsonNode view = json.readTree(body);
-            assertFields(view, "code", "seat", "currentSeat", "role", "hand", "players");
+            assertFields(view, "code", "seat", "currentSeat", "phase", "role", "hand", "players");
             assertThat(view.path("code").asString()).isEqualTo(code);
             assertThat(view.path("seat").asInt()).isEqualTo(seat);
+            assertThat(view.path("phase").asString()).isEqualTo("DRAW");
             roles.add(view.path("role").asString());
             assertThat(view.path("players")).hasSize(4);
             if (publicPlayers == null) publicPlayers = view.path("players");
@@ -227,13 +228,16 @@ class PrivateTablesHttpTest {
                 .andExpect(jsonPath(path + ".responses['200'].content['*/*'].schema['$ref']")
                         .value("#/components/schemas/PlayerGameView"))
                 .andExpect(jsonPath(
-                        "$.components.schemas.PlayerGameView.properties", org.hamcrest.Matchers.aMapWithSize(6)))
+                        "$.components.schemas.PlayerGameView.properties", org.hamcrest.Matchers.aMapWithSize(7)))
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.code")
                         .exists())
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.seat")
                         .exists())
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.currentSeat")
                         .exists())
+                .andExpect(jsonPath(
+                        "$.components.schemas.PlayerGameView.properties.phase.enum",
+                        org.hamcrest.Matchers.contains("DRAW", "PLAY", "DISCARD")))
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.role")
                         .exists())
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.hand")
@@ -450,8 +454,8 @@ class PrivateTablesHttpTest {
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.summary", not(emptyOrNullString())))
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.description")
                         .value(containsString(
-                                "La table et sa donne expirent après 1 h sans création, jonction acceptée ou démarrage accepté. "
-                                        + "Un démarrage refusé ne renouvelle pas ce délai.")))
+                                "La table et sa partie expirent après 1 h sans opération acceptée : création, jonction, démarrage ou action de tour. "
+                                        + "Les lectures et les actions refusées ne renouvellent pas ce délai.")))
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.responses['201']")
                         .exists())
                 .andExpect(jsonPath("$.paths['" + TABLES + "/{code}/join'].post.summary", not(emptyOrNullString())))
