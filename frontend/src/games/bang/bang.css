@@ -7,18 +7,18 @@
   object-fit: cover;
 }
 
-.bang-role-card {
+.bang-face-card {
   position: relative;
   overflow: hidden;
 }
 
-.bang-role-card img {
+.bang-face-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.bang-role-card figcaption {
+.bang-face-card figcaption {
   position: absolute;
   inset: auto 0 0;
   display: grid;
@@ -29,6 +29,6 @@
   font-size: 0.75rem;
 }
 
-.bang-role-card strong {
+.bang-face-card strong {
   font-size: 0.95rem;
 }

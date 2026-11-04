@@ -9,7 +9,7 @@ export function RoleCard({ role, faceUp }: { role: Role; faceUp: boolean }) {
 
   const { label, goal } = ROLES[role]
   return (
-    <figure className="bang-card bang-role-card">
+    <figure className="bang-card bang-face-card">
       <img src={`/games/bang/cards/roles/${role}.webp`} alt="" />
       <figcaption>
         <strong>{label}</strong>
