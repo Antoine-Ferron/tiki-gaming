@@ -6,6 +6,7 @@ const demineur: GameDefinition = {
   title: 'Démineur',
   description: 'Révèle les cases sans tomber sur une mine.',
   category: 'solo',
+  theme: 'reflexion',
   mode: 'solo',
   component: lazy(() => import('./DemineurGame')),
 }
