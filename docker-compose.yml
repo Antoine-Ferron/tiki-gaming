@@ -1,0 +1,46 @@
+# Déploiement Coolify (Docker Compose). Seul `frontend` est exposé publiquement (SERVICE_FQDN_FRONTEND_80
+# → domaine généré par Coolify) ; `backend` ne publie aucun port et n'est joignable que depuis `frontend`
+# via le réseau Docker interne, qui le reverse-proxifie (voir frontend/nginx.conf.template) pour que le
+# cookie de session reste sur la même origine que le front.
+#
+# Variables à renseigner dans l'environnement Coolify de ce resource (voir .env.production.example pour le
+# détail de chacune) : GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, SUPABASE_URL, SUPABASE_ANON_KEY,
+# SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET, FRONTEND_URL.
+
+services:
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
+      COOKIE_SECURE: "true"
+      SWAGGER_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/8080"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_SUPABASE_URL: ${SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      # Domaine public généré par Coolify pour ce service (port 80) : laisser tel quel, voir docs Coolify.
+      - SERVICE_FQDN_FRONTEND_80
