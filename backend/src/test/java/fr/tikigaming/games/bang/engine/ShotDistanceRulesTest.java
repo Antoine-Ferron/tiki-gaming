@@ -11,6 +11,8 @@ import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class ShotDistanceRulesTest {
     private final CardInstance bang = new CardInstance("bang-1", CardType.BANG);
@@ -60,6 +62,30 @@ class ShotDistanceRulesTest {
                 .containsExactly("account-1", "account-2", "account-3", "account-4");
         assertThat(afterElimination.players().get(1).health()).isZero();
         assertThat(before).isEqualTo(table(1, 4));
+    }
+
+    @Test
+    void twoSurvivorsCanReachEachOtherAtBaseRange() {
+        GameState before = table(0, 0);
+
+        ShotOutcome outcome = rulesFor(before).fire(before, 1, bang.id(), 3, 0);
+
+        assertThat(outcome.discarded()).containsExactly(bang);
+        assertThat(outcome.state().players().getFirst().hand()).isEmpty();
+        assertThat(before).isEqualTo(table(0, 0));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1, Cible invalide", "2, Cible invalide", "9, Siège inconnu : 9"})
+    void invalidTargetsRemainRefusedWithTheRealDistance(int targetSeat, String message) {
+        GameState before = table(0, 4);
+
+        assertThatThrownBy(() -> rulesFor(before).fire(before, 1, bang.id(), targetSeat, 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(message);
+
+        assertThat(before).isEqualTo(table(0, 4));
+        assertThat(before.players().getFirst().hand()).containsExactly(bang);
     }
 
     private static ShotRules rulesFor(GameState state) {
