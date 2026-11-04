@@ -16,6 +16,7 @@ les patrons de résilience sont décrits plus bas.
 | Lecture du classement (`GET /leaderboard`, PostgREST) | latence des réponses 2xx | P95 < 300 ms, P99 < 500 ms | P95 < 1 s |
 | Envoi d'un score (`POST /api/scores` → `public.scores`) | latence | P95 < 300 ms, P99 < 500 ms | P95 < 1 s |
 | Session (`GET /api/auth/session`, backend Java) | latence | P95 < 300 ms, P99 < 500 ms | P95 < 1 s |
+| Vérification d'une partie de Rush Hour (`POST /api/games/rush-hour/levels/{level}/results`, niveau 20 = pire cas) | latence | P95 < 300 ms, P99 < 500 ms | P95 < 1 s |
 | Toutes les requêtes du lobby | taux d'erreur (5xx, timeouts) | < 1 % | < 2 % |
 | Plateforme | disponibilité mensuelle | **99,5 %** | **99,0 %** |
 

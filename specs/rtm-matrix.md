@@ -33,7 +33,7 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-GDPR-01 | Un joueur peut supprimer définitivement son compte et toutes ses données (droit à l'effacement) | RGPD, article 17 |
 | REQ-ERR-01 | Une erreur réseau ou serveur s'affiche en message lisible, sans casser le lobby ni le jeu | Robustesse |
 | REQ-A11Y-01 | Les pages du lobby respectent les WCAG 2.1 niveau AA (RGAA 4.1.2) | Accessibilité |
-| REQ-PERF-01 | Le classement, l'envoi de score et la session répondent en P95 < 300 ms et P99 < 500 ms, avec moins de 1 % d'erreurs | SLO (docs/slo.md) |
+| REQ-PERF-01 | Le classement, l'envoi de score, la session et la vérification d'une partie de Rush Hour répondent en P95 < 300 ms et P99 < 500 ms, avec moins de 1 % d'erreurs | SLO (docs/slo.md) |
 | REQ-RES-01 | Une panne de Supabase est abandonnée au timeout puis coupée par un disjoncteur, et le service revient seul | SLO, résilience (docs/slo.md) |
 | REQ-SEC-01 | Les requêtes qui modifient des données exigent le jeton CSRF ; le front envoie les en-têtes de sécurité (CSP…) | OWASP |
 | REQ-API-01 | Le backend respecte le contrat d'API attendu par le front (forme des requêtes et réponses) | Intégration front/back |
@@ -96,6 +96,7 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-A11Y-02 | REQ-A11Y-01 | erreur | composant | `frontend/src/pages/LoginPage.test.tsx` › affiche sous le champ une erreur que le backend lui attribue | PASSED | — |
 | TC-PERF-01 | REQ-PERF-01 | nominal | charge (k6, profil load) | `quality/k6/lobby.js` › load: (rate) | PASSED | — |
 | TC-PERF-02 | REQ-PERF-01 | erreur | pic (k6, profil spike) | `quality/k6/lobby.js` › spike: (rate) | FAILED | BUG-03 |
+| TC-PERF-03 | REQ-PERF-01 | nominal | charge (k6, profil load) | `quality/k6/lobby.js` › rush_hour_verify: scenario('verifyRushHourLevel', 20) | PASSED | BUG-06 |
 | TC-RES-01 | REQ-RES-01 | nominal | chaos (Toxiproxy) | `backend/src/test/java/fr/tikigaming/scores/SupabaseScoresChaosTest.java` › aCutConnectionOpensTheCircuitAndItClosesAgainWhenSupabaseIsBack | PASSED | — |
 | TC-RES-02 | REQ-RES-01 | erreur | chaos (Toxiproxy) | `backend/src/test/java/fr/tikigaming/scores/SupabaseScoresChaosTest.java` › aSlowSupabaseIsAbandonedAtTheTimeoutThenTheCircuitOpensAndAnswersAtOnce | PASSED | — |
 | TC-RES-03 | REQ-RES-01 | erreur | unitaire (horloge simulée) | `backend/src/test/java/fr/tikigaming/resilience/CircuitBreakerTest.java` › aFailedTrialReopensForAFullDelay | PASSED | — |
@@ -156,3 +157,4 @@ P0 immédiate → P3 basse (matrice dans [CONTRIBUTING.md](../CONTRIBUTING.md#an
 | BUG-03 | [Classement][Pic de charge ×10] P95 de 23 s et 8 % d'erreurs au lieu de P95 < 300 ms (environnement local) | S2 | P3 | Open | — |
 | BUG-04 | [Rush Hour][Glisser-déposer] une demi-case vers la gauche ou le haut laisse le véhicule en place au lieu de le déplacer d'une case comme vers la droite ou le bas | S3 | P2 | Closed | 97f4fc24, trouvé par le test rouge de dropDelta (415d7f95) |
 | BUG-05 | [Rush Hour][Choix du niveau] le nom lu des boutons de niveau (« Niveau 1, à jouer ») ne contient pas leur texte visible au lieu de le contenir (WCAG 2.5.3) | S2 | P2 | Closed | 87ad47ab, trouvé par l'audit axe (d8c9b25c) |
+| BUG-06 | [Rush Hour][Vérification d'une partie] à 200 vérifications par seconde du niveau 20, P95 de 2,7 s et 2 059 itérations abandonnées au lieu de P95 < 300 ms (solveur relancé à chaque requête, même pour une partie truquée) | S2 | P2 | Closed | 214b828f et 54bc0adc, test 959b77ef, trouvé par k6 (profil stress) |
