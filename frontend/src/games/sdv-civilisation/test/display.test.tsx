@@ -46,7 +46,7 @@ describe('Affichage de la table', () => {
     // Alors la carte n'est jamais nommée, et la perte est affichée
     expect(screen.getByText('IA 2 défausse une carte : +3 pièces')).toBeTruthy()
     expect(screen.queryByText(/Atelier/)).toBeNull()
-    expect(screen.getByText('−2')).toBeTruthy()
+    expect(document.querySelector('.sdv-civilisation-loss')!.textContent).toMatch(/^[−-]2$/)
     // Et un gain s'affiche avec son signe
     rerender(panel('discard', 3))
     expect(screen.getByText('+3')).toBeTruthy()

@@ -7,6 +7,9 @@ import type { Wonder, WonderStage } from './wonders'
  * prix, refus, IA, conflits et score viennent du serveur ; ce module ne contient que leurs types et l'affichage.
  */
 
+/** Place du joueur à la table : le serveur l'assoit en premier, les IA ensuite. */
+export const ME = 0
+
 /** Tours d'un âge, pour afficher « Tour 3 / 6 » (le serveur décide de la fin de l'âge). */
 export const TURNS_PER_AGE = 6
 

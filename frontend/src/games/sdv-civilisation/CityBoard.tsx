@@ -1,6 +1,7 @@
-import type { CardColor } from './cards'
 import {
+  AGES,
   CATEGORIES,
+  COLOR_ORDER,
   costIcons,
   costText,
   duel,
@@ -8,6 +9,7 @@ import {
   effectText,
   RESOURCES,
   SCIENCE_NAMES,
+  signed,
   stageIcons,
   stageText,
 } from './cardText'
@@ -15,16 +17,18 @@ import type { PlayerState, ResourceNeed } from './game'
 import { CostIcons, GameIcon, IconRow } from './GameIcon'
 import type { Resource } from './ports'
 
-const COLOR_ORDER: CardColor[] = ['brown', 'grey', 'blue', 'red', 'green', 'yellow', 'purple']
-const AGES = ['I', 'II', 'III']
-
-/** Nombre avec son signe : « +3 », « −1 », « 0 ». */
-const signed = (n: number) => n.toLocaleString('fr-FR', { signDisplay: 'exceptZero' })
-
 function counts<T extends string>(items: T[]): [T, number][] {
   const map = new Map<T, number>()
   for (const item of items) map.set(item, (map.get(item) ?? 0) + 1)
   return [...map]
+}
+
+/** Pièces gagnées ou perdues au dernier tour (rien si le solde n'a pas bougé) ; la clé du tour rejoue l'animation. */
+export function CoinDelta({ coins }: { coins: number }) {
+  if (coins === 0) return null
+  return (
+    <span className={`sdv-civilisation-delta sdv-civilisation-${coins > 0 ? 'gain' : 'loss'}`}>{signed(coins)}</span>
+  )
 }
 
 /**
@@ -177,14 +181,7 @@ function ResourceBar({ player, left, right, lastCoins, stamp, needs }: CityProps
           <strong key={player.coins} className="sdv-civilisation-pop">
             {player.coins}
           </strong>
-          {lastCoins !== 0 && (
-            <span
-              key={stamp}
-              className={`sdv-civilisation-delta ${lastCoins > 0 ? 'sdv-civilisation-gain' : 'sdv-civilisation-loss'}`}
-            >
-              {signed(lastCoins)}
-            </span>
-          )}
+          <CoinDelta key={stamp} coins={lastCoins} />
         </span>
       </div>
 

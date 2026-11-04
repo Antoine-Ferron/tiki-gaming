@@ -15,9 +15,10 @@ import {
 } from './animation'
 import { CardDetail } from './CardDetail'
 import { CardFace } from './CardFace'
-import { cardStatus, duel } from './cardText'
+import { AGES, cardStatus } from './cardText'
 import { CityBoard, CityCards, WonderBoard } from './CityBoard'
 import {
+  ME,
   neighbours,
   TURNS_PER_AGE,
   type ActionType,
@@ -33,14 +34,13 @@ import { TurnConflict, type GameServer } from './ports'
 import { Results } from './Results'
 import { RulesDialog } from './RulesDialog'
 import { TurnLog, type TurnRecord } from './TurnLog'
+import { TurnStage } from './TurnStage'
 import { TurnTimer } from './TurnTimer'
 import { WonderPicker } from './WonderPicker'
 import type { Wonder } from './wonders'
 import './sdv-civilisation.css'
 
-const AGES = ['I', 'II', 'III']
-/** Le serveur assoit le joueur à la première place et l'appelle « Toi ». */
-const ME = 0
+/** Nom donné au joueur par le serveur. */
 const ME_NAME = 'Toi'
 const EXPIRED = 'Temps écoulé : une carte de ta main a été défaussée au hasard.'
 const PLAYED: Record<TurnEvent['action'], string> = { build: '', wonder: 'étape de merveille', discard: 'défausse' }
@@ -393,8 +393,6 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; server: GameServ
       ? `Nouvelles cartes de l’âge ${AGES[current.age - 1]}`
       : `Main reçue de ${from === 'left' ? left.name : right.name}`
   const shown = panel === 'left' ? left : right
-  const duels = after.players[ME].tokens.slice(-2)
-  const shieldsOf = (name: string) => after.players.find((p) => p.name === name)!.shields
 
   async function play(type: ActionType) {
     const index = selected!
@@ -498,33 +496,7 @@ export function SdvCivilisationBoard(props: { ctx: GameContext; server: GameServ
 
       <CityBoard player={myself} left={left} right={right} lastCoins={coinsOf(ME)} stamp={stamp} needs={shownNeeds} />
 
-      {(step === 'duel-left' || step === 'duel-right') && (
-        <div className="sdv-civilisation-stage" aria-label="Conflits militaires">
-          <span className="sdv-civilisation-stage-kicker">
-            Conflits militaires · Âge {AGES[sequence!.before.age - 1]}
-          </span>
-          <ul>
-            {duels.slice(0, step === 'duel-left' ? 1 : 2).map((token) => {
-              const result = duel(token.value, 0)
-              return (
-                <li key={token.against} className={`sdv-civilisation-duel-${result.kind}`}>
-                  Contre {token.against} : {after.players[ME].shields} contre {shieldsOf(token.against)} —{' '}
-                  <strong>
-                    {result.label}
-                    {token.value !== 0 && ` ${token.value.toLocaleString('fr-FR', { signDisplay: 'always' })}`}
-                  </strong>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      )}
-      {step === 'age' && (
-        <div className="sdv-civilisation-stage sdv-civilisation-stage-age" aria-label="Changement d’âge">
-          <span className="sdv-civilisation-stage-kicker">Fin de l’âge {AGES[sequence!.before.age - 1]}</span>
-          <strong>{after.over ? 'Fin de la partie' : `Âge ${AGES[after.age - 1]}`}</strong>
-        </div>
-      )}
+      {sequence && <TurnStage step={step} age={sequence.before.age} after={after} />}
 
       {current.over && !sequence ? (
         <div className="sdv-civilisation-end">

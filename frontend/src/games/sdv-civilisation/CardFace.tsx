@@ -1,9 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { Card } from './cards'
-import { CATEGORIES, costIcons, costText, effectIcons, effectText, type CardStatus } from './cardText'
+import { AGES, CATEGORIES, costIcons, costText, effectIcons, effectText, type CardStatus } from './cardText'
 import { CostIcons, GameIcon, IconRow } from './GameIcon'
-
-const AGES = ['I', 'II', 'III']
 
 interface Props {
   card: Card

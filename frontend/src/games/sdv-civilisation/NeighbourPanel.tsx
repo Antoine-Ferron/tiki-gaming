@@ -1,11 +1,8 @@
-import type { CardColor } from './cards'
-import { CATEGORIES, duel } from './cardText'
-import { ProductionTokens } from './CityBoard'
+import { CATEGORIES, COLOR_ORDER, duel } from './cardText'
+import { CoinDelta, ProductionTokens } from './CityBoard'
 import type { PlayerState, TurnEvent } from './game'
 import { GameIcon } from './GameIcon'
 import type { Resource } from './ports'
-
-const COLOR_ORDER: CardColor[] = ['brown', 'grey', 'blue', 'red', 'green', 'yellow', 'purple']
 
 interface Props {
   player: PlayerState
@@ -88,14 +85,7 @@ export function NeighbourPanel({ player, side, myShields, ready, bought, onOpen,
             <span key={player.coins} className="sdv-civilisation-pop">
               {player.coins}
             </span>
-            {delta !== 0 && (
-              <span
-                key={stamp}
-                className={`sdv-civilisation-delta ${delta > 0 ? 'sdv-civilisation-gain' : 'sdv-civilisation-loss'}`}
-              >
-                {delta > 0 ? `+${delta}` : `−${-delta}`}
-              </span>
-            )}
+            <CoinDelta key={stamp} coins={delta} />
           </span>
           <span title="Boucliers">
             <GameIcon k="shield" size={22} />

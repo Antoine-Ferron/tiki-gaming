@@ -5,6 +5,16 @@ import type { IconKey } from './GameIcon'
 import type { WonderStage } from './wonders'
 
 /** Textes affichés au joueur : coûts, effets et statuts, en français. */
+
+/** Âges en chiffres romains (index 0 = âge I). */
+export const AGES = ['I', 'II', 'III']
+
+/** Ordre des couleurs dans une cité : ressources d'abord, guildes en dernier. */
+export const COLOR_ORDER: CardColor[] = ['brown', 'grey', 'blue', 'red', 'green', 'yellow', 'purple']
+
+/** Nombre avec son signe : « +3 », « −1 », « 0 ». */
+export const signed = (n: number) => n.toLocaleString('fr-FR', { signDisplay: 'exceptZero' })
+
 export const RESOURCES: Record<Resource, string> = {
   wood: 'bois',
   stone: 'pierre',

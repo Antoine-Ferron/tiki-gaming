@@ -1,4 +1,5 @@
 import type { Age } from './cards'
+import { AGES, signed } from './cardText'
 import type { PlayerState, TurnEvent } from './game'
 
 /** Un tour joué, gardé pour le journal de la partie. */
@@ -9,7 +10,6 @@ export interface TurnRecord {
   conflicts: number[] | null
 }
 
-const AGES = ['I', 'II', 'III']
 const VERBS: Record<TurnEvent['action'], [string, string]> = {
   build: ['as construit', 'a construit'],
   wonder: ['as bâti une étape de merveille avec', 'a bâti une étape de merveille avec'],
@@ -17,7 +17,7 @@ const VERBS: Record<TurnEvent['action'], [string, string]> = {
 }
 
 function coinsText(coins: number): string {
-  return `${coins > 0 ? '+' : '−'}${Math.abs(coins)} pièce${Math.abs(coins) > 1 ? 's' : ''}`
+  return `${signed(coins)} pièce${Math.abs(coins) > 1 ? 's' : ''}`
 }
 
 /** Journal de la partie, du tour le plus récent au plus ancien : une ligne par joueur, puis les conflits. */
@@ -53,10 +53,7 @@ export function TurnLog({ history, players, me }: { history: TurnRecord[]; playe
               <p className="sdv-civilisation-log-conflicts">
                 <strong>Conflits :</strong>{' '}
                 {record.conflicts
-                  .map(
-                    (tokens, player) =>
-                      `${player === me ? 'toi' : players[player].name} ${tokens > 0 ? '+' : ''}${tokens}`,
-                  )
+                  .map((tokens, player) => `${player === me ? 'toi' : players[player].name} ${signed(tokens)}`)
                   .join(' · ')}
               </p>
             )}
