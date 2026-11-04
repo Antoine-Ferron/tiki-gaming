@@ -14,6 +14,7 @@ import {
   scoreCategory,
   toggleKeep,
   UPPER_CATEGORIES,
+  totalScore,
   upperBonus,
   winner,
 } from './logic'
@@ -33,11 +34,15 @@ describe('scoreCategory', () => {
   it('compte un carré à partir de quatre dés identiques', () => {
     expect(scoreCategory(d(5, 5, 5, 5, 1), 'carre')).toBe(21)
     expect(scoreCategory(d(5, 5, 5, 2, 1), 'carre')).toBe(0)
+    expect(scoreCategory(d(2, 2, 2, 2, 2), 'carre')).toBe(10)
+
   })
 
   it('donne 25 points pour un full, rien pour deux paires', () => {
     expect(scoreCategory(d(3, 3, 3, 6, 6), 'full')).toBe(25)
     expect(scoreCategory(d(3, 3, 6, 6, 1), 'full')).toBe(0)
+    expect(scoreCategory(d(4, 4, 4, 4, 4), 'full')).toBe(0)
+
   })
 
   it('reconnaît une petite suite malgré un doublon, pas une série trouée', () => {
@@ -79,6 +84,14 @@ describe('feuille de score', () => {
   it('refuse une case déjà jouée', () => {
     expect(() => fillCategory({ yams: 0 }, 'yams', d(6, 6, 6, 6, 6))).toThrow('Case déjà jouée')
   })
+
+  
+  it('ne donne aucune prime pour un deuxième Yams', () => {
+    const sheet = fillCategory({ yams: 50 }, 'chance', d(6, 6, 6, 6, 6))
+
+    expect(totalScore(sheet)).toBe(80)
+  })
+
 })
 
 describe('tour de jeu', () => {
