@@ -34,6 +34,7 @@ public class PrivateTableService {
     private final Map<String, Table> tables = new HashMap<>();
     private final InitialDeal initialDeal;
     private final Clock clock;
+    private final CardDraw cardDraw = new CardDraw();
 
     @Autowired
     public PrivateTableService(InitialDeal initialDeal) {
@@ -147,31 +148,14 @@ public class PrivateTableService {
         if (game.phase() != GameState.Phase.DRAW) {
             throw new PrivateTableException(HttpStatus.CONFLICT, "Ce n'est pas la phase de pioche.");
         }
-        // shortcut: la défausse n'est pas recyclée ; à ajouter avec les règles de recyclage.
-        if (game.drawPile().size() < 2) {
-            throw new PrivateTableException(HttpStatus.CONFLICT, "Il reste moins de deux cartes dans la pioche.");
+        GameState drawn;
+        try {
+            drawn = cardDraw.draw(game, game.currentSeat(), 2);
+        } catch (IllegalStateException refused) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, refused.getMessage());
         }
-        List<GameState.Player> players = game.players().stream()
-                .map(player -> {
-                    if (player.seat() != game.currentSeat()) return player;
-                    List<CardInstance> hand = new ArrayList<>(player.hand());
-                    hand.addAll(game.drawPile().subList(0, 2));
-                    return new GameState.Player(
-                            player.accountId(),
-                            player.seat(),
-                            player.roleCard(),
-                            player.character(),
-                            player.health(),
-                            player.maxHealth(),
-                            List.copyOf(hand));
-                })
-                .toList();
         table.game = new GameState(
-                players,
-                List.copyOf(game.drawPile().subList(2, game.drawPile().size())),
-                game.discardPile(),
-                game.currentSeat(),
-                GameState.Phase.PLAY);
+                drawn.players(), drawn.drawPile(), drawn.discardPile(), drawn.currentSeat(), GameState.Phase.PLAY);
         table.lastActivity = clock.instant();
     }
 
@@ -272,8 +256,8 @@ public class PrivateTableService {
         table.lastActivity = clock.instant();
     }
 
-    private static ShotRules shotRules(GameState game) {
-        return new ShotRules((from, to) -> PlayerDistance.between(game, from, to));
+    private ShotRules shotRules(GameState game) {
+        return new ShotRules((from, to) -> PlayerDistance.between(game, from, to), cardDraw);
     }
 
     private static GameState applyShotOutcome(ShotOutcome outcome) {

@@ -50,3 +50,8 @@ et de franchir la limite entre les deux piles. Un double de mélange inverse la 
 pour vérifier l'ordre exact des cartes reçues et restantes ; les listes d'entrée restent intactes.
 Après ajout du recyclage dans `CardDraw`, **132 tests ciblés passent**. Le scénario où seule
 la carte du BANG! est disponible confirme les dégâts et le bonus, sans création de carte.
+
+Le raccordement de la pioche de tour est conduit par deux rouges HTTP (`204` attendu,
+`409` reçu avec zéro ou une carte en pioche et une défausse suffisante). Le service utilise
+ensuite la même instance de `CardDraw` pour ses deux usages. **152 tests ciblés passent**,
+dont les trois cas de total insuffisant `(0,0)`, `(0,1)` et `(1,0)`, sans prélèvement partiel.
