@@ -1,8 +1,10 @@
 package fr.tikigaming.games.rush_hour;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Les 20 niveaux, connus du serveur pour vérifier les parties. Copie de frontend/src/games/rush-hour/domain/levels.ts :
@@ -55,9 +57,15 @@ public final class Levels {
     private Levels() {}
 
     /** Map du niveau (6 lignes de 6 cases), ou vide si le niveau n'existe pas. */
+    /** Minimum de coups de chaque niveau, calculé par le solveur au premier besoin puis gardé : il ne change jamais. */
+    private static final Map<Integer, Integer> MINIMUMS = new ConcurrentHashMap<>();
+
     /** Nombre minimal de coups du niveau, ou vide si le niveau n'existe pas. */
     public static OptionalInt minimum(int number) {
-        return OptionalInt.empty();
+        return map(number)
+                .map(map -> OptionalInt.of(MINIMUMS.computeIfAbsent(
+                        number, n -> Solver.minimumMoves(Board.parse(map)).orElseThrow())))
+                .orElse(OptionalInt.empty());
     }
 
     public static Optional<List<String>> map(int number) {
