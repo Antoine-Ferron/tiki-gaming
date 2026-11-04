@@ -55,7 +55,7 @@ npm run typecheck
 npm run test:contract
 ```
 
-175 tests BANG! réussis à ce palier ; types vérifiés. Les tests de l'écran
+176 tests BANG! réussis sur la branche #60 finale ; types et linter vérifiés. Les tests de l'écran
 remplacent uniquement `fetch` et traversent les vrais composants, `api.ts` et
 `apiPost`. Les Gherkin de Colleen sont rejoués, avec un scénario local ajouté.
 Ils ne constituent pas une démo sur serveur réel.
@@ -77,3 +77,14 @@ aussi détecté un double générique mal typé, corrigé dans `fad4559`.
 
 La validation globale et la démo réelle à quatre sont consignées dans le bilan #61.
 Cette branche n'est ni poussée ni fusionnée vers une branche commune ; l'issue reste ouverte.
+
+## Relecture finale : connexion lente
+
+Un dernier test à horloge contrôlée a montré qu'une lecture de plus de deux secondes
+était ignorée dès que la suivante démarrait, même sans réponse plus récente reçue.
+Rouge : le message de tir en attente restait affiché après réception de sa résolution.
+Le client compare désormais les lectures à la dernière réponse **appliquée** : une
+lecture lente peut actualiser le plateau, et une réponse ancienne ne peut toujours
+pas remplacer une réponse plus récente déjà affichée. Les deux tests sont verts.
+Le correctif est également reporté sur la branche #61 (`976955a`) ; ce report
+n'intègre ni ne modifie la branche commune.
