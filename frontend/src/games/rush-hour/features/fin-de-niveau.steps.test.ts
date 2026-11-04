@@ -6,6 +6,7 @@ import { FakeScores, fakeDeps } from '../../testing/fakes'
 import type { GameContext } from '../../types'
 import type { Move } from '../domain/board'
 import { completeLevel } from '../services/completeLevel'
+import { scoreWithOptimal } from '../testing/verifiers'
 
 const feature = await loadFeature('src/games/rush-hour/features/fin-de-niveau.feature', { language: 'fr' })
 
@@ -27,7 +28,9 @@ describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
 
   async function finish(level: number, moveCount: number, hintsUsed = 0) {
     try {
-      const result = await completeLevel(ctx, { level, optimal, moves: moves(moveCount), hintsUsed, durationMs: 0 })
+      const run = { level, moves: moves(moveCount), hintsUsed, durationMs: 0 }
+      // Fake du serveur : il calcule le score avec le barème, pour le minimum donné par le Contexte
+      const result = await completeLevel(ctx, run, scoreWithOptimal(optimal))
       outcome = { score: result.score }
     } catch (err) {
       outcome = { error: (err as Error).message }

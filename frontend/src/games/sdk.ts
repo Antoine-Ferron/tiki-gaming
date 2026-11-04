@@ -1,7 +1,7 @@
 import type { Json } from '@/lib/database.types'
 import { logger } from '@/lib/logger'
 import { checkScore } from './domain/score'
-import { GameError, MESSAGES, toGameError } from './errors'
+import { GameError, MESSAGES, QUEUED_AFTER_SESSION, toGameError } from './errors'
 import { localSaves } from './adapters/local'
 import type { KeyValueStorage, Realtime, SaveStore, ScoreRepository } from './ports'
 import { createScoreQueue, type ScoreQueue } from './scoreQueue'
@@ -70,7 +70,9 @@ function createPlayerContext(game: GameInfo, player: Player, deps: GameDeps): Ga
         const error = toGameError(err)
         if (!error.retryable || !queue) throw error
         queue.add({ gameSlug: game.slug, score, metadata })
-        throw new GameError('queued', MESSAGES.queued, { cause: err })
+        throw new GameError('queued', error.code === 'session' ? QUEUED_AFTER_SESSION : MESSAGES.queued, {
+          cause: err,
+        })
       }
     },
 

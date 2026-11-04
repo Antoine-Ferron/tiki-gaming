@@ -56,4 +56,14 @@ describe('essaim', () => {
 
     swarm.forEach((p, i) => expect(Math.hypot(p.x - before[i].x, p.y - before[i].y)).toBeLessThan(MAX_SPEED * 0.1))
   })
+
+  // La date d'une image (requestAnimationFrame) peut précéder le performance.now() lu au démarrage.
+  test('un pas de temps négatif ne déplace pas les particules', () => {
+    const random = seeded()
+    const swarm = createSwarm(30, { width: 1000, height: 600 }, random)
+    const before = swarm.map((p) => ({ ...p }))
+    stepSwarm(swarm, { x: 500, y: 300 }, -5, random)
+
+    expect(swarm).toEqual(before)
+  })
 })
