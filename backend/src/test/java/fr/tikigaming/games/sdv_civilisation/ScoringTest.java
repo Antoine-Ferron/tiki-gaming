@@ -32,6 +32,8 @@ class ScoringTest {
 
         // Alors chaque catégorie est comptée : 1 point pour 3 pièces, science 1² + 1² + 1² + 7
         assertThat(score).isEqualTo(new ScoreBreakdown(4, 3, 3, 8, 10, 0, 28));
+        // Et ses points de science sont aussi affichés en cours de partie, sans attendre la fin
+        assertThat(game.player(ALICE).sciencePoints()).isEqualTo(10);
     }
 
     @Test
