@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import '../bang.css'
 import { PlayerMat } from './PlayerMat'
-import { canShoot, cardLabel, positionOf, type GameView, type Position } from './view'
+import { canShoot, cardLabel, positionOf, slug, type GameView, type Position } from './view'
+import { canUseAs, type Character } from '../cards/characters'
 
 const ICONS = '/games/bang/icons'
 const AROUND: Position[] = ['top', 'left', 'right', 'bottom']
@@ -36,6 +37,7 @@ export function BangBoard({
   const ending = onEnd !== undefined && myTurn && view.phase !== 'DRAW'
   const discarding = onDiscard !== undefined && myTurn && view.phase === 'DISCARD'
   const dodging = onDodge !== undefined && view.pendingShot?.targetSeat === view.seat
+  const character = slug<Character>(view.players.find((p) => p.seat === view.seat)?.character ?? '')
 
   return (
     <div className="bang bang-board">
@@ -89,7 +91,7 @@ export function BangBoard({
         <ul>
           {view.hand.map((card) => {
             const label = cardLabel(card.type)
-            if (dodging && card.type === 'MISSED') {
+            if (dodging && canUseAs(character, card.type, 'MISSED')) {
               return (
                 <li key={card.id}>
                   <button type="button" onClick={() => onDodge(card.id)}>
@@ -107,7 +109,7 @@ export function BangBoard({
                 </li>
               )
             }
-            if (aiming && card.type === 'BANG') {
+            if (aiming && canUseAs(character, card.type, 'BANG')) {
               return (
                 <li key={card.id}>
                   <button

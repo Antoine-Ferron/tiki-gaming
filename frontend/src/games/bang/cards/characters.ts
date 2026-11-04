@@ -1,5 +1,10 @@
 export type Character = 'bart-cassidy' | 'calamity-janet' | 'paul-regret' | 'willy-the-kid'
 
+/** Même contrat de substitution que BangCharacter.canUseAs ; le serveur valide l'action. */
+export function canUseAs(character: Character, held: string, needed: 'BANG' | 'MISSED'): boolean {
+  return held === needed || (character === 'calamity-janet' && (held === 'BANG' || held === 'MISSED'))
+}
+
 /** Nom, PV de départ et pouvoir de chaque personnage, identiques à ceux du back (`BangCharacter.java`). */
 export const CHARACTERS: Record<Character, { label: string; lifePoints: number; power: string }> = {
   'bart-cassidy': {
