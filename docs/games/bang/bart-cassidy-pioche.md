@@ -97,3 +97,53 @@ Ces comportements déjà assurés par le verrou et le tir identifié ne donnent 
 Swagger donne ensuite un rouge de documentation : le contrat attend le bonus conditionné
 à la survie, mais la description l'annonce encore absent. Après mise à jour de Swagger et des
 documents BANG!, **356 tests ciblés BANG!/Swagger passent**, sans échec ni test ignoré.
+
+## Vérification finale
+
+Le 4 novembre 2026, depuis `backend/`, avec Java 25.0.3 et la cible de compilation Java 21 du dépôt :
+
+| Contrôle | Résultat |
+| --- | --- |
+| `mvn -B -ntp '-Dtest=fr.tikigaming.games.bang.**,OpenApiDocsTest' test` | **356 réussis**, zéro échec, erreur ou test ignoré. |
+| `mvn spotless:apply` | Succès. |
+| `mvn clean verify` | **6 565 cas : 6 564 réussis, zéro échec/erreur, un ignoré**. |
+| Pact fournisseur, inclus dans `verify` | **6 interactions réussies**, aucune ignorée. |
+| Chaos Toxiproxy/Docker, inclus dans `verify` | **4 tests réussis**, aucun ignoré lors de la vérification finale. |
+| Checkstyle, Spotless et JaCoCo | Succès sans baisse des seuils ; **99,03 % des lignes** et **94,80 % des branches** couvertes globalement. |
+| `mvn -B -ntp -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | Succès : **243/250 mutants tués (97 %)**, aucun sans couverture. |
+
+Le seul cas ignoré est le scénario BDD Échecs « Une pièce clouée devant son roi ne peut pas
+quitter la ligne », explicitement marqué `@en-cours` et exclu dans le `dev` intégré.
+Il n'est pas modifié par ce correctif. Les quatre cas Docker avaient été ignorés lors d'une
+première exécution sans moteur disponible ; après redémarrage de Docker, toute la vérification
+a été relancée et ces quatre tests ont été exécutés avec succès.
+
+Pitest conserve les cibles existantes (authentification, dames et résilience), qui n'incluent
+pas BANG!. Les tests frontend, E2E navigateur, k6/ZAP, CodeQL/Sonar, les jobs GitHub et le
+build de l'image de production ne sont pas exécutés pour cette livraison locale.
+Les tests HTTP ci-dessus ne sont pas présentés comme des E2E navigateur.
+
+La dernière récupération des références confirme `origin/dev` à `350911e` et la branche
+commune à `94d09ff`. Les deux commandes demandées réussissent :
+
+```text
+git merge-base --is-ancestor origin/dev HEAD
+git merge-base --is-ancestor origin/game/bang/implementation HEAD
+```
+
+`BangCharacter` et `ShotOutcome` sont inchangés. Les fichiers Échecs, leurs scénarios BDD
+et les dépendances apportées par `dev` sont identiques à cette référence distante.
+Aucun push, aucune intégration vers la branche commune et aucune fermeture d'issue ne sont effectués.
+
+## Commits locaux
+
+| Commit | Étape |
+| --- | --- |
+| `75a9939` | Dernier `dev` intégré sur la branche de la #59. |
+| `15b524c` | Bonus non mortel de Bart, contrats et premier vert HTTP/moteur. |
+| `009b604` | Recyclage, mélange contrôlé et pioche à cheval sur les deux piles. |
+| `dd9bc8d` | Raccordement commun à la pioche de début de tour, refus atomiques. |
+| `d50e7c9` | Doublons, réponses anciennes/concurrentes, vues privées et jeu physique. |
+| `9a817e1` | Swagger et documentation du pouvoir et du recyclage. |
+
+Le commit documentaire final ajoute ce bilan de validation, sans nouveau changement du moteur.
