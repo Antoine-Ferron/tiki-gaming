@@ -54,4 +54,17 @@ class EchecsControllerTest {
                 .andExpect(jsonPath("$.destinations[0]").value("e3"))
                 .andExpect(jsonPath("$.destinations[1]").value("e4"));
     }
+
+    @Test
+    @DisplayName("POST /moves renvoie 200 et la FEN calculée par le service")
+    void movesRenvoieLaNouvelleFen() throws Exception {
+        // Arrange
+        String after = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+        when(service.play(START, "e2", "e4")).thenReturn(after);
+
+        // Act + Assert
+        send("moves", "{\"fen\":\"" + START + "\",\"from\":\"e2\",\"to\":\"e4\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fen").value(after));
+    }
 }
