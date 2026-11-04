@@ -1,5 +1,5 @@
 import { describeFeature, loadFeature } from '@amiceli/vitest-cucumber'
-import { expect } from 'vitest'
+import { describe, expect } from 'vitest'
 import {
   availableCategories,
   type Category,
@@ -22,76 +22,80 @@ function category(label: string): Category {
   return found
 }
 
-describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
-  let sheet: Sheet
-  let dice: Dice
-  let refusal: string | undefined
-  let bonus: number
+// Les étapes d'un scénario s'enchaînent (Étant donné → Quand → Alors) : chacune est un test pour Vitest,
+// donc on interdit de les mélanger. Le Contexte remet une feuille vierge avant chaque scénario.
+describe('Feuille de score du Yams', { shuffle: false }, () => {
+  describeFeature(feature, ({ Background, Scenario, ScenarioOutline }) => {
+    let sheet: Sheet
+    let dice: Dice
+    let refusal: string | undefined
+    let bonus: number
 
-  function inscribe(label: string) {
-    try {
-      sheet = fillCategory(sheet, category(label), dice)
-    } catch (err) {
-      refusal = (err as Error).message
+    function inscribe(label: string) {
+      try {
+        sheet = fillCategory(sheet, category(label), dice)
+      } catch (err) {
+        refusal = (err as Error).message
+      }
     }
-  }
 
-  Background(({ Given }) => {
-    Given('une feuille de score vierge', () => {
-      sheet = {}
-      refusal = undefined
-    })
-  })
-
-  Scenario('Un full inscrit dans sa case rapporte 25 points', ({ Given, When, Then, And }) => {
-    Given('les dés {string}', (_, lancer: string) => {
-      dice = parseDice(lancer)
-    })
-    When('je les inscris dans la case {string}', (_, label: string) => inscribe(label))
-    Then('la case {string} vaut {int} points', (_, label: string, points: number) => {
-      expect(sheet[category(label)]).toBe(points)
-    })
-    And("la case {string} n'est plus disponible", (_, label: string) => {
-      expect(availableCategories(sheet)).not.toContain(category(label))
-    })
-  })
-
-  Scenario('Une case déjà jouée ne peut pas être rejouée', ({ Given, And, When, Then }) => {
-    Given('la case {string} vaut déjà {int} points', (_, label: string, points: number) => {
-      sheet = { [category(label)]: points }
-    })
-    And('les dés {string}', (_, lancer: string) => {
-      dice = parseDice(lancer)
-    })
-    When('je les inscris dans la case {string}', (_, label: string) => inscribe(label))
-    Then("l'inscription est refusée avec le message {string}", (_, message: string) => {
-      expect(refusal).toContain(message)
-    })
-  })
-
-  ScenarioOutline('Les combinaisons à la frontière des règles', ({ Given, When, Then }, variables) => {
-    Given('les dés "<lancer>"', () => {
-      dice = parseDice(variables.lancer)
-    })
-    When('je les inscris dans la case "<case>"', () => inscribe(variables.case))
-    Then('la case "<case>" vaut <points> points', () => {
-      expect(sheet[category(variables.case)]).toBe(Number(variables.points))
-    })
-  })
-
-  ScenarioOutline(
-    'Le bonus de 35 points se gagne à partir de 63 en section haute',
-    ({ Given, When, Then }, variables) => {
-      Given('une section haute qui totalise <sous_total> points', () => {
-        // 60 points sur les cases 2 à 6, le reste en as : 62 = deux as, 63 = trois as, 64 = quatre as
-        sheet = { deux: 6, trois: 9, quatre: 12, cinq: 15, six: 18, as: Number(variables.sous_total) - 60 }
+    Background(({ Given }) => {
+      Given('une feuille de score vierge', () => {
+        sheet = {}
+        refusal = undefined
       })
-      When('je calcule le bonus', () => {
-        bonus = upperBonus(sheet)
+    })
+
+    Scenario('Un full inscrit dans sa case rapporte 25 points', ({ Given, When, Then, And }) => {
+      Given('les dés {string}', (_, lancer: string) => {
+        dice = parseDice(lancer)
       })
-      Then('le bonus vaut <bonus> points', () => {
-        expect(bonus).toBe(Number(variables.bonus))
+      When('je les inscris dans la case {string}', (_, label: string) => inscribe(label))
+      Then('la case {string} vaut {int} points', (_, label: string, points: number) => {
+        expect(sheet[category(label)]).toBe(points)
       })
-    },
-  )
+      And("la case {string} n'est plus disponible", (_, label: string) => {
+        expect(availableCategories(sheet)).not.toContain(category(label))
+      })
+    })
+
+    Scenario('Une case déjà jouée ne peut pas être rejouée', ({ Given, And, When, Then }) => {
+      Given('la case {string} vaut déjà {int} points', (_, label: string, points: number) => {
+        sheet = { [category(label)]: points }
+      })
+      And('les dés {string}', (_, lancer: string) => {
+        dice = parseDice(lancer)
+      })
+      When('je les inscris dans la case {string}', (_, label: string) => inscribe(label))
+      Then("l'inscription est refusée avec le message {string}", (_, message: string) => {
+        expect(refusal).toContain(message)
+      })
+    })
+
+    ScenarioOutline('Les combinaisons à la frontière des règles', ({ Given, When, Then }, variables) => {
+      Given('les dés "<lancer>"', () => {
+        dice = parseDice(variables.lancer)
+      })
+      When('je les inscris dans la case "<case>"', () => inscribe(variables.case))
+      Then('la case "<case>" vaut <points> points', () => {
+        expect(sheet[category(variables.case)]).toBe(Number(variables.points))
+      })
+    })
+
+    ScenarioOutline(
+      'Le bonus de 35 points se gagne à partir de 63 en section haute',
+      ({ Given, When, Then }, variables) => {
+        Given('une section haute qui totalise <sous_total> points', () => {
+          // 60 points sur les cases 2 à 6, le reste en as : 62 = deux as, 63 = trois as, 64 = quatre as
+          sheet = { deux: 6, trois: 9, quatre: 12, cinq: 15, six: 18, as: Number(variables.sous_total) - 60 }
+        })
+        When('je calcule le bonus', () => {
+          bonus = upperBonus(sheet)
+        })
+        Then('le bonus vaut <bonus> points', () => {
+          expect(bonus).toBe(Number(variables.bonus))
+        })
+      },
+    )
+  })
 })
