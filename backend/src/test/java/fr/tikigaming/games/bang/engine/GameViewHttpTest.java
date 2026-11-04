@@ -71,7 +71,7 @@ class GameViewHttpTest {
                 .andExpect(status().isOk())
                 .andExpect(content().json("""
                         {
-                          "code":"%s", "seat":2, "currentSeat":1, "role":"OUTLAW",
+                          "code":"%s", "seat":2, "currentSeat":1, "phase":"DRAW", "role":"OUTLAW",
                           "hand":[
                             {"id":"test-card-6","type":"MISSED"},
                             {"id":"test-card-7","type":"BANG"},
@@ -158,7 +158,7 @@ class GameViewHttpTest {
             """};
         String[] roles = {"SHERIFF", "OUTLAW", "OUTLAW", "RENEGADE"};
         return """
-                {"code":"%s","seat":%d,"currentSeat":1,"role":"%s","hand":%s,
+                {"code":"%s","seat":%d,"currentSeat":1,"phase":"DRAW","role":"%s","hand":%s,
                  "players":[
                    {"seat":1,"character":"BART_CASSIDY","health":5,"maxHealth":5,
                     "playedCards":[],"handCount":5,"role":"SHERIFF"},

@@ -102,5 +102,6 @@ class InitialDealTest {
 
         assertThat(game.currentSeat()).isEqualTo(sheriffSeat);
         assertThat(game.players().get(sheriffSeat - 1).roleCard().role()).isEqualTo(Role.SHERIFF);
+        assertThat(game.phase()).isEqualTo(GameState.Phase.DRAW);
     }
 }

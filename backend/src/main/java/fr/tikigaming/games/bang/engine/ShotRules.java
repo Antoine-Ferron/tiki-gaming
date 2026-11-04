@@ -94,6 +94,6 @@ public class ShotRules {
         List<GameState.Player> players = state.players().stream()
                 .map(player -> player.seat() == updated.seat() ? updated : player)
                 .toList();
-        return new GameState(players, state.drawPile(), state.currentSeat());
+        return new GameState(players, state.drawPile(), state.currentSeat(), state.phase());
     }
 }

@@ -120,6 +120,7 @@ public class PrivateTableService {
                 code,
                 own.seat(),
                 game.currentSeat(),
+                game.phase(),
                 own.roleCard().role(),
                 own.hand().stream()
                         .map(card -> new PlayerGameView.Card(card.id(), card.type()))

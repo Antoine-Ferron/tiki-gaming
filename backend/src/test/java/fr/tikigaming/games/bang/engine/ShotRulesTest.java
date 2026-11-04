@@ -33,7 +33,7 @@ class ShotRulesTest {
     }
 
     private static GameState state(int currentSeat, GameState.Player... players) {
-        return new GameState(List.of(players), List.of(), currentSeat);
+        return new GameState(List.of(players), List.of(), currentSeat, GameState.Phase.PLAY);
     }
 
     /** Siège 1 (au tour) tient un BANG !, siège 2 est son voisin, siège 3 est à distance 2. */
@@ -61,6 +61,7 @@ class ShotRulesTest {
 
         assertThat(seat(outcome.state(), 1).hand()).isEmpty();
         assertThat(outcome.discarded()).containsExactly(bang);
+        assertThat(outcome.state().phase()).isEqualTo(GameState.Phase.PLAY);
     }
 
     @Test

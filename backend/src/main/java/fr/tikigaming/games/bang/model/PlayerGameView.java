@@ -12,6 +12,7 @@ public record PlayerGameView(
         String code,
         int seat,
         int currentSeat,
+        GameState.Phase phase,
 
         @Schema(description = "Rôle privé du compte connecté")
         Role role,
