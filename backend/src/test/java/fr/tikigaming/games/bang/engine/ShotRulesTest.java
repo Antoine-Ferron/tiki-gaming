@@ -14,6 +14,7 @@ import java.util.function.IntBinaryOperator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class ShotRulesTest {
 
@@ -33,7 +34,7 @@ class ShotRulesTest {
     }
 
     private static GameState state(int currentSeat, GameState.Player... players) {
-        return new GameState(List.of(players), List.of(), currentSeat, GameState.Phase.PLAY);
+        return new GameState(List.of(players), List.of(), List.of(), currentSeat, GameState.Phase.PLAY);
     }
 
     /** Siège 1 (au tour) tient un BANG !, siège 2 est son voisin, siège 3 est à distance 2. */
@@ -174,5 +175,23 @@ class ShotRulesTest {
 
         assertThat(seat(outcome.state(), 2).health()).isEqualTo(4);
         assertThat(outcome.discarded()).containsExactly(bang);
+    }
+
+    @ParameterizedTest
+    @EnumSource(GameState.Phase.class)
+    void rebuildingAStatePreservesTheTurnAndBothPiles(GameState.Phase phase) {
+        CardInstance draw = new CardInstance("draw", CardType.BANG);
+        CardInstance discarded = new CardInstance("discarded", CardType.MISSED);
+        GameState before = new GameState(table(missed).players(), List.of(draw), List.of(discarded), 1, phase);
+
+        for (ShotOutcome outcome : List.of(
+                rules.fire(before, 1, "bang-1", 2, 0),
+                rules.respond(before, 2, "missed-1"),
+                rules.respond(before, 2, null))) {
+            assertThat(outcome.state().phase()).isEqualTo(phase);
+            assertThat(outcome.state().currentSeat()).isEqualTo(1);
+            assertThat(outcome.state().drawPile()).containsExactly(draw);
+            assertThat(outcome.state().discardPile()).containsExactly(discarded);
+        }
     }
 }

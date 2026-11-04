@@ -87,6 +87,7 @@ class InitialDealTest {
         Collections.rotate(expectedOrder, 2);
         assertThat(allCards).containsExactlyElementsOf(expectedOrder.subList(0, 16));
         assertThat(game.drawPile()).containsExactlyElementsOf(expectedOrder.subList(16, 40));
+        assertThat(game.discardPile()).isEmpty();
         allCards.addAll(game.drawPile());
         assertThat(allCards).extracting(CardInstance::id).doesNotHaveDuplicates();
         assertThat(allCards).containsExactlyInAnyOrderElementsOf(catalog.cards());

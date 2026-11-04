@@ -20,6 +20,7 @@ class GameTurnServiceTest {
     private final CardInstance first = new CardInstance("first", CardType.BANG);
     private final CardInstance second = new CardInstance("second", CardType.MISSED);
     private final CardInstance third = new CardInstance("third", CardType.BANG);
+    private final CardInstance discarded = new CardInstance("discarded", CardType.MISSED);
 
     @Test
     void drawingMovesTheFirstTwoCardsIntoTheActiveHand() throws Exception {
@@ -31,6 +32,7 @@ class GameTurnServiceTest {
         assertThat(result.players().getFirst().hand()).containsExactly(first, second);
         assertThat(result.drawPile()).containsExactly(third);
         assertThat(result.phase()).isEqualTo(GameState.Phase.PLAY);
+        assertThat(result.discardPile()).containsExactly(discarded);
     }
 
     @Test
@@ -42,6 +44,21 @@ class GameTurnServiceTest {
 
         assertThat(tables.game(code).phase()).isEqualTo(GameState.Phase.DISCARD);
         assertThat(tables.game(code).currentSeat()).isEqualTo(1);
+        assertThat(tables.game(code).discardPile()).containsExactly(discarded);
+    }
+
+    @Test
+    void discardingMovesTheChosenCardFromTheHandToTheDiscardPile() throws Exception {
+        String code = startedTable(1);
+        tables.draw(code, "one");
+        tables.endTurn(code, "one");
+
+        tables.discard(code, "one", "second");
+
+        GameState result = tables.game(code);
+        assertThat(result.players().getFirst().hand()).containsExactly(first);
+        assertThat(result.discardPile()).containsExactly(discarded, second);
+        assertThat(result.drawPile()).containsExactly(third);
     }
 
     private String startedTable() {
@@ -54,7 +71,8 @@ class GameTurnServiceTest {
         var sheriff = new GameState.Player(
                 "one", 1, new RoleCard(Role.SHERIFF, true), BangCharacter.BART_CASSIDY, health, 5, List.of());
         when(deal.deal(anyList()))
-                .thenReturn(new GameState(List.of(sheriff), List.of(first, second, third), 1, GameState.Phase.DRAW));
+                .thenReturn(new GameState(
+                        List.of(sheriff), List.of(first, second, third), List.of(discarded), 1, GameState.Phase.DRAW));
         tables.start(code, "one");
         return code;
     }

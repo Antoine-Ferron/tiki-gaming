@@ -17,6 +17,7 @@ import fr.tikigaming.games.bang.cards.RoleCard;
 import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -131,6 +132,7 @@ class GameTurnHttpTest {
         GameState game = new GameState(
                 List.of(player(1, 2, handSize), player(2, 4, 1), player(3, 3, 1), player(4, 4, 1)),
                 List.of(),
+                List.of(),
                 1,
                 GameState.Phase.PLAY);
         doReturn(game).when(deal).deal(anyList());
@@ -150,6 +152,7 @@ class GameTurnHttpTest {
         GameState game = new GameState(
                 List.of(player(1, 0, 0), player(2, 3, 0), player(3, 2, 1), player(4, 0, 0)),
                 List.of(),
+                List.of(),
                 3,
                 GameState.Phase.PLAY);
         doReturn(game).when(deal).deal(anyList());
@@ -161,6 +164,43 @@ class GameTurnHttpTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentSeat").value(2))
                 .andExpect(jsonPath("$.phase").value("DRAW"));
+    }
+
+    @Test
+    void chosenCardsLeaveOnlyTheActiveHandBeforeTheNextTurn() throws Exception {
+        String code = startedTable();
+        postAs(TABLES + "/" + code + "/turn/draw", sessionFor(1)).andExpect(status().isNoContent());
+        postAs(TABLES + "/" + code + "/turn/end", sessionFor(1)).andExpect(status().isNoContent());
+
+        postAs(TABLES + "/" + code + "/turn/discard/test-card-2", sessionFor(1)).andExpect(status().isNoContent());
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor(1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.phase").value("DISCARD"))
+                .andExpect(jsonPath("$.hand.length()").value(6));
+        var afterFirst = tables.game(code);
+        postAs(TABLES + "/" + code + "/turn/discard/test-card-2", sessionFor(1)).andExpect(status().isConflict());
+        postAs(TABLES + "/" + code + "/turn/discard/test-card-6", sessionFor(1)).andExpect(status().isConflict());
+        postAs(TABLES + "/" + code + "/turn/discard/inconnue", sessionFor(1)).andExpect(status().isConflict());
+        assertThat(tables.game(code)).isSameAs(afterFirst);
+
+        postAs(TABLES + "/" + code + "/turn/discard/test-card-17", sessionFor(1))
+                .andExpect(status().isNoContent());
+        postAs(TABLES + "/" + code + "/turn/end", sessionFor(1)).andExpect(status().isNoContent());
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor(2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentSeat").value(2))
+                .andExpect(jsonPath("$.phase").value("DRAW"))
+                .andExpect(jsonPath("$.hand.length()").value(4))
+                .andExpect(jsonPath("$.hand[0].id").value("test-card-6"))
+                .andExpect(jsonPath("$.players[0].handCount").value(5));
+        assertThat(tables.game(code).discardPile())
+                .extracting(CardInstance::id)
+                .containsExactly("test-card-2", "test-card-17");
+        List<CardInstance> allCards = new ArrayList<>(tables.game(code).drawPile());
+        allCards.addAll(tables.game(code).discardPile());
+        tables.game(code).players().forEach(player -> allCards.addAll(player.hand()));
+        assertThat(allCards).extracting(CardInstance::id).doesNotHaveDuplicates();
+        assertThat(allCards).containsExactlyInAnyOrderElementsOf(new TestGameCatalog().cards());
     }
 
     private GameState.Player player(int seat, int health, int handSize) {

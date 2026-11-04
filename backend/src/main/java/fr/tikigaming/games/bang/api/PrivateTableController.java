@@ -216,6 +216,36 @@ public class PrivateTableController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{code}/turn/discard/{cardId}")
+    @Operation(
+            summary = "Défausser une carte de sa main par son identifiant",
+            description =
+                    "Le joueur actif choisit ses cartes pendant la phase de défausse, puis termine explicitement son tour.")
+    @ApiResponse(responseCode = "204", description = "Carte déplacée de la main vers la défausse")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF invalide ou compte non actif",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Table inconnue ou expirée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Partie non démarrée, mauvaise phase ou carte absente de sa main",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    ResponseEntity<Void> discard(@PathVariable String code, @PathVariable String cardId, HttpServletRequest request) {
+        tables.discard(code, connectedAccountId(request), cardId);
+        return ResponseEntity.noContent().build();
+    }
+
     private static String connectedAccountId(HttpServletRequest request) {
         AuthUser user = AuthSession.currentUser(request);
         if (user == null) throw new AuthException(401, "Non connecté");

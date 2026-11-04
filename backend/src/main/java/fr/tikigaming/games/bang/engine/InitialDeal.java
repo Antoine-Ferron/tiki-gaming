@@ -53,6 +53,7 @@ public class InitialDeal {
         return new GameState(
                 List.copyOf(players),
                 List.copyOf(deck.subList(drawn, deck.size())),
+                List.of(),
                 assignedRoles.indexOf(Role.SHERIFF) + 1,
                 GameState.Phase.DRAW);
     }

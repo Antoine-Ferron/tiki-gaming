@@ -33,6 +33,7 @@ class GameViewServiceTest {
                         player("three", 3, Role.OUTLAW, false, BangCharacter.PAUL_REGRET, 1, 3, "other-card"),
                         player("four", 4, Role.RENEGADE, false, BangCharacter.WILLY_THE_KID, 4, 4, "renegade-card")),
                 List.of(new CardInstance("secret-deck-card", CardType.MISSED)),
+                List.of(),
                 3,
                 GameState.Phase.PLAY);
         when(deal.deal(accounts)).thenReturn(game);
@@ -65,6 +66,7 @@ class GameViewServiceTest {
         when(deal.deal(accounts))
                 .thenReturn(new GameState(
                         List.of(player("one", 1, Role.SHERIFF, true, BangCharacter.BART_CASSIDY, 3, 5, "card")),
+                        List.of(),
                         List.of(),
                         1,
                         GameState.Phase.DRAW));

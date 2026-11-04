@@ -166,6 +166,7 @@ public class PrivateTableService {
         table.game = new GameState(
                 players,
                 List.copyOf(game.drawPile().subList(2, game.drawPile().size())),
+                game.discardPile(),
                 game.currentSeat(),
                 GameState.Phase.PLAY);
         table.lastActivity = clock.instant();
@@ -182,14 +183,47 @@ public class PrivateTableService {
             if (game.phase() == GameState.Phase.DISCARD) {
                 throw new PrivateTableException(HttpStatus.CONFLICT, "Tu dois encore te défausser.");
             }
-            table.game = new GameState(game.players(), game.drawPile(), game.currentSeat(), GameState.Phase.DISCARD);
+            table.game = new GameState(
+                    game.players(), game.drawPile(), game.discardPile(), game.currentSeat(), GameState.Phase.DISCARD);
         } else {
             int nextSeat = game.currentSeat();
             do {
                 nextSeat = nextSeat % game.players().size() + 1;
             } while (game.players().get(nextSeat - 1).health() <= 0);
-            table.game = new GameState(game.players(), game.drawPile(), nextSeat, GameState.Phase.DRAW);
+            table.game =
+                    new GameState(game.players(), game.drawPile(), game.discardPile(), nextSeat, GameState.Phase.DRAW);
         }
+        table.lastActivity = clock.instant();
+    }
+
+    public synchronized void discard(String code, String accountId, String cardId) {
+        Table table = activeTable(code, accountId);
+        GameState game = table.game;
+        if (game.phase() != GameState.Phase.DISCARD) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Ce n'est pas la phase de défausse.");
+        }
+        GameState.Player active = game.players().get(game.currentSeat() - 1);
+        CardInstance card = active.hand().stream()
+                .filter(candidate -> candidate.id().equals(cardId))
+                .findFirst()
+                .orElseThrow(
+                        () -> new PrivateTableException(HttpStatus.CONFLICT, "Cette carte n'est pas dans ta main."));
+        List<CardInstance> hand = new ArrayList<>(active.hand());
+        hand.remove(card);
+        GameState.Player updated = new GameState.Player(
+                active.accountId(),
+                active.seat(),
+                active.roleCard(),
+                active.character(),
+                active.health(),
+                active.maxHealth(),
+                List.copyOf(hand));
+        List<GameState.Player> players = new ArrayList<>(game.players());
+        players.set(active.seat() - 1, updated);
+        List<CardInstance> discardPile = new ArrayList<>(game.discardPile());
+        discardPile.add(card);
+        table.game = new GameState(
+                List.copyOf(players), game.drawPile(), List.copyOf(discardPile), game.currentSeat(), game.phase());
         table.lastActivity = clock.instant();
     }
 

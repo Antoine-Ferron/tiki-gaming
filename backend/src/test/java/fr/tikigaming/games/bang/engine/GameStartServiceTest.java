@@ -46,7 +46,7 @@ class GameStartServiceTest {
                         error -> assertThat(error.status()).isEqualTo(HttpStatus.FORBIDDEN));
         verifyNoInteractions(deal);
 
-        when(deal.deal(anyList())).thenReturn(new GameState(List.of(), List.of(), 1, GameState.Phase.DRAW));
+        when(deal.deal(anyList())).thenReturn(new GameState(List.of(), List.of(), List.of(), 1, GameState.Phase.DRAW));
         tables.start(code, "player-1");
         assertThatThrownBy(() -> tables.state(code, "outsider"))
                 .isInstanceOfSatisfying(
@@ -68,7 +68,7 @@ class GameStartServiceTest {
     @Test
     void startingRequestsADealForTheAccountsInSeatOrder() {
         String code = tableWith(4);
-        GameState game = new GameState(List.of(), List.of(), 3, GameState.Phase.DRAW);
+        GameState game = new GameState(List.of(), List.of(), List.of(), 3, GameState.Phase.DRAW);
         when(deal.deal(List.of("player-1", "player-2", "player-3", "player-4"))).thenReturn(game);
 
         assertThat(tables.start(code, "player-3")).isEqualTo(new GameStarted(code, 3));
@@ -109,8 +109,12 @@ class GameStartServiceTest {
     void repeatedRequestsKeepTheFirstDistributionWithoutCallingTheDealerAgain() {
         String code = tableWith(4);
         GameState first = new GameState(
-                List.of(), List.of(new CardInstance("remaining-card", CardType.BANG)), 3, GameState.Phase.DRAW);
-        GameState unwanted = new GameState(List.of(), List.of(), 1, GameState.Phase.DRAW);
+                List.of(),
+                List.of(new CardInstance("remaining-card", CardType.BANG)),
+                List.of(),
+                3,
+                GameState.Phase.DRAW);
+        GameState unwanted = new GameState(List.of(), List.of(), List.of(), 1, GameState.Phase.DRAW);
         when(deal.deal(anyList())).thenReturn(first, unwanted);
 
         assertThat(tables.start(code, "player-2")).isEqualTo(new GameStarted(code, 3));
@@ -126,6 +130,7 @@ class GameStartServiceTest {
                 .thenAnswer(invocation -> new GameState(
                         List.of(),
                         List.of(new CardInstance("remaining-card", CardType.BANG)),
+                        List.of(),
                         3,
                         GameState.Phase.DRAW));
         int contenders = 8;
