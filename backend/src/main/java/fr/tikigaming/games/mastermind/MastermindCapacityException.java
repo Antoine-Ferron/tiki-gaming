@@ -1,7 +1,10 @@
 package fr.tikigaming.games.mastermind;
 
-public class MastermindCapacityException extends RuntimeException {
+import fr.tikigaming.config.ApiException;
+import org.springframework.http.HttpStatus;
+
+public class MastermindCapacityException extends ApiException {
     public MastermindCapacityException(String message) {
-        super(message);
+        super(HttpStatus.TOO_MANY_REQUESTS, message);
     }
 }

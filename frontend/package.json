@@ -14,6 +14,7 @@
     "db:types": "supabase gen types typescript --project-id scuqcjtuohcaqyjaytul --schema public > src/lib/database.types.ts",
     "db:sql": "node scripts/db.mjs",
     "db:migrate": "node scripts/db.mjs --migrate",
+    "db:check": "node scripts/check-migrations.mjs",
     "test": "vitest run",
     "test:mutation": "stryker run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
@@ -22,12 +23,20 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@react-three/fiber": "^9.8.2",
+    "@react-three/postprocessing": "^3.2.2",
+    "@stomp/stompjs": "^7.5.0",
     "@supabase/supabase-js": "^2.118.0",
+    "cannon-es": "^0.20.0",
     "pino": "^10.4.0",
+    "postprocessing": "^6.39.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router": "^8.5.1",
-    "zod": "^4.6.7"
+    "sockjs-client": "^1.6.1",
+    "three": "^0.187.0",
+    "zod": "^4.6.7",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@amiceli/vitest-cucumber": "^8.0.0",
@@ -45,6 +54,8 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/sockjs-client": "^1.5.4",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.2.1",
     "@vitest/coverage-v8": "^5.1.0",
     "dotenv": "^18.0.9",

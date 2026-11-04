@@ -176,9 +176,6 @@ input[aria-invalid='true'] {
   font-size: 0.8rem;
 }
 
-.hero {
-  margin-bottom: 1.5rem;
-}
 .grid {
   display: grid;
   gap: 1rem;
@@ -188,17 +185,146 @@ input[aria-invalid='true'] {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  transition: border-color 0.15s;
+  transition:
+    border-color 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
 }
 .game-card:hover {
   border-color: var(--accent);
   text-decoration: none;
 }
-.game-card img {
+.game-card img,
+.game-card-cover {
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+.game-card-solo {
+  --cat: var(--cat-solo);
+}
+.game-card-duel {
+  --cat: var(--cat-duel);
+}
+.game-card-multi {
+  --cat: var(--cat-multi);
+}
+/* Couverture d'un jeu sans vignette : son initiale sur un dégradé de la couleur de sa catégorie. */
+.game-card-cover {
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--cat);
+  background:
+    radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--cat) 35%, transparent), transparent 60%),
+    linear-gradient(135deg, color-mix(in srgb, var(--cat) 18%, var(--bg)), var(--bg));
+}
+.game-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px -12px color-mix(in srgb, var(--cat, var(--accent)) 60%, transparent);
+}
+
+/* Lobby et connexion : essaim de particules au-dessus de la page, qui laisse passer les clics. */
+.cursor-swarm {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.lobby h1 {
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  margin-bottom: 1.25rem;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.filter legend {
+  float: left;
+  padding: 0;
+  margin-right: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+button.chip {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+button.chip:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+button.chip[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.auth-page .form {
+  margin-top: 3rem;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent),
+    0 24px 64px -24px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.auth-page h1 {
+  text-align: center;
+}
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--muted);
+}
+button.secondary:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card,
+  .game-card:hover {
+    transition: none;
+    transform: none;
+  }
 }
 
 .game-page h1 {

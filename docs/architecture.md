@@ -92,6 +92,7 @@ accepté), sinon un compte est créé.
 | `POST /api/auth/password/reset`   | Nouveau mot de passe via le jeton du lien                      |
 | `POST /api/auth/password`         | Changement de mot de passe (connecté)                          |
 | `POST /api/auth/logout`           | Déconnexion                                                    |
+| `POST /api/scores`                | Enregistre le score du joueur connecté (seul chemin d'écriture) |
 
 Les `POST` exigent l'en-tête `X-XSRF-TOKEN` (copie du cookie `XSRF-TOKEN`), ajouté par
 `frontend/src/lib/api.ts`. Les erreurs sont renvoyées sous la forme `{ "error": "message" }`.
@@ -185,14 +186,17 @@ classement, sauvegarde. Un jeu **n'importe jamais `@/lib/supabase`** directement
 ```
 GamePage ──> createGameContext(game, player, platformDeps()) ──> domaine pur (checkScore, rankLeaderboard)
                          │
-                         ├─ ScoreRepository ──> supabaseScores      (fake : FakeScores)
+                         ├─ ScoreRepository ──> supabaseScores      (fake : FakeScores ; envoi par POST /api/scores)
                          ├─ SaveStore       ──> supabaseSaves / localSaves (fake : FakeSaves)
-                         └─ KeyValueStorage ──> localStorage        (fake : MemoryStorage)
+                         ├─ KeyValueStorage ──> localStorage        (fake : MemoryStorage)
+                         └─ Realtime        ──> createRealtime (STOMP) (fake : FakeRealtime)
 ```
 
 Le contexte ne connaît que les ports (`ports.ts`) : `sdk.ts` n'importe aucun adaptateur. C'est la page
 de jeu (point d'assemblage) qui branche les adaptateurs avec `platformDeps()` (`adapters/index.ts`). Les
 adaptateurs traduisent toute erreur en `GameError`. Les tests injectent des fakes en mémoire : aucun test unitaire ne touche le réseau.
+`createRealtime` n'est chargé (import dynamique) que si un jeu appelle réellement `ctx.realtime` : un jeu
+solo n'alourdit pas le chargement initial de la plateforme avec le client STOMP.
 
 #### Catégories
 
@@ -227,6 +231,7 @@ backend/src/main/java/fr/tikigaming/
 │   ├── SupabaseErrors.java            Codes d'erreur Supabase → messages en français
 │   ├── Username.java                  Contrainte @Username (+ UsernameValidator)
 │   └── SupabaseTokenService.java      JWT au format Supabase pour la RLS
+├── realtime/                          Socle WebSocket pour le multijoueur (voir ci-dessous)
 └── games/
     └── <slug>/                        Code serveur d'un jeu, endpoints /api/games/<slug>/*
 ```
@@ -237,6 +242,42 @@ tests passent par `mvn verify`, relancé par la CI.
 
 La configuration est lue depuis `backend/.env` (non versionné, modèle : `backend/.env.example`).
 
+### Socle WebSocket (`fr.tikigaming.realtime`)
+
+STOMP sur WebSocket (SockJS en repli), un seul endpoint `/ws` partagé par tous les jeux multijoueurs.
+Généralise les « tables privées » de BANG! (`games/bang/engine/PrivateTableService`), qui restent en
+l'état (migration laissée en suivi pour son équipe).
+
+```
+Connexion WebSocket ──authentifiée par la session HTTP (AuthSession, même cookie JSESSIONID)──┐
+                                                                                                 │
+GameRoomService  : createRoom/joinRoom/leaveRoom (code à 12 caractères, sièges, purge 1 h)      │
+      │ une salle = un canal STOMP :                                                            │
+      ├─ diffusion publique   /topic/rooms/{slug}/{code}        (RoomEvent { type, payload })   │
+      └─ réponses/erreurs     /user/queue/rooms/{slug}/response | /errors                       │
+                                                                                                 │
+IdempotencyGuard : déduplique une action (scope, actionId) — double clic, renvoi après coupure ◄┘
+```
+
+Une session de jeu (une partie en cours) correspond donc exactement à un canal `/topic/rooms/{slug}/{code}` :
+pas de notion séparée de « session » côté WebSocket. La reconnexion (page rafraîchie, coupure réseau)
+passe par le même message `join`, idempotent : le joueur retrouve son siège. Un jeu avec de l'état caché
+par joueur (main de cartes…) construit son propre `@MessageMapping` dans son package, au-dessus de
+`GameRoomService`/`IdempotencyGuard` — le socle ne connaît que les sièges, jamais les règles d'un jeu.
+
+Un `ChannelInterceptor` (`RoomChannelInterceptor`) filtre les frames des clients, par liste d'autorisations : seul
+`SEND` vers `/app/**` passe (un `SEND` direct sur `/topic/...` serait diffusé tel quel), et `SUBSCRIBE` n'est permis
+que vers `/user/queue/rooms/{slug}/(response|errors)` et vers le topic d'une salle où le compte est assis. Tout le
+reste est refusé, motifs Ant (`*`, `?`, `{}`) compris. Un jeu qui ajoute ses destinations les déclare dans cet
+interceptor.
+
+Limite connue : l'appartenance n'est vérifiée qu'au `SUBSCRIBE`. Après `leave` ou une purge d'inactivité,
+l'abonnement serveur du compte reste actif jusqu'à ce que le client se désabonne ou se déconnecte, et il continue
+de recevoir les évènements de la salle. Acceptable tant que le relais ne diffuse que des actions publiques ; à
+corriger (désabonnement côté serveur ou refiltrage à l'envoi) si des actions deviennent sensibles.
+
+Spécification complète : issue [#85](https://github.com/EAnathos/tiki-gaming/issues/85).
+
 ## Sécurité
 
 - Le front n'utilise **que la clé `anon`** et le JWT émis par le backend. La clé `service_role` (qui
@@ -245,5 +286,9 @@ La configuration est lue depuis `backend/.env` (non versionné, modèle : `backe
 - Toutes les tables ont la RLS activée ; voir [modele-donnees.md](modele-donnees.md).
 - Les redirections après connexion n'acceptent que des chemins relatifs (pas de redirection ouverte).
 - En mode invité, aucune écriture n'est faite en base : seule la lecture publique (catalogue, classement) est utilisée.
-- Les scores sont envoyés par le client, donc falsifiables. Pour un jeu compétitif, la partie devra
-  être validée côté serveur (backend Java) avant l'insertion du score.
+- Les scores ne s'écrivent que par `POST /api/scores` : le backend prend le joueur dans la session HTTP et
+  insère avec la clé `service_role` ; le navigateur n'a plus le droit d'insérer dans `public.scores`. Le
+  trigger `scores_check_allowed` impose jeu actif et `max_score`.
+- Le score reste **calculé par le client** : sous le plafond du jeu, un joueur peut encore envoyer un score
+  inventé à `POST /api/scores`. Pour un jeu compétitif, son équipe ajoute un `ScoreValidator`
+  (`fr.tikigaming.scores`) qui vérifie la partie côté serveur avant l'insertion.

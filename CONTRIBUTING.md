@@ -133,6 +133,7 @@ c'est le formatter qui tranche les questions de style.
   démarré une fois pour la suite, les migrations du dépôt y sont rejouées, puis chaque test tourne dans une
   transaction annulée à la fin. `as(db, userId, …)` exécute une requête avec les droits d'un joueur
   (`authenticated` + JWT) ou d'un visiteur (`anon`, `userId` à `null`) : c'est la RLS réelle qui est testée.
+  `asServer(db, …)` prend les droits du backend (`service_role`), seul autorisé à insérer des scores.
   **Toute nouvelle table ou politique RLS arrive avec ses tests d'intégration.** Sans Docker, ces tests sont
   ignorés en local (la CI, elle, échoue).
 - **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
@@ -147,7 +148,7 @@ c'est le formatter qui tranche les questions de style.
   | Périmètre | Lignes | Branches | Fonctions | Instructions |
   |-----------|--------|----------|-----------|--------------|
   | Front, cœur du lobby (`games/domain`, `errors.ts`, `scoreQueue.ts`, `sdk.ts`, `lib/validation.ts`) | 95 % | 95 % | 95 % | 95 % |
-  | Front, global | 40 % | 44 % | 47 % | 42 % |
+  | Front, global | 78 % | 80 % | 75 % | 79 % |
   | Backend, cœur (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`) | 95 % | 95 % | — | — |
   | Backend, global | 52 % | 64 % | — | — |
 
@@ -309,6 +310,7 @@ const monJeu: GameDefinition = {
   title: 'Mon Jeu',
   description: 'Une phrase de présentation.',
   category: 'duel',        // obligatoire : 'solo' (1 joueur) · 'duel' (2) · 'multi' (3 et +)
+  theme: 'reflexion',      // obligatoire : 'action' · 'reflexion' · 'strategie' (filtre du lobby)
   mode: 'solo',            // accès : 'solo' = jouable sans compte · 'multiplayer' = connexion obligatoire
   thumbnail: '/games/mon-jeu/thumbnail.webp', // optionnel, fichier dans frontend/public/games/mon-jeu/
   scoreLimits: { max: 5000 }, // optionnel : score maximal plausible, refusé au-delà (aligné avec games.max_score)
@@ -319,7 +321,8 @@ export default monJeu
 
 La **catégorie** décrit le format de jeu, le **mode** dit seulement si un compte est nécessaire. Les
 deux sont indépendants : un jeu d'échecs contre une IA peut être `category: 'duel'` et `mode: 'solo'`.
-La liste des catégories est dans `frontend/src/games/categories.ts` ; en ajouter une passe par
+Le **thème** est le genre du jeu, proposé comme filtre dans le lobby avec la catégorie.
+Les listes sont dans `frontend/src/games/categories.ts` et `themes.ts` ; en ajouter une valeur passe par
 l'équipe plateforme (voir [docs/architecture.md](docs/architecture.md#catégories)).
 
 Puis l'ajouter dans `frontend/src/games/registry.ts` :
@@ -336,12 +339,12 @@ npx supabase migration new add_game_mon_jeu
 ```
 
 ```sql
-insert into public.games (slug, title, description, category)
-values ('mon-jeu', 'Mon Jeu', 'Une phrase de présentation.', 'duel');
+insert into public.games (slug, title, description, category, theme)
+values ('mon-jeu', 'Mon Jeu', 'Une phrase de présentation.', 'duel', 'reflexion');
 ```
 
-Sans cette ligne, l'envoi de score et la sauvegarde sont refusés (clé étrangère + RLS). La
-`category` est obligatoire et doit être la même que dans `index.ts`.
+Sans cette ligne, l'envoi de score et la sauvegarde sont refusés (clé étrangère). La
+`category` et le `theme` sont obligatoires et doivent être les mêmes que dans `index.ts`.
 
 ### 4. Utiliser le `GameContext`
 
@@ -368,11 +371,16 @@ d'adapter la réaction :
 
 | `code`      | Cas                                                        |
 |-------------|------------------------------------------------------------|
-| `invalid`   | score refusé avant l'envoi (pas un entier, négatif, au-dessus de `scoreLimits.max`) |
-| `queued`    | coupure réseau : le score est gardé sur l'appareil et renvoyé à la prochaine partie (5 essais) |
+| `invalid`   | score refusé, avant l'envoi (pas un entier, négatif, au-dessus de `scoreLimits.max`) ou par le serveur |
+| `queued`    | coupure réseau ou session perdue : le score est gardé sur l'appareil et renvoyé à la prochaine partie (5 essais) |
 | `network`   | serveur injoignable (lecture du classement, sauvegarde…) : réessayer plus tard |
-| `session`   | session expirée : se reconnecter                           |
-| `forbidden` / `not_found` | refusé par la RLS, ou jeu absent de `public.games` |
+| `session`   | session expirée (hors envoi de score) : se reconnecter     |
+| `forbidden` / `not_found` | jeu fermé ou refusé par la RLS, ou jeu absent de `public.games` |
+
+`ctx.submitScore` passe par `POST /api/scores` : le backend enregistre le score pour le joueur de la session,
+après les règles du catalogue (jeu actif, `max_score`). Pour un jeu compétitif, vérifier la partie côté
+serveur avec un bean `ScoreValidator` (`backend/src/main/java/fr/tikigaming/scores/`) : il reçoit le joueur,
+le score et les `metadata`, et lève une `ApiException` (message pour le joueur) pour refuser le score.
 
 Si le jeu plante pendant son rendu, la plateforme l'isole (`GameErrorBoundary`) : le joueur voit un
 message et un bouton « Relancer le jeu », le reste du site continue de fonctionner.

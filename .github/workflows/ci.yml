@@ -41,9 +41,11 @@ jobs:
             frontend:
               - *ci
               - 'frontend/**'
+              - 'shared/**'
             backend:
               - *ci
               - 'backend/**'
+              - 'shared/**'
             database:
               - *ci
               - 'frontend/**'
@@ -114,6 +116,24 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      # Le runner identifie une migration par sa version (horodatage) : deux fichiers de même version, et le second
+      # serait ignoré sans bruit en prod. Sans dépendance : passe avant npm ci.
+      - name: Migrations (format des noms, versions uniques)
+        run: npm run db:check
+      # Une migration déjà sur la branche cible est (ou sera) appliquée en prod, et le runner ne rejoue jamais une
+      # version connue : la modifier, la renommer ou la supprimer n'aurait aucun effet en base. Il faut en ajouter une.
+      - name: Migrations déjà mergées inchangées
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          changed=$(git diff --name-status --diff-filter=DMR FETCH_HEAD HEAD -- ':/supabase/migrations')
+          if [ -n "$changed" ]; then
+            echo "::error::Migration déjà sur $BASE_REF modifiée, renommée ou supprimée : crée plutôt une nouvelle migration (supabase migration new <nom>)."
+            echo "$changed"
+            exit 1
+          fi
       - run: npm ci
       # Conteneur supabase/postgres éphémère, migrations rejouées sur base vide, puis RLS et catalogue.
       - run: npm run test:integration

@@ -38,7 +38,7 @@ class MastermindControllerTest {
 
     @Test
     void createsGameWith201() throws Exception {
-        when(service.create()).thenReturn(SNAPSHOT);
+        when(service.create(any())).thenReturn(SNAPSHOT);
 
         mvc.perform(post("/api/games/mastermind"))
                 .andExpect(status().isCreated())
@@ -50,7 +50,8 @@ class MastermindControllerTest {
 
     @Test
     void returns429WhenTooManyGamesAreActive() throws Exception {
-        when(service.create()).thenThrow(new MastermindCapacityException("Trop de parties sont actuellement actives."));
+        when(service.create(any()))
+                .thenThrow(new MastermindCapacityException("Trop de parties sont actuellement actives."));
 
         mvc.perform(post("/api/games/mastermind"))
                 .andExpect(status().isTooManyRequests())

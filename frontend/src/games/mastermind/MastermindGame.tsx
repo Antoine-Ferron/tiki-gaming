@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Leaderboard } from '@/components/Leaderboard'
-import { apiPost } from '@/lib/api'
+import { ApiError, apiGet, apiPost } from '@/lib/api'
 import type { GameProps, LeaderboardEntry } from '../types'
 import './mastermind.css'
 
@@ -31,6 +31,47 @@ type MastermindGameState = {
 
 const emptyGuess = (): Guess => Array(CODE_LENGTH).fill(null)
 
+// La partie en cours est gardée pour l'onglet : un rechargement la reprend au lieu d'en créer une autre.
+const STORAGE_KEY = 'mastermind:game-id'
+const EXPIRED_MESSAGE = 'Ta partie avait expiré : une nouvelle partie a été créée.'
+
+function storedGameId(): string | null {
+  try {
+    return sessionStorage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function storeGameId(id: string) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, id)
+  } catch {
+    // Stockage indisponible (navigation privée) : la partie ne sera simplement pas reprise.
+  }
+}
+
+const isNotFound = (e: unknown) => e instanceof ApiError && e.status === 404
+
+async function createGame(): Promise<MastermindGameState> {
+  const created = await apiPost<MastermindGameState>('/games/mastermind')
+  storeGameId(created.id)
+  return created
+}
+
+/** Reprend la partie de l'onglet si le serveur la connaît encore, sinon en crée une. */
+async function openGame(): Promise<MastermindGameState> {
+  const id = storedGameId()
+  if (id) {
+    try {
+      return await apiGet<MastermindGameState>(`/games/mastermind/${id}`)
+    } catch (e) {
+      if (!isNotFound(e)) throw e
+    }
+  }
+  return createGame()
+}
+
 export default function MastermindGame({ ctx }: GameProps) {
   const [game, setGame] = useState<MastermindGameState | null>(null)
   const [guess, setGuess] = useState<Guess>(emptyGuess)
@@ -39,6 +80,8 @@ export default function MastermindGame({ ctx }: GameProps) {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // En StrictMode l'effet s'exécute deux fois : une seule ouverture de partie par montage.
+  const opening = useRef<Promise<MastermindGameState> | null>(null)
 
   const refreshLeaderboard = useCallback(async () => {
     try {
@@ -49,7 +92,8 @@ export default function MastermindGame({ ctx }: GameProps) {
   }, [ctx])
 
   useEffect(() => {
-    void apiPost<MastermindGameState>('/games/mastermind')
+    opening.current ??= openGame()
+    void opening.current
       .then((createdGame) => {
         setGame(createdGame)
         setGuess(emptyGuess())
@@ -90,9 +134,22 @@ export default function MastermindGame({ ctx }: GameProps) {
         await refreshLeaderboard()
       }
     } catch (e) {
-      setError((e as Error).message)
+      if (isNotFound(e)) await replaceExpiredGame()
+      else setError((e as Error).message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // Le serveur purge les parties inactives : sur un 404, on repart d'une nouvelle partie.
+  async function replaceExpiredGame() {
+    try {
+      setGame(await createGame())
+      setGuess(emptyGuess())
+      setActiveSlot(0)
+      setError(EXPIRED_MESSAGE)
+    } catch (e) {
+      setError((e as Error).message)
     }
   }
 
@@ -105,7 +162,8 @@ export default function MastermindGame({ ctx }: GameProps) {
       setGuess(emptyGuess())
       setActiveSlot(0)
     } catch (e) {
-      setError((e as Error).message)
+      if (isNotFound(e)) await replaceExpiredGame()
+      else setError((e as Error).message)
     } finally {
       setSubmitting(false)
     }

@@ -1,7 +1,10 @@
 package fr.tikigaming.games.mastermind;
 
-public class MastermindFinishedException extends RuntimeException {
+import fr.tikigaming.config.ApiException;
+import org.springframework.http.HttpStatus;
+
+public class MastermindFinishedException extends ApiException {
     public MastermindFinishedException(String message) {
-        super(message);
+        super(HttpStatus.CONFLICT, message);
     }
 }
