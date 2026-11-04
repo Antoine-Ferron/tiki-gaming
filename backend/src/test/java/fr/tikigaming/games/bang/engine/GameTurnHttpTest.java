@@ -1,6 +1,8 @@
 package fr.tikigaming.games.bang.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,9 +10,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
+import fr.tikigaming.games.bang.cards.BangCharacter;
+import fr.tikigaming.games.bang.cards.CardType;
+import fr.tikigaming.games.bang.cards.Role;
+import fr.tikigaming.games.bang.cards.RoleCard;
+import fr.tikigaming.games.bang.model.CardInstance;
+import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -20,6 +32,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.ObjectMapper;
@@ -48,6 +61,9 @@ class GameTurnHttpTest {
 
     @Autowired
     private PrivateTableService tables;
+
+    @MockitoSpyBean
+    private InitialDeal deal;
 
     @TestConfiguration
     static class Setup {
@@ -90,6 +106,74 @@ class GameTurnHttpTest {
         postAs(TABLES + "/" + code + "/turn/draw", sessionFor(2)).andExpect(status().isForbidden());
 
         assertThat(tables.game(code)).isSameAs(original);
+    }
+
+    @Test
+    void endingPlayWithTooManyCardsRequiresDiscardingBeforeEndingTheTurn() throws Exception {
+        String code = startedTable();
+        postAs(TABLES + "/" + code + "/turn/draw", sessionFor(1)).andExpect(status().isNoContent());
+
+        postAs(TABLES + "/" + code + "/turn/end", sessionFor(1)).andExpect(status().isNoContent());
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor(1)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentSeat").value(1))
+                .andExpect(jsonPath("$.phase").value("DISCARD"))
+                .andExpect(jsonPath("$.hand.length()").value(7));
+
+        var beforeRefusal = tables.game(code);
+        postAs(TABLES + "/" + code + "/turn/end", sessionFor(1)).andExpect(status().isConflict());
+        assertThat(tables.game(code)).isSameAs(beforeRefusal);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 2})
+    void endingPlayAtOrBelowCurrentHealthStartsTheNextLivingPlayersTurn(int handSize) throws Exception {
+        GameState game = new GameState(
+                List.of(player(1, 2, handSize), player(2, 4, 1), player(3, 3, 1), player(4, 4, 1)),
+                List.of(),
+                1,
+                GameState.Phase.PLAY);
+        doReturn(game).when(deal).deal(anyList());
+        String code = startedTable();
+
+        postAs(TABLES + "/" + code + "/turn/end", sessionFor(1)).andExpect(status().isNoContent());
+
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor(2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentSeat").value(2))
+                .andExpect(jsonPath("$.phase").value("DRAW"))
+                .andExpect(jsonPath("$.hand[0].id").value("seat-2-card-0"));
+    }
+
+    @Test
+    void endingTheTurnSkipsEliminatedSeatsAndWrapsAroundTheTable() throws Exception {
+        GameState game = new GameState(
+                List.of(player(1, 0, 0), player(2, 3, 0), player(3, 2, 1), player(4, 0, 0)),
+                List.of(),
+                3,
+                GameState.Phase.PLAY);
+        doReturn(game).when(deal).deal(anyList());
+        String code = startedTable();
+
+        postAs(TABLES + "/" + code + "/turn/end", sessionFor(3)).andExpect(status().isNoContent());
+
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor(2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentSeat").value(2))
+                .andExpect(jsonPath("$.phase").value("DRAW"));
+    }
+
+    private GameState.Player player(int seat, int health, int handSize) {
+        return new GameState.Player(
+                accountPrefix + ":player-" + seat,
+                seat,
+                new RoleCard(seat == 1 ? Role.SHERIFF : Role.OUTLAW, seat == 1),
+                BangCharacter.BART_CASSIDY,
+                health,
+                5,
+                IntStream.range(0, handSize)
+                        .mapToObj(index -> new CardInstance("seat-" + seat + "-card-" + index, CardType.BANG))
+                        .toList());
     }
 
     private String startedTable() throws Exception {

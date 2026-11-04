@@ -33,11 +33,26 @@ class GameTurnServiceTest {
         assertThat(result.phase()).isEqualTo(GameState.Phase.PLAY);
     }
 
+    @Test
+    void endingPlayAboveCurrentHealthEntersDiscard() throws Exception {
+        String code = startedTable(1);
+        tables.draw(code, "one");
+
+        tables.endTurn(code, "one");
+
+        assertThat(tables.game(code).phase()).isEqualTo(GameState.Phase.DISCARD);
+        assertThat(tables.game(code).currentSeat()).isEqualTo(1);
+    }
+
     private String startedTable() {
+        return startedTable(5);
+    }
+
+    private String startedTable(int health) {
         String code = tables.create("one").code();
         List.of("two", "three", "four").forEach(account -> tables.join(code, account));
         var sheriff = new GameState.Player(
-                "one", 1, new RoleCard(Role.SHERIFF, true), BangCharacter.BART_CASSIDY, 5, 5, List.of());
+                "one", 1, new RoleCard(Role.SHERIFF, true), BangCharacter.BART_CASSIDY, health, 5, List.of());
         when(deal.deal(anyList()))
                 .thenReturn(new GameState(List.of(sheriff), List.of(first, second, third), 1, GameState.Phase.DRAW));
         tables.start(code, "one");

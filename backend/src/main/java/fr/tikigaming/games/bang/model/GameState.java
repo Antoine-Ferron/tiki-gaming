@@ -8,7 +8,8 @@ import java.util.List;
 public record GameState(List<Player> players, List<CardInstance> drawPile, int currentSeat, Phase phase) {
     public enum Phase {
         DRAW,
-        PLAY
+        PLAY,
+        DISCARD
     }
 
     public record Player(

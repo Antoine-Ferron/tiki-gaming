@@ -171,6 +171,28 @@ public class PrivateTableService {
         table.lastActivity = clock.instant();
     }
 
+    public synchronized void endTurn(String code, String accountId) {
+        Table table = activeTable(code, accountId);
+        GameState game = table.game;
+        if (game.phase() == GameState.Phase.DRAW) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Tu dois d'abord piocher.");
+        }
+        GameState.Player active = game.players().get(game.currentSeat() - 1);
+        if (active.hand().size() > active.health()) {
+            if (game.phase() == GameState.Phase.DISCARD) {
+                throw new PrivateTableException(HttpStatus.CONFLICT, "Tu dois encore te défausser.");
+            }
+            table.game = new GameState(game.players(), game.drawPile(), game.currentSeat(), GameState.Phase.DISCARD);
+        } else {
+            int nextSeat = game.currentSeat();
+            do {
+                nextSeat = nextSeat % game.players().size() + 1;
+            } while (game.players().get(nextSeat - 1).health() <= 0);
+            table.game = new GameState(game.players(), game.drawPile(), nextSeat, GameState.Phase.DRAW);
+        }
+        table.lastActivity = clock.instant();
+    }
+
     private Table activeTable(String code, String accountId) {
         purgeInactive();
         code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
