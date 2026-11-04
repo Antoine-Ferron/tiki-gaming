@@ -65,6 +65,11 @@ public final class Tables {
                 p.name(), p.bot(), coins, p.wonder(), p.stagesBuilt(), p.built(), p.military(), p.tokens());
     }
 
+    public static UnaryOperator<PlayerState> military(int military) {
+        return p -> new PlayerState(
+                p.name(), p.bot(), p.coins(), p.wonder(), p.stagesBuilt(), p.built(), military, p.tokens());
+    }
+
     public static UnaryOperator<PlayerState> stages(int stagesBuilt) {
         return p -> new PlayerState(
                 p.name(), p.bot(), p.coins(), p.wonder(), stagesBuilt, p.built(), p.military(), p.tokens());
