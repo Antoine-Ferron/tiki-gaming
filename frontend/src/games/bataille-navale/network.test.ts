@@ -38,8 +38,11 @@ describe('READY handshake', () => {
     let state = createNetState(1, myFleet, false)
     state = applyRemoteEvent(state, { type: 'READY', payload: { by: 1 } }).state
     expect(state.phase).toBe('placement')
-    state = applyRemoteEvent(state, { type: 'READY', payload: { by: 2 } }).state
-    expect(state.phase).toBe('battle')
+    const { state: next, outbox } = applyRemoteEvent(state, { type: 'READY', payload: { by: 2 } })
+    expect(next.phase).toBe('battle')
+    // Confirmation envoyée à l'instant où je découvre que les deux sièges sont prêts : voir le test
+    // « late-joining » dans useNetGame.test.tsx pour la raison d'être de cette confirmation.
+    expect(outbox).toEqual([{ type: 'READY', data: { by: 1, confirm: true } }])
   })
 
   it('does nothing once placement is already done', () => {
@@ -259,6 +262,25 @@ describe('READY received after my own battle has already started', () => {
   it('does not end the game while still in placement: a normal READY handshake is unaffected', () => {
     const state = createNetState(1, myFleet, false)
     const { state: next, outbox } = applyRemoteEvent(state, { type: 'READY', payload: { by: 2 } })
+    expect(next.disconnected).toBe(false)
+    expect(outbox).toEqual([])
+  })
+
+  it('ignores the echo of my own READY arriving after I have already reached battle', () => {
+    // Sans ce garde-fou : ma propre confirmation (ci-dessous) ou mon propre envoi initial, qui me
+    // reviennent forcément après que j'ai déjà basculé en bataille, se feraient passer pour un abandon.
+    const state = battleState({ turnSeat: 1 })
+    const { state: next, outbox } = applyRemoteEvent(state, { type: 'READY', payload: { by: 1 } })
+    expect(next.disconnected).toBe(false)
+    expect(outbox).toEqual([])
+  })
+
+  it("ignores a confirmation READY from the opponent, part of a normal handshake settling", () => {
+    // La confirmation de l'adversaire (déclenchée dès qu'il découvre les deux sièges prêts) arrive elle
+    // aussi après que j'ai déjà basculé en bataille : ce n'est pas un rechargement, juste la fin normale
+    // du handshake des deux côtés.
+    const state = battleState({ turnSeat: 1 })
+    const { state: next, outbox } = applyRemoteEvent(state, { type: 'READY', payload: { by: 2, confirm: true } })
     expect(next.disconnected).toBe(false)
     expect(outbox).toEqual([])
   })

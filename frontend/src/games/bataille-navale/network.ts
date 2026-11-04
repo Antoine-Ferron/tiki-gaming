@@ -99,8 +99,10 @@ type FireResultPayload = { by: number; targets: Coord[]; results: ShotResult[]; 
 type RadarPayload = { by: number; zone: Coord[] }
 type RadarResultPayload = { by: number; zone: Coord[]; occupied: Coord[] }
 
+type ReadyPayload = { by: number; confirm?: boolean }
+
 export type RemoteEvent =
-  | { type: 'READY'; payload: { by: number } }
+  | { type: 'READY'; payload: ReadyPayload }
   | { type: 'FIRE'; payload: FirePayload }
   | { type: 'FIRE_RESULT'; payload: FireResultPayload }
   | { type: 'RADAR'; payload: RadarPayload }
@@ -142,9 +144,11 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
   switch (event.type) {
     case 'READY': {
       if (state.phase !== 'placement') {
-        // L'adversaire annonce qu'il est prêt alors que la bataille est déjà en cours ou terminée chez
-        // moi : son client est reparti de zéro (page rechargée). Aucune reprise n'est prise en charge
-        // (voir l'en-tête) : cette partie ne peut plus continuer, des deux côtés.
+        // Mon propre écho (le mien ou la confirmation que je viens de déclencher, voir plus bas) : rien
+        // d'anormal, on l'ignore. Seul un READY qui n'est ni le mien ni une confirmation attendue signale
+        // que l'adversaire est reparti de zéro (page rechargée) : aucune reprise n'est prise en charge
+        // (voir l'en-tête), cette partie ne peut plus continuer, des deux côtés.
+        if (event.payload.by === state.mySeat || event.payload.confirm) return { state, outbox: [] }
         return { state: { ...state, disconnected: true }, outbox: [{ type: 'GAME_ABANDONED', data: null }] }
       }
       const readySeats = new Set(state.readySeats).add(event.payload.by)
@@ -152,10 +156,14 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
       // Le socle ne rediffuse qu'aux comptes déjà abonnés, sans historique : si mon propre premier READY
       // est parti avant que l'adversaire n'ait rejoint la salle, il est perdu pour toujours de son côté.
       // Dès que CE message me fait passer à deux sièges prêts, je sais que l'adversaire vient de m'envoyer
-      // le sien à l'instant (donc qu'il est bien abonné) : je renvoie le mien une dernière fois, pour qu'il
-      // le reçoive même s'il avait raté le tout premier envoi. Sans condition de délai ni de répétition en
-      // boucle : une seule confirmation, exactement quand elle sert, jamais après coup.
-      const outbox: OutgoingEvent[] = reachesBattle ? [{ type: 'READY', data: { by: state.mySeat } }] : []
+      // le sien à l'instant (donc qu'il est bien abonné) : je renvoie le mien une dernière fois, marqué
+      // `confirm`, pour qu'il le reçoive même s'il avait raté le tout premier envoi — sans que cette
+      // confirmation (qui arrive forcément après que j'ai déjà basculé en bataille) ne soit prise pour un
+      // signal d'abandon par qui la reçoit. Sans condition de délai ni de répétition en boucle : une seule
+      // confirmation, exactement quand elle sert, jamais après coup.
+      const outbox: OutgoingEvent[] = reachesBattle
+        ? [{ type: 'READY', data: { by: state.mySeat, confirm: true } satisfies ReadyPayload }]
+        : []
       const phase = readySeats.size >= 2 ? 'battle' : state.phase
       return { state: { ...state, readySeats, phase }, outbox }
     }

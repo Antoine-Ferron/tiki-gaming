@@ -56,6 +56,48 @@ describe('useNetGame — READY handshake', () => {
   })
 
   /**
+   * Bug réel observé : les deux côtés affichaient « la partie ne peut plus continuer » juste après que les
+   * deux joueurs se soient dits prêts. Cause : le socle renvoie à l'expéditeur son propre message (écho) — la
+   * confirmation que j'envoie à l'instant où je bascule en bataille me revient donc forcément, alors que je
+   * ne suis déjà plus en placement.
+   */
+  test("does not flag the game as abandoned when my own confirmation echoes back to me", () => {
+    const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
+    const { result } = renderHook(() => useNetGame(connection, fleet, false, buildCtx()))
+
+    act(() => {
+      connection.emit('READY', { by: 1 })
+      connection.emit('READY', { by: 2 }) // déclenche ma confirmation, envoyée par le hook
+    })
+    expect(result.current.state.phase).toBe('battle')
+
+    const confirmation = connection.sent.find((a) => a.type === 'READY' && (a.data as { confirm?: boolean }).confirm)
+    expect(confirmation).toBeDefined()
+    act(() => {
+      connection.emit('READY', confirmation!.data) // le socle me renvoie ma propre confirmation (écho)
+    })
+
+    expect(result.current.state.disconnected).toBe(false)
+  })
+
+  test("does not flag the game as abandoned when the opponent's own confirmation arrives after mine", () => {
+    const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
+    const { result } = renderHook(() => useNetGame(connection, fleet, false, buildCtx()))
+
+    act(() => {
+      connection.emit('READY', { by: 1 })
+      connection.emit('READY', { by: 2 }) // je bascule déjà en bataille ici
+    })
+    expect(result.current.state.phase).toBe('battle')
+
+    act(() => {
+      connection.emit('READY', { by: 2, confirm: true }) // la confirmation symétrique de l'adversaire
+    })
+
+    expect(result.current.state.disconnected).toBe(false)
+  })
+
+  /**
    * Reproduit le bug réel : le socle ne rediffuse un message qu'aux comptes déjà abonnés, sans historique.
    * Si le joueur 1 envoie son READY avant que le joueur 2 n'ait rejoint la salle, ce premier message est
    * perdu pour le joueur 2, qui resterait bloqué sur l'écran d'attente sans la confirmation renvoyée par
