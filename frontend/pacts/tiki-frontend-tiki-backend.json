@@ -29,7 +29,9 @@
           "encoded": false
         },
         "headers": {
-          "Content-Type": ["application/json"]
+          "Content-Type": [
+            "application/json"
+          ]
         },
         "matchingRules": {
           "body": {
@@ -93,7 +95,9 @@
           "encoded": false
         },
         "headers": {
-          "Content-Type": ["application/json"]
+          "Content-Type": [
+            "application/json"
+          ]
         },
         "status": 200
       },
@@ -109,7 +113,9 @@
       ],
       "request": {
         "headers": {
-          "X-XSRF-TOKEN": ["jeton-csrf-de-test"]
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
         },
         "matchingRules": {
           "header": {
@@ -152,8 +158,12 @@
           "encoded": false
         },
         "headers": {
-          "Content-Type": ["application/json"],
-          "X-XSRF-TOKEN": ["jeton-csrf-de-test"]
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
         },
         "matchingRules": {
           "body": {
@@ -220,8 +230,12 @@
           "encoded": false
         },
         "headers": {
-          "Content-Type": ["application/json"],
-          "X-XSRF-TOKEN": ["jeton-csrf-de-test"]
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
         },
         "matchingRules": {
           "header": {
@@ -247,7 +261,9 @@
           "encoded": false
         },
         "headers": {
-          "Content-Type": ["application/json"]
+          "Content-Type": [
+            "application/json"
+          ]
         },
         "matchingRules": {
           "body": {
@@ -284,8 +300,12 @@
           "encoded": false
         },
         "headers": {
-          "Content-Type": ["application/json"],
-          "X-XSRF-TOKEN": ["jeton-csrf-de-test"]
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
         },
         "matchingRules": {
           "header": {
@@ -311,7 +331,9 @@
           "encoded": false
         },
         "headers": {
-          "Content-Type": ["application/json"]
+          "Content-Type": [
+            "application/json"
+          ]
         },
         "matchingRules": {
           "body": {
