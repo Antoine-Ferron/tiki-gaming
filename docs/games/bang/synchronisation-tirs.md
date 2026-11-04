@@ -15,5 +15,6 @@ Ces tests HTTP ne sont pas des E2E navigateur.
 | Consommer une carte et publier un tir en attente | HTTP : `204` attendu, `404` reçu. Contrôleur : appel `fire` attendu mais absent. Service : main attendue vide, BANG! encore présent. | 13 tests (HTTP, contrôleur, service, projection privée), commit `ffcc0d6`. |
 | Verrouiller les actions du tireur pendant l'attente | Second tir : `409` attendu, `204` reçu. | 14 tests ciblés, dont les refus sans mutation de tirer, terminer, piocher et défausser. |
 | Répondre par une esquive, depuis le compte cible | Esquive : `204` attendu, `404` reçu ; réponses par tireur, tiers ou extérieur : `403` attendu, `404` reçu. Identifiant périmé : `409` attendu, `404` reçu. | 20 tests ciblés ; PV conservés, défausse ajoutée, attente supprimée et tour repris. |
+| Accepter le tir une seule fois | `204` attendu, `404` reçu sur l'acceptation. | 22 tests ciblés ; perte de 1 PV, carte d'esquive conservée, doublons acceptation/esquive en `409`. |
 
 Le blocage initial du lanceur Java dans l'environnement restreint n'est pas compté comme rouge métier.

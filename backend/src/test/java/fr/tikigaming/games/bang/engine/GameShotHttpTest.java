@@ -154,6 +154,25 @@ class GameShotHttpTest {
         view(code, 2).andExpect(jsonPath("$.pendingShot.id").value(shot));
     }
 
+    @Test
+    void acceptingTheShotLosesOneLifeOnlyAndRepeatedResponsesHaveNoEffect() throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+
+        command(code, "shots/" + shot + "/accept", 2).andExpect(status().isNoContent());
+
+        GameState resolved = tables.game(code);
+        assertThat(resolved.players().get(1).health()).isEqualTo(3);
+        assertThat(resolved.players().get(1).hand()).containsExactly(card("missed-2", CardType.MISSED));
+        assertThat(resolved.discardPile()).containsExactly(card("old", CardType.MISSED), card("bang-1", CardType.BANG));
+        view(code, 2).andExpect(jsonPath("$.pendingShot").doesNotExist());
+        command(code, "shots/" + shot + "/accept", 2).andExpect(status().isConflict());
+        command(code, "shots/" + shot + "/dodge/missed-2", 2).andExpect(status().isConflict());
+        assertThat(tables.game(code)).isSameAs(resolved);
+        command(code, "turn/end", 1).andExpect(status().isNoContent());
+    }
+
     private String pendingId(String code) throws Exception {
         return json.readTree(view(code, 2)
                         .andExpect(status().isOk())

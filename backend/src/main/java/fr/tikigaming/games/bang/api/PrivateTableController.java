@@ -277,6 +277,13 @@ public class PrivateTableController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{code}/shots/{shotId}/accept")
+    @Operation(summary = "Accepter le tir en attente")
+    ResponseEntity<Void> accept(@PathVariable String code, @PathVariable String shotId, HttpServletRequest request) {
+        tables.respond(code, connectedAccountId(request), shotId, null);
+        return ResponseEntity.noContent().build();
+    }
+
     private static String connectedAccountId(HttpServletRequest request) {
         AuthUser user = AuthSession.currentUser(request);
         if (user == null) throw new AuthException(401, "Non connecté");
