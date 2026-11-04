@@ -1,5 +1,6 @@
 package fr.tikigaming.games.sdv_civilisation;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -10,7 +11,7 @@ import java.util.stream.Stream;
  */
 public record PlayerState(
         String name,
-        boolean bot,
+        @JsonProperty("isBot") boolean bot,
         int coins,
         Wonder wonder,
         int stagesBuilt,
