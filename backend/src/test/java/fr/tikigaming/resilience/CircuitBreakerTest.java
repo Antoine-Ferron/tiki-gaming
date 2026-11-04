@@ -62,8 +62,9 @@ class CircuitBreakerTest {
     }
 
     private void failTimes(int n) {
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < n; i++) {
             assertThatThrownBy(() -> breaker.call(this::fail)).isInstanceOf(Outage.class);
+        }
     }
 
     private void open() {
@@ -203,12 +204,14 @@ class CircuitBreakerTest {
         @Test
         void rejectsOtherCallsWhileTheTrialIsRunning() {
             open();
-            clock.advance(OPEN);
+            clock.advance(OPEN.plusSeconds(5));
 
             String result = breaker.call(() -> {
                 assertThat(breaker.state()).isEqualTo(CircuitBreaker.State.HALF_OPEN);
                 assertThatThrownBy(() -> breaker.call(CircuitBreakerTest.this::ok))
-                        .isInstanceOf(CircuitOpenException.class);
+                        .isInstanceOfSatisfying(
+                                CircuitOpenException.class,
+                                e -> assertThat(e.retryAfter()).isZero());
                 return "essai";
             });
 
@@ -227,5 +230,29 @@ class CircuitBreakerTest {
     void refusesADelayThatIsNotPositive() {
         assertThatThrownBy(() -> new CircuitBreaker(1, Duration.ZERO, clock, e -> true))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void acceptsTheSmallestThresholdAndOpensAtTheFirstFailure() {
+        CircuitBreaker strict = new CircuitBreaker(1, OPEN, clock, Outage.class::isInstance);
+
+        assertThatThrownBy(() -> strict.call(this::fail)).isInstanceOf(Outage.class);
+
+        assertThat(strict.state()).isEqualTo(CircuitBreaker.State.OPEN);
+    }
+
+    @Test
+    void refusesANegativeDelay() {
+        assertThatThrownBy(() -> new CircuitBreaker(1, Duration.ofNanos(-1), clock, e -> true))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void acceptsTheSmallestPositiveDelay() {
+        CircuitBreaker quick = new CircuitBreaker(1, Duration.ofNanos(1), clock, Outage.class::isInstance);
+        assertThatThrownBy(() -> quick.call(this::fail)).isInstanceOf(Outage.class);
+        clock.advance(Duration.ofNanos(1));
+
+        assertThat(quick.call(this::ok)).isEqualTo("ok");
     }
 }

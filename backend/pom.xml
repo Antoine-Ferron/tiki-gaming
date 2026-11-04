@@ -68,6 +68,18 @@
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Chaos : Toxiproxy (latence, coupure réseau) entre le backend et un faux Supabase, dans Docker.
+         Versions gérées par Spring Boot (Testcontainers 2.x). -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-toxiproxy</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
     <!-- Depuis Spring Boot 4, @AutoConfigureMockMvc est dans son propre module de test. -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -132,6 +144,7 @@
                     <include>fr.tikigaming.auth.UsernameValidator</include>
                     <include>fr.tikigaming.auth.SupabaseErrors</include>
                     <include>fr.tikigaming.auth.SupabaseTokenService</include>
+                    <include>fr.tikigaming.resilience.CircuitBreaker</include>
                   </includes>
                   <limits>
                     <limit>
@@ -231,9 +244,11 @@
                 <param>fr.tikigaming.auth.SupabaseErrors</param>
                 <param>fr.tikigaming.auth.SupabaseTokenService</param>
                 <param>fr.tikigaming.games.dame.*</param>
+                <param>fr.tikigaming.resilience.*</param>
               </targetClasses>
               <targetTests>
                 <param>fr.tikigaming.auth.*Test</param>
+                <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.dame.*Test</param>
               </targetTests>
               <mutators>
