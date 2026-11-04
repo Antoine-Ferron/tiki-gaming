@@ -66,15 +66,24 @@ CLI Supabase : `npx supabase db push` reste utilisable). Après une migration, r
 - **Site URL** : l'URL de production
 - **Redirect URLs** : `http://localhost:5173/**` et l'URL de prod `/**` (nécessaire pour la confirmation d'email et le reset de mot de passe)
 
-### Contraintes pour le déploiement (à redéfinir)
+### Déploiement (Coolify)
 
-- Le backend Java tourne à part, avec les variables de `backend/.env.example`, `FRONTEND_URL` = URL de
-  prod et `COOKIE_SECURE=true`.
-- `/api/*`, `/oauth2/*` et `/login/oauth2/*` doivent être servis sur **la même origine que le front**
-  (reverse proxy / rewrites) pour que le cookie de session reste first-party.
-- Ajouter `<URL de prod>/login/oauth2/code/google` aux redirect URIs du client OAuth Google.
-- Le front buildé doit être servi avec les en-têtes de sécurité de `frontend/security-headers.ts` (CSP, `X-Frame-Options`,
-  `nosniff`, `Permissions-Policy`…), que `vite preview` applique déjà. Le scan ZAP de [quality/](quality/README.md) les vérifie.
+`docker-compose.yml` (racine) déploie deux services : seul `frontend` est exposé publiquement, `backend`
+ne publie aucun port et n'est joignable que depuis `frontend` sur le réseau Docker interne.
+
+- `frontend` : nginx sert le build Vite et reverse-proxifie `/api/*`, `/oauth2/*`, `/login/oauth2/*` et
+  `/ws` vers `backend` — nécessaire pour que le cookie de session reste **sur la même origine** (voir
+  `frontend/nginx.conf.template`). Il envoie aussi les en-têtes de sécurité de
+  `frontend/security-headers.ts` (CSP, `X-Frame-Options`, `nosniff`, `Permissions-Policy`…), vérifiés par
+  le scan ZAP de [quality/](quality/README.md).
+- `backend` : mêmes variables que `backend/.env.example`, avec `COOKIE_SECURE=true` et
+  `SWAGGER_ENABLED=false`.
+- Variables à renseigner dans Coolify (resource > Environment Variables) : voir
+  [.env.production.example](.env.production.example). `SERVICE_FQDN_FRONTEND_80` est généré par Coolify ;
+  reporter ce domaine dans `FRONTEND_URL`.
+- Ajouter `<domaine front>/login/oauth2/code/google` aux redirect URIs du client OAuth Google, et le
+  renseigner comme **Site URL** / dans les **Redirect URLs** de Supabase (Dashboard → Authentication → URL
+  Configuration, voir ci-dessus).
 
 ## Documentation
 
