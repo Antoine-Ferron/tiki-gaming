@@ -20,7 +20,14 @@ import {
   type ShotResult,
   type VolleyShot,
 } from './logic'
-import { availableBonuses, type Bonus } from './network'
+import {
+  availableBonuses,
+  deserializeNetState,
+  serializeNetState,
+  type Bonus,
+  type NetState,
+  type SerializedNetState,
+} from './network'
 import { useNetGame } from './useNetGame'
 import './bataille-navale.css'
 
@@ -108,6 +115,47 @@ function forgetRoomCode() {
     localStorage.removeItem(ONLINE_ROOM_KEY)
   } catch {
     // Rien à faire : au pire, le code restera affiché comme « peut-être » ouvert jusqu'à son expiration.
+  }
+}
+
+/**
+ * Reprise après rechargement : le socle n'a aucune notion de déconnexion (pas d'évènement de session, voir
+ * `realtime.ts`) et `joinRoom` est idempotent — rejoindre à nouveau le même compte sur le même code renvoie
+ * le même siège qu'avant. Rien n'empêche donc de reprendre une partie en ligne là où on l'a laissée : il
+ * suffit de retrouver, en local, ma flotte et l'état de la bataille pour ce siège précis. Un seul snapshot à
+ * la fois (comme `ONLINE_ROOM_KEY`) : on ne joue jamais à deux parties en ligne en même temps sur cet appareil.
+ */
+const ONLINE_GAME_KEY = 'tiki:bataille-navale:online-game'
+
+type SavedOnlineGame = { code: string; net: SerializedNetState }
+
+/** `null` si rien n'est sauvegardé, si la sauvegarde ne correspond pas à cette salle/ce siège, ou est corrompue. */
+function loadSavedOnlineGame(code: string, mySeat: number): NetState | null {
+  try {
+    const raw = localStorage.getItem(ONLINE_GAME_KEY)
+    if (!raw) return null
+    const saved = JSON.parse(raw) as SavedOnlineGame
+    if (saved.code !== code || saved.net.mySeat !== mySeat) return null
+    return deserializeNetState(saved.net)
+  } catch {
+    return null
+  }
+}
+
+function saveOnlineGame(code: string, state: NetState) {
+  try {
+    const saved: SavedOnlineGame = { code, net: serializeNetState(state) }
+    localStorage.setItem(ONLINE_GAME_KEY, JSON.stringify(saved))
+  } catch {
+    // Stockage indisponible : on perd seulement la possibilité de reprendre après un rechargement.
+  }
+}
+
+function forgetOnlineGame() {
+  try {
+    localStorage.removeItem(ONLINE_GAME_KEY)
+  } catch {
+    // Rien à faire : au pire, une reprise obsolète restera proposée jusqu'à son remplacement ou son expiration.
   }
 }
 
@@ -299,16 +347,29 @@ type OnlineBattleProps = {
   myFleet: PlacedShip[]
   augmented: boolean
   ctx: GameContext
+  resume: NetState | null
   onExit: () => void
   onGameOver: () => void
 }
 
-function OnlineBattle({ connection, myFleet, augmented, ctx, onExit, onGameOver }: OnlineBattleProps) {
-  const { state, fire, useRadar } = useNetGame(connection, myFleet, augmented, ctx)
+function OnlineBattle({ connection, myFleet, augmented, ctx, resume, onExit, onGameOver }: OnlineBattleProps) {
+  const { state, fire, useRadar } = useNetGame(connection, myFleet, augmented, ctx, resume ?? undefined)
 
   useEffect(() => {
     if (state.phase === 'over') onGameOver()
   }, [state.phase, onGameOver])
+
+  // Rien à reprendre une fois la partie finie ou devenue impossible à continuer : on efface la sauvegarde
+  // pour ne plus proposer de reprise obsolète. Sinon, on l'écrit à chaque évolution de l'état (c'est elle
+  // qu'un rechargement relira pour repartir exactement d'où on en était, voir `BatailleNavaleGame`).
+  useEffect(() => {
+    if (state.phase === 'over' || state.disconnected) {
+      forgetOnlineGame()
+      forgetRoomCode()
+    } else {
+      saveOnlineGame(connection.code, state)
+    }
+  }, [connection.code, state])
 
   if (state.disconnected) {
     return (
@@ -532,6 +593,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
   // --- Mode en ligne ------------------------------------------------------------------------------
   const [onlineConnection, setOnlineConnection] = useState<RealtimeConnection | null>(null)
   const [onlineFleet, setOnlineFleet] = useState<PlacedShip[] | null>(null)
+  const [resumeNet, setResumeNet] = useState<NetState | null>(null)
   const [joinCode, setJoinCode] = useState('')
   const [onlineBusy, setOnlineBusy] = useState(false)
   const [savedRoomCode, setSavedRoomCode] = useState<string | null>(null)
@@ -540,6 +602,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     setMode('online')
     setOnlineConnection(null)
     setOnlineFleet(null)
+    setResumeNet(null)
     setJoinCode('')
     setError(null)
     setSavedRoomCode(loadSavedRoomCode())
@@ -551,6 +614,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     try {
       const connection = await ctx.realtime.createRoom(2)
       saveRoomCode(connection.code)
+      setResumeNet(null) // nouvelle salle, nouveau code : rien à reprendre
       setOnlineConnection(connection)
     } catch (e) {
       setError((e as Error).message)
@@ -565,6 +629,12 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     try {
       const connection = await ctx.realtime.joinRoom(code)
       saveRoomCode(connection.code)
+      // `joinRoom` est idempotent (même compte -> même siège, voir sa doc) : si une partie pour exactement
+      // ce code et ce siège est sauvegardée, on la reprend directement, flotte comprise, sans repasser par
+      // le placement.
+      const saved = loadSavedOnlineGame(connection.code, connection.seat)
+      setResumeNet(saved)
+      if (saved) setOnlineFleet(saved.myFleet)
       setOnlineConnection(connection)
     } catch (e) {
       setError((e as Error).message)
@@ -581,6 +651,7 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
       const connection = await ctx.realtime.joinRoom(savedRoomCode)
       connection.close()
       forgetRoomCode()
+      forgetOnlineGame()
       setSavedRoomCode(null)
     } catch (e) {
       setError((e as Error).message)
@@ -592,8 +663,10 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
   function exitOnline() {
     onlineConnection?.close()
     forgetRoomCode()
+    forgetOnlineGame()
     setOnlineConnection(null)
     setOnlineFleet(null)
+    setResumeNet(null)
     setMode(null)
   }
 
@@ -759,8 +832,9 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
         <OnlineBattle
           connection={onlineConnection}
           myFleet={onlineFleet}
-          augmented={augmented}
+          augmented={resumeNet ? resumeNet.augmented : augmented}
           ctx={ctx}
+          resume={resumeNet}
           onExit={exitOnline}
           onGameOver={refreshLeaderboard}
         />

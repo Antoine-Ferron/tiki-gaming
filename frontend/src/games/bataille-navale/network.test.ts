@@ -5,6 +5,8 @@ import {
   applyRemoteEvent,
   availableBonuses,
   createNetState,
+  deserializeNetState,
+  serializeNetState,
   type NetState,
   type RemoteEvent,
 } from './network'
@@ -328,6 +330,34 @@ describe('READY received after my own battle has already started', () => {
     const { state: next, outbox } = applyRemoteEvent(state, { type: 'READY', payload: { by: 2, confirm: true } })
     expect(next.disconnected).toBe(false)
     expect(outbox).toEqual([])
+  })
+})
+
+describe('serializeNetState / deserializeNetState — reprise après rechargement', () => {
+  it('round-trips a state with every Set/Map field populated, through JSON (localStorage)', () => {
+    const state: NetState = {
+      ...battleState({ turnSeat: 2 }),
+      readySeats: new Set([1, 2]),
+      shotsOnMe: new Set([coordKey({ row: 0, col: 0 })]),
+      shotsOnOpponent: new Set([coordKey({ row: 3, col: 3 }), coordKey({ row: 4, col: 4 })]),
+      resultsOnOpponent: new Map([
+        [coordKey({ row: 3, col: 3 }), 'hit'],
+        [coordKey({ row: 4, col: 4 }), 'miss'],
+      ]),
+      radarRevealsOnOpponent: new Set([coordKey({ row: 5, col: 5 })]),
+      hitsOnOpponent: 1,
+      shipsSunkByMe: 1,
+      sunkOpponentShips: new Set(['Torpilleur']),
+      usedBonuses: new Set(['radar']),
+      augmented: true,
+      pendingSubmit: { shots: 3, hits: 1 },
+      lastEvent: { kind: 'fire', by: 1, targets: [{ row: 3, col: 3 }], results: ['hit'], sunk: [] },
+    }
+
+    // Comme pour `localStorage`, qui ne sait écrire que des chaînes.
+    const roundTripped = deserializeNetState(JSON.parse(JSON.stringify(serializeNetState(state))))
+
+    expect(roundTripped).toEqual(state)
   })
 })
 

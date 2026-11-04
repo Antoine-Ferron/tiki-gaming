@@ -432,4 +432,49 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     expect(await screen.findByText('La partie ne peut plus continuer')).toBeTruthy()
     expect(connection.sent).toContainEqual({ type: 'GAME_ABANDONED', data: null, actionId: undefined })
   })
+
+  test('un rechargement en pleine bataille reprend exactement là où on en était, sans repasser par le placement', async () => {
+    // Le socle rejoint le même compte sur le même siège (voir GameRoomService.joinRoom) et n'a aucune notion
+    // de déconnexion : un rechargement de page ne doit donc plus mettre fin à la partie, ni faire replacer
+    // la flotte. `cleanup()` + un nouveau `render` simulent le rechargement (tout l'état React disparaît,
+    // seul `localStorage` et la même connexion simulée survivent, comme en vrai avec un compte stable).
+    placeFleetRandomly.mockReturnValue(FIXED_FLEET)
+    const connection = new FakeRealtimeConnection('ROOM-5', 1, 1)
+    const ctx = buildOnlineCtx(connection)
+    render(<BatailleNavaleGame ctx={ctx} />)
+
+    click('En ligne')
+    await act(async () => {
+      click('Créer une partie')
+    })
+    click('Placer au hasard')
+    click('Prêt')
+    await act(async () => {
+      connection.emit('READY', { by: 1 })
+      connection.emit('READY', { by: 2 })
+    })
+    expect(await screen.findByText('À toi de tirer')).toBeTruthy()
+
+    click(cellName({ row: 0, col: 0 })) // touche le Porte-avions placé
+    await act(async () => {
+      connection.emit('FIRE_RESULT', { by: 1, targets: [{ row: 0, col: 0 }], results: ['hit'], sunk: [], gameOver: false })
+    })
+    expect(await screen.findByText(/^Tu as touché/)).toBeTruthy()
+
+    cleanup() // « rechargement » : tout l'état React est perdu, localStorage et la connexion simulée restent
+
+    render(<BatailleNavaleGame ctx={ctx} />)
+    click('En ligne')
+    await act(async () => {
+      click('Rejoindre cette salle')
+    })
+
+    // Directement en bataille, avec la progression déjà faite : jamais revu l'écran « Place ta flotte ».
+    expect(await screen.findByText('À toi de tirer')).toBeTruthy()
+    expect(screen.queryByText('Place ta flotte')).toBeNull()
+    expect(screen.getByText('Tirs').nextElementSibling?.textContent).toBe('1')
+    expect(screen.getByText('Touchés').nextElementSibling?.textContent).toBe('1')
+    // Aucun READY reparti pour cette reprise : ce serait pris pour un rechargement adverse (voir le test ci-dessus).
+    expect(connection.sent.filter((a) => a.type === 'READY')).toHaveLength(2) // les deux de la toute première partie
+  })
 })

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { FakeRealtimeConnection } from '../testing/fakes'
 import type { GameContext } from '../types'
 import { FLEET, shipCoords, type PlacedShip } from './logic'
+import { createNetState } from './network'
 import { useNetGame } from './useNetGame'
 
 afterEach(() => {
@@ -165,6 +166,35 @@ describe('useNetGame — READY handshake', () => {
 
     expect(player1.result.current.state.phase).toBe('battle')
     expect(player2.result.current.state.phase).toBe('battle')
+  })
+})
+
+describe('useNetGame — reprise après rechargement (resume)', () => {
+  test('ne renvoie pas de READY au montage quand on reprend une bataille déjà engagée', () => {
+    const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
+    const resume = { ...createNetState(1, fleet, false), phase: 'battle' as const, turnSeat: 2 }
+    renderHook(() => useNetGame(connection, fleet, false, buildCtx(), resume))
+
+    // Un READY ici se ferait passer pour un rechargement chez l'adversaire (voir le test du décrochage
+    // partagé plus bas) : il ne doit tout simplement jamais partir quand on reprend une bataille en cours.
+    expect(connection.sent.filter((a) => a.type === 'READY')).toHaveLength(0)
+  })
+
+  test('part bien de l’état fourni (pas d’un nouvel état vierge)', () => {
+    const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
+    const resume = { ...createNetState(1, fleet, false), phase: 'battle' as const, turnSeat: 2, hitsOnOpponent: 3 }
+    const { result } = renderHook(() => useNetGame(connection, fleet, false, buildCtx(), resume))
+
+    expect(result.current.state.phase).toBe('battle')
+    expect(result.current.state.hitsOnOpponent).toBe(3)
+  })
+
+  test('renvoie quand même READY si la reprise se fait en plein placement (toujours en attente)', () => {
+    const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
+    const resume = createNetState(1, fleet, false) // phase 'placement' : ma flotte était déjà posée, READY déjà envoyé avant
+    renderHook(() => useNetGame(connection, fleet, false, buildCtx(), resume))
+
+    expect(connection.sent).toContainEqual({ type: 'READY', data: { by: 1 }, actionId: undefined })
   })
 })
 

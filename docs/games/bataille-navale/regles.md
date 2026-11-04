@@ -28,13 +28,33 @@ on tire à tour de rôle sur la grille de l'autre.
 | Connexion | Pas de compte requis | Compte requis (socle WebSocket, authentifié par la session HTTP) |
 | Placement | Chaque joueur place sa flotte, l'appareil passe de main en main | Chaque joueur place la sienne en privé, sur son propre appareil |
 | Code de partie | — | Un code à partager pour rejoindre la partie (créer/rejoindre, voir `ctx.realtime`) |
-| Coupure réseau ou rechargement de page | — | Termine la partie immédiatement (l'autre camp en est informé), **sans reprise** : il faut recommencer |
+| Coupure réseau ou rechargement de page | — | Peut être repris en rejoignant la même salle (voir ci-dessous) |
 
 Le protocole en ligne est entièrement décentralisé : **aucune flotte ne quitte jamais le navigateur de
 son propriétaire**. Un tir diffuse seulement la case visée ; seul le joueur visé (qui connaît sa propre
 flotte) calcule touché/coulé et diffuse le résultat. Il n'y a donc **aucun paquet backend** pour ce jeu
 (le socle générique de `fr.tikigaming.realtime` relaie déjà tout ce dont il a besoin) — conformément à
 la règle du dépôt : un jeu sans logique serveur n'a pas de package backend.
+
+### Reprise après coupure ou rechargement
+
+Le socle générique n'a aucune notion de déconnexion (pas d'évènement de session côté serveur) et
+`joinRoom` est idempotent : rejoindre la même salle avec le même compte renvoie le même siège qu'avant,
+indéfiniment (jusqu'à la purge de la salle après 1 h d'inactivité, ou un départ explicite). Rejoindre la
+salle après une coupure ou un rechargement reprend donc la partie **exactement là où elle en était** —
+flotte déjà placée, tirs déjà échangés, tour en cours — sans nouveau placement ni faux signal d'abandon
+envoyé à l'adversaire :
+
+- La flotte et la progression de la bataille (tirs, touchés, navires coulés, tour) sont sauvegardées sur
+  cet appareil (`localStorage`) à chaque évolution, et effacées dès que la partie se termine (victoire,
+  défaite, ou abandon réel).
+- Un seul angle mort, inhérent à l'absence d'historique côté serveur (relais pur, voir ci-dessus) :
+  une action de l'adversaire envoyée **pendant** la coupure elle-même (entre la perte de connexion et la
+  reconnexion) n'est jamais rejouée au retour, puisqu'elle n'a jamais été reçue. En pratique, une coupure
+  ou un rechargement ne dure que quelques secondes : ce blanc, quand il existe, reste minime.
+- Un abandon reste définitif dans tous les autres cas (l'adversaire ferme réellement sa salle, ou la
+  salle expire après 1 h d'inactivité) : `L'adversaire a quitté la partie...` s'affiche alors sans
+  possibilité de reprise, comme avant.
 
 ## 4. Mode augmenté (optionnel)
 

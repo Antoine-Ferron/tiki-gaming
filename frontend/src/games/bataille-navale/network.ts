@@ -83,6 +83,80 @@ export function availableBonuses(state: NetState): Bonus[] {
   return (['salvo', 'radar', 'nuke'] as const).filter((b) => unlocks[b] && !state.usedBonuses.has(b))
 }
 
+/** Forme sérialisable de `NetState` (JSON ne sait pas écrire un `Set`/`Map`) : voir `serializeNetState`. */
+export type SerializedNetState = {
+  phase: NetPhase
+  mySeat: number
+  turnSeat: number
+  readySeats: number[]
+  myFleet: PlacedShip[]
+  shotsOnMe: string[]
+  shotsOnOpponent: string[]
+  resultsOnOpponent: [string, 'hit' | 'miss'][]
+  radarRevealsOnOpponent: string[]
+  hitsOnOpponent: number
+  shipsSunkByMe: number
+  sunkOpponentShips: string[]
+  usedBonuses: Bonus[]
+  augmented: boolean
+  winnerSeat: number | null
+  disconnected: boolean
+  pendingSubmit: { shots: number; hits: number } | null
+  lastEvent: NetLastEvent
+}
+
+/**
+ * Pour la reprise après rechargement (voir `useNetGame`) : persister `NetState` tel quel sur `localStorage`
+ * est impossible (`Set`/`Map` ne survivent pas à `JSON.stringify`). Les champs idempotents (Set/Map) sont la
+ * seule source de vérité au retour ; aucun compteur dérivé n'a besoin d'un traitement spécial ici puisqu'il
+ * est déjà recalculé depuis eux (voir le cas `FIRE_RESULT` plus haut).
+ */
+export function serializeNetState(state: NetState): SerializedNetState {
+  return {
+    phase: state.phase,
+    mySeat: state.mySeat,
+    turnSeat: state.turnSeat,
+    readySeats: [...state.readySeats],
+    myFleet: state.myFleet,
+    shotsOnMe: [...state.shotsOnMe],
+    shotsOnOpponent: [...state.shotsOnOpponent],
+    resultsOnOpponent: [...state.resultsOnOpponent],
+    radarRevealsOnOpponent: [...state.radarRevealsOnOpponent],
+    hitsOnOpponent: state.hitsOnOpponent,
+    shipsSunkByMe: state.shipsSunkByMe,
+    sunkOpponentShips: [...state.sunkOpponentShips],
+    usedBonuses: [...state.usedBonuses],
+    augmented: state.augmented,
+    winnerSeat: state.winnerSeat,
+    disconnected: state.disconnected,
+    pendingSubmit: state.pendingSubmit,
+    lastEvent: state.lastEvent,
+  }
+}
+
+export function deserializeNetState(s: SerializedNetState): NetState {
+  return {
+    phase: s.phase,
+    mySeat: s.mySeat,
+    turnSeat: s.turnSeat,
+    readySeats: new Set(s.readySeats),
+    myFleet: s.myFleet,
+    shotsOnMe: new Set(s.shotsOnMe),
+    shotsOnOpponent: new Set(s.shotsOnOpponent),
+    resultsOnOpponent: new Map(s.resultsOnOpponent),
+    radarRevealsOnOpponent: new Set(s.radarRevealsOnOpponent),
+    hitsOnOpponent: s.hitsOnOpponent,
+    shipsSunkByMe: s.shipsSunkByMe,
+    sunkOpponentShips: new Set(s.sunkOpponentShips),
+    usedBonuses: new Set(s.usedBonuses),
+    augmented: s.augmented,
+    winnerSeat: s.winnerSeat,
+    disconnected: s.disconnected,
+    pendingSubmit: s.pendingSubmit,
+    lastEvent: s.lastEvent,
+  }
+}
+
 function otherSeat(seat: number): number {
   return seat === 1 ? 2 : 1
 }

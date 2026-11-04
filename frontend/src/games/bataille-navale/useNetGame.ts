@@ -18,8 +18,14 @@ const REMOTE_TYPES = ['READY', 'FIRE', 'FIRE_RESULT', 'RADAR', 'RADAR_RESULT', '
  * convertit les évènements reçus en `RemoteEvent`, et soumet le score une seule fois à la victoire. Ne prend
  * aucune décision de protocole elle-même — tout est dans `network.ts`.
  */
-export function useNetGame(connection: RealtimeConnection, myFleet: PlacedShip[], augmented: boolean, ctx: GameContext) {
-  const [state, setState] = useState<NetState>(() => createNetState(connection.seat, myFleet, augmented))
+export function useNetGame(
+  connection: RealtimeConnection,
+  myFleet: PlacedShip[],
+  augmented: boolean,
+  ctx: GameContext,
+  resume?: NetState,
+) {
+  const [state, setState] = useState<NetState>(() => resume ?? createNetState(connection.seat, myFleet, augmented))
   const submittedRef = useRef(false)
   const sentInitialReadyRef = useRef(false)
 
@@ -71,10 +77,20 @@ export function useNetGame(connection: RealtimeConnection, myFleet: PlacedShip[]
   // que <StrictMode> impose en développement : sans lui, ce READY non marqué `confirm` partirait deux fois,
   // et sa seconde copie, reçue après que les deux camps ont déjà basculé en bataille, se ferait passer pour
   // un rechargement de page (voir le cas 'READY' de `network.ts`) alors que la partie vient à peine de commencer.
+  //
+  // Si on reprend une partie déjà engagée (`resume`, après un rechargement — voir BatailleNavaleGame.tsx),
+  // ce READY ne doit PAS repartir une fois la bataille commencée : ce serait exactement le même message
+  // qu'un adversaire qui recharge sa page, et déclencherait à tort un abandon chez l'adversaire alors que la
+  // connexion au socle reste la même (même compte, même siège — voir l'investigation du socle générique :
+  // aucun évènement de déconnexion n'est émis par un simple rechargement). En revanche, en reprise pendant le
+  // placement (ma flotte déjà posée, toujours en attente), le renvoyer reste utile et sans danger : c'est
+  // l'un des deux envois normaux du protocole, idempotent côté réducteur.
   useEffect(() => {
     if (sentInitialReadyRef.current) return
     sentInitialReadyRef.current = true
+    if (resume && resume.phase !== 'placement') return
     connection.send('READY', { by: connection.seat })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `resume` n'est lu qu'à ce tout premier montage (garde par ref).
   }, [connection])
 
   return {
