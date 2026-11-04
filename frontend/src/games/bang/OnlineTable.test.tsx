@@ -157,3 +157,33 @@ test('deux clics sur accepter pendant la même requête ne lancent qu’une rép
   })
   expect(replies).toHaveLength(1)
 })
+
+test.each([
+  { action: 'tirer', held: 'MISSED', button: 'Raté !', path: '/shots/carte-janet/targets/2' },
+  { action: 'esquiver', held: 'BANG', button: 'Esquiver avec BANG !', path: '/shots/tir-courant/dodge/carte-janet' },
+])('Calamity Janet peut $action avec $held depuis sa main', async ({ action, held, button, path }) => {
+  const view: GameView = {
+    ...fourPlayerView(),
+    currentSeat: action === 'tirer' ? 1 : 4,
+    hand: [{ id: 'carte-janet', type: held }],
+    pendingShot: action === 'esquiver' ? { id: 'tir-courant', shooterSeat: 4, targetSeat: 1 } : undefined,
+  }
+  view.players[0].character = 'CALAMITY_JANET'
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/state')) return Response.json(view)
+    if (url.endsWith(path)) return new Response(null, { status: 204 })
+    return Response.json({ code: view.code, seat: 1, playerCount: 4 })
+  })
+  vi.stubGlobal('fetch', fetch)
+  render(<OnlineTable />)
+  fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  const hand = within(await screen.findByRole('region', { name: 'Ta main' }))
+  fireEvent.click(hand.getByRole('button', { name: button }))
+  if (action === 'tirer') fireEvent.click(screen.getByRole('button', { name: 'Viser la place 2' }))
+  await waitFor(() =>
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/games/bang/tables/ABC123${path}`,
+      expect.objectContaining({ method: 'POST' }),
+    ),
+  )
+})
