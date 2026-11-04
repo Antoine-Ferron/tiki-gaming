@@ -28,6 +28,8 @@
     <!-- Ligne 3.x = Spring Boot 4.x (la 2.x de springdoc cible Spring Boot 3). -->
     <springdoc.version>3.2.0</springdoc.version>
     <pact.version>4.7.7</pact.version>
+    <!-- Ligne 8.x = moteur JUnit 6 (la 7.x cible JUnit 5). -->
+    <cucumber.version>8.0.4</cucumber.version>
   </properties>
 
   <dependencies>
@@ -92,6 +94,24 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- BDD : scénarios Gherkin (.feature) exécutés par JUnit, donc par mvn verify et la CI. -->
+    <dependency>
+      <groupId>io.cucumber</groupId>
+      <artifactId>cucumber-java</artifactId>
+      <version>${cucumber.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.cucumber</groupId>
+      <artifactId>cucumber-junit-platform-engine</artifactId>
+      <version>${cucumber.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-suite</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
