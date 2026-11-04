@@ -146,6 +146,30 @@ describe('FIRE_RESULT — applied identically by both sides', () => {
     expect(next.turnSeat).toBe(1)
   })
 
+  it('ignores a redelivered FIRE_RESULT whose cells are now all "repeat": does not steal the replay back', () => {
+    // Bug réel : <StrictMode> rejoue la fonction de mise à jour passée à `setState` (côté `dispatchLocal`
+    // ET côté le gestionnaire d'évènements distants de useNetGame.ts), ce qui envoie deux fois le même
+    // FIRE/FIRE_RESULT sur le réseau. La première copie touche (`results: ['hit']`, on garde la main) ; la
+    // seconde arrive pour une case déjà marquée tirée, donc `results: ['repeat']` — sans ce garde-fou,
+    // `anyHit` redevient faux pour cette seconde copie et fait passer la main à tort, juste après un tir
+    // qui aurait dû faire rejouer.
+    const state = battleState({ turnSeat: 1 })
+    const hit: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: { by: 1, targets: [{ row: 3, col: 3 }], results: ['hit'], sunk: [], gameOver: false },
+    }
+    const afterHit = applyRemoteEvent(state, hit).state
+    expect(afterHit.turnSeat).toBe(1)
+
+    const redelivered: RemoteEvent = {
+      type: 'FIRE_RESULT',
+      payload: { by: 1, targets: [{ row: 3, col: 3 }], results: ['repeat'], sunk: [], gameOver: false },
+    }
+    const { state: next, outbox } = applyRemoteEvent(afterHit, redelivered)
+    expect(next).toBe(afterHit) // no-op complet, pas seulement un tour inchangé
+    expect(outbox).toEqual([])
+  })
+
   it('ends the game and queues a score submission only for the winning shooter', () => {
     const state = battleState({
       turnSeat: 1,

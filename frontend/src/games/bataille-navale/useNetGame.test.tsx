@@ -169,6 +169,58 @@ describe('useNetGame — READY handshake', () => {
   })
 })
 
+describe('useNetGame — un FIRE redélivré après coup ne vole pas la main gagnée par le tir qui a touché', () => {
+  /**
+   * Bug réel : <StrictMode> rejoue la fonction de mise à jour passée à `setState`, aussi bien dans
+   * `dispatchLocal` que dans le gestionnaire d'évènements distants de ce hook — tous deux envoient sur le
+   * réseau (`connection.send`) depuis l'intérieur de cette fonction, un effet de bord qu'une redélivrance
+   * (volontaire ou non) exécute une seconde fois. Scénario reproduit ici : le même FIRE arrive au défenseur
+   * une seconde fois une fois le premier aller-retour déjà réglé (la case est donc déjà marquée tirée) ; le
+   * défenseur répond alors « repeat » au lieu de « hit ». Sans le garde-fou de `network.ts`, ce second
+   * message faisait à tort passer la main, juste après un tir qui aurait dû faire rejouer le même joueur.
+   */
+  test('la main reste au tireur sur les deux clients, même après la redélivrance', () => {
+    const conn1 = new FakeRealtimeConnection('ROOM-1', 1, 2)
+    const conn2 = new FakeRealtimeConnection('ROOM-1', 2, 2)
+    // `resume` saute la poignée de main READY (déjà testée ailleurs) pour isoler le seul mécanisme en jeu ici.
+    const battleFor = (seat: number) => ({ ...createNetState(seat, fleet, false), phase: 'battle' as const, turnSeat: 1 })
+    const player1 = renderHook(() => useNetGame(conn1, fleet, false, buildCtx(), battleFor(1)))
+    const player2 = renderHook(() => useNetGame(conn2, fleet, false, buildCtx(), battleFor(2)))
+
+    act(() => {
+      player1.result.current.fire([{ row: 0, col: 0 }]) // touche le Porte-avions de player2 (fleet fixe)
+    })
+    const fireSent = conn1.sent.find((a) => a.type === 'FIRE')!.data
+
+    act(() => {
+      conn2.emit('FIRE', fireSent) // le défenseur reçoit le tir, calcule « hit » et répond
+    })
+    const firstResult = conn2.sent.find((a) => a.type === 'FIRE_RESULT')!.data
+    act(() => {
+      conn1.emit('FIRE_RESULT', firstResult)
+      conn2.emit('FIRE_RESULT', firstResult) // écho symétrique, comme le ferait le socle
+    })
+    expect(player1.result.current.state.turnSeat).toBe(1) // touché : le joueur 1 garde la main
+    expect(player2.result.current.state.turnSeat).toBe(1)
+
+    // Le même FIRE est redélivré après coup (doublon réseau, ou double-envoi de <StrictMode>) : la case est
+    // maintenant déjà marquée tirée côté défenseur, qui répond donc « repeat » cette fois.
+    act(() => {
+      conn2.emit('FIRE', fireSent)
+    })
+    const redeliveredResult = conn2.sent.filter((a) => a.type === 'FIRE_RESULT').at(-1)!.data
+    expect((redeliveredResult as { results: string[] }).results).toEqual(['repeat'])
+
+    act(() => {
+      conn1.emit('FIRE_RESULT', redeliveredResult)
+      conn2.emit('FIRE_RESULT', redeliveredResult)
+    })
+
+    expect(player1.result.current.state.turnSeat).toBe(1) // toujours à lui : la redélivrance n'a rien dû changer
+    expect(player2.result.current.state.turnSeat).toBe(1)
+  })
+})
+
 describe('useNetGame — reprise après rechargement (resume)', () => {
   test('ne renvoie pas de READY au montage quand on reprend une bataille déjà engagée', () => {
     const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)

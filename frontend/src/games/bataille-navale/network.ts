@@ -260,6 +260,12 @@ export function applyRemoteEvent(state: NetState, event: RemoteEvent): Transitio
 
     case 'FIRE_RESULT': {
       const { by, targets, results, sunk, gameOver } = event.payload
+      // Pure redélivrance (StrictMode rejoue exprès les mises à jour d'état impures en développement, voir
+      // le commentaire de `dispatchLocal` dans useNetGame.ts — et une redélivrance réseau peut faire pareil
+      // en production) : chaque case qu'elle vise a déjà été traitée, donc `repeat` partout. La laisser passer
+      // ferait à tort passer la main sur un tir qui, la première fois, avait touché (`results.includes('hit')`
+      // devient faux pour sa seconde copie) : on l'ignore entièrement, sans toucher au tour ni à rien d'autre.
+      if (results.every((r) => r === 'repeat')) return { state, outbox: [] }
       const iAmShooter = by === state.mySeat
       const shots = new Set(iAmShooter ? state.shotsOnOpponent : state.shotsOnMe)
       for (const t of targets) shots.add(coordKey(t))
