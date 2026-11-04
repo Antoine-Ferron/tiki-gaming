@@ -11,6 +11,8 @@ public final class MoveGenerator {
         {1, 2}, {2, 1}, {2, -1}, {1, -2}, {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}
     };
 
+    private static final int[][] KING_OFFSETS = {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
+
     private MoveGenerator() {}
 
     public static Set<Square> destinations(Position position, Square from) {
@@ -19,8 +21,9 @@ public final class MoveGenerator {
             return Set.of();
         }
         Color color = moving.get().color();
+        int[][] offsets = moving.get().type() == PieceType.KING ? KING_OFFSETS : KNIGHT_OFFSETS;
         Set<Square> destinations = new HashSet<>();
-        for (int[] offset : KNIGHT_OFFSETS) {
+        for (int[] offset : offsets) {
             int file = from.file() + offset[0];
             int rank = from.rank() + offset[1];
             if (file >= 0 && file < 8 && rank >= 0 && rank < 8) {
