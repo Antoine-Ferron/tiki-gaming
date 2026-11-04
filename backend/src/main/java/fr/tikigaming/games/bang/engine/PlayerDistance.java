@@ -6,6 +6,12 @@ import java.util.List;
 public final class PlayerDistance {
     private PlayerDistance() {}
 
+    /**
+     * Distance de base dans l'ordre circulaire de {@code state.players()}, sans modifier l'état ni appliquer de pouvoir.
+     * Seuls les joueurs dont les PV actuels sont strictement positifs comptent ; leurs sièges restent inchangés.
+     *
+     * @throws IllegalArgumentException si un des sièges est inconnu ou éliminé
+     */
     public static int between(GameState state, int fromSeat, int toSeat) {
         List<Integer> livingSeats = state.players().stream()
                 .filter(player -> player.health() > 0)
