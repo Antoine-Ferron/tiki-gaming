@@ -28,6 +28,54 @@ public final class SolutionVerifier {
                 .anyMatch(v -> v.id() == RED_CAR && v.row() == EXIT_ROW && v.col() + v.length() == SIZE);
     }
 
+    /**
+     * Rejoue une partie et renvoie son nombre de coups, comptés comme le front : les glissements successifs d'un même
+     * véhicule forment un seul coup (R6), un aller-retour n'en compte aucun. Refuse un coup illégal ou une partie où
+     * la voiture rouge n'est pas sortie.
+     */
+    public static int replay(List<String> map, List<Move> moves) {
+        List<Board.Vehicle> vehicles = new ArrayList<>(Board.parse(map).vehicles());
+        List<Move> counted = new ArrayList<>();
+        for (Move move : moves) {
+            int index = indexOf(vehicles, move.vehicleId());
+            if (index < 0) {
+                throw new IllegalArgumentException("Véhicule inconnu : " + move.vehicleId());
+            }
+            if (move.delta() == 0) {
+                throw new IllegalArgumentException("Déplacement nul");
+            }
+            if (!canMove(vehicles, index, move.delta())) {
+                throw new IllegalArgumentException(
+                        "Déplacement impossible : " + move.vehicleId() + " de " + move.delta());
+            }
+            vehicles.set(index, shifted(vehicles.get(index), move.delta()));
+            count(counted, move);
+        }
+        if (!isSolved(vehicles)) {
+            throw new IllegalArgumentException("La voiture rouge n’est pas sortie");
+        }
+        return counted.size();
+    }
+
+    /** Ajoute le coup, ou prolonge le précédent s'il déplace le même véhicule (et l'annule s'il revient au départ). */
+    private static void count(List<Move> counted, Move move) {
+        Move last = counted.isEmpty() ? null : counted.get(counted.size() - 1);
+        if (last == null || last.vehicleId() != move.vehicleId()) {
+            counted.add(move);
+            return;
+        }
+        int total = last.delta() + move.delta();
+        counted.remove(counted.size() - 1);
+        if (total != 0) {
+            counted.add(new Move(move.vehicleId(), total));
+        }
+    }
+
+    private static boolean isSolved(List<Board.Vehicle> vehicles) {
+        return vehicles.stream()
+                .anyMatch(v -> v.id() == RED_CAR && v.row() == EXIT_ROW && v.col() + v.length() == SIZE);
+    }
+
     private static int indexOf(List<Board.Vehicle> vehicles, char id) {
         for (int i = 0; i < vehicles.size(); i++) {
             if (vehicles.get(i).id() == id) {
