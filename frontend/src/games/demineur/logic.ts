@@ -88,3 +88,8 @@ export function getOutcome(grid: Grid): Outcome {
   if (cells.every((cell) => cell.mine || cell.revealed)) return 'won'
   return 'playing'
 }
+
+/** Plus rapide et plus de mines = meilleur score. Jamais négatif. */
+export function calculateScore(elapsedSeconds: number, mineCount: number): number {
+  return Math.max(0, mineCount * 100 - elapsedSeconds)
+}

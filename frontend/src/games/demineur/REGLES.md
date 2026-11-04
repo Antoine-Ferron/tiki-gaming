@@ -47,6 +47,6 @@ Chaque case a :
 
 ## Score
 
-- Calculé à la victoire, à partir du temps écoulé et du niveau de difficulté (plus rapide et plus
-  difficile = meilleur score).
+- Calculé à la victoire, à partir du temps écoulé et du nombre de mines (plus rapide et plus de
+  mines = meilleur score) : `score = max(0, mineCount × 100 − elapsedSeconds)`.
 - Envoyé via `ctx.submitScore` (ignoré en mode invité, voir [index.ts](index.ts)).
