@@ -23,6 +23,19 @@ class MoveGeneratorTest {
         assertThat(destinations).isEqualTo(squares("b3", "b5", "c2", "c6", "e2", "e6", "f3", "f5"));
     }
 
+    @Test
+    @DisplayName("un cavalier dans le coin (a1) n'a que 2 cases possibles (valeur limite)")
+    void unCavalierDansLeCoinNaQue2Cases() {
+        // Arrange
+        Position position = Fen.parse("4k3/8/8/8/8/8/8/N3K3 w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("a1"));
+
+        // Assert
+        assertThat(destinations).isEqualTo(squares("b3", "c2"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
