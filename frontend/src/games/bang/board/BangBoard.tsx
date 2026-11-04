@@ -15,7 +15,7 @@ export function BangBoard({
   onEnd,
 }: {
   view: GameView
-  /** Appelé avec le BANG ! choisi et la place visée ; l'envoi au serveur dépend de #59. */
+  /** Appelé avec la carte choisie et la place visée. */
   onShoot?: (cardId: string, targetSeat: number) => void
   /** Appelé avec la carte choisie quand je dois me défausser. */
   onDiscard?: (cardId: string) => void
@@ -27,9 +27,10 @@ export function BangBoard({
   const [selected, setSelected] = useState<string | null>(null)
   const count = view.hand.length
   const aiming = onShoot !== undefined && canShoot(view)
-  const drawing = onDraw !== undefined && view.currentSeat === view.seat && view.phase === 'DRAW'
-  const ending = onEnd !== undefined && view.currentSeat === view.seat && view.phase !== 'DRAW'
-  const discarding = onDiscard !== undefined && view.currentSeat === view.seat && view.phase === 'DISCARD'
+  const myTurn = !view.pendingShot && view.currentSeat === view.seat
+  const drawing = onDraw !== undefined && myTurn && view.phase === 'DRAW'
+  const ending = onEnd !== undefined && myTurn && view.phase !== 'DRAW'
+  const discarding = onDiscard !== undefined && myTurn && view.phase === 'DISCARD'
 
   return (
     <div className="bang bang-board">
