@@ -303,6 +303,10 @@ button.secondary {
 button.secondary:hover:not(:disabled) {
   border-color: var(--accent);
 }
+button.danger {
+  background: var(--error);
+  color: #1f0000;
+}
 .divider {
   display: flex;
   align-items: center;
