@@ -101,7 +101,8 @@ class GameTest {
         "'r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1', a8, b8, KQk", // la tour a8 bouge
         "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', h1, h8, Qq", // la tour h1 prend la tour h8 : les deux petits roques
         // tombent
-        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', e1, f1, kq" // le roi blanc va en f1
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', e1, f1, kq", // le roi blanc va en f1
+        "'r3k2r/8/8/8/8/8/P7/R3K2R w - - 0 1', a2, a3, -" // un droit déjà perdu ne revient pas (mutants Pitest)
     })
     @DisplayName("les droits de roque se perdent quand le roi ou une tour bouge, ou quand une tour est prise")
     void lesDroitsDeRoqueSePerdent(String fen, String from, String to, String expected) {
@@ -120,6 +121,9 @@ class GameTest {
         // double pas noir : case c6
         "'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1', c7, c5,"
                 + " 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2'",
+        // un pas simple de pion ne crée pas de case de prise en passant (mutant Pitest)
+        "'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', d2, d3,"
+                + " 'rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1'",
         // tout autre coup efface la case de prise en passant
         "'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2', g1, f3,"
                 + " 'rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2'"
