@@ -133,8 +133,12 @@ public class PrivateTableController {
             responseCode = "401",
             description = "Non connecté",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Code de table inconnu ou expiré",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     void state(@PathVariable String code, HttpServletRequest request) {
-        connectedAccountId(request);
+        tables.state(code, connectedAccountId(request));
     }
 
     private static String connectedAccountId(HttpServletRequest request) {

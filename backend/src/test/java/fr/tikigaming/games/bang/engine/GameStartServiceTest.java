@@ -29,6 +29,15 @@ class GameStartServiceTest {
     private final PrivateTableService tables = new PrivateTableService(deal);
 
     @Test
+    void readingAnUnknownTableIsRefused() {
+        assertThatThrownBy(() -> tables.state("UNKNOWN", "player"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        error -> assertThat(error.status()).isEqualTo(HttpStatus.NOT_FOUND));
+        verifyNoInteractions(deal);
+    }
+
+    @Test
     void startingRequestsADealForTheAccountsInSeatOrder() {
         String code = tableWith(4);
         GameState game = new GameState(List.of(), List.of(), 3);

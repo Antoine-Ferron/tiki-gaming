@@ -64,6 +64,13 @@ class PrivateTablesHttpTest {
     }
 
     @Test
+    void readingAnUnknownTableIsRefused() throws Exception {
+        mvc.perform(get(TABLES + "/UNKNOWN/state").session(sessionFor("player")))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Code de table inconnu."));
+    }
+
+    @Test
     void threePlayersCannotStartAPrivateTable() throws Exception {
         String code = createTable("creator");
         postAs(TABLES + "/" + code + "/join", sessionFor("second")).andExpect(status().isOk());
