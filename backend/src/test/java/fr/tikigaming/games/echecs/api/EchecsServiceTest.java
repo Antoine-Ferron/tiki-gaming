@@ -18,4 +18,15 @@ class EchecsServiceTest {
         // Act + Assert
         assertThat(service.destinations(START, "e2")).containsExactlyInAnyOrder("e3", "e4");
     }
+
+    @Test
+    @DisplayName("les cases sont triées : la réponse de l'API est toujours dans le même ordre")
+    void lesCasesSontTriees() {
+        // Arrange : tour en a1 sur un échiquier presque vide (14 cases)
+        String fen = "k7/8/8/8/8/8/8/R6K w - - 0 1";
+
+        // Act + Assert
+        assertThat(service.destinations(fen, "a1"))
+                .containsExactly("a2", "a3", "a4", "a5", "a6", "a7", "a8", "b1", "c1", "d1", "e1", "f1", "g1");
+    }
 }
