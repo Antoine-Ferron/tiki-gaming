@@ -27,6 +27,17 @@ class ShotDistanceRulesTest {
         assertThat(before.players().getFirst().hand()).containsExactly(bang);
     }
 
+    @Test
+    void theLastSeatIsANeighbourAcrossTheEndOfTheTable() {
+        GameState before = table();
+
+        ShotOutcome outcome = rulesFor(before).fire(before, 1, bang.id(), 4, 0);
+
+        assertThat(outcome.state().players().getFirst().hand()).isEmpty();
+        assertThat(outcome.discarded()).containsExactly(bang);
+        assertThat(before).isEqualTo(table());
+    }
+
     private static ShotRules rulesFor(GameState state) {
         return new ShotRules((from, to) -> PlayerDistance.between(state, from, to));
     }

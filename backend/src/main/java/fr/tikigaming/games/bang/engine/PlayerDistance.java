@@ -6,6 +6,7 @@ public final class PlayerDistance {
     private PlayerDistance() {}
 
     public static int between(GameState state, int fromSeat, int toSeat) {
-        return Math.abs(fromSeat - toSeat);
+        int gap = Math.abs(fromSeat - toSeat);
+        return Math.min(gap, state.players().size() - gap);
     }
 }
