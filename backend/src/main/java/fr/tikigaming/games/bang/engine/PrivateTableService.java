@@ -101,6 +101,7 @@ public class PrivateTableService {
 
     public synchronized PlayerGameView state(String code, String accountId) {
         purgeInactive();
+        code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
         Table table = tables.get(code);
         if (table == null) throw new PrivateTableException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
         if (!table.players.contains(accountId)) {

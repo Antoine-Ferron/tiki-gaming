@@ -133,6 +133,7 @@ public class PrivateTableController {
             summary = "Consulter sa vue de la partie",
             description = "La main et le rôle sont ceux du compte en session. Les rôles secrets des autres joueurs, "
                     + "leurs cartes en main et la pioche ne sont jamais transmis. "
+                    + "La casse et les espaces autour du code sont ignorés. "
                     + "Consulter la partie ne renouvelle pas le délai d'expiration de la table.")
     @ApiResponse(responseCode = "200", description = "Vue privée du joueur connecté et informations publiques")
     @ApiResponse(

@@ -1,5 +1,6 @@
 package fr.tikigaming.games.bang.engine;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -8,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import jakarta.servlet.http.Cookie;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,6 +85,26 @@ class GameViewHttpTest {
                           ]
                         }
                         """.formatted(code), JsonCompareMode.STRICT));
+    }
+
+    @Test
+    void readingNormalizesCaseAndOuterSpacesLikeJoining() throws Exception {
+        String code = startedTable();
+        String canonical = mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor(2)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        for (String entered : List.of(code.toLowerCase(Locale.ROOT), "  " + code.toLowerCase(Locale.ROOT) + "  ")) {
+            String normalized = mvc.perform(
+                            get(TABLES + "/{code}/state", entered).session(sessionFor(2)))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString();
+            assertThat(normalized).isEqualTo(canonical);
+        }
     }
 
     private String startedTable() throws Exception {

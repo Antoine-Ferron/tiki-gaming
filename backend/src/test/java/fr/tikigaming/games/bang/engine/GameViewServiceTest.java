@@ -14,6 +14,7 @@ import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
 import fr.tikigaming.games.bang.model.PlayerGameView;
 import java.util.List;
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 class GameViewServiceTest {
@@ -52,6 +53,22 @@ class GameViewServiceTest {
         assertThat(tables.game(code)).isSameAs(game);
         verify(deal).deal(accounts);
         verifyNoMoreInteractions(deal);
+    }
+
+    @Test
+    void readingUsesTheCanonicalCode() {
+        List<String> accounts = List.of("one", "two", "three", "four");
+        String code = tables.create("one").code();
+        accounts.subList(1, 4).forEach(account -> tables.join(code, account));
+        when(deal.deal(accounts))
+                .thenReturn(new GameState(
+                        List.of(player("one", 1, Role.SHERIFF, true, BangCharacter.BART_CASSIDY, 3, 5, "card")),
+                        List.of(),
+                        1));
+        tables.start(code, "one");
+
+        assertThat(tables.state("  " + code.toLowerCase(Locale.ROOT) + "  ", "one"))
+                .isEqualTo(tables.state(code, "one"));
     }
 
     private static GameState.Player player(
