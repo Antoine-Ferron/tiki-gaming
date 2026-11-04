@@ -19,6 +19,13 @@ Fonctionnalité: Partie locale à quatre sans compte
     Quand une partie locale est distribuée
     Alors c'est à la place 1 de jouer, en phase DRAW
 
+  Scénario: Le onzième tour recycle la défausse entre les deux cartes
+    Étant donné une partie locale ayant terminé dix tours sans mélange
+    Et il reste une carte en pioche et vingt en défausse
+    Quand le joueur actif pioche au onzième tour
+    Alors il reçoit la dernière carte puis la première carte recyclée
+    Et les trente-sept cartes sont toutes conservées une seule fois
+
   Scénario: Piocher donne deux cartes et ouvre la phase de jeu
     Étant donné une partie locale distribuée
     Quand le joueur actif pioche
