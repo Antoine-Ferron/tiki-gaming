@@ -15,7 +15,7 @@ Un jeton CSRF valide est requis (cookie `XSRF-TOKEN` et en-tête `X-XSRF-TOKEN`,
 | --- | --- |
 | `/turn/draw` | En `DRAW`, prend les deux premières cartes de la pioche déjà mélangée, les ajoute à la main et passe en `PLAY`. |
 | `/turn/end` | En `PLAY`, ouvre `DISCARD` si la main dépasse les **PV actuels** ; sinon, donne la main au prochain joueur vivant en `DRAW`. En `DISCARD`, termine le tour seulement lorsque la main respecte cette limite. |
-| `/turn/discard/{cardId}` | En `DISCARD`, déplace exactement un exemplaire choisi de sa propre main vers la défausse. La phase reste `DISCARD` : il faut ensuite appeler `/turn/end`. |
+| `/turn/discard/{cardId}` | En `DISCARD`, tant que la main dépasse les **PV actuels**, déplace exactement un exemplaire choisi de sa propre main vers la défausse. Dès que la limite est respectée, toute défausse supplémentaire est refusée. La phase reste `DISCARD` : il faut ensuite appeler `/turn/end`. |
 
 Un succès renvoie `204`, sans corps. Consulter ensuite `GET …/state` pour obtenir sa
 [vue privée](vue-joueur.md), dont `currentSeat`, `phase`, sa main et les nombres de cartes adverses.
@@ -26,7 +26,7 @@ Aucune commande ne retourne directement `GameState`.
 | `401` | Aucune session authentifiée. |
 | `403` | Jeton CSRF absent ou invalide, compte extérieur à la table, ou joueur non actif. |
 | `404` | Table inconnue ou expirée. |
-| `409` | Partie non démarrée, transition incohérente, carte absente de sa propre main, ou moins de deux cartes disponibles dans la pioche. |
+| `409` | Partie non démarrée, transition incohérente, carte absente de sa propre main, défausse demandée alors que la main respecte déjà la limite de PV actuels, ou moins de deux cartes disponibles dans la pioche. |
 
 Les refus métier utilisent `{ "error": "message" }`. Les refus CSRF gardent la réponse du serveur
 embarqué documentée dans Swagger (`timestamp`, `status`, `error`, `path` avec `Accept: application/json`).
@@ -44,7 +44,8 @@ la partie n'a pas encore commencé.
   Les sièges éliminés sont sautés. Le nouveau tour commence en `DRAW`, sans pioche automatique.
 - Validation et remplacement de l'état ont lieu sous le même verrou que les autres opérations de table.
   Deux commandes simultanées ne peuvent ni répéter une pioche ni défausser deux fois la même carte.
-  Deux cartes distinctes acceptées sont toutes deux conservées dans la défausse.
+  Deux cartes distinctes acceptées sont toutes deux conservées dans la défausse, sans dépasser le surplus
+  à retirer : s'il ne reste qu'une carte en trop, une seule des deux demandes est acceptée.
 - La table expire après une heure sans création, jonction acceptée, démarrage accepté ou commande de
   tour acceptée. Les lectures et les commandes refusées ne prolongent pas ce délai.
 

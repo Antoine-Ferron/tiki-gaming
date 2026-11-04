@@ -225,7 +225,8 @@ public class PrivateTableController {
     @Operation(
             summary = "Défausser une carte de sa main par son identifiant",
             description =
-                    "Le joueur actif choisit ses cartes pendant la phase de défausse, puis termine explicitement son tour. "
+                    "Le joueur actif choisit ses cartes en phase de défausse tant que sa main dépasse ses PV actuels, "
+                            + "puis termine explicitement son tour. "
                             + "La casse et les espaces autour du code sont ignorés. "
                             + "Une action acceptée renouvelle l'activité de la table ; un refus ne la renouvelle pas.")
     @ApiResponse(responseCode = "204", description = "Carte déplacée de la main vers la défausse")
@@ -246,7 +247,8 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "409",
-            description = "Partie non démarrée, mauvaise phase ou carte absente de sa main",
+            description =
+                    "Partie non démarrée, mauvaise phase, carte absente de sa main ou limite de main déjà respectée",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> discard(@PathVariable String code, @PathVariable String cardId, HttpServletRequest request) {
         tables.discard(code, connectedAccountId(request), cardId);

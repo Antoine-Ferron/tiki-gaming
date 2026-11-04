@@ -11,6 +11,7 @@ import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
 import java.time.Duration;
 import java.util.UUID;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -127,6 +128,24 @@ class GameTurnActivityHttpTest {
         clock.advance(Duration.ofMinutes(59));
 
         turn(code, command, seat).andExpect(status().is(status));
+
+        assertThat(tables.game(code)).isSameAs(before);
+        clock.advance(Duration.ofMinutes(1));
+        mvc.perform(get(TABLES + "/{code}/state", code).session(sessionFor(1))).andExpect(status().isNotFound());
+        assertThat(tables.game(code)).isNull();
+    }
+
+    @Test
+    void refusingADiscardAtTheHealthLimitDoesNotExtendTheTablesLifetime() throws Exception {
+        String code = preparedTable("DISCARD");
+        turn(code, "discard/test-card-1", 1).andExpect(status().isNoContent());
+        turn(code, "discard/test-card-2", 1).andExpect(status().isNoContent());
+        GameState before = tables.game(code);
+        assertThat(before.players().getFirst().hand())
+                .hasSize(before.players().getFirst().health());
+        clock.advance(Duration.ofMinutes(59));
+
+        turn(code, "discard/test-card-3", 1).andExpect(status().isConflict());
 
         assertThat(tables.game(code)).isSameAs(before);
         clock.advance(Duration.ofMinutes(1));

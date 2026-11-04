@@ -451,6 +451,42 @@ class GameTurnHttpTest {
     }
 
     @Test
+    void simultaneousDiscardsWithOneExcessCardAcceptOnlyOneRequest() throws Exception {
+        String code = startedTable();
+        postAs(TABLES + "/" + code + "/turn/draw", sessionFor(1)).andExpect(status().isNoContent());
+        postAs(TABLES + "/" + code + "/turn/end", sessionFor(1)).andExpect(status().isNoContent());
+        postAs(TABLES + "/" + code + "/turn/discard/test-card-2", sessionFor(1)).andExpect(status().isNoContent());
+        GameState before = tables.game(code);
+        assertThat(before.players().getFirst().health()).isEqualTo(5);
+        assertThat(before.players().getFirst().hand()).hasSize(6);
+
+        var outcomes = simultaneously(
+                preparePost(TABLES + "/" + code + "/turn/discard/test-card-1", sessionFor(1)),
+                preparePost(TABLES + "/" + code + "/turn/discard/test-card-17", sessionFor(1)));
+
+        assertThat(outcomes)
+                .extracting(result -> result.getResponse().getStatus())
+                .containsExactlyInAnyOrder(204, 409);
+        String acceptedId = outcomes.getFirst().getResponse().getStatus() == 204 ? "test-card-1" : "test-card-17";
+        CardInstance acceptedCard = before.players().getFirst().hand().stream()
+                .filter(card -> card.id().equals(acceptedId))
+                .findFirst()
+                .orElseThrow();
+        GameState after = tables.game(code);
+        assertThat(after.players().getFirst().hand())
+                .hasSize(5)
+                .containsExactlyElementsOf(before.players().getFirst().hand().stream()
+                        .filter(card -> !card.id().equals(acceptedId))
+                        .toList());
+        assertThat(after.discardPile()).containsExactly(before.discardPile().getFirst(), acceptedCard);
+        assertThat(after.drawPile()).isEqualTo(before.drawPile());
+        assertThat(after.players().subList(1, 4)).isEqualTo(before.players().subList(1, 4));
+        assertThat(after.currentSeat()).isEqualTo(1);
+        assertThat(after.phase()).isEqualTo(GameState.Phase.DISCARD);
+        assertCardPartition(after);
+    }
+
+    @Test
     void simultaneousEndRequestsAdvanceOnlyOneTurn() throws Exception {
         GameState game = new GameState(
                 List.of(player(1, 2, 0), player(2, 4, 0), player(3, 3, 0), player(4, 4, 0)),
