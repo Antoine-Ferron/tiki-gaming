@@ -21,7 +21,7 @@ describe('rankLeaderboard (propriétés)', () => {
     fc.assert(
       fc.property(entries, (list) => {
         const ids = rankLeaderboard(list).map((e) => e.user_id)
-        expect(ids.toSorted()).toEqual(list.map((e) => e.user_id).toSorted())
+        expect([...ids].sort()).toEqual(list.map((e) => e.user_id).sort())
       }),
     )
   })

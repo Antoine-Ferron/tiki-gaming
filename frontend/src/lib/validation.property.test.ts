@@ -34,7 +34,7 @@ describe('validation des formulaires (propriétés)', () => {
         if ('errors' in result) {
           for (const message of Object.values(result.errors)) expect(message).toMatch(/\S/)
         } else {
-          expect(Object.keys(result.data).toSorted()).toEqual(['email', 'password', 'username'])
+          expect(Object.keys(result.data).sort()).toEqual(['email', 'password', 'username'])
         }
       }),
     )
