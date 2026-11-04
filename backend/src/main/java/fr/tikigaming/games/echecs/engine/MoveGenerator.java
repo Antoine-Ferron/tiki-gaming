@@ -33,19 +33,19 @@ public final class MoveGenerator {
         }
         Piece piece = moving.get();
         if (piece.type() == PieceType.ROOK) {
-            return slidingDestinations(from, ROOK_DIRECTIONS);
+            return slidingDestinations(position, from, piece.color(), ROOK_DIRECTIONS);
         }
         int[][] offsets = piece.type() == PieceType.KING ? KING_OFFSETS : KNIGHT_OFFSETS;
         return jumpDestinations(position, from, piece.color(), offsets);
     }
 
     /** Pièces « glissantes » : avancent case après case dans chaque direction, jusqu'au bord. */
-    private static Set<Square> slidingDestinations(Square from, int[][] directions) {
+    private static Set<Square> slidingDestinations(Position position, Square from, Color color, int[][] directions) {
         Set<Square> destinations = new HashSet<>();
         for (int[] direction : directions) {
             int file = from.file() + direction[0];
             int rank = from.rank() + direction[1];
-            while (isOnBoard(file, rank)) {
+            while (isOnBoard(file, rank) && !isOccupiedBy(position, new Square(file, rank), color)) {
                 destinations.add(new Square(file, rank));
                 file += direction[0];
                 rank += direction[1];
