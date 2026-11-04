@@ -46,7 +46,9 @@ describe('useNetGame — READY handshake', () => {
     const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
     renderHook(() => useNetGame(connection, fleet, false, buildCtx()), { wrapper: StrictMode })
 
-    expect(connection.sent.filter((a) => a.type === 'READY' && !(a.data as { confirm?: boolean }).confirm)).toHaveLength(1)
+    expect(
+      connection.sent.filter((a) => a.type === 'READY' && !(a.data as { confirm?: boolean }).confirm),
+    ).toHaveLength(1)
   })
 
   test('does not flag the game as abandoned by its own StrictMode-replayed initial READY, after both are ready', () => {
@@ -87,7 +89,7 @@ describe('useNetGame — READY handshake', () => {
    * confirmation que j'envoie à l'instant où je bascule en bataille me revient donc forcément, alors que je
    * ne suis déjà plus en placement.
    */
-  test("does not flag the game as abandoned when my own confirmation echoes back to me", () => {
+  test('does not flag the game as abandoned when my own confirmation echoes back to me', () => {
     const connection = new FakeRealtimeConnection('ROOM-1', 1, 2)
     const { result } = renderHook(() => useNetGame(connection, fleet, false, buildCtx()))
 
@@ -183,7 +185,11 @@ describe('useNetGame — un FIRE redélivré après coup ne vole pas la main gag
     const conn1 = new FakeRealtimeConnection('ROOM-1', 1, 2)
     const conn2 = new FakeRealtimeConnection('ROOM-1', 2, 2)
     // `resume` saute la poignée de main READY (déjà testée ailleurs) pour isoler le seul mécanisme en jeu ici.
-    const battleFor = (seat: number) => ({ ...createNetState(seat, fleet, false), phase: 'battle' as const, turnSeat: 1 })
+    const battleFor = (seat: number) => ({
+      ...createNetState(seat, fleet, false),
+      phase: 'battle' as const,
+      turnSeat: 1,
+    })
     const player1 = renderHook(() => useNetGame(conn1, fleet, false, buildCtx(), battleFor(1)))
     const player2 = renderHook(() => useNetGame(conn2, fleet, false, buildCtx(), battleFor(2)))
 

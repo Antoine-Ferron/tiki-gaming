@@ -54,12 +54,7 @@ export default function FleetPlacementBoard({ onComplete }: FleetPlacementBoardP
   return (
     <div className="bn-placement">
       <div className="bn-placement-board">
-        <div
-          className="bn-grid"
-          role="grid"
-          aria-label="Place ta flotte"
-          onMouseLeave={() => setHover(null)}
-        >
+        <div className="bn-grid" role="grid" aria-label="Place ta flotte" onMouseLeave={() => setHover(null)}>
           {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
             const cell: Coord = { row: Math.floor(i / GRID_SIZE), col: i % GRID_SIZE }
             const key = coordKey(cell)
@@ -96,12 +91,17 @@ export default function FleetPlacementBoard({ onComplete }: FleetPlacementBoardP
 
         {!done && (
           <p className="muted">
-            Prochain navire : {nextShip.name} ({nextShip.size} cases), {orientation === 'horizontal' ? 'horizontal' : 'vertical'}.
+            Prochain navire : {nextShip.name} ({nextShip.size} cases),{' '}
+            {orientation === 'horizontal' ? 'horizontal' : 'vertical'}.
           </p>
         )}
 
         <div className="bn-placement-actions">
-          <button type="button" className="small" onClick={() => setOrientation((o) => (o === 'horizontal' ? 'vertical' : 'horizontal'))}>
+          <button
+            type="button"
+            className="small"
+            onClick={() => setOrientation((o) => (o === 'horizontal' ? 'vertical' : 'horizontal'))}
+          >
             Tourner ({orientation === 'horizontal' ? 'horizontal' : 'vertical'})
           </button>
           <button type="button" className="small" onClick={placeRandomly}>

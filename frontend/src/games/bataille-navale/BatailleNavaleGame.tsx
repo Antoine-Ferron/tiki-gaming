@@ -376,8 +376,8 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, resume, onExit, onG
       <div className="card bn-over">
         <h2>La partie ne peut plus continuer</h2>
         <p className="error">
-          L'adversaire a quitté la partie, la connexion a été coupée, ou son appareil a rechargé la page. Il
-          faut recommencer une nouvelle partie.
+          L'adversaire a quitté la partie, la connexion a été coupée, ou son appareil a rechargé la page. Il faut
+          recommencer une nouvelle partie.
         </p>
         <button type="button" onClick={onExit}>
           Retour au menu
@@ -400,7 +400,8 @@ function OnlineBattle({ connection, myFleet, augmented, ctx, resume, onExit, onG
   }
 
   const bonuses = availableBonuses(state)
-  const accuracy = state.shotsOnOpponent.size > 0 ? Math.round((state.hitsOnOpponent / state.shotsOnOpponent.size) * 100) : 0
+  const accuracy =
+    state.shotsOnOpponent.size > 0 ? Math.round((state.hitsOnOpponent / state.shotsOnOpponent.size) * 100) : 0
 
   return (
     <div className="bn-online-battle">
@@ -535,8 +536,11 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     const target: Seat = shooter === 1 ? 2 : 1
     const shots = new Set(players[shooter].shotsOnOpponent)
     try {
-      const { outcomes, gameOver } = await fireVolleyAndSubmitIfOver(players[target].fleet, shots, targets, (score, metadata) =>
-        ctx.submitScore(score, { ...metadata, winner: shooter }),
+      const { outcomes, gameOver } = await fireVolleyAndSubmitIfOver(
+        players[target].fleet,
+        shots,
+        targets,
+        (score, metadata) => ctx.submitScore(score, { ...metadata, winner: shooter }),
       )
       const resultsOnOpponent = new Map(players[shooter].resultsOnOpponent)
       let newHits = 0
@@ -586,7 +590,9 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
     }))
     passToNext(
       target,
-      occupied.length > 0 ? `Radar : ${occupied.length} case(s) occupée(s) détectée(s).` : 'Radar : rien détecté dans la zone.',
+      occupied.length > 0
+        ? `Radar : ${occupied.length} case(s) occupée(s) détectée(s).`
+        : 'Radar : rien détecté dans la zone.',
     )
   }
 
@@ -734,7 +740,11 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
                   radarHints={players[current].radarRevealsOnOpponent}
                   bonuses={
                     augmented
-                      ? unlockedBonuses(players[current].shotsOnOpponent.size, players[current].shipsSunk, players[current].usedBonuses)
+                      ? unlockedBonuses(
+                          players[current].shotsOnOpponent.size,
+                          players[current].shipsSunk,
+                          players[current].usedBonuses,
+                        )
                       : []
                   }
                   onFire={localFire}
@@ -779,11 +789,16 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
           {savedRoomCode && (
             <div className="notice">
               <p>
-                Tu as peut-être déjà une salle ouverte (code <strong>{savedRoomCode}</strong>). Une salle reste
-                ouverte jusqu'à 1 h d'inactivité : il faut la rejoindre ou la fermer avant d'en créer une autre.
+                Tu as peut-être déjà une salle ouverte (code <strong>{savedRoomCode}</strong>). Une salle reste ouverte
+                jusqu'à 1 h d'inactivité : il faut la rejoindre ou la fermer avant d'en créer une autre.
               </p>
               <div className="bn-mode-choice">
-                <button type="button" className="small" disabled={onlineBusy} onClick={() => joinOnlineRoom(savedRoomCode)}>
+                <button
+                  type="button"
+                  className="small"
+                  disabled={onlineBusy}
+                  onClick={() => joinOnlineRoom(savedRoomCode)}
+                >
                   Rejoindre cette salle
                 </button>
                 <button type="button" className="small" disabled={onlineBusy} onClick={closeSavedRoom}>
@@ -804,7 +819,11 @@ export default function BatailleNavaleGame({ ctx }: GameProps) {
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
             />
-            <button type="button" disabled={onlineBusy || !joinCode.trim()} onClick={() => joinOnlineRoom(joinCode.trim())}>
+            <button
+              type="button"
+              disabled={onlineBusy || !joinCode.trim()}
+              onClick={() => joinOnlineRoom(joinCode.trim())}
+            >
               Rejoindre
             </button>
           </div>

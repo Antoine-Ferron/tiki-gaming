@@ -162,9 +162,7 @@ function otherSeat(seat: number): number {
 }
 
 export type LocalIntent =
-  | { kind: 'READY' }
-  | { kind: 'FIRE'; targets: Coord[]; bonus?: 'salvo' | 'nuke' }
-  | { kind: 'RADAR'; zone: Coord[] }
+  { kind: 'READY' } | { kind: 'FIRE'; targets: Coord[]; bonus?: 'salvo' | 'nuke' } | { kind: 'RADAR'; zone: Coord[] }
 
 export type OutgoingEvent = { type: string; data: unknown }
 

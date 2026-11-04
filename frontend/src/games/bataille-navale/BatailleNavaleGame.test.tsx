@@ -303,7 +303,13 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     })
 
     await act(async () => {
-      connection.emit('FIRE_RESULT', { by: 1, targets: [{ row: 9, col: 9 }], results: ['miss'], sunk: [], gameOver: false })
+      connection.emit('FIRE_RESULT', {
+        by: 1,
+        targets: [{ row: 9, col: 9 }],
+        results: ['miss'],
+        sunk: [],
+        gameOver: false,
+      })
     })
     expect(await screen.findByText("Au tour de l'adversaire")).toBeTruthy()
 
@@ -317,7 +323,13 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     })
 
     await act(async () => {
-      connection.emit('FIRE_RESULT', { by: 2, targets: [{ row: 0, col: 0 }], results: ['hit'], sunk: [], gameOver: false })
+      connection.emit('FIRE_RESULT', {
+        by: 2,
+        targets: [{ row: 0, col: 0 }],
+        results: ['hit'],
+        sunk: [],
+        gameOver: false,
+      })
     })
     // Touché : l'adversaire garde la main (un tir qui touche fait rejouer le même camp).
     expect(await screen.findByText("Au tour de l'adversaire")).toBeTruthy()
@@ -332,14 +344,23 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     })
 
     await act(async () => {
-      connection.emit('FIRE_RESULT', { by: 2, targets: [{ row: 1, col: 5 }], results: ['miss'], sunk: [], gameOver: false })
+      connection.emit('FIRE_RESULT', {
+        by: 2,
+        targets: [{ row: 1, col: 5 }],
+        results: ['miss'],
+        sunk: [],
+        gameOver: false,
+      })
     })
     expect(await screen.findByText('À toi de tirer')).toBeTruthy()
 
     await act(async () => {
       connection.emit('FIRE_RESULT', {
         by: 1,
-        targets: [{ row: 4, col: 0 }, { row: 4, col: 1 }],
+        targets: [
+          { row: 4, col: 0 },
+          { row: 4, col: 1 },
+        ],
         results: ['hit', 'hit'],
         sunk: [FLEET[4]],
         gameOver: false,
@@ -372,7 +393,10 @@ describe('BatailleNavaleGame — mode en ligne', () => {
     await act(async () => {
       connection.emit('FIRE_RESULT', {
         by: 1,
-        targets: [{ row: 4, col: 0 }, { row: 4, col: 1 }],
+        targets: [
+          { row: 4, col: 0 },
+          { row: 4, col: 1 },
+        ],
         results: ['hit', 'hit'],
         sunk: [FLEET[4]],
         gameOver: false,
@@ -457,7 +481,13 @@ describe('BatailleNavaleGame — mode en ligne', () => {
 
     click(cellName({ row: 0, col: 0 })) // touche le Porte-avions placé
     await act(async () => {
-      connection.emit('FIRE_RESULT', { by: 1, targets: [{ row: 0, col: 0 }], results: ['hit'], sunk: [], gameOver: false })
+      connection.emit('FIRE_RESULT', {
+        by: 1,
+        targets: [{ row: 0, col: 0 }],
+        results: ['hit'],
+        sunk: [],
+        gameOver: false,
+      })
     })
     expect(await screen.findByText(/^Tu as touché/)).toBeTruthy()
 

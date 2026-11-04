@@ -325,7 +325,10 @@ describe('fireVolleyAndSubmitIfOver', () => {
     const { outcomes, gameOver } = await fireVolleyAndSubmitIfOver(
       fleet,
       shots,
-      [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+      [
+        { row: 0, col: 0 },
+        { row: 0, col: 1 },
+      ],
       submitScore,
     )
 

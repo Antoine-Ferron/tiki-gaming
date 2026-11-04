@@ -65,7 +65,9 @@ export function useNetGame(
     if (!state.pendingSubmit || submittedRef.current) return
     submittedRef.current = true
     const { shots, hits } = state.pendingSubmit
-    ctx.submitScore(computeScore(shots, hits), { shots, hits, winner: state.mySeat })
+    // Au mieux : la victoire reste acquise localement même si la soumission échoue (pas de réseau, compte
+    // invité...), rien d'autre à faire ici (voir le même choix pour la sauvegarde best-effort de mini-gta).
+    ctx.submitScore(computeScore(shots, hits), { shots, hits, winner: state.mySeat }).catch(() => {})
   }, [ctx, state.mySeat, state.pendingSubmit])
 
   // Envoyé une seule fois, au montage : ma flotte est déjà placée à ce stade. S'il arrive avant que

@@ -75,7 +75,10 @@ describe('FIRE — I am the target, I compute and reply', () => {
     const state = battleState()
     const { outbox } = applyRemoteEvent(state, { type: 'FIRE', payload: { by: 2, targets: [{ row: 5, col: 5 }] } })
     expect(outbox).toEqual([
-      { type: 'FIRE_RESULT', data: { by: 2, targets: [{ row: 5, col: 5 }], results: ['miss'], sunk: [], gameOver: false } },
+      {
+        type: 'FIRE_RESULT',
+        data: { by: 2, targets: [{ row: 5, col: 5 }], results: ['miss'], sunk: [], gameOver: false },
+      },
     ])
   })
 
@@ -136,7 +139,10 @@ describe('FIRE_RESULT — applied identically by both sides', () => {
       type: 'FIRE_RESULT',
       payload: {
         by: 1,
-        targets: [{ row: 3, col: 3 }, { row: 9, col: 9 }],
+        targets: [
+          { row: 3, col: 3 },
+          { row: 9, col: 9 },
+        ],
         results: ['hit', 'miss'],
         sunk: [],
         gameOver: false,
@@ -204,7 +210,16 @@ describe('FIRE_RESULT — applied identically by both sides', () => {
     const state = battleState({ turnSeat: 1 })
     const event: RemoteEvent = {
       type: 'FIRE_RESULT',
-      payload: { by: 1, targets: [{ row: 0, col: 0 }, { row: 0, col: 1 }], results: ['hit', 'hit'], sunk: [myFleet[0].ship], gameOver: true },
+      payload: {
+        by: 1,
+        targets: [
+          { row: 0, col: 0 },
+          { row: 0, col: 1 },
+        ],
+        results: ['hit', 'hit'],
+        sunk: [myFleet[0].ship],
+        gameOver: true,
+      },
     }
     const once = applyRemoteEvent(state, event).state
     const twice = applyRemoteEvent(once, event).state
@@ -236,7 +251,11 @@ describe('FIRE — turn guard', () => {
 
   it('sends a FIRE with every targeted cell when it is my turn (salvo = several targets at once)', () => {
     const state = battleState({ turnSeat: 1 })
-    const targets = [{ row: 1, col: 1 }, { row: 2, col: 2 }, { row: 3, col: 3 }]
+    const targets = [
+      { row: 1, col: 1 },
+      { row: 2, col: 2 },
+      { row: 3, col: 3 },
+    ]
     const { outbox } = applyLocalIntent(state, { kind: 'FIRE', targets, bonus: 'salvo' })
     expect(outbox).toEqual([{ type: 'FIRE', data: { by: 1, targets } }])
   })
@@ -258,12 +277,23 @@ describe('RADAR', () => {
 
   it('as the scanned side, replies with which cells of the zone are occupied, without marking them shot', () => {
     const state = battleState()
-    const zone = [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 9, col: 9 }]
+    const zone = [
+      { row: 0, col: 0 },
+      { row: 0, col: 1 },
+      { row: 9, col: 9 },
+    ]
     const { outbox } = applyRemoteEvent(state, { type: 'RADAR', payload: { by: 2, zone } })
     expect(outbox).toEqual([
       {
         type: 'RADAR_RESULT',
-        data: { by: 2, zone, occupied: [{ row: 0, col: 0 }, { row: 0, col: 1 }] },
+        data: {
+          by: 2,
+          zone,
+          occupied: [
+            { row: 0, col: 0 },
+            { row: 0, col: 1 },
+          ],
+        },
       },
     ])
   })
@@ -288,7 +318,11 @@ describe('RADAR', () => {
 
 describe('availableBonuses', () => {
   it('is empty outside augmented mode, whatever the progress', () => {
-    const state = battleState({ augmented: false, shipsSunkByMe: 5, shotsOnOpponent: new Set(Array.from({ length: 20 }, (_, i) => `0,${i}`)) })
+    const state = battleState({
+      augmented: false,
+      shipsSunkByMe: 5,
+      shotsOnOpponent: new Set(Array.from({ length: 20 }, (_, i) => `0,${i}`)),
+    })
     expect(availableBonuses(state)).toEqual([])
   })
 
@@ -301,7 +335,11 @@ describe('availableBonuses', () => {
     expect(availableBonuses({ ...base, shipsSunkByMe: 1, shotsOnOpponent: fiveShots })).toEqual(['salvo', 'radar'])
 
     const tenShots = new Set(Array.from({ length: 10 }, (_, i) => `0,${i}`))
-    expect(availableBonuses({ ...base, shipsSunkByMe: 1, shotsOnOpponent: tenShots })).toEqual(['salvo', 'radar', 'nuke'])
+    expect(availableBonuses({ ...base, shipsSunkByMe: 1, shotsOnOpponent: tenShots })).toEqual([
+      'salvo',
+      'radar',
+      'nuke',
+    ])
   })
 
   it('excludes a bonus already used even if still unlocked', () => {
@@ -346,7 +384,7 @@ describe('READY received after my own battle has already started', () => {
     expect(outbox).toEqual([])
   })
 
-  it("ignores a confirmation READY from the opponent, part of a normal handshake settling", () => {
+  it('ignores a confirmation READY from the opponent, part of a normal handshake settling', () => {
     // La confirmation de l'adversaire (déclenchée dès qu'il découvre les deux sièges prêts) arrive elle
     // aussi après que j'ai déjà basculé en bataille : ce n'est pas un rechargement, juste la fin normale
     // du handshake des deux côtés.
