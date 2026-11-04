@@ -298,3 +298,18 @@ test('actualiser la partie retrouve le même tir et sa place par une lecture, sa
   expect((await screen.findByRole('status')).textContent).toContain('La place 4 te vise')
   expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/games/bang/tables/ABC123/state'])
 })
+
+test.each([403, 404])(
+  'une table mémorisée refusée en %i rend de nouveau la création et la jonction accessibles',
+  async (status) => {
+    sessionStorage.setItem('tiki:bang:table:compte-test', 'EXPIREE')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ error: 'Table indisponible.' }, { status })),
+    )
+    render(<OnlineTable accountId="compte-test" />)
+    expect(await screen.findByRole('button', { name: 'Créer une table' })).toBeTruthy()
+    expect(sessionStorage.getItem('tiki:bang:table:compte-test')).toBeNull()
+    expect(screen.getByRole('alert').textContent).toBe('Table indisponible.')
+  },
+)
