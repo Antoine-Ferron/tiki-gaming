@@ -242,8 +242,23 @@ class PrivateTablesHttpTest {
                         .exists())
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.role.description")
                         .value("Rôle privé du compte connecté"))
+                .andExpect(jsonPath(
+                        "$.components.schemas.PlayerGameView.properties.role.enum",
+                        org.hamcrest.Matchers.hasItems("SHERIFF", "OUTLAW", "RENEGADE")))
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.hand.description")
-                        .value("Cartes en main du compte connecté uniquement"));
+                        .value("Cartes en main du compte connecté uniquement"))
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.players.items['$ref']")
+                        .value("#/components/schemas/Player"))
+                .andExpect(jsonPath("$.components.schemas.Player.properties", org.hamcrest.Matchers.aMapWithSize(7)))
+                .andExpect(jsonPath(
+                        "$.components.schemas.Player.properties.role.enum", org.hamcrest.Matchers.contains("SHERIFF")))
+                .andExpect(jsonPath("$.components.schemas.Player.properties.playedCards.description")
+                        .value("Cartes posées, toujours vide au démarrage"))
+                .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.hand.items['$ref']")
+                        .value("#/components/schemas/Card"))
+                .andExpect(jsonPath("$.components.schemas.Card.properties", org.hamcrest.Matchers.aMapWithSize(2)))
+                .andExpect(jsonPath("$.components.schemas.Card.properties.id").exists())
+                .andExpect(jsonPath("$.components.schemas.Card.properties.type").exists());
 
         for (int error : List.of(401, 403, 404, 409)) {
             docs.andExpect(jsonPath(path + ".responses['" + error + "'].content.*.schema['$ref']")
