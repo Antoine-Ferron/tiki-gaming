@@ -228,7 +228,7 @@ class PrivateTablesHttpTest {
                 .andExpect(jsonPath(path + ".responses['200'].content['*/*'].schema['$ref']")
                         .value("#/components/schemas/PlayerGameView"))
                 .andExpect(jsonPath(
-                        "$.components.schemas.PlayerGameView.properties", org.hamcrest.Matchers.aMapWithSize(7)))
+                        "$.components.schemas.PlayerGameView.properties", org.hamcrest.Matchers.aMapWithSize(8)))
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.code")
                         .exists())
                 .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.seat")
@@ -456,7 +456,7 @@ class PrivateTablesHttpTest {
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.summary", not(emptyOrNullString())))
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.description")
                         .value(containsString(
-                                "La table et sa partie expirent après 1 h sans opération acceptée : création, jonction, démarrage ou action de tour. "
+                                "La table et sa partie expirent après 1 h sans opération acceptée : création, jonction, démarrage, action de tour, tir ou réponse. "
                                         + "Les lectures et les actions refusées ne renouvellent pas ce délai.")))
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.responses['201']")
                         .exists())

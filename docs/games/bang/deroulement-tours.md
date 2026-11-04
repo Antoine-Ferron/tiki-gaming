@@ -61,3 +61,7 @@ renvoie `409` et ne prélève aucune carte. Les distances, les tirs en attente, 
 le temps réel et la persistance après redémarrage restent dans leurs issues respectives.
 
 Le calcul de distance de base est décrit dans [Distance de tir](distance-tir.md).
+
+La [#59](synchronisation-tirs.md) raccorde désormais les tirs et leurs réponses HTTP.
+Pendant un tir en attente, les actions du tireur sont refusées en `409`, notamment `/turn/end`.
+Le compteur des tirs est conservé dans la table et remis à zéro seulement au nouveau tour.

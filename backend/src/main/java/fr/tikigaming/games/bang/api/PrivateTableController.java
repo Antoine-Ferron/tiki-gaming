@@ -42,7 +42,7 @@ public class PrivateTableController {
             summary = "Créer une table privée",
             description = "Le compte connecté occupe la première place. "
                     + "Chaque compte a au plus une table ouverte, dans une limite globale de 1 000 tables. "
-                    + "La table et sa partie expirent après 1 h sans opération acceptée : création, jonction, démarrage ou action de tour. "
+                    + "La table et sa partie expirent après 1 h sans opération acceptée : création, jonction, démarrage, action de tour, tir ou réponse. "
                     + "Les lectures et les actions refusées ne renouvellent pas ce délai.")
     @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
     @ApiResponse(
@@ -134,6 +134,7 @@ public class PrivateTableController {
             summary = "Consulter sa vue de la partie",
             description = "La main et le rôle sont ceux du compte en session. Les rôles secrets des autres joueurs, "
                     + "leurs cartes en main et la pioche ne sont jamais transmis. "
+                    + "Le tir en attente (id, shooterSeat, targetSeat) et la main sont retrouvés par une nouvelle session du même compte. "
                     + "La casse et les espaces autour du code sont ignorés. "
                     + "Consulter la partie ne renouvelle pas le délai d'expiration de la table.")
     @ApiResponse(responseCode = "200", description = "Vue privée du joueur connecté et informations publiques")
@@ -214,7 +215,7 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "409",
-            description = "Partie non démarrée, pioche attendue ou défausse incomplète",
+            description = "Partie non démarrée, tir en attente, pioche attendue ou défausse incomplète",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> endTurn(@PathVariable String code, HttpServletRequest request) {
         tables.endTurn(code, connectedAccountId(request));
@@ -256,7 +257,34 @@ public class PrivateTableController {
     }
 
     @PostMapping("/{code}/shots/{cardId}/targets/{targetSeat}")
-    @Operation(summary = "Tirer sur un joueur")
+    @Operation(
+            summary = "Tirer sur un joueur",
+            description = "Le compte actif en phase PLAY joue une carte autorisée sur une cible vivante à portée. "
+                    + "Le tir consomme la carte et crée une unique attente visible via GET state. "
+                    + "Le tireur attend la cible avant toute autre action. Le compteur de tirs appartient au tour serveur. "
+                    + "La casse et les espaces autour du code sont ignorés. "
+                    + "Un tir accepté renouvelle l'activité ; refus et doublons ne la prolongent pas.")
+    @ApiResponse(responseCode = "204", description = "Carte défaussée et tir en attente créé")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF invalide, compte extérieur ou non actif",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Table inconnue ou expirée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description =
+                    "Partie non démarrée, mauvaise phase, tir déjà en attente, limite de tirs atteinte, carte indisponible ou cible invalide/hors portée ; aucun effet",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> fire(
             @PathVariable String code,
             @PathVariable String cardId,
@@ -267,7 +295,35 @@ public class PrivateTableController {
     }
 
     @PostMapping("/{code}/shots/{shotId}/dodge/{cardId}")
-    @Operation(summary = "Esquiver le tir en attente")
+    @Operation(
+            summary = "Esquiver le tir en attente",
+            description =
+                    "Seul le compte cible en session peut répondre au tir identifié par shotId, "
+                            + "même si le tireur reste actif. La carte doit être une esquive autorisée par son personnage. "
+                            + "Les PV sont conservés, la carte est défaussée et l'attente est supprimée. "
+                            + "Une réponse ancienne ne résout jamais un nouveau tir. Consulter GET state pour reprendre après reconnexion. "
+                            + "La casse et les espaces autour du code sont ignorés. Seule une réponse acceptée renouvelle l'activité.")
+    @ApiResponse(responseCode = "204", description = "Tir esquivé ; le tireur reprend son tour")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF invalide, compte extérieur ou compte différent de la cible",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Table inconnue ou expirée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description =
+                    "Partie non démarrée, tir absent/périmé/déjà résolu, ou carte indisponible/non autorisée ; aucun effet",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> dodge(
             @PathVariable String code,
             @PathVariable String shotId,
@@ -278,7 +334,34 @@ public class PrivateTableController {
     }
 
     @PostMapping("/{code}/shots/{shotId}/accept")
-    @Operation(summary = "Accepter le tir en attente")
+    @Operation(
+            summary = "Accepter le tir en attente",
+            description =
+                    "Seul le compte cible en session peut accepter le tir identifié par shotId. "
+                            + "Les règles appliquent la perte de 1 PV, puis l'attente est supprimée et le tireur reprend son tour. "
+                            + "Une réponse répétée ou retardée ne rejoue aucun effet et ne résout jamais un nouveau tir. "
+                            + "Le bonus de pioche de Bart Cassidy n'est pas encore raccordé. "
+                            + "La casse et les espaces autour du code sont ignorés. Seule une réponse acceptée renouvelle l'activité.")
+    @ApiResponse(responseCode = "204", description = "Tir accepté et dégâts appliqués une fois")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF invalide, compte extérieur ou compte différent de la cible",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Table inconnue ou expirée",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Partie non démarrée ou tir absent/périmé/déjà résolu ; aucun effet",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> accept(@PathVariable String code, @PathVariable String shotId, HttpServletRequest request) {
         tables.respond(code, connectedAccountId(request), shotId, null);
         return ResponseEntity.noContent().build();

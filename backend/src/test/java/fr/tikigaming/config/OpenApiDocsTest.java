@@ -53,7 +53,7 @@ class OpenApiDocsTest {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.info.title").value("Tiki Gaming API"))
-                    .andExpect(jsonPath("$.paths", aMapWithSize(38)))
+                    .andExpect(jsonPath("$.paths", aMapWithSize(41)))
                     .andExpect(jsonPath("$.paths['/api/auth/session'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/google'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/login'].post.summary", not(emptyOrNullString())))
@@ -135,6 +135,40 @@ class OpenApiDocsTest {
             for (String code : new String[] {"204", "401", "403", "404", "409"}) {
                 response.andExpect(jsonPath(operation + ".responses", hasKey(code)));
             }
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"{cardId}/targets/{targetSeat}", "{shotId}/accept", "{shotId}/dodge/{cardId}"})
+        void documentsBangShotsTheirConflictsAndThePublicPendingShot(String action) throws Exception {
+            String operation = "$.paths['/api/games/bang/tables/{code}/shots/" + action + "'].post";
+            var response = mvc.perform(get("/v3/api-docs"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath(operation + ".summary", not(emptyOrNullString())))
+                    .andExpect(jsonPath(operation + ".description", containsString("tir")))
+                    .andExpect(jsonPath(operation + ".tags[*]", hasItem("bang")))
+                    .andExpect(jsonPath(operation + ".responses['204'].content").doesNotExist())
+                    .andExpect(jsonPath(operation + ".responses['409'].description", containsString("tir")))
+                    .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.pendingShot['$ref']")
+                            .value("#/components/schemas/PendingShot"))
+                    .andExpect(jsonPath("$.components.schemas.PendingShot.properties", aMapWithSize(3)))
+                    .andExpect(jsonPath("$.components.schemas.PendingShot.properties.id.type")
+                            .value("string"))
+                    .andExpect(jsonPath("$.components.schemas.PendingShot.properties.shooterSeat.type")
+                            .value("integer"))
+                    .andExpect(jsonPath("$.components.schemas.PendingShot.properties.targetSeat.type")
+                            .value("integer"))
+                    .andExpect(jsonPath("$.components.schemas.BangCard.properties", aMapWithSize(2)))
+                    .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.drawPile")
+                            .doesNotExist())
+                    .andExpect(jsonPath("$.components.schemas.PlayerGameView.properties.discardPile")
+                            .doesNotExist());
+            for (String code : new String[] {"204", "401", "403", "404", "409"}) {
+                response.andExpect(jsonPath(operation + ".responses", hasKey(code)));
+            }
+            response.andExpect(jsonPath(
+                    operation + ".responses['403'].content['application/json'].schema.anyOf[*]['$ref']",
+                    org.hamcrest.Matchers.containsInAnyOrder(
+                            "#/components/schemas/ApiError", "#/components/schemas/CsrfErrorResponse")));
         }
 
         @Test
