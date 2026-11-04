@@ -1,0 +1,819 @@
+{
+  "version": 19,
+  "age": 3,
+  "turn": 6,
+  "over": true,
+  "passesLeft": true,
+  "remainingMs": 0,
+  "players": [
+    {
+      "name": "Toi",
+      "isBot": false,
+      "coins": 60,
+      "wonder": {
+        "name": "Citadelle d’Orkan",
+        "resource": "stone",
+        "stages": [
+          {
+            "cost": {
+              "coins": 0,
+              "resources": ["stone"]
+            },
+            "points": 3,
+            "coins": 0,
+            "shields": 0
+          },
+          {
+            "cost": {
+              "coins": 0,
+              "resources": ["glass", "wood"]
+            },
+            "points": 0,
+            "coins": 6,
+            "shields": 0
+          },
+          {
+            "cost": {
+              "coins": 0,
+              "resources": ["wood", "wood", "ore"]
+            },
+            "points": 7,
+            "coins": 0,
+            "shields": 0
+          }
+        ]
+      },
+      "stagesBuilt": 0,
+      "built": [
+        {
+          "name": "Atelier",
+          "age": 1,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["glass"]
+          },
+          "points": 0,
+          "shields": 0,
+          "science": "gear",
+          "coins": 0
+        }
+      ],
+      "military": -6,
+      "tokens": [
+        {
+          "age": 1,
+          "against": "IA 2",
+          "value": -1
+        },
+        {
+          "age": 1,
+          "against": "IA 1",
+          "value": -1
+        },
+        {
+          "age": 2,
+          "against": "IA 2",
+          "value": -1
+        },
+        {
+          "age": 2,
+          "against": "IA 1",
+          "value": -1
+        },
+        {
+          "age": 3,
+          "against": "IA 2",
+          "value": -1
+        },
+        {
+          "age": 3,
+          "against": "IA 1",
+          "value": -1
+        }
+      ],
+      "production": ["stone"],
+      "sciencePoints": 1,
+      "shields": 0
+    },
+    {
+      "name": "IA 1",
+      "isBot": true,
+      "coins": 1,
+      "wonder": {
+        "name": "Temple d’Ysar",
+        "resource": "ore",
+        "stages": [
+          {
+            "cost": {
+              "coins": 0,
+              "resources": ["ore"]
+            },
+            "points": 3,
+            "coins": 0,
+            "shields": 0
+          },
+          {
+            "cost": {
+              "coins": 0,
+              "resources": ["wood", "wood"]
+            },
+            "points": 0,
+            "coins": 0,
+            "shields": 2
+          },
+          {
+            "cost": {
+              "coins": 0,
+              "resources": ["stone", "stone", "glass"]
+            },
+            "points": 7,
+            "coins": 0,
+            "shields": 0
+          }
+        ]
+      },
+      "stagesBuilt": 1,
+      "built": [
+        {
+          "name": "Bains",
+          "age": 1,
+          "color": "blue",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone"]
+          },
+          "points": 3,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Chantier",
+          "age": 1,
+          "color": "brown",
+          "cost": {
+            "coins": 0
+          },
+          "produces": ["wood"],
+          "points": 0,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Palissade",
+          "age": 1,
+          "color": "red",
+          "cost": {
+            "coins": 0,
+            "resources": ["wood"]
+          },
+          "points": 0,
+          "shields": 1,
+          "coins": 0
+        },
+        {
+          "name": "Cavité",
+          "age": 1,
+          "color": "brown",
+          "cost": {
+            "coins": 0
+          },
+          "produces": ["stone"],
+          "points": 0,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Filon",
+          "age": 1,
+          "color": "brown",
+          "cost": {
+            "coins": 1
+          },
+          "produces": ["ore"],
+          "points": 0,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Verrerie",
+          "age": 1,
+          "color": "grey",
+          "cost": {
+            "coins": 0
+          },
+          "produces": ["glass"],
+          "points": 0,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Aqueduc",
+          "age": 2,
+          "color": "blue",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone", "stone"]
+          },
+          "chainFrom": "Bains",
+          "points": 5,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Écuries",
+          "age": 2,
+          "color": "red",
+          "cost": {
+            "coins": 0,
+            "resources": ["ore", "wood"]
+          },
+          "chainFrom": "Palissade",
+          "points": 0,
+          "shields": 2,
+          "coins": 0
+        },
+        {
+          "name": "Dispensaire",
+          "age": 2,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["ore", "glass"]
+          },
+          "points": 0,
+          "shields": 0,
+          "science": "compass",
+          "coins": 0
+        },
+        {
+          "name": "Taverne",
+          "age": 2,
+          "color": "yellow",
+          "cost": {
+            "coins": 0
+          },
+          "points": 0,
+          "shields": 0,
+          "coins": 5
+        },
+        {
+          "name": "Bibliothèque",
+          "age": 2,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone"]
+          },
+          "points": 0,
+          "shields": 0,
+          "science": "tablet",
+          "coins": 0
+        },
+        {
+          "name": "Panthéon",
+          "age": 3,
+          "color": "blue",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone", "ore", "glass"]
+          },
+          "chainFrom": "Aqueduc",
+          "points": 7,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Arsenal",
+          "age": 3,
+          "color": "red",
+          "cost": {
+            "coins": 0,
+            "resources": ["wood", "wood", "ore"]
+          },
+          "chainFrom": "Écuries",
+          "points": 0,
+          "shields": 3,
+          "coins": 0
+        },
+        {
+          "name": "Université",
+          "age": 3,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["wood", "wood", "glass"]
+          },
+          "chainFrom": "Bibliothèque",
+          "points": 0,
+          "shields": 0,
+          "science": "tablet",
+          "coins": 0
+        },
+        {
+          "name": "Observatoire",
+          "age": 3,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["ore", "ore", "glass"]
+          },
+          "chainFrom": "Atelier",
+          "points": 0,
+          "shields": 0,
+          "science": "gear",
+          "coins": 0
+        },
+        {
+          "name": "Académie",
+          "age": 3,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone", "glass"]
+          },
+          "chainFrom": "Dispensaire",
+          "points": 0,
+          "shields": 0,
+          "science": "compass",
+          "coins": 0
+        },
+        {
+          "name": "Guilde des bâtisseurs",
+          "age": 3,
+          "color": "purple",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone", "ore"]
+          },
+          "points": 0,
+          "shields": 0,
+          "coins": 0,
+          "guild": ["brown", "grey"]
+        }
+      ],
+      "military": 9,
+      "tokens": [
+        {
+          "age": 1,
+          "against": "Toi",
+          "value": 1
+        },
+        {
+          "age": 1,
+          "against": "IA 2",
+          "value": 0
+        },
+        {
+          "age": 2,
+          "against": "Toi",
+          "value": 3
+        },
+        {
+          "age": 2,
+          "against": "IA 2",
+          "value": 0
+        },
+        {
+          "age": 3,
+          "against": "Toi",
+          "value": 5
+        },
+        {
+          "age": 3,
+          "against": "IA 2",
+          "value": 0
+        }
+      ],
+      "production": ["ore", "wood", "stone", "ore", "glass"],
+      "sciencePoints": 16,
+      "shields": 6
+    },
+    {
+      "name": "IA 2",
+      "isBot": true,
+      "coins": 6,
+      "wonder": {
+        "name": "Phare de Sélène",
+        "resource": "glass",
+        "stages": [
+          {
+            "cost": {
+              "coins": 0,
+              "resources": ["wood"]
+            },
+            "points": 3,
+            "coins": 0,
+            "shields": 0
+          },
+          {
+            "cost": {
+              "coins": 0,
+              "resources": ["stone", "stone"]
+            },
+            "points": 0,
+            "coins": 6,
+            "shields": 0
+          },
+          {
+            "cost": {
+              "coins": 0,
+              "resources": ["ore", "ore", "glass"]
+            },
+            "points": 7,
+            "coins": 0,
+            "shields": 0
+          }
+        ]
+      },
+      "stagesBuilt": 0,
+      "built": [
+        {
+          "name": "Bains",
+          "age": 1,
+          "color": "blue",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone"]
+          },
+          "points": 3,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Chantier",
+          "age": 1,
+          "color": "brown",
+          "cost": {
+            "coins": 0
+          },
+          "produces": ["wood"],
+          "points": 0,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Atelier",
+          "age": 1,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["glass"]
+          },
+          "points": 0,
+          "shields": 0,
+          "science": "gear",
+          "coins": 0
+        },
+        {
+          "name": "Palissade",
+          "age": 1,
+          "color": "red",
+          "cost": {
+            "coins": 0,
+            "resources": ["wood"]
+          },
+          "points": 0,
+          "shields": 1,
+          "coins": 0
+        },
+        {
+          "name": "Filon",
+          "age": 1,
+          "color": "brown",
+          "cost": {
+            "coins": 1
+          },
+          "produces": ["ore"],
+          "points": 0,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Verrerie",
+          "age": 1,
+          "color": "grey",
+          "cost": {
+            "coins": 0
+          },
+          "produces": ["glass"],
+          "points": 0,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Aqueduc",
+          "age": 2,
+          "color": "blue",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone", "stone"]
+          },
+          "chainFrom": "Bains",
+          "points": 5,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Écuries",
+          "age": 2,
+          "color": "red",
+          "cost": {
+            "coins": 0,
+            "resources": ["ore", "wood"]
+          },
+          "chainFrom": "Palissade",
+          "points": 0,
+          "shields": 2,
+          "coins": 0
+        },
+        {
+          "name": "Dispensaire",
+          "age": 2,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["ore", "glass"]
+          },
+          "points": 0,
+          "shields": 0,
+          "science": "compass",
+          "coins": 0
+        },
+        {
+          "name": "Carrière",
+          "age": 2,
+          "color": "brown",
+          "cost": {
+            "coins": 1
+          },
+          "produces": ["stone", "stone"],
+          "points": 0,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Bibliothèque",
+          "age": 2,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone"]
+          },
+          "points": 0,
+          "shields": 0,
+          "science": "tablet",
+          "coins": 0
+        },
+        {
+          "name": "Taverne",
+          "age": 2,
+          "color": "yellow",
+          "cost": {
+            "coins": 0
+          },
+          "points": 0,
+          "shields": 0,
+          "coins": 5
+        },
+        {
+          "name": "Panthéon",
+          "age": 3,
+          "color": "blue",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone", "ore", "glass"]
+          },
+          "chainFrom": "Aqueduc",
+          "points": 7,
+          "shields": 0,
+          "coins": 0
+        },
+        {
+          "name": "Arsenal",
+          "age": 3,
+          "color": "red",
+          "cost": {
+            "coins": 0,
+            "resources": ["wood", "wood", "ore"]
+          },
+          "chainFrom": "Écuries",
+          "points": 0,
+          "shields": 3,
+          "coins": 0
+        },
+        {
+          "name": "Université",
+          "age": 3,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["wood", "wood", "glass"]
+          },
+          "chainFrom": "Bibliothèque",
+          "points": 0,
+          "shields": 0,
+          "science": "tablet",
+          "coins": 0
+        },
+        {
+          "name": "Observatoire",
+          "age": 3,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["ore", "ore", "glass"]
+          },
+          "chainFrom": "Atelier",
+          "points": 0,
+          "shields": 0,
+          "science": "gear",
+          "coins": 0
+        },
+        {
+          "name": "Académie",
+          "age": 3,
+          "color": "green",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone", "glass"]
+          },
+          "chainFrom": "Dispensaire",
+          "points": 0,
+          "shields": 0,
+          "science": "compass",
+          "coins": 0
+        },
+        {
+          "name": "Guilde des bâtisseurs",
+          "age": 3,
+          "color": "purple",
+          "cost": {
+            "coins": 0,
+            "resources": ["stone", "stone", "ore"]
+          },
+          "points": 0,
+          "shields": 0,
+          "coins": 0,
+          "guild": ["brown", "grey"]
+        }
+      ],
+      "military": 9,
+      "tokens": [
+        {
+          "age": 1,
+          "against": "IA 1",
+          "value": 0
+        },
+        {
+          "age": 1,
+          "against": "Toi",
+          "value": 1
+        },
+        {
+          "age": 2,
+          "against": "IA 1",
+          "value": 0
+        },
+        {
+          "age": 2,
+          "against": "Toi",
+          "value": 3
+        },
+        {
+          "age": 3,
+          "against": "IA 1",
+          "value": 0
+        },
+        {
+          "age": 3,
+          "against": "Toi",
+          "value": 5
+        }
+      ],
+      "production": ["glass", "wood", "ore", "glass", "stone", "stone"],
+      "sciencePoints": 26,
+      "shields": 6
+    }
+  ],
+  "hand": [],
+  "wonder": {
+    "ok": true,
+    "coins": 0,
+    "toLeft": 0,
+    "toRight": 0,
+    "chain": false
+  },
+  "wonderNeeds": [
+    {
+      "resource": "stone",
+      "needed": 1,
+      "own": 1,
+      "fromLeft": 0,
+      "fromRight": 0,
+      "missing": 0
+    }
+  ],
+  "discards": 26,
+  "lastTurn": [
+    {
+      "player": 0,
+      "action": "discard",
+      "card": {
+        "name": "Guilde des bâtisseurs",
+        "age": 3,
+        "color": "purple",
+        "cost": {
+          "coins": 0,
+          "resources": ["stone", "stone", "ore"]
+        },
+        "points": 0,
+        "shields": 0,
+        "coins": 0,
+        "guild": ["brown", "grey"]
+      },
+      "coins": 5
+    },
+    {
+      "player": 1,
+      "action": "build",
+      "card": {
+        "name": "Guilde des bâtisseurs",
+        "age": 3,
+        "color": "purple",
+        "cost": {
+          "coins": 0,
+          "resources": ["stone", "stone", "ore"]
+        },
+        "points": 0,
+        "shields": 0,
+        "coins": 0,
+        "guild": ["brown", "grey"]
+      },
+      "coins": -2
+    },
+    {
+      "player": 2,
+      "action": "build",
+      "card": {
+        "name": "Guilde des bâtisseurs",
+        "age": 3,
+        "color": "purple",
+        "cost": {
+          "coins": 0,
+          "resources": ["stone", "stone", "ore"]
+        },
+        "points": 0,
+        "shields": 0,
+        "coins": 0,
+        "guild": ["brown", "grey"]
+      },
+      "coins": 0
+    }
+  ],
+  "conflicts": [-2, 5, 5],
+  "ranking": [
+    {
+      "name": "IA 2",
+      "isBot": true,
+      "coins": 6,
+      "score": {
+        "military": 9,
+        "treasury": 2,
+        "wonder": 0,
+        "civil": 15,
+        "science": 26,
+        "guilds": 4,
+        "total": 56
+      }
+    },
+    {
+      "name": "IA 1",
+      "isBot": true,
+      "coins": 1,
+      "score": {
+        "military": 9,
+        "treasury": 0,
+        "wonder": 3,
+        "civil": 15,
+        "science": 16,
+        "guilds": 4,
+        "total": 47
+      }
+    },
+    {
+      "name": "Toi",
+      "isBot": false,
+      "coins": 60,
+      "score": {
+        "military": -6,
+        "treasury": 20,
+        "wonder": 0,
+        "civil": 0,
+        "science": 1,
+        "guilds": 0,
+        "total": 15
+      }
+    }
+  ]
+}

@@ -53,7 +53,7 @@ class OpenApiDocsTest {
             mvc.perform(get("/v3/api-docs"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.info.title").value("Tiki Gaming API"))
-                    .andExpect(jsonPath("$.paths", aMapWithSize(32)))
+                    .andExpect(jsonPath("$.paths", aMapWithSize(37)))
                     .andExpect(jsonPath("$.paths['/api/auth/session'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/google'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/auth/login'].post.summary", not(emptyOrNullString())))
@@ -98,7 +98,11 @@ class OpenApiDocsTest {
                                     containsString("bang"),
                                     containsString("sudoku"),
                                     containsString("mini-gta"),
+                                    containsString("SDV Civilisation"),
                                     containsString("rush-hour")))))
+                    .andExpect(jsonPath(
+                            "$.paths['/api/games/sdv-civilisation/games/current/turns'].post.summary",
+                            not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/puzzle'].get.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/check'].post.summary", not(emptyOrNullString())))
                     .andExpect(jsonPath("$.paths['/api/games/sudoku/{gameId}'].get.summary", not(emptyOrNullString())))

@@ -58,3 +58,20 @@ Le 4 novembre 2026, depuis `backend/` :
 - `mvn spotless:apply` : succès.
 - `mvn clean verify` : **1 259 cas réussis**, zéro échec, erreur ou test ignoré ;
   Checkstyle, Spotless et les seuils JaCoCo existants passent sans modification de configuration.
+
+## Intégration finale de `dev`
+
+La récupération finale a apporté `origin/dev` à `c468b79`. L'intégration sans conflit textuel
+a révélé deux échecs de documentation API : 37 routes présentes contre 32 attendues, et le
+schéma `Card` partagé entre BANG! et un autre jeu (11 champs au lieu des 2 attendus pour BANG!).
+Le total exact est devenu 37, soit les 32 routes de chaque branche moins les 27 communes.
+Le modèle des cartes BANG! porte désormais `@Schema(name = "BangCard")` ; le JSON de jeu
+reste `{ id, type }`. Aucun endpoint n'est ajouté pour la distance.
+
+Le test BANG! a d'abord échoué sur la référence attendue `BangCard`, encore nommée `Card`,
+puis les **39 tests de documentation** ont réussi après l'annotation. Le frontend intégré
+passe formatage, lint, couverture (**1 257 tests**) et build. Le formateur a uniquement
+normalisé ses fins de ligne Windows, sans différence de contenu par rapport à l'index Git.
+
+Après ces corrections, `mvn clean verify` réussit avec **1 337 tests**, zéro échec, erreur
+ou test ignoré. Checkstyle, Spotless et tous les seuils JaCoCo existants passent.

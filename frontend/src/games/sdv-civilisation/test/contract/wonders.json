@@ -1,0 +1,134 @@
+[
+  {
+    "name": "Temple d’Ysar",
+    "resource": "ore",
+    "stages": [
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["ore"]
+        },
+        "points": 3,
+        "coins": 0,
+        "shields": 0
+      },
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["wood", "wood"]
+        },
+        "points": 0,
+        "coins": 0,
+        "shields": 2
+      },
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["stone", "stone", "glass"]
+        },
+        "points": 7,
+        "coins": 0,
+        "shields": 0
+      }
+    ]
+  },
+  {
+    "name": "Phare de Sélène",
+    "resource": "glass",
+    "stages": [
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["wood"]
+        },
+        "points": 3,
+        "coins": 0,
+        "shields": 0
+      },
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["stone", "stone"]
+        },
+        "points": 0,
+        "coins": 6,
+        "shields": 0
+      },
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["ore", "ore", "glass"]
+        },
+        "points": 7,
+        "coins": 0,
+        "shields": 0
+      }
+    ]
+  },
+  {
+    "name": "Jardins de Mirah",
+    "resource": "wood",
+    "stages": [
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["wood"]
+        },
+        "points": 3,
+        "coins": 0,
+        "shields": 0
+      },
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["ore", "ore"]
+        },
+        "points": 0,
+        "coins": 0,
+        "shields": 2
+      },
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["stone", "stone", "stone"]
+        },
+        "points": 7,
+        "coins": 0,
+        "shields": 0
+      }
+    ]
+  },
+  {
+    "name": "Citadelle d’Orkan",
+    "resource": "stone",
+    "stages": [
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["stone"]
+        },
+        "points": 3,
+        "coins": 0,
+        "shields": 0
+      },
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["glass", "wood"]
+        },
+        "points": 0,
+        "coins": 6,
+        "shields": 0
+      },
+      {
+        "cost": {
+          "coins": 0,
+          "resources": ["wood", "wood", "ore"]
+        },
+        "points": 7,
+        "coins": 0,
+        "shields": 0
+      }
+    ]
+  }
+]
