@@ -164,4 +164,31 @@ class TurnTest {
         // Alors le journal d'audit signale son trésor de 30 pièces
         verify(audit).treasuryThresholdCrossed(new TreasuryAlert("alice", 30, Treasury.ALERT_THRESHOLD));
     }
+
+    @Test
+    void aBuildingCanStillBeBuiltOnceTheWonderIsFinished() {
+        // Étant donné "alice" dont les 3 étapes de merveille sont bâties
+        GameState game = player(start("Citadelle d’Orkan"), ALICE, stages(3));
+
+        // Quand elle construit le "Chantier"
+        GameState next = aliceDoes(game, ActionType.BUILD, "Chantier");
+
+        // Alors il rejoint sa cité, et sa merveille reste terminée
+        assertThat(next.player(ALICE).built()).extracting(Card::name).containsExactly("Chantier");
+        assertThat(next.player(ALICE).stagesBuilt()).isEqualTo(3);
+    }
+
+    @Test
+    void aWonderStageIsPaidEvenWithACardWhoseChainIsUnlocked() {
+        // Étant donné "alice" (Phare de Sélène) qui a construit les "Bains" et n'a que l'"Aqueduc" en main,
+        // gratuit pour elle par chaîne
+        GameState game = hand(player(start("Phare de Sélène"), ALICE, Tables.built("Bains")), ALICE, "Aqueduc");
+
+        // Quand elle bâtit l'étape 1 de sa merveille (1 bois, acheté à "IA 2") avec l'"Aqueduc"
+        GameState next = aliceDoes(game, ActionType.WONDER, "Aqueduc");
+
+        // Alors la chaîne ne vaut que pour construire l'Aqueduc : l'étape se paie, 2 pièces à "IA 2"
+        assertThat(next.player(ALICE).stagesBuilt()).isEqualTo(1);
+        assertThat(next.player(ALICE).coins()).isEqualTo(1);
+    }
 }
