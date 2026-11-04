@@ -25,26 +25,28 @@ export function OnlineTable({ accountId }: { accountId: string }) {
   const latestRead = useRef(0)
 
   const refresh = useCallback(
-    async (tableCode: string) => {
+    (tableCode: string) => {
       const read = ++latestRead.current
-      try {
-        const next = await api.getView(tableCode)
-        if (read === latestRead.current) setView(next)
-      } catch (err) {
-        if (read !== latestRead.current) return
-        // 409 : la partie n'a pas encore démarré, on attend.
-        if (err instanceof ApiError && err.status === 409) return
-        setError(messageOf(err))
-        if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
-          setView(null)
-          setCode(null)
-          try {
-            sessionStorage.removeItem(storageKey)
-          } catch {
-            // Un stockage refusé ne bloque pas le retour à l'accueil du jeu.
+      return api.getView(tableCode).then(
+        (next) => {
+          if (read === latestRead.current) setView(next)
+        },
+        (err: unknown) => {
+          if (read !== latestRead.current) return
+          // 409 : la partie n'a pas encore démarré, on attend.
+          if (err instanceof ApiError && err.status === 409) return
+          setError(messageOf(err))
+          if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+            setView(null)
+            setCode(null)
+            try {
+              sessionStorage.removeItem(storageKey)
+            } catch {
+              // Un stockage refusé ne bloque pas le retour à l'accueil du jeu.
+            }
           }
-        }
-      }
+        },
+      )
     },
     [storageKey],
   )

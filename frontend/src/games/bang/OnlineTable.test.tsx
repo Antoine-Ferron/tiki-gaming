@@ -8,6 +8,7 @@ import type { GameView } from './board/view'
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   vi.useRealTimers()
   document.cookie = 'XSRF-TOKEN=; Max-Age=0; Path=/'
   sessionStorage.clear()
@@ -313,3 +314,31 @@ test.each([403, 404])(
     expect(screen.getByRole('alert').textContent).toBe('Table indisponible.')
   },
 )
+
+test('le code mémorisé est séparé pour chaque compte', () => {
+  sessionStorage.setItem('tiki:bang:table:autre-compte', 'AUTRETABLE')
+  const fetch = vi.fn()
+  vi.stubGlobal('fetch', fetch)
+  render(<OnlineTable accountId="compte-test" />)
+  expect(screen.getByRole('button', { name: 'Créer une table' })).toBeTruthy()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+test('un stockage navigateur refusé ne bloque pas la partie en cours', async () => {
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('Stockage refusé')
+  })
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('Stockage refusé')
+  })
+  const view = fourPlayerView()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(url.endsWith('/state') ? view : { code: view.code, seat: 1, playerCount: 4 }),
+    ),
+  )
+  render(<OnlineTable accountId="compte-test" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  expect(await screen.findByRole('region', { name: 'Ta main' })).toBeTruthy()
+})

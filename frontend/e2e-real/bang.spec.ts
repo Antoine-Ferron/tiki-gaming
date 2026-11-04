@@ -42,12 +42,16 @@ function checkPrivacy(views: GameView[]) {
 
 async function checkMats(pages: Page[], views: GameView[]) {
   checkPrivacy(views)
+  const roles = ['Shérif', 'Hors-la-loi', 'Hors-la-loi', 'Renégat']
   for (const [index, page] of pages.entries()) {
     expect(views[index].players).toEqual(views[0].players)
     await expect(page.getByRole('region', { name: /^Tapis de la place/ })).toHaveCount(4)
     await expect(page.getByText('Shérif', { exact: true })).toBeVisible()
     await expect(
       page.getByRole('region', { name: `Tapis de la place ${index + 1}` }).getByText('Rôle privé'),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('region', { name: `Tapis de la place ${index + 1}` }).getByText(roles[index], { exact: true }),
     ).toBeVisible()
     await expect(page.getByRole('region', { name: 'Ta main' }).getByRole('listitem')).toHaveCount(
       views[index].hand.length,
@@ -62,11 +66,13 @@ async function checkMats(pages: Page[], views: GameView[]) {
 
 test('du catalogue au tour suivant à quatre : esquive, reconnexion, acceptation et vues privées', async ({
   browser,
-}) => {
+}, testInfo) => {
   const contexts = await Promise.all(Array.from({ length: 4 }, () => browser.newContext()))
   const pages = await Promise.all(contexts.map((context) => context.newPage()))
   const views: GameView[] = []
+  const errors: string[] = []
   for (const [index, page] of pages.entries()) {
+    page.on('pageerror', (err) => errors.push(err.message))
     page.on('response', async (response) => {
       if (/\/api\/games\/bang\/tables\/[^/]+\/state$/.test(response.url()) && response.status() === 200) {
         views[index] = (await response.json()) as GameView
@@ -131,8 +137,16 @@ test('du catalogue au tour suivant à quatre : esquive, reconnexion, acceptation
         if (variant === 'esquiver') {
           await target.reload()
         } else {
+          const previousSession = (await target.context().cookies()).find((c) => c.name === 'JSESSIONID')!.value
+          const logout = target.waitForResponse(
+            (r) => r.url().endsWith('/api/auth/logout') && r.request().method() === 'POST',
+          )
           await target.getByRole('button', { name: 'Déconnexion', exact: true }).click()
+          expect((await logout).status()).toBe(204)
+          await expect(target).toHaveURL('/')
           await login(target, 2)
+          const nextSession = (await target.context().cookies()).find((c) => c.name === 'JSESSIONID')!.value
+          expect(nextSession).not.toBe(previousSession)
           await openFromCatalog(target)
           const stale = await postAs(target, `${table}/shots/${oldShot}/accept`)
           expect(stale.status()).toBe(409)
@@ -177,6 +191,12 @@ test('du catalogue au tour suivant à quatre : esquive, reconnexion, acceptation
         await expect(page.getByRole('status')).toHaveText('Au tour de la place 2.')
       await checkMats(pages, views)
     })
+    expect(errors).toEqual([])
+    for (const [index, page] of pages.entries()) {
+      const screenshot = testInfo.outputPath(`place-${index + 1}.png`)
+      await page.screenshot({ path: screenshot, fullPage: true })
+      await testInfo.attach(`Place ${index + 1}`, { path: screenshot, contentType: 'image/png' })
+    }
   } finally {
     await Promise.all(contexts.map((context) => context.close()))
   }

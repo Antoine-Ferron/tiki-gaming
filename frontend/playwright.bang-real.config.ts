@@ -10,7 +10,7 @@ export default defineConfig({
   timeout: 60000,
   expect: { timeout: 10000 },
   reporter: 'list',
-  use: { baseURL: 'http://localhost:5198', trace: 'retain-on-failure', locale: 'fr-FR' },
+  use: { baseURL: 'http://localhost:5198', trace: 'on', locale: 'fr-FR' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
