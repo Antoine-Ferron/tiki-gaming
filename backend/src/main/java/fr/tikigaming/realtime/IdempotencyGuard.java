@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,6 +32,7 @@ public class IdempotencyGuard {
     private final AtomicInteger purgeRuns = new AtomicInteger();
     private final Clock clock;
 
+    @Autowired
     public IdempotencyGuard() {
         this(Clock.systemUTC());
     }
