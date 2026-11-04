@@ -8,10 +8,13 @@ import { supabaseSaves, supabaseScores } from './supabase'
  * `createRoom`/`joinRoom` : un jeu solo n'alourdit pas le chargement initial de la plateforme avec lui.
  */
 function lazyRealtime(gameSlug: string): Realtime {
-  const realtime = import('./realtime').then((module) => module.createRealtime(gameSlug))
+  // L'import ne part qu'au premier createRoom/joinRoom (pas à l'appel de lazyRealtime lui-même, qui a lieu pour
+  // chaque jeu à chaque GameContext) : un jeu qui n'appelle jamais ni l'un ni l'autre ne télécharge rien.
+  let realtime: Promise<Realtime> | null = null
+  const ensure = () => (realtime ??= import('./realtime').then((module) => module.createRealtime(gameSlug)))
   return {
-    createRoom: async (maxPlayers) => (await realtime).createRoom(maxPlayers),
-    joinRoom: async (code) => (await realtime).joinRoom(code),
+    createRoom: async (maxPlayers) => (await ensure()).createRoom(maxPlayers),
+    joinRoom: async (code) => (await ensure()).joinRoom(code),
   }
 }
 

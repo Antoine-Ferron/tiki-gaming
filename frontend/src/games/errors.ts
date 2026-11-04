@@ -52,16 +52,22 @@ const NETWORK_MESSAGE = /failed to fetch|networkerror|load failed|fetch failed|n
 
 type ErrorLike = { code?: unknown; message?: unknown; status?: unknown }
 
+/** Statut HTTP générique (REST ou WebSocket) → code d'erreur du SDK, réutilisé par les deux adaptateurs. */
+export function codeForStatus(status: number): GameErrorCode | null {
+  if (status === 0 || status >= 500) return 'network'
+  if (status === 401) return 'session'
+  if (status === 403) return 'forbidden'
+  if (status === 404) return 'not_found'
+  return null
+}
+
 /** Statut HTTP éventuellement fourni par l'appelant (réponse supabase-js) ou porté par l'erreur. */
 function codeFor(err: ErrorLike, status: number | undefined): GameErrorCode | null {
   if (typeof err.code === 'string' && Object.hasOwn(BY_CODE, err.code)) return BY_CODE[err.code]
   if (NETWORK_MESSAGE.test(String(err.message))) return 'network'
   // NaN quand aucun statut n'est connu : aucune des comparaisons suivantes ne réussit.
   const httpStatus = status ?? (typeof err.status === 'number' ? err.status : Number.NaN)
-  if (httpStatus === 0 || httpStatus >= 500) return 'network'
-  if (httpStatus === 401) return 'session'
-  if (httpStatus === 403) return 'forbidden'
-  return null
+  return codeForStatus(httpStatus)
 }
 
 /** Convertit n'importe quelle erreur (supabase-js, fetch, exception) en GameError avec un message pour le joueur. */

@@ -4,11 +4,16 @@ vi.mock('sockjs-client', () => ({ default: vi.fn() }))
 
 type StompConfig = { onConnect?: () => void; onWebSocketClose?: () => void; onStompError?: () => void }
 
-/** Double en mémoire du client `@stomp/stompjs` : aucun réseau, les réponses sont livrées à la main par le test. */
+/**
+ * Double en mémoire du client `@stomp/stompjs` : aucun réseau, les réponses sont livrées à la main par le test.
+ * `activate()` appelé une seconde fois simule une reconnexion : comme le vrai client, les abonnements précédents
+ * ne survivent pas (il faut se réabonner dans `onConnect`).
+ */
 class FakeStompClient {
   static instances: FakeStompClient[] = []
   readonly published: { destination: string; body: string }[] = []
-  private readonly subscribers = new Map<string, (message: { body: string }) => void>()
+  private subscribers = new Map<string, (message: { body: string }) => void>()
+  private connectedOnce = false
   private readonly onConnect?: () => void
   readonly onWebSocketClose?: () => void
   readonly onStompError?: () => void
@@ -21,6 +26,8 @@ class FakeStompClient {
   }
 
   activate() {
+    if (this.connectedOnce) this.subscribers = new Map()
+    this.connectedOnce = true
     this.onConnect?.()
   }
 
@@ -31,6 +38,10 @@ class FakeStompClient {
 
   publish({ destination, body }: { destination: string; body: string }) {
     this.published.push({ destination, body })
+  }
+
+  isSubscribedTo(destination: string) {
+    return this.subscribers.has(destination)
   }
 
   /** Test uniquement : simule un message reçu du serveur sur une destination abonnée. */
@@ -96,6 +107,32 @@ describe('createRealtime', () => {
     await expect(pending).rejects.toMatchObject({ code: 'not_found', message: 'Code de salle inconnu.' })
   })
 
+  test('deux appels concurrents ne se répondent pas l’un à l’autre', async () => {
+    const realtime = createRealtime('bataille-navale')
+
+    const createPending = realtime.createRoom(2)
+    const joinPending = realtime.joinRoom('DEF456')
+    await tick()
+    const stomp = lastClient()
+    // Une seule requête part à la fois : la seconde n'est publiée qu'une fois la première résolue.
+    expect(stomp.published).toEqual([
+      { destination: '/app/rooms/bataille-navale/create', body: JSON.stringify({ maxPlayers: 2 }) },
+    ])
+
+    stomp.deliver('/user/queue/rooms/bataille-navale/response', roomView({ code: 'ABC123' }))
+    const created = await createPending
+    expect(created.code).toBe('ABC123')
+
+    await tick()
+    expect(stomp.published).toContainEqual({
+      destination: '/app/rooms/bataille-navale/join',
+      body: JSON.stringify({ code: 'DEF456' }),
+    })
+    stomp.deliver('/user/queue/rooms/bataille-navale/response', roomView({ code: 'DEF456', seat: 2, playerCount: 2 }))
+    const joined = await joinPending
+    expect(joined.code).toBe('DEF456')
+  })
+
   test('diffuse les évènements du topic de la salle et met à jour le siège sur ROOM_UPDATED', async () => {
     const realtime = createRealtime('bataille-navale')
     const pending = realtime.createRoom(2)
@@ -124,6 +161,26 @@ describe('createRealtime', () => {
     expect(connection.playerCount).toBe(2)
   })
 
+  test('un évènement ROOM_UPDATED malformé ne corrompt pas le siège', async () => {
+    const realtime = createRealtime('bataille-navale')
+    const pending = realtime.createRoom(2)
+    await tick()
+    const stomp = lastClient()
+    stomp.deliver('/user/queue/rooms/bataille-navale/response', roomView())
+    const connection = await pending
+
+    // Un jeu qui nommerait par erreur une de ses actions "ROOM_UPDATED" ne doit pas corrompre seat/playerCount.
+    stomp.deliver('/topic/rooms/bataille-navale/ABC123', {
+      type: 'ROOM_UPDATED',
+      payload: { aCeciNEstPasUneRoomView: true },
+      code: 'ABC123',
+      serverTime: '2026-11-03T12:00:01Z',
+    })
+
+    expect(connection.seat).toBe(1)
+    expect(connection.playerCount).toBe(1)
+  })
+
   test('send publie une action avec un actionId généré par défaut', async () => {
     const realtime = createRealtime('bataille-navale')
     const pending = realtime.createRoom(2)
@@ -141,7 +198,7 @@ describe('createRealtime', () => {
     expect(body.actionId).toEqual(expect.any(String))
   })
 
-  test('onStatusChange est notifié des coupures et close désabonne le topic', async () => {
+  test('onStatusChange est notifié des coupures, et close quitte la salle et désabonne le topic', async () => {
     const realtime = createRealtime('bataille-navale')
     const pending = realtime.createRoom(2)
     await tick()
@@ -155,6 +212,10 @@ describe('createRealtime', () => {
     expect(statuses).toEqual(['reconnecting'])
 
     connection.close()
+    expect(stomp.published).toContainEqual({
+      destination: '/app/rooms/bataille-navale/leave',
+      body: JSON.stringify({ code: 'ABC123' }),
+    })
     const received = vi.fn()
     connection.on('COUP_JOUE', received)
     stomp.deliver('/topic/rooms/bataille-navale/ABC123', {
@@ -166,17 +227,45 @@ describe('createRealtime', () => {
     expect(received).not.toHaveBeenCalled()
   })
 
-  test('une reconnexion renvoie automatiquement join pour le dernier code connu', async () => {
+  test('une reconnexion renvoie automatiquement join et rétablit l’abonnement au canal', async () => {
     const realtime = createRealtime('bataille-navale')
     const pending = realtime.createRoom(2)
     await tick()
     const stomp = lastClient()
     stomp.deliver('/user/queue/rooms/bataille-navale/response', roomView())
-    await pending
+    const connection = await pending
 
-    stomp.activate() // simule le onConnect d'une reconnexion automatique du client STOMP
-
+    stomp.activate() // simule le onConnect d'une reconnexion automatique du client STOMP (le fake vide ses abonnements)
     expect(stomp.published).toContainEqual({
+      destination: '/app/rooms/bataille-navale/join',
+      body: JSON.stringify({ code: 'ABC123' }),
+    })
+    expect(stomp.isSubscribedTo('/topic/rooms/bataille-navale/ABC123')).toBe(true)
+
+    const received = vi.fn()
+    connection.on('COUP_JOUE', received)
+    stomp.deliver('/topic/rooms/bataille-navale/ABC123', {
+      type: 'COUP_JOUE',
+      payload: { case: 'A1' },
+      code: 'ABC123',
+      serverTime: '2026-11-03T12:00:00Z',
+    })
+    expect(received).toHaveBeenCalled()
+  })
+
+  test('une reconnexion après un close ne rejoint pas la salle quittée', async () => {
+    const realtime = createRealtime('bataille-navale')
+    const pending = realtime.createRoom(2)
+    await tick()
+    const stomp = lastClient()
+    stomp.deliver('/user/queue/rooms/bataille-navale/response', roomView())
+    const connection = await pending
+    connection.close()
+    stomp.published.length = 0
+
+    stomp.activate() // reconnexion après avoir explicitement quitté la salle
+
+    expect(stomp.published).not.toContainEqual({
       destination: '/app/rooms/bataille-navale/join',
       body: JSON.stringify({ code: 'ABC123' }),
     })

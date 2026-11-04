@@ -236,6 +236,24 @@ describe('temps réel', () => {
 
     const joined = await realtime.joinRoom(created.code)
     expect(joined.code).toBe(created.code)
+    expect(joined.seat).toBe(2)
+    expect(joined.playerCount).toBe(2)
+    expect(created.playerCount).toBe(1) // la salle du créateur n'est mise à jour qu'en recevant un évènement serveur
+
+    const thirdPlayer = await realtime.joinRoom(created.code)
+    expect(thirdPlayer.seat).toBe(3)
+  })
+
+  test('close() libère le siège pour un futur arrivant', async () => {
+    const realtime = new FakeRealtime()
+    const ctx = createGameContext(game, player, fakeDeps({ realtime: () => realtime }))
+
+    const created = await ctx.realtime.createRoom(4)
+    const second = await realtime.joinRoom(created.code)
+    second.close()
+
+    const third = await realtime.joinRoom(created.code)
+    expect(third.seat).toBe(2)
   })
 
   test('diffuse un évènement à tous les abonnés de la salle', async () => {

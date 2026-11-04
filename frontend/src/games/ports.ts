@@ -29,19 +29,28 @@ export type RealtimeStatus = 'connecting' | 'open' | 'reconnecting' | 'closed'
 /** Évènement reçu sur le canal d'une salle (voir fr.tikigaming.realtime.RoomEvent côté backend). */
 export type RoomEvent<T = unknown> = { type: string; payload: T; code: string; serverTime: string }
 
+/** Types réservés par le socle : un jeu ne doit jamais nommer une de ses actions ainsi (voir `send`). */
+export const ROOM_EVENT_TYPES = { ROOM_UPDATED: 'ROOM_UPDATED', PLAYER_LEFT: 'PLAYER_LEFT' } as const
+
 /**
  * Connexion à une salle de jeu (créée ou rejointe par `Realtime.createRoom`/`joinRoom`). La reconnexion après
- * coupure est automatique : `join` est renvoyé avec le même code, et le siège est retrouvé côté serveur.
+ * une coupure réseau est automatique et transparente : `join` est renvoyé avec le même code, le siège est
+ * retrouvé côté serveur et les abonnements sont rétablis, sans action du jeu.
  */
 export interface RealtimeConnection {
   readonly code: string
   readonly seat: number
   readonly playerCount: number
-  /** Diffuse une action publique à tous les joueurs assis. `actionId` déduplique un double envoi. */
+  /**
+   * Diffuse une action publique à tous les joueurs assis. `actionId` déduplique un double envoi : pour qu'une
+   * retentative soit ignorée côté serveur, le jeu doit réutiliser le même `actionId` que l'envoi initial.
+   * `type` ne doit pas être un des types réservés (`ROOM_EVENT_TYPES`) : le serveur refuse l'action sinon.
+   */
   send(type: string, data?: unknown, actionId?: string): void
   /** Écoute les évènements d'un type donné sur le canal de la salle. Renvoie une fonction pour se désabonner. */
   on<T = unknown>(type: string, handler: (event: RoomEvent<T>) => void): () => void
   onStatusChange(handler: (status: RealtimeStatus) => void): () => void
+  /** Quitte la salle (libère le siège côté serveur) et ferme les abonnements locaux. */
   close(): void
 }
 

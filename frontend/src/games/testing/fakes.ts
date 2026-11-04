@@ -94,13 +94,16 @@ type SentAction = { type: string; data: unknown; actionId?: string }
  * un test qui veut vérifier la diffusion appelle `emit` explicitement, comme le ferait le serveur.
  */
 export class FakeRealtimeConnection implements RealtimeConnection {
-  seat = 1
-  playerCount = 1
   readonly sent: SentAction[] = []
   private readonly handlers = new Map<string, Set<(event: RoomEvent) => void>>()
   private readonly statusHandlers = new Set<(status: RealtimeStatus) => void>()
 
-  constructor(readonly code: string) {}
+  constructor(
+    readonly code: string,
+    public seat: number,
+    public playerCount: number,
+    private readonly onClose: () => void = () => {},
+  ) {}
 
   send(type: string, data?: unknown, actionId?: string) {
     this.sent.push({ type, data, actionId })
@@ -118,7 +121,9 @@ export class FakeRealtimeConnection implements RealtimeConnection {
     return () => this.statusHandlers.delete(handler)
   }
 
-  close() {}
+  close() {
+    this.onClose()
+  }
 
   /** Test uniquement (absent de `RealtimeConnection`) : simule un évènement reçu du serveur. */
   emit<T = unknown>(type: string, payload: T) {
@@ -132,9 +137,14 @@ export class FakeRealtimeConnection implements RealtimeConnection {
   }
 }
 
-/** `failNextCreate`/`failNextJoin` font échouer la prochaine création/jonction, pour simuler une panne serveur. */
+/**
+ * `failNextCreate`/`failNextJoin` font échouer la prochaine création/jonction, pour simuler une panne serveur.
+ * Suit le nombre de joueurs par salle, comme le ferait le serveur : `joinRoom` donne donc le bon siège (2, 3…)
+ * à un joueur qui rejoint une salle déjà occupée, et `close()` libère la place.
+ */
 export class FakeRealtime implements Realtime {
   private nextCode = 1
+  private readonly playerCountByCode = new Map<string, number>()
   private createFailures: unknown[] = []
   private joinFailures: unknown[] = []
 
@@ -151,16 +161,23 @@ export class FakeRealtime implements Realtime {
   async createRoom(_maxPlayers = 4): Promise<FakeRealtimeConnection> {
     const failure = this.createFailures.shift()
     if (failure !== undefined) throw failure
-    const connection = new FakeRealtimeConnection(`ROOM-${this.nextCode++}`)
-    connection.seat = 1
-    connection.playerCount = 1
-    return connection
+    const code = `ROOM-${this.nextCode++}`
+    this.playerCountByCode.set(code, 1)
+    return new FakeRealtimeConnection(code, 1, 1, () => this.leave(code))
   }
 
   async joinRoom(code: string): Promise<FakeRealtimeConnection> {
     const failure = this.joinFailures.shift()
     if (failure !== undefined) throw failure
-    return new FakeRealtimeConnection(code)
+    const playerCount = (this.playerCountByCode.get(code) ?? 0) + 1
+    this.playerCountByCode.set(code, playerCount)
+    return new FakeRealtimeConnection(code, playerCount, playerCount, () => this.leave(code))
+  }
+
+  private leave(code: string) {
+    const playerCount = (this.playerCountByCode.get(code) ?? 1) - 1
+    if (playerCount <= 0) this.playerCountByCode.delete(code)
+    else this.playerCountByCode.set(code, playerCount)
   }
 }
 
