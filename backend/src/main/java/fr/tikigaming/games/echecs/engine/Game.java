@@ -21,13 +21,14 @@ public final class Game {
         if (!MoveGenerator.destinations(position, from).contains(to)) {
             throw new IllegalArgumentException("Case inaccessible pour la pièce en " + from + " : " + to);
         }
-        pieces.put(to, moving);
+        Piece captured = pieces.put(to, moving);
+        boolean resetsClock = moving.type() == PieceType.PAWN || captured != null;
         return new Position(
                 pieces,
                 position.turn() == Color.WHITE ? Color.BLACK : Color.WHITE,
                 position.castling(),
                 position.enPassant(),
-                position.halfmoveClock(),
-                position.fullmoveNumber());
+                resetsClock ? 0 : position.halfmoveClock() + 1,
+                position.turn() == Color.BLACK ? position.fullmoveNumber() + 1 : position.fullmoveNumber());
     }
 }
