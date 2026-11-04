@@ -1,9 +1,13 @@
 package fr.tikigaming.games.echecs.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.http.HttpStatus;
 
 /** Le service traduit le texte reçu par l'API en appels au vrai moteur : aucune doublure (le moteur est pur). */
 class EchecsServiceTest {
@@ -36,5 +40,18 @@ class EchecsServiceTest {
         // Act + Assert
         assertThat(service.play(START, "e2", "e4"))
                 .isEqualTo("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    }
+
+    @ParameterizedTest(name = "{0} → {1} : « {2} »")
+    @CsvSource({"e2, e5, inaccessible", "e7, e5, trait", "e4, e5, vide"})
+    @DisplayName("un coup refusé par les règles devient une erreur 422 avec le message du moteur")
+    void unCoupRefuseDevientUneErreur422(String from, String to, String reason) {
+        // Act + Assert
+        assertThatThrownBy(() -> service.play(START, from, to))
+                .isInstanceOfSatisfying(
+                        EchecsRejectedException.class,
+                        e -> assertThat(e.status()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT))
+                .hasMessageStartingWith("Coup refusé : ")
+                .hasMessageContaining(reason);
     }
 }
