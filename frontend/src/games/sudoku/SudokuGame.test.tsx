@@ -176,7 +176,7 @@ describe('partie', () => {
     await advance(3000)
 
     // Assert
-    expect(screen.getByRole('grid', { name: 'Grille de sudoku' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Grille de sudoku' })).toBeTruthy()
     expect(screen.getByText('Temps : 0:03')).toBeTruthy()
   })
 
@@ -207,7 +207,7 @@ describe('partie', () => {
     await setup()
     await startEasy()
     selectEmptyCell()
-    const grid = screen.getByRole('grid', { name: 'Grille de sudoku' })
+    const grid = screen.getByRole('group', { name: 'Grille de sudoku' })
 
     fireEvent.keyDown(grid, { key: String(WRONG_DIGIT) })
     await flush()
@@ -223,7 +223,7 @@ describe('partie', () => {
     await setup()
     await startEasy()
 
-    fireEvent.keyDown(screen.getByRole('grid', { name: 'Grille de sudoku' }), { key: '5' })
+    fireEvent.keyDown(screen.getByRole('group', { name: 'Grille de sudoku' }), { key: '5' })
     await flush()
 
     expect(apiPost).not.toHaveBeenCalled()
@@ -244,7 +244,7 @@ describe('partie', () => {
     await startEasy()
 
     expect(screen.getByText('Le serveur est injoignable.')).toBeTruthy()
-    expect(screen.queryByRole('grid')).toBeNull()
+    expect(screen.queryByRole('group')).toBeNull()
   })
 
   test('reprend une partie depuis le serveur avec son chrono et ses erreurs', async () => {
@@ -397,7 +397,7 @@ describe('fin de partie', () => {
     await flush()
 
     expect(screen.queryByText(/Bravo/)).toBeNull()
-    expect(screen.getByRole('grid', { name: 'Grille de sudoku' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Grille de sudoku' })).toBeTruthy()
   })
 })
 
@@ -416,7 +416,7 @@ describe('partie perdue', () => {
 
     expect(screen.getByText('Erreurs : 3/3')).toBeTruthy()
     expect(screen.queryByText(/Partie perdue/)).toBeNull()
-    expect(screen.getByRole('grid')).toBeTruthy()
+    expect(screen.getByRole('group')).toBeTruthy()
   })
 
   test('avertit quand il ne reste plus qu’une erreur permise', async () => {
@@ -438,7 +438,7 @@ describe('partie perdue', () => {
     await loseTheGame()
 
     expect(screen.getByText(/Partie perdue : plus de 3 erreurs/)).toBeTruthy()
-    expect(screen.queryByRole('grid')).toBeNull()
+    expect(screen.queryByRole('group')).toBeNull()
     expect(apiPost).not.toHaveBeenCalledWith('/games/sudoku/check', expect.anything())
     expect(scores.rows).toHaveLength(0)
     expect(saves.data.has('sudoku')).toBe(false)
@@ -453,7 +453,7 @@ describe('partie perdue', () => {
 
     await startEasy()
 
-    expect(screen.getByRole('grid')).toBeTruthy()
+    expect(screen.getByRole('group')).toBeTruthy()
     expect(screen.getByText('Erreurs : 0/3')).toBeTruthy()
     expect(screen.queryByText(/Partie perdue/)).toBeNull()
   })
