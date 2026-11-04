@@ -19,10 +19,7 @@ public final class Scoring {
         int treasury = player.coins() / COINS_PER_TREASURY_POINT;
         int wonder = player.builtStages().stream().mapToInt(WonderStage::points).sum();
         int civil = player.built().stream().mapToInt(Card::points).sum();
-        int science = ScienceScore.compute(
-                symbols(player, ScienceSymbol.TABLET),
-                symbols(player, ScienceSymbol.GEAR),
-                symbols(player, ScienceSymbol.COMPASS));
+        int science = player.sciencePoints();
         List<Card> neighbours = Stream.concat(state.left(index).built().stream(), state.right(index).built().stream())
                 .toList();
         int guilds = player.built().stream()
@@ -51,10 +48,5 @@ public final class Scoring {
                         .thenComparingInt(Ranked::coins)
                         .reversed())
                 .toList();
-    }
-
-    private static int symbols(PlayerState player, ScienceSymbol symbol) {
-        return (int)
-                player.built().stream().filter(card -> card.science() == symbol).count();
     }
 }

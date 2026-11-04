@@ -9,7 +9,7 @@ import java.util.stream.Stream;
 /**
  * Un joueur de la table. {@code stagesBuilt} : étapes de merveille bâties, dans l'ordre du plateau ;
  * {@code military} : somme des jetons de conflit ; {@code tokens} : chaque duel, voisin par voisin.
- * La production et les boucliers sont calculés, envoyés au front mais jamais relus.
+ * La production, les boucliers et les points de science sont calculés, envoyés au front mais jamais relus.
  */
 @JsonIgnoreProperties(
         value = {"production", "shields"},
@@ -73,6 +73,17 @@ public record PlayerState(
         int won = duels.stream().mapToInt(MilitaryToken::value).sum();
         List<MilitaryToken> all = Stream.concat(tokens.stream(), duels.stream()).toList();
         return new PlayerState(name, bot, coins, wonder, stagesBuilt, built, military + won, all);
+    }
+
+    /** Points de science : somme des carrés de chaque symbole + 7 par série complète. */
+    @JsonProperty
+    public int sciencePoints() {
+        return ScienceScore.compute(
+                symbols(ScienceSymbol.TABLET), symbols(ScienceSymbol.GEAR), symbols(ScienceSymbol.COMPASS));
+    }
+
+    private int symbols(ScienceSymbol symbol) {
+        return (int) built.stream().filter(card -> card.science() == symbol).count();
     }
 
     public boolean hasBuilt(String card) {
