@@ -6,3 +6,8 @@ export function recordResult(best: BestScores, levelId: number, score: number) {
   const improved = !(levelId in best) || score > best[levelId]
   return { best: improved ? { ...best, [levelId]: score } : best, improved }
 }
+
+/** Un niveau est ouvert si c'est le premier, ou si le précédent est terminé (quel que soit son score). */
+export function isUnlocked(best: BestScores, levelId: number): boolean {
+  return levelId === 1 || levelId - 1 in best
+}

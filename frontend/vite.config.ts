@@ -54,6 +54,7 @@ export default defineConfig(({ mode }) => ({
       '/api': backend,
       '/oauth2': backend,
       '/login/oauth2': backend,
+      '/ws': { ...backend, ws: true },
     },
   },
 }))

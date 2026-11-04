@@ -1,0 +1,296 @@
+export type VehicleKind = 'car' | 'bike' | 'heli' | 'plane'
+export type BodyStyle = 'sedan' | 'sport' | 'suv' | 'van' | 'bus' | 'truck' | 'bike' | 'heli' | 'plane'
+
+export interface VehicleSpec {
+  id: string
+  label: string
+  kind: VehicleKind
+  style: BodyStyle
+  length: number
+  width: number
+  /** Height of the lower body (belt line). */
+  belt: number
+  /** Greenhouse: z range along the length (from rear, meters) and roof z range, plus height above belt. */
+  cabin: { start: number; end: number; roofStart: number; roofEnd: number; height: number }
+  wheelRadius: number
+  wheelWidth: number
+  /** Axle z positions relative to the center (front positive). */
+  frontAxle: number
+  rearAxle: number
+  track: number
+  mass: number
+  /** Engine force per driven wheel (N). */
+  engine: number
+  brake: number
+  maxSpeed: number
+  steer: number
+  drive: 'rwd' | 'fwd' | 'awd'
+  suspension: number
+  stiffness: number
+  grip: number
+  health: number
+  colors: string[]
+  police?: boolean
+  taxi?: boolean
+  armored?: boolean
+}
+
+const car = (o: Partial<VehicleSpec> & Pick<VehicleSpec, 'id' | 'label' | 'style'>): VehicleSpec => ({
+  kind: 'car',
+  length: 4.6,
+  width: 1.85,
+  belt: 0.95,
+  cabin: { start: 1.1, end: 3.3, roofStart: 1.5, roofEnd: 2.8, height: 0.5 },
+  wheelRadius: 0.36,
+  wheelWidth: 0.24,
+  frontAxle: 1.42,
+  rearAxle: -1.38,
+  track: 1.56,
+  mass: 1300,
+  engine: 2600,
+  brake: 45,
+  maxSpeed: 46,
+  steer: 0.55,
+  drive: 'rwd',
+  suspension: 0.32,
+  stiffness: 28,
+  grip: 2.4,
+  health: 1000,
+  colors: ['#b3261e', '#1f4e8c', '#e8e8e8', '#1c1c1c', '#7a7f85', '#2e6b3a', '#c9b37e', '#5b2a6e'],
+  ...o,
+})
+
+export const VEHICLES: Record<string, VehicleSpec> = {
+  sedan: car({ id: 'sedan', label: 'Berline', style: 'sedan' }),
+  taxi: car({ id: 'taxi', label: 'Taxi', style: 'sedan', taxi: true, colors: ['#f2c12e'] }),
+  police: car({
+    id: 'police',
+    label: 'Police',
+    style: 'sedan',
+    police: true,
+    engine: 3300,
+    maxSpeed: 52,
+    colors: ['#f4f4f4'],
+    health: 1300,
+  }),
+  sport: car({
+    id: 'sport',
+    label: 'Sportive',
+    style: 'sport',
+    length: 4.4,
+    width: 1.95,
+    belt: 0.78,
+    cabin: { start: 1.3, end: 3.0, roofStart: 1.7, roofEnd: 2.5, height: 0.42 },
+    wheelRadius: 0.34,
+    wheelWidth: 0.3,
+    frontAxle: 1.35,
+    rearAxle: -1.3,
+    track: 1.66,
+    mass: 1200,
+    engine: 4200,
+    maxSpeed: 62,
+    steer: 0.5,
+    suspension: 0.25,
+    stiffness: 38,
+    grip: 2.9,
+    colors: ['#d4af37', '#c0392b', '#f39c12', '#16a085', '#111111', '#ecf0f1'],
+  }),
+  suv: car({
+    id: 'suv',
+    label: 'SUV',
+    style: 'suv',
+    length: 4.8,
+    width: 1.95,
+    belt: 1.15,
+    cabin: { start: 0.9, end: 3.4, roofStart: 1.0, roofEnd: 3.0, height: 0.6 },
+    wheelRadius: 0.42,
+    wheelWidth: 0.27,
+    frontAxle: 1.5,
+    rearAxle: -1.45,
+    track: 1.66,
+    mass: 1900,
+    engine: 3300,
+    maxSpeed: 44,
+    suspension: 0.4,
+    stiffness: 24,
+    drive: 'awd',
+  }),
+  van: car({
+    id: 'van',
+    label: 'Utilitaire',
+    style: 'van',
+    length: 5.2,
+    width: 2.0,
+    belt: 1.1,
+    cabin: { start: 0.4, end: 4.2, roofStart: 0.4, roofEnd: 3.9, height: 1.05 },
+    wheelRadius: 0.38,
+    wheelWidth: 0.25,
+    frontAxle: 1.7,
+    rearAxle: -1.7,
+    track: 1.7,
+    mass: 2400,
+    engine: 3200,
+    maxSpeed: 36,
+    colors: ['#ecf0f1', '#bdc3c7', '#2c3e50', '#a04000'],
+  }),
+  swat: car({
+    id: 'swat',
+    label: 'Fourgon SWAT',
+    style: 'van',
+    length: 5.4,
+    width: 2.1,
+    belt: 1.2,
+    cabin: { start: 0.4, end: 4.3, roofStart: 0.4, roofEnd: 4.0, height: 1.05 },
+    wheelRadius: 0.45,
+    wheelWidth: 0.3,
+    frontAxle: 1.8,
+    rearAxle: -1.8,
+    track: 1.8,
+    mass: 3600,
+    engine: 5200,
+    maxSpeed: 42,
+    drive: 'awd',
+    police: true,
+    armored: true,
+    health: 3000,
+    colors: ['#1d2125'],
+  }),
+  bus: car({
+    id: 'bus',
+    label: 'Bus',
+    style: 'bus',
+    length: 11,
+    width: 2.5,
+    belt: 1.3,
+    cabin: { start: 0.3, end: 10.6, roofStart: 0.3, roofEnd: 10.6, height: 1.6 },
+    wheelRadius: 0.5,
+    wheelWidth: 0.32,
+    frontAxle: 3.6,
+    rearAxle: -3.2,
+    track: 2.1,
+    mass: 9000,
+    engine: 9000,
+    brake: 120,
+    maxSpeed: 26,
+    steer: 0.6,
+    suspension: 0.35,
+    stiffness: 32,
+    grip: 2.2,
+    health: 2500,
+    colors: ['#1e88e5', '#e53935', '#43a047'],
+  }),
+  truck: car({
+    id: 'truck',
+    label: 'Camion',
+    style: 'truck',
+    length: 8,
+    width: 2.45,
+    belt: 1.4,
+    cabin: { start: 5.8, end: 7.8, roofStart: 5.8, roofEnd: 7.5, height: 1.1 },
+    wheelRadius: 0.52,
+    wheelWidth: 0.34,
+    frontAxle: 2.8,
+    rearAxle: -2.4,
+    track: 2.0,
+    mass: 8000,
+    engine: 8500,
+    brake: 110,
+    maxSpeed: 30,
+    steer: 0.55,
+    suspension: 0.35,
+    stiffness: 32,
+    grip: 2.2,
+    drive: 'rwd',
+    health: 2500,
+    colors: ['#f5f5f5', '#c0392b', '#2980b9', '#f39c12'],
+  }),
+  bike: car({
+    id: 'bike',
+    label: 'Moto',
+    kind: 'bike',
+    style: 'bike',
+    length: 2.1,
+    width: 0.7,
+    belt: 0.9,
+    cabin: { start: 0, end: 0, roofStart: 0, roofEnd: 0, height: 0 },
+    wheelRadius: 0.32,
+    wheelWidth: 0.14,
+    frontAxle: 0.72,
+    rearAxle: -0.68,
+    // Physical track is wider than the visual one: bikes are simulated as narrow 4-wheelers.
+    track: 0.5,
+    mass: 260,
+    engine: 1300,
+    brake: 12,
+    maxSpeed: 55,
+    steer: 0.45,
+    suspension: 0.25,
+    stiffness: 30,
+    grip: 2.6,
+    drive: 'rwd',
+    health: 600,
+    colors: ['#c0392b', '#111111', '#2980b9', '#f39c12', '#27ae60'],
+  }),
+  heli: car({
+    id: 'heli',
+    label: 'Hélicoptère',
+    kind: 'heli',
+    style: 'heli',
+    length: 9,
+    width: 2,
+    belt: 1,
+    mass: 1800,
+    health: 1500,
+    maxSpeed: 60,
+    colors: ['#1f4e8c', '#c0392b', '#ecf0f1', '#111111'],
+  }),
+  policeHeli: car({
+    id: 'policeHeli',
+    label: 'Hélico police',
+    kind: 'heli',
+    style: 'heli',
+    length: 9,
+    width: 2,
+    belt: 1,
+    mass: 1800,
+    health: 1200,
+    maxSpeed: 60,
+    police: true,
+    colors: ['#1b2436'],
+  }),
+  plane: car({
+    id: 'plane',
+    label: 'Avion',
+    kind: 'plane',
+    style: 'plane',
+    length: 8,
+    width: 10,
+    belt: 1,
+    wheelRadius: 0.3,
+    wheelWidth: 0.16,
+    frontAxle: 2.6,
+    rearAxle: -0.4,
+    track: 2.4,
+    mass: 1100,
+    engine: 0,
+    maxSpeed: 75,
+    steer: 0.4,
+    suspension: 0.3,
+    stiffness: 30,
+    grip: 2.2,
+    health: 1000,
+    colors: ['#ecf0f1', '#c0392b', '#f1c40f'],
+  }),
+}
+
+/** Weighted pool for ambient traffic. */
+export const TRAFFIC_POOL: [string, number][] = [
+  ['sedan', 36],
+  ['suv', 18],
+  ['taxi', 10],
+  ['sport', 7],
+  ['van', 10],
+  ['bus', 4],
+  ['truck', 6],
+  ['bike', 6],
+]

@@ -1,6 +1,7 @@
 package fr.tikigaming.games.sudoku;
 
 import java.time.Instant;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -12,6 +13,7 @@ public final class SystemClock implements Clock {
 
     private final java.time.Clock source;
 
+    @Autowired
     public SystemClock() {
         this(java.time.Clock.systemUTC());
     }
