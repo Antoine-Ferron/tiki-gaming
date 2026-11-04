@@ -47,6 +47,9 @@ public final class MoveGenerator {
             int rank = from.rank() + direction[1];
             while (isOnBoard(file, rank) && !isOccupiedBy(position, new Square(file, rank), color)) {
                 destinations.add(new Square(file, rank));
+                if (position.pieceAt(new Square(file, rank)).isPresent()) {
+                    break; // pièce adverse : prise possible, mais on ne va pas plus loin
+                }
                 file += direction[0];
                 rank += direction[1];
             }
