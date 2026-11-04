@@ -43,4 +43,16 @@ describe('HomePage', () => {
     expect(titles()).toEqual([])
     expect(screen.getByRole('status').textContent).toBe('Aucun jeu ne correspond à ces filtres.')
   })
+
+  test('confirme la suppression du compte quand on y arrive depuis le profil', () => {
+    renderPage(<HomePage />, { state: { accountDeleted: true } })
+
+    expect(screen.getByRole('status').textContent).toBe('Ton compte et toutes tes données ont été supprimés.')
+  })
+
+  test('n’affiche pas cette confirmation en temps normal', () => {
+    renderPage(<HomePage />)
+
+    expect(screen.queryByText(/ont été supprimés/)).toBeNull()
+  })
 })

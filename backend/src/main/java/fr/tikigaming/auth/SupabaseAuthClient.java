@@ -91,6 +91,18 @@ public class SupabaseAuthClient {
                 .toBodilessEntity();
     }
 
+    /**
+     * Supprime définitivement le compte (RGPD, droit à l'effacement) : le profil, les scores et les sauvegardes
+     * suivent par les clés étrangères « on delete cascade ».
+     */
+    public void deleteUser(String userId) {
+        rest.delete()
+                .uri("/auth/v1/admin/users/{id}", userId)
+                .headers(this::admin)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     /** Retrouve le compte Supabase associé à l'email (vérifié par Google), ou le crée. */
     public AuthUser findOrCreateUser(String email, String displayName) {
         String existingId = findUserId(email);

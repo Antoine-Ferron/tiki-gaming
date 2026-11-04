@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { useAuth } from '@/auth/AuthContext'
 import { Field } from '@/components/Field'
+import { apiDelete, toFormErrors } from '@/lib/api'
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase'
 import { profileSchema, validate, type FieldErrors, USERNAME_HINT } from '@/lib/validation'
@@ -19,7 +20,12 @@ function profileErrors(error: PostgrestError): { fields: FieldErrors; message: s
 export default function ProfilePage() {
   const { profile } = useAuth()
   if (!profile) return <p className="muted">Chargement du profil…</p>
-  return <ProfileForm key={profile.id} profile={profile} />
+  return (
+    <>
+      <ProfileForm key={profile.id} profile={profile} />
+      <DeleteAccount username={profile.username} />
+    </>
+  )
 }
 
 function ProfileForm({ profile }: { profile: Profile }) {
@@ -64,6 +70,53 @@ function ProfileForm({ profile }: { profile: Profile }) {
       <p className="muted">
         <Link to="/update-password">Changer de mot de passe</Link>
       </p>
+    </form>
+  )
+}
+
+/**
+ * RGPD, droit à l'effacement : supprime le compte et tout ce qui s'y rattache (profil, scores, sauvegardes). Le
+ * pseudo à retaper évite une suppression par erreur, puisqu'elle est définitive.
+ */
+function DeleteAccount({ username }: { username: string }) {
+  const navigate = useNavigate()
+  const { refreshSession } = useAuth()
+  const [confirmation, setConfirmation] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setBusy(true)
+    try {
+      await apiDelete('/auth/account')
+    } catch (err) {
+      setError(toFormErrors(err, []).message)
+      setBusy(false)
+      return
+    }
+    await refreshSession()
+    void navigate('/', { replace: true, state: { accountDeleted: true } })
+  }
+
+  return (
+    <form className="card form" onSubmit={handleSubmit} noValidate>
+      <h2>Supprimer mon compte</h2>
+      <p className="muted">
+        La suppression est définitive : ton profil, tes scores et tes sauvegardes sont effacés, et ton pseudo disparaît
+        des classements.
+      </p>
+      <Field
+        label={`Pour confirmer, tape ton pseudo (${username})`}
+        autoComplete="off"
+        value={confirmation}
+        onChange={(e) => setConfirmation(e.target.value)}
+      />
+      {error && <p className="error">{error}</p>}
+      <button type="submit" className="danger" disabled={busy || confirmation !== username}>
+        Supprimer définitivement mon compte
+      </button>
     </form>
   )
 }
