@@ -24,25 +24,31 @@ Fonctionnalité: Une partie de 2048
 
   Scénario: Un coup qui bouge des tuiles fait apparaître une nouvelle tuile
     Étant donné la grille
-      | 2 | . | . | . |
-      | . | . | . | . |
-      | . | . | . | . |
-      | . | . | . | . |
+      """
+      2 . . .
+      . . . .
+      . . . .
+      . . . .
+      """
     Et que la prochaine tuile sera un 2 sur la dernière case vide
     Quand le joueur joue vers la droite
     Alors la grille devient
-      | . | . | . | 2 |
-      | . | . | . | . |
-      | . | . | . | . |
-      | . | . | . | 2 |
+      """
+      . . . 2
+      . . . .
+      . . . .
+      . . . 2
+      """
     Et le score est de 0 points
 
   Scénario: Un coup qui ne bouge aucune tuile ne compte pas
     Étant donné la grille
-      | 2 | . | . | . |
-      | 4 | . | . | . |
-      | . | . | . | . |
-      | . | . | . | . |
+      """
+      2 . . .
+      4 . . .
+      . . . .
+      . . . .
+      """
     Quand le joueur joue vers la gauche
     Alors la grille ne change pas
     Et aucune nouvelle tuile n'apparaît
@@ -50,54 +56,66 @@ Fonctionnalité: Une partie de 2048
 
   Scénario: Le score additionne les points de chaque coup
     Étant donné la grille
-      | 2 | 2 | 4 | 4 |
-      | . | . | . | . |
-      | . | . | . | . |
-      | . | . | . | . |
+      """
+      2 2 4 4
+      . . . .
+      . . . .
+      . . . .
+      """
     Et un score de 100 points
     Quand le joueur joue vers la gauche
     Alors le score est de 112 points
 
   Scénario: Créer la tuile 2048 fait gagner la partie
     Étant donné la grille
-      | 1024 | 1024 | . | . |
-      | 2    | .    | . | . |
-      | .    | .    | . | . |
-      | .    | .    | . | . |
+      """
+      1024 1024    .    .
+         2    .    .    .
+         .    .    .    .
+         .    .    .    .
+      """
     Quand le joueur joue vers la gauche
     Alors la partie est gagnée
 
   Scénario: Après avoir continué, on ne gagne pas une deuxième fois
     Étant donné une partie déjà gagnée où le joueur a choisi de continuer
     Et la grille
-      | 1024 | 1024 | 2048 | . |
-      | .    | .    | .    | . |
-      | .    | .    | .    | . |
-      | .    | .    | .    | . |
+      """
+      1024 1024 2048    .
+         .    .    .    .
+         .    .    .    .
+         .    .    .    .
+      """
     Quand le joueur joue vers la gauche
     Alors la partie est en cours
 
   Scénario: Une grille pleine sans fusion possible fait perdre la partie
     Étant donné la grille
-      | 2 | 4 | 2 | 4 |
-      | 4 | 2 | 4 | 2 |
-      | 2 | 4 | 2 | 4 |
-      | 2 | 4 | 2 | . |
+      """
+      2 4 2 4
+      4 2 4 2
+      2 4 2 4
+      2 4 2 .
+      """
     Et que la prochaine tuile sera un 4 sur la dernière case vide
     Quand le joueur joue vers la droite
     Alors la grille devient
-      | 2 | 4 | 2 | 4 |
-      | 4 | 2 | 4 | 2 |
-      | 2 | 4 | 2 | 4 |
-      | 4 | 2 | 4 | 2 |
+      """
+      2 4 2 4
+      4 2 4 2
+      2 4 2 4
+      4 2 4 2
+      """
     Et la partie est perdue
 
   Scénario: Une grille pleine avec une fusion possible continue
     Étant donné la grille
-      | 2 | 4 | 2 | 4 |
-      | 4 | 2 | 4 | 2 |
-      | 2 | 4 | 2 | 4 |
-      | 2 | 4 | 2 | . |
+      """
+      2 4 2 4
+      4 2 4 2
+      2 4 2 4
+      2 4 2 .
+      """
     Et que la prochaine tuile sera un 2 sur la dernière case vide
     Quand le joueur joue vers la droite
     Alors la partie est en cours
