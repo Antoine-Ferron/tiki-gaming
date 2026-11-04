@@ -240,7 +240,7 @@ Exigences : logique pure, aucun accès réseau ni disque, pas de contexte Spring
 Côté front (`frontend/src/games/sudoku/`) : `SudokuGame.test.tsx` joue le composant contre un faux serveur (dont
 la partie perdue : 3 erreurs permises, avertissement, défaite à la 4e sans score ni sauvegarde, reprise d'une
 partie perdue, nouvelle partie), `logic.test.ts` le format du temps, et `mistakes.test.ts` la règle des erreurs
-(volontairement faible, voir [Tests de mutation](#tests-de-mutation-stryker)).
+(valeurs exactes et bornes, 26 tests ; voir [Tests de mutation](#tests-de-mutation-stryker)).
 
 Dans l'historique, la règle « valeur vide = manquante » est faite en cycle TDD : un commit `test`
 (rouge), un commit `fix` (vert), un commit `refactor`.
@@ -304,10 +304,10 @@ Ce premier scan date d'avant la limite d'erreurs.
 
 #### Scan initial du moteur d'erreurs (`mistakes.ts`)
 
-C'est le cas « 100 % de couverture, score bas » de l'atelier. Les tests de `mistakes.test.ts` sont
-**volontairement faibles** : ils appellent chaque fonction et chaque branche, mais ne vérifient qu'un type ou une
-valeur définie, jamais la valeur exacte. Ce n'est pas un oubli, c'est l'état de départ de l'exercice, à renforcer
-à l'étape suivante.
+C'est le cas « 100 % de couverture, score bas » de l'atelier. Les premiers tests de `mistakes.test.ts` étaient
+**volontairement faibles** : ils appelaient chaque fonction et chaque branche, mais ne vérifiaient qu'un type ou une
+valeur définie, jamais la valeur exacte. C'était l'état de départ de l'exercice ; ils ont été renforcés ensuite
+(voir « Élimination des mutants » plus bas).
 
 | Mesure (tests de `mistakes.test.ts` seuls) | Résultat |
 |---------------------------------------------|----------|
@@ -330,6 +330,29 @@ avertissement, défaite à la 4e), les mêmes mutants sont presque tous tués :
 
 Un test de composant protège donc le comportement, mais un test unitaire du moteur reste nécessaire : il tue les
 mutants sans passer par l'interface et il fixe les bornes.
+
+#### Élimination des mutants (objectif : score ≥ 75 %)
+
+Les assertions de `mistakes.test.ts` donnent maintenant la valeur exacte attendue, surtout aux **bornes** (les
+« conditions de remise et tranches horaires » de l'énoncé sont ici les seuils d'erreurs) :
+
+| Mutant qui survivait | Assertion qui le tue |
+|----------------------|----------------------|
+| `mistakes > max` → `>=`, `<=`, `true`, `false` | `isLost` pour 0 à 3 erreurs (`false`) et 4, 5, 9 (`true`) : la frontière 3/4 est fixée ; et pour un plafond de 5 (5 → `false`, 6 → `true`) |
+| `max - mistakes` → `max + mistakes` | `remainingMistakes(1, 3)` vaut 2, pas 4 |
+| `Math.max(0, …)` retiré ou inversé | `remainingMistakes(4, 3)` et `(10, 3)` valent 0, jamais négatif |
+| `Math.min` → `Math.max` dans le compteur | `mistakesLabel(4, 3)` vaut `'3/3'`, jamais `'4/3'` |
+| `left === 0` / `left === 1` → `false` ou inversé | `mistakesWarning(3, 3)` et `(2, 3)` ; `(0, 3)` et `(1, 3)` valent `null` ; seuils recalculés pour un plafond de 5 |
+| messages remplacés par `""` | comparaison au texte exact des deux avertissements |
+
+| Mesure (tests de `mistakes.test.ts` seuls) | Avant | Après |
+|---------------------------------------------|-------|-------|
+| Couverture (lignes, branches, fonctions)    | 100 % | 100 % |
+| Tests                                       | 5     | 26    |
+| Score de mutation                           | **25 %** | **100 %** (20 mutants tués sur 20) |
+
+L'objectif de 75 % (seuil `break` de `frontend/stryker.config.mjs`) est dépassé. La couverture n'a pas changé :
+c'est la précision des assertions qui a fait passer le score de 25 % à 100 %.
 
 Pour rejouer un scan : un fichier de configuration qui reprend `frontend/stryker.config.mjs` avec
 `mutate: ['src/games/sudoku/mistakes.ts']` et, pour isoler les tests unitaires, un `vitest.configFile` dont
