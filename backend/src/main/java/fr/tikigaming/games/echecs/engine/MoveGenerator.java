@@ -41,7 +41,7 @@ public final class MoveGenerator {
             case ROOK -> slidingDestinations(position, from, piece.color(), ROOK_DIRECTIONS);
             case BISHOP -> slidingDestinations(position, from, piece.color(), BISHOP_DIRECTIONS);
             case QUEEN -> slidingDestinations(position, from, piece.color(), ALL_DIRECTIONS);
-            case PAWN -> pawnDestinations(from);
+            case PAWN -> pawnDestinations(position, from);
             default -> jumpDestinations(position, from, piece.color(), KNIGHT_OFFSETS);
         };
     }
@@ -82,11 +82,15 @@ public final class MoveGenerator {
     }
 
     /** Le pion : avance d'une case, ou de deux depuis sa rangée de départ. */
-    private static Set<Square> pawnDestinations(Square from) {
+    private static Set<Square> pawnDestinations(Position position, Square from) {
         Set<Square> destinations = new HashSet<>();
-        destinations.add(new Square(from.file(), from.rank() + 1));
-        if (from.rank() == 1) {
-            destinations.add(new Square(from.file(), from.rank() + 2));
+        Square oneStep = new Square(from.file(), from.rank() + 1);
+        if (position.pieceAt(oneStep).isEmpty()) {
+            destinations.add(oneStep);
+            Square twoSteps = new Square(from.file(), from.rank() + 2);
+            if (from.rank() == 1 && position.pieceAt(twoSteps).isEmpty()) {
+                destinations.add(twoSteps);
+            }
         }
         return destinations;
     }
