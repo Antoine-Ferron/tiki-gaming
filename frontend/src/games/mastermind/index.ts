@@ -6,6 +6,7 @@ const mastermind: GameDefinition = {
   title: 'Mastermind',
   description: 'Trouve la combinaison secrète en 10 tentatives.',
   category: 'solo',
+  theme: 'reflexion',
   mode: 'solo',
   scoreLimits: { max: 10 },
   component: lazy(() => import('./MastermindGame')),

@@ -3,6 +3,7 @@ import { GameError } from '../../errors'
 import { createGameContext } from '../../sdk'
 import { FakeScores, fakeDeps } from '../../testing/fakes'
 import type { Move } from '../domain/board'
+import { refuseWith, scoreWithOptimal, verifyAs } from '../testing/verifiers'
 import { completeLevel } from './completeLevel'
 
 // Doublures : le GameContext est le vrai, branché sur les Fakes en mémoire de la plateforme
@@ -23,7 +24,7 @@ describe('completeLevel', () => {
     const ctx = createGameContext(game, player, deps)
 
     // Act
-    await completeLevel(ctx, { level: 1, optimal: 2, moves: moves(2), hintsUsed: 0, durationMs: 7500 })
+    await completeLevel(ctx, { level: 1, moves: moves(2), hintsUsed: 0, durationMs: 7500 }, scoreWithOptimal(2))
 
     // Assert
     expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 1000 } })
@@ -46,7 +47,7 @@ describe('completeLevel', () => {
     const ctx = createGameContext(game, player, deps)
 
     // Act : niveau 3 en 1 coup de trop → 950
-    await completeLevel(ctx, { level: 3, optimal: 5, moves: moves(6), hintsUsed: 0, durationMs: 1000 })
+    await completeLevel(ctx, { level: 3, moves: moves(6), hintsUsed: 0, durationMs: 1000 }, scoreWithOptimal(5))
 
     // Assert
     expect(scores.rows.map((r) => r.score)).toEqual([2750])
@@ -65,7 +66,11 @@ describe('completeLevel', () => {
     const ctx = createGameContext(game, player, deps)
 
     // Act : minimum de 10 coups
-    await completeLevel(ctx, { level: 1, optimal: 10, moves: moves(moveCount), hintsUsed: 0, durationMs: 1000 })
+    await completeLevel(
+      ctx,
+      { level: 1, moves: moves(moveCount), hintsUsed: 0, durationMs: 1000 },
+      scoreWithOptimal(10),
+    )
 
     // Assert
     expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: saved } })
@@ -78,7 +83,7 @@ describe('completeLevel', () => {
     const ctx = createGameContext(game, null, fakeDeps({ scores }))
 
     // Act
-    await completeLevel(ctx, { level: 1, optimal: 2, moves: moves(2), hintsUsed: 0, durationMs: 1000 })
+    await completeLevel(ctx, { level: 1, moves: moves(2), hintsUsed: 0, durationMs: 1000 }, scoreWithOptimal(2))
 
     // Assert
     expect(await ctx.loadSave()).toEqual({ version: 1, best: { 1: 1000 } })
@@ -92,7 +97,7 @@ describe('completeLevel', () => {
     const ctx = createGameContext(game, player, deps)
 
     // Act
-    await completeLevel(ctx, { level: 1, optimal: 2, moves: moves(2), hintsUsed: 0, durationMs: 1000 })
+    await completeLevel(ctx, { level: 1, moves: moves(2), hintsUsed: 0, durationMs: 1000 }, scoreWithOptimal(2))
 
     // Assert
     expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 1000 } })
@@ -103,12 +108,13 @@ describe('completeLevel', () => {
     const scores = new FakeScores(player)
     const deps = fakeDeps({ scores })
     const ctx = createGameContext(game, player, deps)
-    const run = { level: 1, optimal: 2, moves: moves(2), hintsUsed: 0, durationMs: 1000 }
+    const run = { level: 1, moves: moves(2), hintsUsed: 0, durationMs: 1000 }
+    const verify = scoreWithOptimal(2)
     scores.failNext(new GameError('forbidden', 'refusé'))
-    await expect(completeLevel(ctx, run)).rejects.toMatchObject({ code: 'forbidden' })
+    await expect(completeLevel(ctx, run, verify)).rejects.toMatchObject({ code: 'forbidden' })
 
     // Act : le joueur rejoue le niveau avec le même score
-    await completeLevel(ctx, run)
+    await completeLevel(ctx, run, verify)
 
     // Assert : le score total part bien, et le record est sauvegardé seulement maintenant
     expect(scores.rows.map((r) => r.score)).toEqual([1000])
@@ -123,10 +129,63 @@ describe('completeLevel', () => {
     scores.failNext(new GameError('network', 'hors ligne'))
 
     // Act
-    const finishing = completeLevel(ctx, { level: 1, optimal: 2, moves: moves(2), hintsUsed: 0, durationMs: 1000 })
+    const finishing = completeLevel(
+      ctx,
+      { level: 1, moves: moves(2), hintsUsed: 0, durationMs: 1000 },
+      scoreWithOptimal(2),
+    )
 
     // Assert : le joueur est prévenu, et sa progression n'est pas perdue
     await expect(finishing).rejects.toMatchObject({ code: 'queued' })
     expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 1000 } })
+  })
+
+  test('garde les statistiques du mode Génération déjà sauvegardées', async () => {
+    // Arrange
+    const deps = fakeDeps()
+    const generated = { facile: { won: 3, best: 1000 } }
+    deps.saves.data.set('rush-hour', { version: 1, best: {}, generated })
+    const ctx = createGameContext(game, player, deps)
+
+    // Act
+    await completeLevel(ctx, { level: 1, moves: moves(2), hintsUsed: 0, durationMs: 1000 }, scoreWithOptimal(2))
+
+    // Assert
+    expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 1000 }, generated })
+  })
+
+  test('le score gardé et envoyé au classement est celui calculé par le serveur', async () => {
+    // Arrange : Stub du serveur, qui renvoie 640 points
+    const scores = new FakeScores(player)
+    const deps = fakeDeps({ scores })
+    const ctx = createGameContext(game, player, deps)
+
+    // Act
+    const result = await completeLevel(
+      ctx,
+      { level: 1, moves: moves(3), hintsUsed: 0, durationMs: 1000 },
+      verifyAs(640),
+    )
+
+    // Assert
+    expect(result.score).toBe(640)
+    expect(scores.rows.map((r) => r.score)).toEqual([640])
+    expect(deps.saves.data.get('rush-hour')).toEqual({ version: 1, best: { 1: 640 } })
+  })
+
+  test('une partie refusée par le serveur n’est ni gardée ni envoyée', async () => {
+    // Arrange : Stub du serveur, qui refuse des coups truqués
+    const scores = new FakeScores(player)
+    const deps = fakeDeps({ scores })
+    const ctx = createGameContext(game, player, deps)
+    const verify = refuseWith('Partie refusée : Déplacement impossible : X de 3')
+
+    // Act
+    const finishing = completeLevel(ctx, { level: 1, moves: moves(1), hintsUsed: 0, durationMs: 1000 }, verify)
+
+    // Assert
+    await expect(finishing).rejects.toMatchObject({ status: 422 })
+    expect(scores.rows).toEqual([])
+    expect(deps.saves.data.get('rush-hour')).toBeUndefined()
   })
 })

@@ -20,8 +20,9 @@ public class OpenApiConfig {
             Appeler `GET /api/auth/session` une première fois pour obtenir le cookie : Swagger UI \
             remplit ensuite l'en-tête tout seul.
 
-            **Données** : les scores, sauvegardes et profils ne passent pas par cette API mais par \
-            Supabase, avec le JWT renvoyé par `GET /api/auth/session`.""";
+            **Données** : les scores s'enregistrent par `POST /api/scores` (le navigateur n'a pas le droit \
+            d'écrire dans la table). Classement, sauvegardes et profils passent par Supabase, avec le JWT \
+            renvoyé par `GET /api/auth/session`.""";
 
     @Bean
     OpenAPI tikiGamingOpenApi() {

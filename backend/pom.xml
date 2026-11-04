@@ -27,6 +27,7 @@
     <pitest-junit5.version>1.2.2</pitest-junit5.version>
     <!-- Ligne 3.x = Spring Boot 4.x (la 2.x de springdoc cible Spring Boot 3). -->
     <springdoc.version>3.2.0</springdoc.version>
+    <pact.version>4.7.7</pact.version>
   </properties>
 
   <dependencies>
@@ -57,10 +58,34 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
+    <!-- Socle temps réel (fr.tikigaming.realtime) : STOMP sur WebSocket, SockJS en repli. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-websocket</artifactId>
+    </dependency>
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Contrat Pact : le backend rejoue le contrat écrit par le front (frontend/pacts, PactProviderTest). -->
+    <dependency>
+      <groupId>au.com.dius.pact.provider</groupId>
+      <artifactId>junit5</artifactId>
+      <version>${pact.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Chaos : Toxiproxy (latence, coupure réseau) entre le backend et un faux Supabase, dans Docker.
+         Versions gérées par Spring Boot (Testcontainers 2.x). -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-toxiproxy</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <!-- Depuis Spring Boot 4, @AutoConfigureMockMvc est dans son propre module de test. -->
@@ -127,6 +152,7 @@
                     <include>fr.tikigaming.auth.UsernameValidator</include>
                     <include>fr.tikigaming.auth.SupabaseErrors</include>
                     <include>fr.tikigaming.auth.SupabaseTokenService</include>
+                    <include>fr.tikigaming.resilience.CircuitBreaker</include>
                   </includes>
                   <limits>
                     <limit>
@@ -225,9 +251,13 @@
                 <param>fr.tikigaming.auth.UsernameValidator</param>
                 <param>fr.tikigaming.auth.SupabaseErrors</param>
                 <param>fr.tikigaming.auth.SupabaseTokenService</param>
+                <param>fr.tikigaming.games.dame.*</param>
+                <param>fr.tikigaming.resilience.*</param>
               </targetClasses>
               <targetTests>
                 <param>fr.tikigaming.auth.*Test</param>
+                <param>fr.tikigaming.resilience.*</param>
+                <param>fr.tikigaming.games.dame.*Test</param>
               </targetTests>
               <mutators>
                 <mutator>STRONGER</mutator>

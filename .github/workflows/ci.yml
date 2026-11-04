@@ -5,6 +5,10 @@ on:
     branches: [dev, main]
   push:
     branches: [dev, main]
+  # Palier « nuit » : run complet (toutes les zones, mutation complète) sur la branche par défaut, et à la demande.
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -13,10 +17,21 @@ concurrency:
 # Les noms des jobs sont des checks obligatoires de la règle « Protected » (dev, main) :
 # renommer un job bloque toutes les PR tant que la règle n'est pas mise à jour dans les settings du dépôt.
 #
+# Pipeline en paliers, arrêt au premier échec (fail-fast) : un palier ne démarre que si aucun job des paliers
+# précédents n'a échoué (`!contains(needs.*.result, 'failure')`). Chaque job liste dans `needs` tous les jobs des
+# paliers d'avant, pas seulement le dernier : un job sauté parce que son amont a échoué est « skipped », pas
+# « failure », et ne suffirait pas à arrêter la suite.
+#   1. Statique + unitaires : Frontend (format, lint, types, Vitest + couverture, contrat Pact, build), Backend
+#      (Spotless, Checkstyle, JUnit + JaCoCo, Pact provider, chaos Toxiproxy) ; Traçabilité et Security, toujours.
+#   2. Intégration : Testcontainers (PostgreSQL réel, migrations, RLS).
+#   3. Mutation (Stryker, Pitest) et E2E (Playwright + axe).
+#   4. Non fonctionnel et quality gate : k6, ZAP, SonarQube.
+#   5. Verdict : échoue si un job a échoué.
+#
 # Chaque job ne tourne que si sa zone a changé (job « changes »). Un job ignoré par son `if` est compté comme
 # réussi par la règle ; un workflow non déclenché, lui, laisserait les checks en attente : d'où des `if` au niveau
-# des jobs plutôt qu'un filtre `paths` sur le workflow. Si « changes » échoue, ses sorties sont vides et tous les
-# jobs tournent (`!= 'false'`).
+# des jobs plutôt qu'un filtre `paths` sur le workflow. Si le filtre échoue (`continue-on-error`), « changes »
+# réussit avec des sorties vides et tous les jobs tournent (`!= 'false'`).
 jobs:
   changes:
     name: Changes
@@ -31,7 +46,11 @@ jobs:
       quality: ${{ steps.filter.outputs.quality }}
     steps:
       - uses: actions/checkout@v7
+        continue-on-error: true
+      # Run de nuit ou manuel : pas de filtre, sorties vides, donc tous les jobs tournent.
       - id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        continue-on-error: true
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           # Modifier ce workflow relance tous les jobs.
@@ -41,9 +60,13 @@ jobs:
             frontend:
               - *ci
               - 'frontend/**'
+              - 'shared/**'
             backend:
               - *ci
               - 'backend/**'
+              # Contrat Pact écrit par le front : le backend doit le rejouer.
+              - 'frontend/pacts/**'
+              - 'shared/**'
             database:
               - *ci
               - 'frontend/**'
@@ -77,8 +100,18 @@ jobs:
           restore-keys: lint-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
       - run: npm run format:check
       - run: npm run lint
+      # Erreur de type : arrêt avant de lancer les tests (le build refait tsc -b, incrémental donc instantané).
+      - run: npm run typecheck
       # Tests + couverture : échoue sous les seuils de vite.config.ts (cœur du lobby ≥ 95 %, global sans régression).
       - run: npm run test:coverage
+      # Contrat Pact (consumer) : le contrat régénéré doit être celui commité, que le backend rejoue.
+      - run: npm run test:contract
+      - name: Contrat Pact à jour
+        run: |
+          if ! git diff --exit-code -- pacts; then
+            echo "::error::Le contrat Pact a changé : lance npm run test:contract dans frontend/ et commite frontend/pacts."
+            exit 1
+          fi
       - run: npm run build
 
   backend:
@@ -96,13 +129,27 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
-      # verify = Checkstyle (validate) + compilation + tests + Spotless (check)
+      # Formatage vérifié d'abord : sinon Spotless (phase verify) ne tombe qu'après tous les tests.
+      - run: mvn -B spotless:check
+      # verify = Checkstyle (validate) + compilation + tests + couverture JaCoCo + Spotless (check)
       - run: mvn -B verify
+
+  # Toujours exécuté et sans dépendance : un test renommé côté front ou backend casse la matrice.
+  traceability:
+    name: Traçabilité (RTM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # Exigences ↔ cas de test ↔ anomalies (specs/rtm-matrix.md) : zéro rupture de chaîne.
+      - run: node frontend/scripts/check-rtm.mjs
 
   integration:
     name: Integration (Testcontainers)
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.database != 'false' }}
+    needs: [changes, frontend, backend]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.database != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -141,8 +188,8 @@ jobs:
   # contient le lockfile et la config : changer de version d'outil ou de config repart d'un run complet.
   mutation-frontend:
     name: Mutation (Stryker)
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.frontend != 'false' }}
+    needs: [changes, frontend, backend, integration]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.frontend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -174,8 +221,8 @@ jobs:
 
   mutation-backend:
     name: Mutation (Pitest)
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.backend != 'false' }}
+    needs: [changes, frontend, backend, integration]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.backend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -232,8 +279,8 @@ jobs:
 
   e2e:
     name: E2E (Playwright + axe)
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.frontend != 'false' }}
+    needs: [changes, frontend, backend, integration]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.frontend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -254,10 +301,10 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
       - if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
       - if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
-      # Parcours du lobby et audit WCAG 2.1 AA ; backend et Supabase simulés par interception réseau.
+        run: npx playwright install-deps chromium firefox webkit
+      # Parcours du lobby et audit WCAG 2.1 AA sous Chromium, Firefox et WebKit ; backend et Supabase simulés.
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v7
         if: failure()
@@ -267,8 +314,15 @@ jobs:
 
   performance:
     name: Performance (k6)
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.database != 'false' || needs.changes.outputs.quality != 'false') }}
+    needs:
+      - changes
+      - frontend
+      - backend
+      - integration
+      - mutation-frontend
+      - mutation-backend
+      - e2e
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.database != 'false' || needs.changes.outputs.quality != 'false') }}
     runs-on: ubuntu-latest
     env:
       # Valeurs factices : aucun appel externe tant qu'aucun joueur n'est connecté (voir OpenApiDocsTest).
@@ -311,8 +365,15 @@ jobs:
 
   dast:
     name: DAST (ZAP baseline)
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.quality != 'false') }}
+    needs:
+      - changes
+      - frontend
+      - backend
+      - integration
+      - mutation-frontend
+      - mutation-backend
+      - e2e
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.quality != 'false') }}
     runs-on: ubuntu-latest
     env:
       GOOGLE_CLIENT_ID: ci-client-id
@@ -358,8 +419,15 @@ jobs:
 
   sonar:
     name: SonarQube Cloud
-    needs: changes
-    if: ${{ !cancelled() && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false') }}
+    needs:
+      - changes
+      - frontend
+      - backend
+      - integration
+      - mutation-frontend
+      - mutation-backend
+      - e2e
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false') }}
     runs-on: ubuntu-latest
     # Actif dès que le secret SONAR_TOKEN est configuré (Settings → Secrets → Actions), voir quality/README.md.
     env:
@@ -396,3 +464,29 @@ jobs:
             -Dsonar.qualitygate.wait=${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
       - if: env.SONAR_TOKEN == ''
         run: 'echo "SONAR_TOKEN absent : analyse SonarQube Cloud ignorée (voir quality/README.md)."'
+
+  # Un seul check qui résume tout le pipeline : à rendre obligatoire dans la règle « Protected » pour que « CI
+  # entièrement verte » (CONTRIBUTING) soit imposé par GitHub. Un job sauté pour sa zone compte comme réussi.
+  verdict:
+    name: CI (verdict)
+    needs:
+      - changes
+      - frontend
+      - backend
+      - security
+      - traceability
+      - integration
+      - mutation-frontend
+      - mutation-backend
+      - e2e
+      - performance
+      - dast
+      - sonar
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "::error::Au moins un job a échoué : le pipeline s'est arrêté à ce palier."
+          exit 1
+      - run: echo "Tous les paliers sont passés."

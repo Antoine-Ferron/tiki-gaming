@@ -52,6 +52,10 @@ export async function apiPost<T = void>(path: string, body: unknown = {}): Promi
   return handle<T>(res)
 }
 
+export async function apiDelete<T = void>(path: string): Promise<T> {
+  return handle<T>(await send(path, { method: 'DELETE', headers: { 'X-XSRF-TOKEN': csrfToken() } }))
+}
+
 /**
  * Répartit une erreur d'appel entre les champs affichés par le formulaire et un message global
  * (utilisé quand aucun des champs en erreur n'est affiché).

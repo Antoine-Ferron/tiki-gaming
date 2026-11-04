@@ -11,6 +11,7 @@
  */
 import { vi, type Mock } from 'vitest'
 import type { Json } from '@/lib/database.types'
+import { FakeRealtime } from '../testing/fakes'
 import type { GameContext, LeaderboardEntry, Player } from '../types'
 import type { PrismineApi, RunView } from './api'
 
@@ -48,6 +49,8 @@ export function createFakeContext({ player = null, initialSave = null }: FakeOpt
     clearSave: vi.fn(async () => {
       stored = null
     }),
+    // Jeu solo : Prismine n'ouvre jamais de salle temps réel.
+    realtime: new FakeRealtime(),
   } satisfies GameContext
 
   return {

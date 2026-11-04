@@ -6,6 +6,7 @@ const rushHour: GameDefinition = {
   title: 'Rush Hour',
   description: 'Fais glisser les véhicules pour libérer la sortie à la voiture rouge.',
   category: 'solo',
+  theme: 'reflexion',
   mode: 'solo',
   // Score total = somme des records des 20 niveaux, 1000 points maximum chacun. Aligné avec games.max_score.
   scoreLimits: { max: 20000 },
