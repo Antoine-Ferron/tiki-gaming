@@ -106,6 +106,35 @@ class SdvCivilisationServiceTest {
     }
 
     @Test
+    void aSaveThatLosesTheRaceAgainstAnotherTabIsRefusedWithTheStoredGame() {
+        // Étant donné une partie qu'un autre onglet modifie au même instant (stub : l'enregistrement échoue toujours)
+        GameView started = service.start(store, CITADEL);
+        GameStore racing = new GameStore() {
+            @Override
+            public java.util.Optional<SavedGame> load() {
+                return store.load();
+            }
+
+            @Override
+            public void save(SavedGame game, int expectedVersion) {
+                throw new StaleGameException();
+            }
+
+            @Override
+            public void clear() {
+                store.clear();
+            }
+        };
+
+        // Quand le joueur joue son coup
+        // Alors il est refusé, avec la partie telle qu'elle est enregistrée
+        assertThatThrownBy(() -> service.play(racing, USER, 0, ActionType.DISCARD, started.version()))
+                .isInstanceOfSatisfying(
+                        GameConflictException.class,
+                        e -> assertThat(e.game().version()).isEqualTo(1));
+    }
+
+    @Test
     void anIllegalMoveIsRefusedAndChangesNothing() {
         // Étant donné une partie commencée, avec 7 cartes en main (positions 0 à 6)
         GameView started = service.start(store, CITADEL);

@@ -54,6 +54,7 @@ class CatalogueTest {
     void anUnknownAgeOrWonderIsRefused() {
         // Quand on demande un âge ou une merveille qui n'existe pas
         // Alors c'est refusé, avec un message pour le joueur
+        assertThatThrownBy(() -> Cards.ofAge(0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> Cards.ofAge(4)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> Wonders.byName("Tour de Babel"))
                 .isInstanceOf(GameRuleException.class)
