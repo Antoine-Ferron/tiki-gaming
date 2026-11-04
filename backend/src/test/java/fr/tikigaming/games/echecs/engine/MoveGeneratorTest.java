@@ -131,6 +131,20 @@ class MoveGeneratorTest {
         assertThat(MoveGenerator.destinations(position, Square.of("h8"))).isEqualTo(squares("f7", "g6"));
     }
 
+    @Test
+    @DisplayName("une tour sur un échiquier libre (d4) a 14 cases : toute sa colonne et toute sa rangée (règle D4)")
+    void uneTourSurUnEchiquierLibreA14Cases() {
+        // Arrange : rois en a8 et h1, hors des lignes de la tour
+        Position position = Fen.parse("k7/8/8/8/3R4/8/8/7K w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("d4"));
+
+        // Assert
+        assertThat(destinations)
+                .isEqualTo(squares("d1", "d2", "d3", "d5", "d6", "d7", "d8", "a4", "b4", "c4", "e4", "f4", "g4", "h4"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
