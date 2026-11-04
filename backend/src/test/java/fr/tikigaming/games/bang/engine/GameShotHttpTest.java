@@ -17,8 +17,12 @@ import fr.tikigaming.games.bang.cards.RoleCard;
 import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
 import jakarta.servlet.http.Cookie;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -32,6 +36,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.ObjectMapper;
@@ -259,6 +264,202 @@ class GameShotHttpTest {
 
         assertThat(tables.game(code)).isSameAs(before);
         view(code, 1).andExpect(jsonPath("$.pendingShot").doesNotExist());
+    }
+
+    @Test
+    void willyCanShootAgainButAnOldResponseCannotResolveHisNewShot() throws Exception {
+        String code = startedTable(
+                preparedGame(BangCharacter.WILLY_THE_KID, BangCharacter.CALAMITY_JANET, GameState.Phase.PLAY));
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String oldShot = pendingId(code);
+        command(code, "shots/" + oldShot + "/accept", 2).andExpect(status().isNoContent());
+        command(code, "join", 1).andExpect(status().isOk());
+        command(code, "start", 2).andExpect(status().isOk());
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isConflict());
+        command(code, "shots/bang-2/targets/2", 1).andExpect(status().isNoContent());
+        String newShot = pendingId(code);
+        assertThat(newShot).isNotBlank().isNotEqualTo(oldShot);
+        GameState beforeLateResponses = tables.game(code);
+
+        command(code, "shots/" + oldShot + "/accept", 2).andExpect(status().isConflict());
+        command(code, "shots/" + oldShot + "/dodge/missed-2", 2).andExpect(status().isConflict());
+
+        assertThat(tables.game(code)).isSameAs(beforeLateResponses);
+        view(code, 2).andExpect(jsonPath("$.pendingShot.id").value(newShot));
+        command(code, "shots/" + newShot + "/dodge/missed-2", 2).andExpect(status().isNoContent());
+        assertThat(tables.game(code).players().get(1).health()).isEqualTo(3);
+        assertThat(tables.game(code).discardPile())
+                .containsExactly(
+                        card("old", CardType.MISSED),
+                        card("bang-1", CardType.BANG),
+                        card("bang-2", CardType.BANG),
+                        card("missed-2", CardType.MISSED));
+    }
+
+    @Test
+    void calamityUsesAMissedToShootAndABangToDodgeWithoutBypassingTheTurnLimit() throws Exception {
+        GameState initial =
+                preparedGame(BangCharacter.CALAMITY_JANET, BangCharacter.CALAMITY_JANET, GameState.Phase.PLAY);
+        List<GameState.Player> players = new ArrayList<>(initial.players());
+        players.set(
+                0,
+                player(
+                        1,
+                        BangCharacter.CALAMITY_JANET,
+                        card("substitute", CardType.MISSED),
+                        card("bang-2", CardType.BANG)));
+        players.set(1, player(2, BangCharacter.CALAMITY_JANET, card("counter", CardType.BANG)));
+        String code = startedTable(
+                new GameState(List.copyOf(players), initial.drawPile(), initial.discardPile(), 1, initial.phase()));
+
+        command(code, "shots/substitute/targets/2", 1).andExpect(status().isNoContent());
+        command(code, "shots/" + pendingId(code) + "/dodge/counter", 2).andExpect(status().isNoContent());
+
+        assertThat(tables.game(code).players().get(1).health()).isEqualTo(4);
+        assertThat(tables.game(code).discardPile())
+                .containsExactly(
+                        card("old", CardType.MISSED),
+                        card("substitute", CardType.MISSED),
+                        card("counter", CardType.BANG));
+        command(code, "shots/bang-2/targets/2", 1).andExpect(status().isConflict());
+    }
+
+    @Test
+    void theNextActionRebuildsTheDistanceFromTheStateAfterAnElimination() throws Exception {
+        GameState initial =
+                preparedGame(BangCharacter.WILLY_THE_KID, BangCharacter.CALAMITY_JANET, GameState.Phase.PLAY);
+        List<GameState.Player> players = new ArrayList<>(initial.players());
+        GameState.Player target = players.get(1);
+        players.set(
+                1,
+                new GameState.Player(
+                        target.accountId(), 2, target.roleCard(), target.character(), 1, 4, target.hand()));
+        players.set(2, player(3, BangCharacter.CALAMITY_JANET));
+        String code = startedTable(
+                new GameState(List.copyOf(players), initial.drawPile(), initial.discardPile(), 1, initial.phase()));
+        GameState before = tables.game(code);
+        command(code, "shots/bang-2/targets/3", 1).andExpect(status().isConflict());
+        assertThat(tables.game(code)).isSameAs(before);
+
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        command(code, "shots/" + pendingId(code) + "/accept", 2).andExpect(status().isNoContent());
+
+        assertThat(tables.game(code).players().get(1).health()).isZero();
+        GameState afterElimination = tables.game(code);
+        command(code, "shots/bang-2/targets/2", 1).andExpect(status().isConflict());
+        assertThat(tables.game(code)).isSameAs(afterElimination);
+        command(code, "shots/bang-2/targets/3", 1).andExpect(status().isNoContent());
+        view(code, 3).andExpect(jsonPath("$.pendingShot.targetSeat").value(3));
+    }
+
+    @Test
+    void twoSimultaneousShotsByWillyCreateExactlyOnePendingShot() throws Exception {
+        String code = startedTable(
+                preparedGame(BangCharacter.WILLY_THE_KID, BangCharacter.CALAMITY_JANET, GameState.Phase.PLAY));
+
+        List<MvcResult> results = simultaneously(
+                preparePost(TABLES + "/" + code + "/shots/bang-1/targets/2", 1),
+                preparePost(TABLES + "/" + code + "/shots/bang-2/targets/4", 1));
+
+        assertThat(results)
+                .extracting(result -> result.getResponse().getStatus())
+                .containsExactlyInAnyOrder(204, 409);
+        GameState after = tables.game(code);
+        assertThat(after.players().getFirst().hand()).hasSize(1);
+        assertThat(after.discardPile()).hasSize(2).contains(card("old", CardType.MISSED));
+        String acceptedCard = results.getFirst().getResponse().getStatus() == 204 ? "bang-1" : "bang-2";
+        assertThat(after.discardPile().getLast().id()).isEqualTo(acceptedCard);
+        view(code, 1).andExpect(jsonPath("$.pendingShot.targetSeat").value(acceptedCard.equals("bang-1") ? 2 : 4));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"accept,accept", "dodge/missed-2,dodge/missed-2", "accept,dodge/missed-2"})
+    void simultaneousResponsesResolveExactlyOnce(String first, String second) throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+        String path = TABLES + "/" + code + "/shots/" + shot + "/";
+
+        List<MvcResult> results = simultaneously(preparePost(path + first, 2), preparePost(path + second, 2));
+
+        assertThat(results)
+                .extracting(result -> result.getResponse().getStatus())
+                .containsExactlyInAnyOrder(204, 409);
+        String accepted = results.getFirst().getResponse().getStatus() == 204 ? first : second;
+        boolean dodged = accepted.startsWith("dodge");
+        GameState resolved = tables.game(code);
+        assertThat(resolved.players().get(1).health()).isEqualTo(dodged ? 4 : 3);
+        assertThat(resolved.players().get(1).hand()).hasSize(dodged ? 0 : 1);
+        assertThat(resolved.discardPile()).hasSize(dodged ? 3 : 2);
+        view(code, 1).andExpect(jsonPath("$.pendingShot").doesNotExist());
+        command(code, "shots/" + shot + "/" + first, 2).andExpect(status().isConflict());
+        assertThat(tables.game(code)).isSameAs(resolved);
+        command(code, "turn/end", 1).andExpect(status().isNoContent());
+    }
+
+    @Test
+    void fourAccountsSeeTheSamePendingShotAndResolutionWithOnlyTheirOwnSecrets() throws Exception {
+        String code = startedTable();
+        command(code, "shots/bang-1/targets/2", 1).andExpect(status().isNoContent());
+        String shot = pendingId(code);
+
+        assertPrivateViews(code, shot);
+        command(code, "shots/" + shot + "/accept", 2).andExpect(status().isNoContent());
+        assertPrivateViews(code, null);
+    }
+
+    private void assertPrivateViews(String code, String shot) throws Exception {
+        GameState state = tables.game(code);
+        for (int seat = 1; seat <= 4; seat++) {
+            var view = json.readTree(view(code, seat)
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString());
+            assertThat(view.size()).isEqualTo(shot == null ? 7 : 8);
+            assertThat(view.path("seat").asInt()).isEqualTo(seat);
+            assertThat(view.path("currentSeat").asInt()).isEqualTo(1);
+            assertThat(view.path("phase").asString()).isEqualTo("PLAY");
+            assertThat(view.path("role").asString())
+                    .isEqualTo(state.players().get(seat - 1).roleCard().role().name());
+            assertThat(view.path("hand"))
+                    .isEqualTo(json.valueToTree(state.players().get(seat - 1).hand()));
+            if (shot != null) {
+                assertThat(view.path("pendingShot").size()).isEqualTo(3);
+                assertThat(view.path("pendingShot").path("id").asString()).isEqualTo(shot);
+                assertThat(view.path("pendingShot").path("shooterSeat").asInt()).isEqualTo(1);
+                assertThat(view.path("pendingShot").path("targetSeat").asInt()).isEqualTo(2);
+            }
+            for (int index = 0; index < 4; index++) {
+                var publicPlayer = view.path("players").get(index);
+                var player = state.players().get(index);
+                assertThat(publicPlayer.size()).isEqualTo(index == 0 ? 7 : 6);
+                assertThat(publicPlayer.path("health").asInt()).isEqualTo(player.health());
+                assertThat(publicPlayer.path("handCount").asInt())
+                        .isEqualTo(player.hand().size());
+                assertThat(publicPlayer.has("hand")).isFalse();
+                assertThat(publicPlayer.has("accountId")).isFalse();
+                assertThat(publicPlayer.has("roleCard")).isFalse();
+                assertThat(publicPlayer.has("role")).isEqualTo(index == 0);
+            }
+        }
+        assertThat(tables.game(code)).isSameAs(state);
+    }
+
+    private List<MvcResult> simultaneously(
+            MockHttpServletRequestBuilder firstRequest, MockHttpServletRequestBuilder secondRequest) throws Exception {
+        CyclicBarrier start = new CyclicBarrier(2);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(() -> {
+                start.await(5, TimeUnit.SECONDS);
+                return mvc.perform(firstRequest).andReturn();
+            });
+            var second = executor.submit(() -> {
+                start.await(5, TimeUnit.SECONDS);
+                return mvc.perform(secondRequest).andReturn();
+            });
+            return List.of(first.get(5, TimeUnit.SECONDS), second.get(5, TimeUnit.SECONDS));
+        }
     }
 
     private String pendingId(String code) throws Exception {

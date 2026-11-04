@@ -22,3 +22,9 @@ Ces tests HTTP ne sont pas des E2E navigateur.
 | Respecter Paul Regret comme cible | HTTP : `409` attendu, `204` reçu. Domaine : exception attendue mais absente. | 96 tests ciblés ; appel de `distanceAsTarget` dans `ShotRules`, sans duplication dans le service. |
 
 Le blocage initial du lanceur Java dans l'environnement restreint n'est pas compté comme rouge métier.
+
+Les scénarios complémentaires Willy (réponse ancienne pendant un nouveau tir), Calamity, élimination
+suivie d'un nouveau calcul de distance, deux tirs simultanés, deux réponses simultanées (acceptation,
+esquive et concurrence des deux) et confidentialité des quatre vues sont déjà verts avec le
+raccordement précédent : **104 tests ciblés**, sans ajouter de code de production ni fabriquer de rouge.
+Les courses utilisent une `CyclicBarrier`, des sessions distinctes et des attentes bornées, sans sommeil.
