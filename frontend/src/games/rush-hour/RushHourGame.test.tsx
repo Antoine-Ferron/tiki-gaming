@@ -11,6 +11,7 @@ import { generateBoard } from './domain/generator'
 import { getLevel } from './domain/levels'
 import { solve } from './domain/solver'
 import { seededRandom } from './testing/seededRandom'
+import { levelsVerifier } from './testing/verifiers'
 import RushHourGame from './RushHourGame'
 
 afterEach(cleanup)
@@ -29,7 +30,7 @@ const OPTIMAL = SOLUTION.length
  */
 async function renderGame() {
   const scores = new FakeScores(player)
-  render(<RushHourGame ctx={createGameContext(game, player, fakeDeps({ scores }))} />)
+  render(<RushHourGame ctx={createGameContext(game, player, fakeDeps({ scores }))} verifyLevel={levelsVerifier} />)
   const user = userEvent.setup()
   await user.click(await screen.findByRole('button', { name: /^Niveau 1\b/ }))
   return { scores, user }
@@ -130,7 +131,7 @@ async function renderPicker(best: Record<number, number> = {}, random = seededRa
   const scores = new FakeScores(player)
   const deps = fakeDeps({ scores })
   deps.saves.data.set('rush-hour', { version: 1, best })
-  render(<RushHourGame ctx={createGameContext(game, player, deps)} random={random} />)
+  render(<RushHourGame ctx={createGameContext(game, player, deps)} random={random} verifyLevel={levelsVerifier} />)
   await screen.findByRole('heading', { name: 'Niveaux' })
   return { user: userEvent.setup(), scores }
 }
