@@ -92,6 +92,19 @@ class MoveGeneratorTest {
         assertThat(MoveGenerator.destinations(position, Square.of("d4"))).isEmpty();
     }
 
+    @Test
+    @DisplayName("un roi au centre (d4) a 8 cases possibles (règle D2)")
+    void unRoiAuCentreA8Cases() {
+        // Arrange
+        Position position = Fen.parse("4k3/8/8/8/3K4/8/8/8 w - - 0 1");
+
+        // Act
+        Set<Square> destinations = MoveGenerator.destinations(position, Square.of("d4"));
+
+        // Assert
+        assertThat(destinations).isEqualTo(squares("c3", "c4", "c5", "d3", "d5", "e3", "e4", "e5"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
