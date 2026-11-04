@@ -151,6 +151,11 @@ Chaque règle ci-dessus devient un ou plusieurs tests, écrits **avant** le code
 | G3    | Tout plateau généré est valide, résoluble et dans sa plage de difficulté. |
 | S6    | (Back) La solution la plus courte du niveau 1 → 1000 points ; la voiture rouge qui avance sans que la sortie soit libre → refusé (422) ; niveau 21 → inconnu (404). |
 
+Les règles existent dans le jeu (pour jouer sans délai) et sur le serveur (qui fait autorité sur le score). Pour
+qu'elles ne divergent jamais, `shared/games/rush-hour/contrat.json` contient les 20 niveaux (maps et minimums),
+des parties à rejouer (dont le regroupement R6 et les refus) et le barème : les tests du front
+(`contract.test.ts`) et du serveur (`ContractTest`) lisent ce même fichier.
+
 ---
 
 ## 12. À valider ensemble
