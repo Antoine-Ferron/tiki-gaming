@@ -9,6 +9,10 @@ export const USERNAME_MIN = 3
 export const USERNAME_MAX = 24
 export const PASSWORD_MIN = 8
 
+// Aides affichées sous les champs (inscription, profil, nouveau mot de passe).
+export const USERNAME_HINT = `${USERNAME_MIN} à ${USERNAME_MAX} caractères : lettres sans accent, chiffres et _`
+export const PASSWORD_HINT = `${PASSWORD_MIN} caractères minimum`
+
 const USERNAME_CHAR = /[A-Za-z0-9_]/
 
 function describeChar(char: string) {

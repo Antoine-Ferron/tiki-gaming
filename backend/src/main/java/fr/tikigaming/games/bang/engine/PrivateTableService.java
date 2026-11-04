@@ -1,5 +1,7 @@
 package fr.tikigaming.games.bang.engine;
 
+import fr.tikigaming.games.bang.model.GameStarted;
+import fr.tikigaming.games.bang.model.GameState;
 import fr.tikigaming.games.bang.model.TableSeat;
 import java.time.Clock;
 import java.time.Duration;
@@ -10,12 +12,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 /**
- * Tables privées en mémoire. Une table sans création ni jonction pendant {@link #INACTIVITY_TIMEOUT} est retirée : sa
- * place se libère, et son créateur peut ouvrir une nouvelle table.
+ * Tables privées en mémoire. Sans création, jonction ou démarrage accepté pendant {@link #INACTIVITY_TIMEOUT}, la
+ * table et sa donne sont retirées : sa place se libère, et son créateur peut ouvrir une nouvelle table.
  */
 @Service
 public class PrivateTableService {
@@ -24,13 +27,16 @@ public class PrivateTableService {
     static final Duration INACTIVITY_TIMEOUT = Duration.ofHours(1);
 
     private final Map<String, Table> tables = new HashMap<>();
+    private final InitialDeal initialDeal;
     private final Clock clock;
 
-    public PrivateTableService() {
-        this(Clock.systemUTC());
+    @Autowired
+    public PrivateTableService(InitialDeal initialDeal) {
+        this(initialDeal, Clock.systemUTC());
     }
 
-    PrivateTableService(Clock clock) {
+    PrivateTableService(InitialDeal initialDeal, Clock clock) {
+        this.initialDeal = initialDeal;
         this.clock = clock;
     }
 
@@ -73,6 +79,30 @@ public class PrivateTableService {
         return new TableSeat(code, players.size(), players.size());
     }
 
+    public synchronized GameStarted start(String code, String accountId) {
+        purgeInactive();
+        code = code == null ? null : code.trim().toUpperCase(Locale.ROOT);
+        Table table = tables.get(code);
+        if (table == null) throw new PrivateTableException(HttpStatus.NOT_FOUND, "Code de table inconnu.");
+        List<String> players = table.players;
+        if (!players.contains(accountId)) {
+            throw new PrivateTableException(
+                    HttpStatus.FORBIDDEN, "Tu dois être assis à cette table pour démarrer la partie.");
+        }
+        if (players.size() < 4) {
+            throw new PrivateTableException(HttpStatus.CONFLICT, "Il faut quatre joueurs pour démarrer la partie.");
+        }
+        if (table.game == null) table.game = initialDeal.deal(List.copyOf(players));
+        table.lastActivity = clock.instant();
+        return new GameStarted(code, table.game.currentSeat());
+    }
+
+    synchronized GameState game(String code) {
+        purgeInactive();
+        Table table = tables.get(code);
+        return table == null ? null : table.game;
+    }
+
     private void purgeInactive() {
         Instant cutoff = clock.instant().minus(INACTIVITY_TIMEOUT);
         tables.values().removeIf(table -> !table.lastActivity.isAfter(cutoff));
@@ -81,6 +111,7 @@ public class PrivateTableService {
     private static final class Table {
         private final List<String> players = new ArrayList<>();
         private Instant lastActivity;
+        private GameState game;
 
         private Table(String creator, Instant now) {
             players.add(creator);

@@ -7,6 +7,7 @@ const sudoku: GameDefinition = {
   description:
     'Remplis la grille de 9×9 sans répéter un chiffre. Plus tu es rapide et précis, plus ton score est haut.',
   category: 'solo',
+  theme: 'reflexion',
   mode: 'solo',
   // Score renvoyé par /api/games/sudoku/check : partie parfaite en difficile (ScoreCalculator, backend).
   // Aligné avec games.max_score.

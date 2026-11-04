@@ -1,6 +1,7 @@
 package fr.tikigaming.games.bang.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -54,6 +55,83 @@ class PrivateTablesHttpTest {
 
     @Autowired
     private ObjectMapper json;
+
+    @Test
+    void threePlayersCannotStartAPrivateTable() throws Exception {
+        String code = createTable("creator");
+        postAs(TABLES + "/" + code + "/join", sessionFor("second")).andExpect(status().isOk());
+        postAs(TABLES + "/" + code + "/join", sessionFor("third")).andExpect(status().isOk());
+
+        postAs(TABLES + "/" + code + "/start", sessionFor("creator"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Il faut quatre joueurs pour démarrer la partie."));
+    }
+
+    @Test
+    void anUnseatedAccountCannotStartAFullTable() throws Exception {
+        String code = createTable("creator");
+        for (int seat = 2; seat <= 4; seat++) {
+            postAs(TABLES + "/" + code + "/join", sessionFor("player-" + seat)).andExpect(status().isOk());
+        }
+
+        postAs(TABLES + "/" + code + "/start", sessionFor("outsider"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Tu dois être assis à cette table pour démarrer la partie."));
+    }
+
+    @Test
+    void startingAnUnknownTableIsRefused() throws Exception {
+        postAs(TABLES + "/UNKNOWN/start", sessionFor("player"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Code de table inconnu."));
+    }
+
+    @Test
+    void visitorsCannotStartATableEvenWithAValidCsrfToken() throws Exception {
+        postAs(TABLES + "/UNKNOWN/start", new MockHttpSession())
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Non connecté"));
+    }
+
+    @Test
+    void fullTablesStartWithTheProductionCatalogue() throws Exception {
+        String code = createTable("creator");
+        for (int seat = 2; seat <= 4; seat++) {
+            postAs(TABLES + "/" + code + "/join", sessionFor("player-" + seat)).andExpect(status().isOk());
+        }
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            postAs(TABLES + "/" + code + "/start", sessionFor("creator"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(code))
+                    .andExpect(jsonPath("$.currentSeat").isNumber());
+        }
+    }
+
+    @Test
+    void swaggerDocumentsStartingWithoutExposingTheServerState() throws Exception {
+        String path = "$.paths['" + TABLES + "/{code}/start'].post";
+        ResultActions docs = mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(path + ".tags[0]").value("bang"))
+                .andExpect(jsonPath(path + ".summary", not(emptyOrNullString())))
+                .andExpect(jsonPath(path + ".responses['200'].content['*/*'].schema['$ref']")
+                        .value("#/components/schemas/GameStarted"))
+                .andExpect(jsonPath("$.components.schemas.GameStarted.properties.*", org.hamcrest.Matchers.hasSize(2)))
+                .andExpect(jsonPath("$.components.schemas.GameStarted.properties.code")
+                        .exists())
+                .andExpect(jsonPath("$.components.schemas.GameStarted.properties.currentSeat")
+                        .exists())
+                .andExpect(jsonPath(path + ".responses['503']").doesNotExist())
+                .andExpect(jsonPath(path + ".responses['403'].content['application/json'].schema.anyOf[*]['$ref']")
+                        .value(org.hamcrest.Matchers.containsInAnyOrder(
+                                "#/components/schemas/ApiError", "#/components/schemas/CsrfErrorResponse")));
+
+        for (int error : List.of(401, 404, 409)) {
+            docs.andExpect(jsonPath(path + ".responses['" + error + "'].content.*.schema['$ref']")
+                    .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")));
+        }
+    }
 
     @Test
     void connectedPlayerCreatesAPrivateTableAndTakesTheFirstSeat() throws Exception {
@@ -191,13 +269,13 @@ class PrivateTablesHttpTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join"})
+    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join", TABLES + "/UNKNOWN/start"})
     void connectedPlayersMustSendACsrfToken(String path) throws Exception {
         mvc.perform(post(path).session(sessionFor("player"))).andExpect(status().isForbidden());
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join"})
+    @ValueSource(strings = {TABLES, TABLES + "/UNKNOWN/join", TABLES + "/UNKNOWN/start"})
     void connectedPlayersCannotUseAMismatchingCsrfToken(String path) throws Exception {
         mvc.perform(post(path)
                         .session(sessionFor("player"))
@@ -212,6 +290,10 @@ class PrivateTablesHttpTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.tags[0]").value("bang"))
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.summary", not(emptyOrNullString())))
+                .andExpect(jsonPath("$.paths['" + TABLES + "'].post.description")
+                        .value(containsString(
+                                "La table et sa donne expirent après 1 h sans création, jonction acceptée ou démarrage accepté. "
+                                        + "Un démarrage refusé ne renouvelle pas ce délai.")))
                 .andExpect(jsonPath("$.paths['" + TABLES + "'].post.responses['201']")
                         .exists())
                 .andExpect(jsonPath("$.paths['" + TABLES + "/{code}/join'].post.summary", not(emptyOrNullString())))

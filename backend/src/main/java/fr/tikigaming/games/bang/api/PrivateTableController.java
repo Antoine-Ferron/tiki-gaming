@@ -5,6 +5,7 @@ import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.config.ApiExceptionHandler.ApiError;
 import fr.tikigaming.games.bang.engine.PrivateTableService;
+import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.TableSeat;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -39,7 +40,8 @@ public class PrivateTableController {
             summary = "Créer une table privée",
             description = "Le compte connecté occupe la première place. "
                     + "Chaque compte a au plus une table ouverte, dans une limite globale de 1 000 tables. "
-                    + "Une table sans création ni jonction pendant 1 h est retirée.")
+                    + "La table et sa donne expirent après 1 h sans création, jonction acceptée ou démarrage accepté. "
+                    + "Un démarrage refusé ne renouvelle pas ce délai.")
     @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
     @ApiResponse(
             responseCode = "409",
@@ -92,6 +94,36 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     TableSeat join(@PathVariable String code, HttpServletRequest request) {
         return tables.join(code, connectedAccountId(request));
+    }
+
+    @PostMapping("/{code}/start")
+    @Operation(
+            summary = "Démarrer une partie à quatre",
+            description = "Tout compte connecté et assis à cette table peut la démarrer. Le Shérif joue en premier. "
+                    + "Les demandes suivantes conservent la donne, même simultanées. "
+                    + "La réponse contient uniquement le code de table et la place du joueur actif.")
+    @ApiResponse(responseCode = "200", description = "Partie démarrée ou déjà en cours")
+    @ApiResponse(
+            responseCode = "401",
+            description = "Non connecté",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "403",
+            description = "Jeton CSRF absent ou invalide (CsrfErrorResponse), ou compte non assis (ApiError)",
+            content =
+                    @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(anyOf = {ApiError.class, CsrfErrorResponse.class})))
+    @ApiResponse(
+            responseCode = "404",
+            description = "Code de table inconnu",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(
+            responseCode = "409",
+            description = "Moins de quatre joueurs assis",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    GameStarted start(@PathVariable String code, HttpServletRequest request) {
+        return tables.start(code, connectedAccountId(request));
     }
 
     private static String connectedAccountId(HttpServletRequest request) {
