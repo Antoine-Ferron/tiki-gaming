@@ -250,6 +250,26 @@ class MoveGeneratorTest {
         assertThat(MoveGenerator.destinations(position, Square.of("e2"))).isEqualTo(squares("e3", "e4"));
     }
 
+    @Test
+    @DisplayName("un pion bloqué par une pièce juste devant lui ne peut pas avancer (il ne prend pas tout droit)")
+    void unPionBloqueParUnePieceDevantLuiNePeutPasAvancer() {
+        // Arrange : cavalier noir en e3, devant le pion blanc en e2
+        Position position = Fen.parse("k7/8/8/8/8/4n3/4P3/7K w - - 0 1");
+
+        // Act + Assert : ni e3 (occupée), ni e4 (le pion ne saute pas)
+        assertThat(MoveGenerator.destinations(position, Square.of("e2"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("le double pas est impossible si la case d'arrivée est occupée")
+    void leDoublePasEstImpossibleSiLaCaseDArriveeEstOccupee() {
+        // Arrange : cavalier noir en e4
+        Position position = Fen.parse("k7/8/8/8/4n3/8/4P3/7K w - - 0 1");
+
+        // Act + Assert
+        assertThat(MoveGenerator.destinations(position, Square.of("e2"))).isEqualTo(squares("e3"));
+    }
+
     private static Set<Square> squares(String... notations) {
         return Arrays.stream(notations).map(Square::of).collect(Collectors.toSet());
     }
