@@ -139,6 +139,8 @@ c'est le formatter qui tranche les questions de style.
 - **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
   écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
   le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+  Côté backend, les `.feature` vont dans `src/test/resources/<paquet du jeu>/features/` et sont exécutés par
+  `mvn test` (Cucumber JVM, `cucumber-spring`) : une classe `@Suite` par jeu, des étapes qui appellent l'API.
 - **E2E** (`e2e/`) : peu de tests, réservés aux parcours vitaux (accueil → jeu → partie, panne, redirection)
   et à l'audit axe. Backend et Supabase sont simulés (`e2e/fixtures.ts`) ; le temps est contrôlé avec
   `page.clock` (pas d'attente réelle de 10 s). Aucune violation WCAG sérieuse ou critique n'est tolérée.
@@ -173,7 +175,7 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 |--------------------------|--------------------------------------------------------------------------|
 | `mvn spotless:apply`     | **Formatter** : reformate le code (palantir-java-format, 4 espaces, 120 colonnes) |
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
-| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
+| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc) et scénarios BDD (Cucumber) |
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, couverture minimale (JaCoCo), et échec si le code n'est pas formaté |
 | `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
