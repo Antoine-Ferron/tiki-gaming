@@ -12,8 +12,10 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import fr.tikigaming.config.ApiException;
 import fr.tikigaming.config.TikiProperties;
+import fr.tikigaming.resilience.CircuitBreaker;
 import java.io.IOException;
 import java.net.URI;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +25,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.json.JsonMapper;
@@ -34,7 +37,10 @@ class SupabaseScoresClientTest {
     private static final String SERVICE = "service-role-key";
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
+    private static final int OUTAGES_BEFORE_OPENING = 2;
+
     private MockRestServiceServer server;
+    private CircuitBreaker breaker;
     private SupabaseScoresClient client;
 
     @BeforeEach
@@ -44,7 +50,9 @@ class SupabaseScoresClientTest {
         TikiProperties props = new TikiProperties(
                 "http://localhost:5173",
                 new TikiProperties.Supabase(URL, "anon-key", SERVICE, "jwt-secret", Duration.ofHours(1)));
-        client = new SupabaseScoresClient(builder, props, JSON);
+        breaker = new CircuitBreaker(
+                OUTAGES_BEFORE_OPENING, Duration.ofSeconds(30), Clock.systemUTC(), SupabaseScoresClient::isOutage);
+        client = new SupabaseScoresClient(builder, props, JSON, breaker);
     }
 
     private void insertClickerScore() {
@@ -112,5 +120,39 @@ class SupabaseScoresClientTest {
         assertThatThrownBy(this::insertClickerScore)
                 .isInstanceOf(ApiException.class)
                 .hasMessage(SupabaseScoresClient.UNAVAILABLE);
+    }
+
+    @Test
+    void afterRepeatedOutagesTheCircuitOpensAndSupabaseIsNoLongerCalled() {
+        server.expect(ExpectedCount.times(OUTAGES_BEFORE_OPENING), requestTo(URL + "/rest/v1/scores"))
+                .andRespond(withException(new IOException("délai dépassé")));
+        for (int i = 0; i < OUTAGES_BEFORE_OPENING; i++) {
+            assertThatThrownBy(this::insertClickerScore)
+                    .isInstanceOfSatisfying(
+                            ApiException.class, e -> assertThat(e.status()).isEqualTo(HttpStatus.BAD_GATEWAY));
+        }
+
+        // Disjoncteur ouvert : réponse immédiate, sans requête (sinon MockRestServiceServer échoue).
+        assertThatThrownBy(this::insertClickerScore).isInstanceOfSatisfying(ApiException.class, e -> {
+            assertThat(e.status()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+            assertThat(e).hasMessage(SupabaseScoresClient.UNAVAILABLE);
+        });
+        server.verify();
+    }
+
+    @Test
+    void refusalsOfTheDatabaseAreNotOutagesAndKeepTheCircuitClosed() {
+        server.expect(ExpectedCount.times(OUTAGES_BEFORE_OPENING + 1), requestTo(URL + "/rest/v1/scores"))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("""
+                                {"code": "23514", "message": "Score 999 supérieur au maximum"}"""));
+
+        for (int i = 0; i <= OUTAGES_BEFORE_OPENING; i++) {
+            assertThatThrownBy(this::insertClickerScore)
+                    .isInstanceOfSatisfying(
+                            ApiException.class, e -> assertThat(e.status()).isEqualTo(HttpStatus.BAD_REQUEST));
+        }
+        assertThat(breaker.state()).isEqualTo(CircuitBreaker.State.CLOSED);
     }
 }

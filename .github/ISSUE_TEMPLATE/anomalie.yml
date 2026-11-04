@@ -1,0 +1,65 @@
+name: Anomalie
+description: Un comportement observé diffère du comportement attendu (cycle de vie dans CONTRIBUTING.md → Anomalies).
+title: "[Module][Action] observé au lieu de attendu"
+labels: [bug, "statut: new"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Titre canonique : `[Module][Action] comportement observé au lieu du comportement attendu`.
+        Refusé : « le score marche pas ». Accepté : « [Clicker][Fin de partie] le score s'affiche à 0 au lieu du nombre de clics ».
+  - type: input
+    id: exigence
+    attributes:
+      label: Exigence ou cas de test concerné
+      description: Identifiants de specs/rtm-matrix.md, si connus.
+      placeholder: REQ-SCORE-01 / TC-SCORE-05
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction minimale
+      description: Pas à pas numérotés et déterministes, avec le jeu de données exact et le compte de test utilisé.
+      placeholder: |
+        1. Se connecter avec recette_b
+        2. Ouvrir /games/clicker et cliquer 5 fois
+        3. Attendre la fin des 10 s
+    validations:
+      required: true
+  - type: textarea
+    id: attendu
+    attributes:
+      label: Comportement attendu
+    validations:
+      required: true
+  - type: textarea
+    id: observe
+    attributes:
+      label: Comportement observé
+    validations:
+      required: true
+  - type: textarea
+    id: preuves
+    attributes:
+      label: Preuves
+      description: Archive HAR des requêtes, logs de la console, stacktrace du backend, captures horodatées.
+  - type: dropdown
+    id: severite
+    attributes:
+      label: Sévérité (impact technique)
+      options:
+        - S0 — bloquante (crash, corruption ou perte de données)
+        - S1 — majeure (fonction principale inutilisable, sans contournement)
+        - S2 — mineure (fonction dégradée, contournement possible)
+        - S3 — cosmétique (affichage, texte)
+    validations:
+      required: true
+  - type: dropdown
+    id: priorite
+    attributes:
+      label: Priorité (urgence métier, décidée au tri)
+      options:
+        - P0 — immédiate (correctif en production)
+        - P1 — haute (sprint en cours)
+        - P2 — normale
+        - P3 — basse (backlog)
+        - À qualifier
