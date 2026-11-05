@@ -4,6 +4,90 @@
   },
   "interactions": [
     {
+      "description": "la jonction BANG! d’un invité sans compte",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "une table BANG! est ouverte aux invités"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {},
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/bang/tables/ABC123/join"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "code": "ABC123",
+            "playerCount": 3,
+            "seat": 3
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.code": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.playerCount": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.seat": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
       "description": "la lecture de la session d’un joueur connecté",
       "pending": false,
       "providerStates": [
@@ -104,6 +188,92 @@
       "type": "Synchronous/HTTP"
     },
     {
+      "description": "la lecture privée BANG! d’un invité sans compte",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "un invité est assis à la table BANG!"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/games/bang/tables/ABC123/state"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "code": "ABC123",
+            "currentSeat": 1,
+            "hand": [
+              {
+                "id": "MISSED-7",
+                "type": "MISSED"
+              }
+            ],
+            "phase": "PLAY",
+            "players": [
+              {
+                "character": "WILLY_THE_KID",
+                "handCount": 4,
+                "health": 5,
+                "maxHealth": 5,
+                "playedCards": [],
+                "role": "SHERIFF",
+                "seat": 1
+              },
+              {
+                "character": "BART_CASSIDY",
+                "handCount": 4,
+                "health": 4,
+                "maxHealth": 4,
+                "playedCards": [],
+                "seat": 2
+              },
+              {
+                "character": "CALAMITY_JANET",
+                "handCount": 1,
+                "health": 4,
+                "maxHealth": 4,
+                "playedCards": [],
+                "seat": 3
+              },
+              {
+                "character": "PAUL_REGRET",
+                "handCount": 4,
+                "health": 3,
+                "maxHealth": 3,
+                "playedCards": [],
+                "seat": 4
+              }
+            ],
+            "role": "OUTLAW",
+            "seat": 3
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
       "description": "la suppression du compte du joueur",
       "pending": false,
       "providerStates": [
@@ -131,6 +301,132 @@
         },
         "method": "DELETE",
         "path": "/api/auth/account"
+      },
+      "response": {
+        "status": 204
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "l’action BANG! accepter",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "un joueur est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {},
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/bang/tables/ABC123/shots/tir-courant/accept"
+      },
+      "response": {
+        "status": 204
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "l’action BANG! esquiver",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "un joueur est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {},
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/bang/tables/ABC123/shots/tir-courant/dodge/MISSED-1"
+      },
+      "response": {
+        "status": 204
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "l’action BANG! tirer",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "un joueur est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {},
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/bang/tables/ABC123/shots/BANG-1/targets/2"
       },
       "response": {
         "status": 204

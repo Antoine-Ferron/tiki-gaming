@@ -27,15 +27,21 @@ export interface GameView {
   role: string
   hand: ViewCard[]
   players: ViewPlayer[]
+  pendingShot?: { id: string; shooterSeat: number; targetSeat: number }
 }
 
 /** On ne choisit un BANG ! que pendant sa propre phase de jeu. */
 export function canShoot(view: GameView): boolean {
-  return view.currentSeat === view.seat && view.phase === 'PLAY'
+  return !view.pendingShot && view.currentSeat === view.seat && view.phase === 'PLAY'
 }
 
 /** Ce que je dois faire maintenant, ou à qui c'est de jouer. */
 export function turnHint(view: GameView): string {
+  if (view.pendingShot) {
+    const { shooterSeat, targetSeat } = view.pendingShot
+    if (targetSeat === view.seat) return `La place ${shooterSeat} te vise : esquive ou accepte le tir.`
+    return `Tir de la place ${shooterSeat} vers la place ${targetSeat} : en attente de sa réponse.`
+  }
   if (view.currentSeat !== view.seat) return `Au tour de la place ${view.currentSeat}.`
   const health = view.players.find((p) => p.seat === view.seat)?.health ?? 0
   if (view.phase === 'DRAW') return 'À toi de jouer : pioche tes deux cartes.'

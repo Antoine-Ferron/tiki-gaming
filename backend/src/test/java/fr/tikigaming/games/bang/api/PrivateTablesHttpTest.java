@@ -417,19 +417,19 @@ class PrivateTablesHttpTest {
     }
 
     @Test
-    void visitorsCannotCreateATableEvenWithAValidCsrfToken() throws Exception {
+    void guestsCanCreateATableWithAValidCsrfToken() throws Exception {
         postAs(TABLES, new MockHttpSession())
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Non connecté"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.seat").value(1));
     }
 
     @Test
-    void visitorsCannotJoinATableEvenWithAValidCsrfToken() throws Exception {
+    void guestsCanJoinATableWithAValidCsrfToken() throws Exception {
         String code = createTable("creator");
 
         postAs(TABLES + "/" + code + "/join", new MockHttpSession())
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("Non connecté"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seat").value(2));
     }
 
     @ParameterizedTest
@@ -465,8 +465,8 @@ class PrivateTablesHttpTest {
                         .value("bang"));
 
         for (String path : List.of(TABLES, TABLES + "/{code}/join")) {
-            docs.andExpect(jsonPath("$.paths['" + path + "'].post.responses['401'].content.*.schema['$ref']")
-                            .value(org.hamcrest.Matchers.hasItem("#/components/schemas/ApiError")))
+            docs.andExpect(jsonPath("$.paths['" + path + "'].post.responses['401']")
+                            .doesNotExist())
                     .andExpect(jsonPath("$.paths['" + path
                                     + "'].post.responses['403'].content['application/json'].schema['$ref']")
                             .value("#/components/schemas/CsrfErrorResponse"));

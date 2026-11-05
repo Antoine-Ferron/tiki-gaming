@@ -14,6 +14,7 @@ import fr.tikigaming.games.bang.engine.PrivateTableService;
 import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.TableSeat;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -122,18 +123,29 @@ class PrivateTableControllerTest {
     }
 
     @Test
-    void anAnonymousCreationNeverReachesTheTables() {
-        assertThatThrownBy(() -> controller.create(new MockHttpServletRequest()))
-                .isInstanceOfSatisfying(
-                        AuthException.class, error -> assertThat(error.status()).isEqualTo(401));
-        verifyNoInteractions(tables);
+    void aGuestCreatesWithAServerIdentityAndReusesItWithoutBecomingAnAccount() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        String oldSession = request.getSession().getId();
+        controller.create(request);
+        ArgumentCaptor<String> identity = ArgumentCaptor.forClass(String.class);
+        verify(tables).create(identity.capture());
+        assertThat(identity.getValue()).startsWith("guest:");
+        assertThat(request.getSession().getId()).isNotEqualTo(oldSession);
+        assertThat(AuthSession.currentUser(request)).isNull();
+
+        MockHttpServletRequest resumed = new MockHttpServletRequest();
+        resumed.setSession(request.getSession());
+        resumed.addParameter("accountId", "someone-else");
+        controller.join("CODE", resumed);
+        verify(tables).join("CODE", identity.getValue());
     }
 
     @Test
-    void anAnonymousJoinNeverReachesTheTables() {
-        assertThatThrownBy(() -> controller.join("UNKNOWN", new MockHttpServletRequest()))
-                .isInstanceOfSatisfying(
-                        AuthException.class, error -> assertThat(error.status()).isEqualTo(401));
-        verifyNoInteractions(tables);
+    void signingInAfterAGuestUsesTheAccountIdentity() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        controller.join("CODE", request);
+        AuthSession.signIn(request, new AuthUser("account", "bang@example.test"));
+        controller.join("CODE", request);
+        verify(tables).join("CODE", "account");
     }
 }

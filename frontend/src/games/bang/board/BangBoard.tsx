@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import '../bang.css'
 import { PlayerMat } from './PlayerMat'
-import { canShoot, cardLabel, positionOf, type GameView, type Position } from './view'
+import { canShoot, cardLabel, positionOf, slug, type GameView, type Position } from './view'
+import { canUseAs, type Character } from '../cards/characters'
 
 const ICONS = '/games/bang/icons'
 const AROUND: Position[] = ['top', 'left', 'right', 'bottom']
@@ -13,9 +14,12 @@ export function BangBoard({
   onDiscard,
   onDraw,
   onEnd,
+  onDodge,
+  onAccept,
+  hidePrivate = false,
 }: {
   view: GameView
-  /** Appelé avec le BANG ! choisi et la place visée ; l'envoi au serveur dépend de #59. */
+  /** Appelé avec la carte choisie et la place visée. */
   onShoot?: (cardId: string, targetSeat: number) => void
   /** Appelé avec la carte choisie quand je dois me défausser. */
   onDiscard?: (cardId: string) => void
@@ -23,13 +27,19 @@ export function BangBoard({
   onDraw?: () => void
   /** Appelé quand je finis mon tour, depuis ma main. */
   onEnd?: () => void
+  onDodge?: (cardId: string) => void
+  onAccept?: () => void
+  hidePrivate?: boolean
 }) {
   const [selected, setSelected] = useState<string | null>(null)
   const count = view.hand.length
   const aiming = onShoot !== undefined && canShoot(view)
-  const drawing = onDraw !== undefined && view.currentSeat === view.seat && view.phase === 'DRAW'
-  const ending = onEnd !== undefined && view.currentSeat === view.seat && view.phase !== 'DRAW'
-  const discarding = onDiscard !== undefined && view.currentSeat === view.seat && view.phase === 'DISCARD'
+  const myTurn = !view.pendingShot && view.currentSeat === view.seat
+  const drawing = onDraw !== undefined && myTurn && view.phase === 'DRAW'
+  const ending = onEnd !== undefined && myTurn && view.phase !== 'DRAW'
+  const discarding = onDiscard !== undefined && myTurn && view.phase === 'DISCARD'
+  const dodging = onDodge !== undefined && view.pendingShot?.targetSeat === view.seat
+  const character = slug<Character>(view.players.find((p) => p.seat === view.seat)?.character ?? '')
 
   return (
     <div className="bang bang-board">
@@ -41,6 +51,7 @@ export function BangBoard({
               <PlayerMat
                 player={player}
                 view={view}
+                hidePrivate={hidePrivate}
                 onTarget={
                   aiming && selected && player.seat !== view.seat && player.health > 0
                     ? () => {
@@ -76,44 +87,60 @@ export function BangBoard({
           </figcaption>
         </figure>
       </div>
-      <section className="bang-hand" aria-label="Ta main">
-        <h3>
-          Ta main <span>{count === 1 ? '1 carte' : `${count} cartes`}</span>
-        </h3>
-        <ul>
-          {view.hand.map((card) => {
-            const label = cardLabel(card.type)
-            if (discarding) {
-              return (
-                <li key={card.id}>
-                  <button type="button" onClick={() => onDiscard(card.id)}>
-                    {label}
-                  </button>
-                </li>
-              )
-            }
-            if (aiming && card.type === 'BANG') {
-              return (
-                <li key={card.id}>
-                  <button
-                    type="button"
-                    aria-pressed={selected === card.id}
-                    onClick={() => setSelected(selected === card.id ? null : card.id)}
-                  >
-                    {label}
-                  </button>
-                </li>
-              )
-            }
-            return <li key={card.id}>{label}</li>
-          })}
-        </ul>
-        {ending && (
-          <button type="button" onClick={onEnd}>
-            Finir le tour
-          </button>
-        )}
-      </section>
+      {!hidePrivate && (
+        <section className="bang-hand" aria-label="Ta main">
+          <h3>
+            Ta main <span>{count === 1 ? '1 carte' : `${count} cartes`}</span>
+          </h3>
+          <ul>
+            {view.hand.map((card) => {
+              const label = cardLabel(card.type)
+              if (dodging && canUseAs(character, card.type, 'MISSED')) {
+                return (
+                  <li key={card.id}>
+                    <button type="button" onClick={() => onDodge(card.id)}>
+                      Esquiver avec {label}
+                    </button>
+                  </li>
+                )
+              }
+              if (discarding) {
+                return (
+                  <li key={card.id}>
+                    <button type="button" onClick={() => onDiscard(card.id)}>
+                      {label}
+                    </button>
+                  </li>
+                )
+              }
+              if (aiming && canUseAs(character, card.type, 'BANG')) {
+                return (
+                  <li key={card.id}>
+                    <button
+                      type="button"
+                      aria-pressed={selected === card.id}
+                      onClick={() => setSelected(selected === card.id ? null : card.id)}
+                    >
+                      {label}
+                    </button>
+                  </li>
+                )
+              }
+              return <li key={card.id}>{label}</li>
+            })}
+          </ul>
+          {ending && (
+            <button type="button" onClick={onEnd}>
+              Finir le tour
+            </button>
+          )}
+          {onAccept && view.pendingShot?.targetSeat === view.seat && (
+            <button type="button" onClick={onAccept}>
+              Accepter le tir
+            </button>
+          )}
+        </section>
+      )}
     </div>
   )
 }
