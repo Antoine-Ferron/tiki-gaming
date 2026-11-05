@@ -300,7 +300,7 @@ test('actualiser la partie retrouve le même tir et sa place par une lecture, sa
   expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/games/bang/tables/ABC123/state'])
 })
 
-test.each([403, 404])(
+test.each([401, 403, 404])(
   'une table mémorisée refusée en %i rend de nouveau la création et la jonction accessibles',
   async (status) => {
     sessionStorage.setItem('tiki:bang:table:compte-test', 'EXPIREE')

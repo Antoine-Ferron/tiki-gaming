@@ -46,7 +46,7 @@ export function OnlineTable({ accountId }: { accountId: string }) {
             // 409 : la partie n'a pas encore démarré, on attend.
             if (err instanceof ApiError && err.status === 409) return
             setError(messageOf(err))
-            if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+            if (err instanceof ApiError && [401, 403, 404].includes(err.status)) {
               setView(null)
               setCode(null)
               try {
