@@ -122,13 +122,8 @@
       <artifactId>junit-platform-suite</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- Tests réels de persistance Dames : conteneurs PostgreSQL/PostgREST et accès JDBC de contrôle.
-         Versions gérées par le BOM Spring Boot ; aucune dépendance ajoutée au serveur livré. -->
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
-      <scope>test</scope>
-    </dependency>
+    <!-- Tests réels de persistance Dames : accès JDBC de contrôle (Testcontainers est déclaré plus haut).
+         Version gérée par le BOM Spring Boot ; aucune dépendance ajoutée au serveur livré. -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
