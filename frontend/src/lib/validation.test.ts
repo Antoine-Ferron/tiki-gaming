@@ -37,6 +37,19 @@ describe('usernameSchema', () => {
     )
   })
 
+  it('cite un accent saisi en deux points de code (A + accent combinant) comme une seule lettre', () => {
+    // Contre-exemple trouvé par fast-check (validation.property.test.ts).
+    expect(firstError(usernameSchema, 'Zo\u0065\u0301_42')).toBe(
+      'Caractère non autorisé : e\u0301 — utilise uniquement des lettres sans accent, des chiffres et _.',
+    )
+  })
+
+  it('cite un emoji composé (famille) en entier', () => {
+    expect(firstError(usernameSchema, 'abc👨‍👩‍👧')).toBe(
+      'Caractère non autorisé : 👨‍👩‍👧 — utilise uniquement des lettres sans accent, des chiffres et _.',
+    )
+  })
+
   it('exige 3 caractères minimum', () => {
     expect(firstError(usernameSchema, 'ab')).toBe('Le pseudo doit contenir au moins 3 caractères.')
   })

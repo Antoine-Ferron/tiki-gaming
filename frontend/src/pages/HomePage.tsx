@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router'
+import { Link, useLocation, useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
 import { CursorSwarm } from '@/components/CursorSwarm'
 import { FilterChips } from '@/components/FilterChips'
@@ -11,6 +11,7 @@ import { GAME_THEMES } from '@/games/themes'
 export default function HomePage() {
   const { profile } = useAuth()
   const [params, setParams] = useSearchParams()
+  const accountDeleted = (useLocation().state as { accountDeleted?: boolean } | null)?.accountDeleted === true
   const filter = parseCatalogFilter(params)
   const shown = filterGames(games, filter)
 
@@ -25,6 +26,11 @@ export default function HomePage() {
     <div className="lobby">
       <CursorSwarm />
       <h1>{profile ? `Salut ${profile.username} 👋` : 'Bienvenue sur Tiki Gaming'}</h1>
+      {accountDeleted && (
+        <p className="success" role="status">
+          Ton compte et toutes tes données ont été supprimés.
+        </p>
+      )}
       <div className="filters">
         <FilterChips
           label="Catégorie"
