@@ -4,6 +4,7 @@ import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { destinations, play } from './api'
+import { ApiError } from '@/lib/api'
 import { START_FEN } from './board'
 import EchecsGame from './EchecsGame'
 
@@ -78,4 +79,19 @@ test('cliquer une case mise en évidence joue le coup et affiche la position ren
   expect(await screen.findByRole('button', { name: 'e4, pion blanc' })).toHaveTextContent('♙')
   expect(screen.getByRole('button', { name: 'e2, case vide' })).toHaveAttribute('aria-pressed', 'false')
   expect(screen.getByRole('button', { name: 'e3, case vide' })).not.toHaveClass('echecs-square-target')
+})
+
+test('un coup refusé par le serveur affiche son message et laisse la position inchangée', async () => {
+  // Arrange : le stub simule le refus des règles (422)
+  vi.mocked(destinations).mockResolvedValue(['e3', 'e4'])
+  vi.mocked(play).mockRejectedValue(new ApiError(422, 'Coup refusé : Case inaccessible pour la pièce en e2 : e4'))
+  render(<EchecsGame />)
+  await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
+
+  // Act
+  await userEvent.click(await screen.findByRole('button', { name: 'e4, case vide' }))
+
+  // Assert
+  expect(await screen.findByRole('alert')).toHaveTextContent('Coup refusé : Case inaccessible pour la pièce en e2 : e4')
+  expect(screen.getByRole('button', { name: 'e2, pion blanc' })).toBeInTheDocument()
 })
