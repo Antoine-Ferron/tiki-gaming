@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { GameError, MESSAGES } from '../errors'
 import { createGameContext } from '../sdk'
 import { FakeScores, fakeDeps } from '../testing/fakes'
@@ -159,6 +159,18 @@ describe('Game2048Game', () => {
     // Assert
     await waitFor(() => expect(screen.getByText('Score : 0')).toBeTruthy())
     expect(scores.rows).toEqual([])
+  })
+
+  test('classement indisponible : le joueur voit le message d’erreur (stub)', async () => {
+    // Arrange
+    const ctx = createGameContext(game, player, fakeDeps())
+    vi.spyOn(ctx, 'getLeaderboard').mockRejectedValue(new GameError('network', MESSAGES.network))
+
+    // Act
+    render(<Game2048Game ctx={ctx} spawner={stubSpawner} />)
+
+    // Assert
+    expect(await screen.findByText(MESSAGES.network)).toBeTruthy()
   })
 
   test('invité : le jeu l’invite à se connecter pour être classé', () => {
