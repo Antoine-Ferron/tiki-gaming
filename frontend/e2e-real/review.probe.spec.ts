@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { GameView } from '../src/games/bang/board/view'
+import { compareLocalAndOnlineTurn } from './turn-parity'
 
 async function login(page: Page, id: number) {
   await page.goto('/login')
@@ -119,7 +120,8 @@ async function finishLocalTurn(page: Page) {
   }
 }
 
-test('sur un écran, le BANG! atteint un voisin à portée', async ({ page }) => {
+test('sur un écran, le BANG! atteint un voisin à portée', async ({ page, browser, baseURL }) => {
+  await test.step('même tour local et en ligne', () => compareLocalAndOnlineTurn(browser, baseURL!))
   await page.addInitScript(() => {
     Math.random = () => 0.85
   })
