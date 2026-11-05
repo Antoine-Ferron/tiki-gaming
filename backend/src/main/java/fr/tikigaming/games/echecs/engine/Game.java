@@ -1,8 +1,10 @@
 package fr.tikigaming.games.echecs.engine;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /** Joue un coup sur une position et renvoie la position suivante (les positions sont immuables). */
 public final class Game {
@@ -15,7 +17,49 @@ public final class Game {
      * roi, roque, prise en passant, promotion (phases 3 et 4).
      */
     public static Position play(Position position, Square from, Square to) {
-        Piece moving = checkedMovingPiece(position, from, to);
+        checkedMovingPiece(position, from, to);
+        if (!legalDestinations(position, from).contains(to)) {
+            throw new IllegalArgumentException(
+                    "Coup interdit : il laisserait son roi en échec (" + from + " → " + to + ")");
+        }
+        return apply(position, from, to);
+    }
+
+    /** Règle L2 : les cases où la pièce peut aller sans laisser son propre roi en échec. */
+    public static Set<Square> legalDestinations(Position position, Square from) {
+        Optional<Piece> moving = position.pieceAt(from);
+        if (moving.isEmpty()) {
+            return Set.of();
+        }
+        Color color = moving.get().color();
+        Set<Square> legal = new HashSet<>();
+        for (Square to : MoveGenerator.destinations(position, from)) {
+            if (!leavesKingInCheck(position, from, to, color)) {
+                legal.add(to);
+            }
+        }
+        return legal;
+    }
+
+    private static boolean leavesKingInCheck(Position position, Square from, Square to, Color color) {
+        Map<Square, Piece> pieces = new HashMap<>(position.pieces());
+        Piece moving = pieces.remove(from);
+        if (moving.type() == PieceType.PAWN && (to.rank() == 0 || to.rank() == 7)) {
+            // simulation seulement : le type de la pièce promue ne change pas l'échec de son propre roi
+            moving = new Piece(color, PieceType.QUEEN);
+        }
+        Piece captured = pieces.put(to, moving);
+        if (captured != null && captured.type() == PieceType.KING) {
+            return false; // prendre le roi adverse : impossible en partie légale, jamais proposé ensuite
+        }
+        Position after = new Position(
+                pieces, position.turn(), position.castling(), Optional.empty(), position.halfmoveClock(), 1);
+        return isInCheck(after, color);
+    }
+
+    /** Applique un coup déjà vérifié. */
+    private static Position apply(Position position, Square from, Square to) {
+        Piece moving = position.pieceAt(from).orElseThrow();
         Map<Square, Piece> pieces = new HashMap<>(position.pieces());
         pieces.remove(from);
         Piece captured = pieces.put(to, moving);

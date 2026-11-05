@@ -68,28 +68,25 @@ class GamePropertyTest {
      * phases suivantes, et cette méthode devra alors rétrécir.
      *
      * <ul>
-     *   <li>ANO-ECH-01 : prendre le roi. Le moteur ne gère pas encore l'échec (phase 3) : aux vrais échecs, ce coup ne
-     *       peut jamais arriver, car on n'a pas le droit de laisser son roi attaqué.
+     *   <li>ANO-ECH-01 (prise du roi) : <b>levée</b> par les coups légaux (règle L2) : un coup légal ne prend jamais
+     *       le roi.
      *   <li>ANO-ECH-02 : un pion qui atteint la dernière rangée. La promotion n'est pas encore gérée (phase 4).
      * </ul>
      */
     private static boolean isKnownLimitation(Position position, Square[] move) {
-        boolean capturesKing = position.pieceAt(move[1])
-                .map(piece -> piece.type() == PieceType.KING)
-                .orElse(false);
         boolean promotes = position.pieceAt(move[0])
                         .map(piece -> piece.type() == PieceType.PAWN)
                         .orElse(false)
                 && (move[1].rank() == 0 || move[1].rank() == 7);
-        return capturesKing || promotes;
+        return promotes;
     }
 
-    /** Tous les coups (départ, arrivée) que le moteur propose au camp qui a le trait. */
+    /** Tous les coups légaux (départ, arrivée) que le moteur propose au camp qui a le trait. */
     private static List<Square[]> candidateMoves(Position position) {
         List<Square[]> moves = new ArrayList<>();
         for (Map.Entry<Square, Piece> entry : position.pieces().entrySet()) {
             if (entry.getValue().color() == position.turn()) {
-                for (Square to : MoveGenerator.destinations(position, entry.getKey())) {
+                for (Square to : Game.legalDestinations(position, entry.getKey())) {
                     moves.add(new Square[] {entry.getKey(), to});
                 }
             }
