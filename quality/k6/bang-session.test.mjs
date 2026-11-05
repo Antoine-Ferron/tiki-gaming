@@ -22,3 +22,14 @@ test('démarre une table avec quatre sessions distinctes et leurs vues privées'
     [1, '/api/games/bang/tables/TABLE/start'],
   ])
 })
+
+test('un démarrage refusé fait échouer la charge au lieu de compter une table prête', () => {
+  const players = [1, 2, 3, 4].map((seat) => ({ seat }))
+  const client = {
+    post: mock.fn((player, path) => ({ status: path.endsWith('/start') ? 409 : path.endsWith('/tables') ? 201 : 200, body: { code: 'TABLE' } })),
+    get: mock.fn(() => ({ status: 200, body: {} })),
+  }
+
+  assert.throws(() => startTable(players, client), /409/)
+  assert.equal(client.get.mock.callCount(), 0)
+})
