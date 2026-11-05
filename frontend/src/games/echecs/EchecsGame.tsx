@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { destinations } from './api'
+import { destinations, play } from './api'
 import { FILES, piecesFromFen, RANKS, squareLabel, START_FEN, SYMBOLS } from './board'
 import './echecs.css'
 
@@ -8,7 +8,7 @@ import './echecs.css'
  * serveur (backend/.../games/echecs/), appelé par le client ./api.
  */
 export default function EchecsGame() {
-  const [fen] = useState(START_FEN)
+  const [fen, setFen] = useState(START_FEN)
   const [selected, setSelected] = useState<string | null>(null)
   const [targets, setTargets] = useState<string[]>([])
   const pieces = piecesFromFen(fen)
@@ -16,6 +16,18 @@ export default function EchecsGame() {
   async function select(square: string) {
     setSelected(square)
     setTargets(await destinations(fen, square))
+  }
+
+  async function moveTo(square: string) {
+    const from = selected as string
+    setSelected(null)
+    setTargets([])
+    setFen(await play(fen, from, square))
+  }
+
+  function handleClick(square: string) {
+    if (selected && targets.includes(square)) void moveTo(square)
+    else if (pieces[square]) void select(square)
   }
 
   return (
@@ -40,7 +52,7 @@ export default function EchecsGame() {
                   className={classes.join(' ').trim()}
                   aria-label={squareLabel(square, piece)}
                   aria-pressed={selected === square}
-                  onClick={() => (piece ? void select(square) : undefined)}
+                  onClick={() => handleClick(square)}
                 >
                   {piece ? SYMBOLS[piece] : ''}
                 </button>
