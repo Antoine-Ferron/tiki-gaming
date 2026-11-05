@@ -5,6 +5,7 @@ export default {
   testRunner: 'vitest',
   plugins: ['@stryker-mutator/vitest-runner'],
   mutate: [
+    'src/games/tic-tac-toe/domain/**/*.ts',
     'src/games/domain/**/*.ts',
     // Rush Hour : le domaine pur et le calcul du glissé. Les niveaux et la réserve du générateur sont des données.
     'src/games/rush-hour/domain/*.ts',
