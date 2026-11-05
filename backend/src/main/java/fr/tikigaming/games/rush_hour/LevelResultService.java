@@ -11,7 +11,8 @@ public class LevelResultService {
     public LevelResult verify(int level, List<Move> moves, int hints) {
         List<String> map =
                 Levels.map(level).orElseThrow(() -> new RushHourNotFoundException("Niveau inconnu : " + level));
-        int optimal = Solver.minimumMoves(Board.parse(map)).orElseThrow();
+        // Minimum gardé en mémoire : le solveur ne tourne qu'une fois par niveau, pas à chaque partie vérifiée.
+        int optimal = Levels.minimum(level).orElseThrow();
         try {
             int played = SolutionVerifier.replay(map, moves);
             return new LevelResult(Scoring.levelScore(played, optimal, hints), played, optimal);

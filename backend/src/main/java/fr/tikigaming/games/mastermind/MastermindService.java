@@ -52,6 +52,11 @@ public class MastermindService {
         return find(id).game().snapshot();
     }
 
+    public MastermindGameSnapshot get(UUID id, String client) {
+        purgeExpired();
+        return find(id, client).game().snapshot();
+    }
+
     public MastermindGameSnapshot guess(UUID id, List<MastermindColor> colors) {
         purgeExpired();
         StoredGame stored = find(id);
@@ -59,9 +64,23 @@ public class MastermindService {
         return stored.game().guess(colors);
     }
 
+    public MastermindGameSnapshot guess(UUID id, String client, List<MastermindColor> colors) {
+        purgeExpired();
+        StoredGame stored = find(id, client);
+        stored.markPlayed();
+        return stored.game().guess(colors);
+    }
+
     public MastermindGameSnapshot restart(UUID id) {
         purgeExpired();
         MastermindGame game = find(id).game();
+        game.restart(generateSecret());
+        return game.snapshot();
+    }
+
+    public MastermindGameSnapshot restart(UUID id, String client) {
+        purgeExpired();
+        MastermindGame game = find(id, client).game();
         game.restart(generateSecret());
         return game.snapshot();
     }
@@ -76,8 +95,14 @@ public class MastermindService {
     }
 
     private StoredGame find(UUID id) {
+        return find(id, null);
+    }
+
+    private StoredGame find(UUID id, String client) {
         StoredGame stored = games.get(id);
-        if (stored == null) throw new MastermindNotFoundException("Partie introuvable.");
+        if (stored == null || (client != null && !stored.client().equals(client))) {
+            throw new MastermindNotFoundException("Partie introuvable.");
+        }
         stored.touch(clock.millis());
         return stored;
     }

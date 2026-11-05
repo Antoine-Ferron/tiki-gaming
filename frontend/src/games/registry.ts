@@ -1,4 +1,5 @@
 import type { GameDefinition } from './types'
+import bang from './bang'
 import clicker from './clicker'
 import echecs from './echecs'
 import mastermind from './mastermind'
@@ -23,6 +24,7 @@ export const games: GameDefinition[] = [
   miniGta,
   yams,
   echecs,
+  bang,
   game2048,
 ]
 

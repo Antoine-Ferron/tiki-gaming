@@ -70,7 +70,8 @@ En minuscules, mots séparés par des tirets, sans accents.
    **Tant que le travail n'est pas terminé, la PR est en draft** (`gh pr create --draft`, ou
    *Convert to draft* / `gh pr ready 12 --undo` sur une PR déjà ouverte). Une draft ne se relit pas et ne
    se fusionne pas : la passer en *Ready for review* (`gh pr ready 12`) quand tout est livré et la CI verte,
-   et la repasser en draft si un retour de relecture demande encore du travail.
+   et la repasser en draft si un retour de relecture demande encore du travail. En draft, la CI ne lance que le
+   palier 1 (lint, types, tests unitaires, build) ; *Ready for review* lance tout ([détails](docs/ci.md#1-déclenchement)).
 5. **CI verte et 1 relecture approuvée minimum** avant de fusionner :
    - une PR qui ne touche que `frontend/src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut
      être relue par l'équipe du jeu ;
@@ -283,22 +284,26 @@ ce qui compte comme réussi pour la fusion :
 | 3 | `mutation-frontend` | `frontend/**` | Stryker (seuil 75 %), rapport en artefact |
 | 3 | `mutation-backend` | `backend/**` | Pitest (seuil 75 %), rapport en artefact |
 | 3 | `e2e` | `frontend/**` | Playwright sous Chromium, Firefox et WebKit + audit WCAG 2.1 AA (axe) |
-| 4 | `performance` | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 profil `load` : P95 < 300 ms, P99 < 500 ms, < 1 % d'erreurs ([SLO](docs/slo.md)) |
-| 4 | `dast` | `frontend/**`, `backend/**` ou `quality/**` | ZAP baseline du front buildé et du backend |
-| 4 | `sonar` | `frontend/**` ou `backend/**` | SonarQube Cloud et son Quality Gate (secret `SONAR_TOKEN`) |
+| 3 | `performance` | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 profil `load` : P95 < 300 ms, P99 < 500 ms, < 1 % d'erreurs ([SLO](docs/slo.md)) |
+| 3 | `dast` | `frontend/**`, `backend/**` ou `quality/**` | ZAP baseline du front buildé et du backend |
+| 4 | `sonar` | `frontend/**` ou `backend/**` | SonarQube Cloud et son Quality Gate (secret `SONAR_TOKEN`), sur la couverture du palier 1 |
 | 5 | `verdict` | toujours | échoue si un seul job a échoué |
 
 Modifier `.github/workflows/ci.yml` relance tous les jobs. Si la détection des zones échoue, ou pour le run de
 nuit, tous les jobs tournent.
 
+Une PR qui ne touche que les dossiers d'un ou plusieurs jeux ne rejoue que leurs tests unitaires, sans seuils de
+couverture ; tout est rejoué, seuils compris, au push sur `dev` ([détails](docs/ci.md#analyse-dimpact--seuls-les-tests-des-jeux-touchés)).
+
 ### Caches
 
 | Cache | Effet |
 |-------|-------|
-| npm, Maven | dépendances téléchargées une fois (`setup-node`, `setup-java`) |
+| `node_modules` | `npm ci` seulement quand le lockfile, Node ou l'image Ubuntu change ; les autres jobs restaurent le dossier tel quel (`.github/actions/node-modules`) |
+| Maven | dépendances téléchargées une fois (`setup-java`) |
 | Prettier, ESLint | seuls les fichiers dont le **contenu** a changé sont revérifiés (aussi en local : `node_modules/.cache`) |
-| Playwright | navigateurs réinstallés seulement quand la version change |
-| Stryker, Pitest | **sur une PR**, seuls les mutants concernés par le changement sont rejoués ; un push vers `dev` ou `main` refait un run **complet**, qui sert de référence aux PR suivantes |
+| Playwright | navigateurs réinstallés seulement quand la version de Playwright change |
+| Stryker, Pitest | sur une PR et un push vers `dev` ou `main`, seuls les mutants concernés par le changement sont rejoués (le push alimente le cache des PR suivantes) ; le run de **nuit** rejoue tout |
 
 Les seuils et le résultat des checks ne changent pas : un test affaibli fait toujours apparaître ses
 mutants survivants, en incrémental comme en complet. En cas de doute sur un résultat de mutation d'une

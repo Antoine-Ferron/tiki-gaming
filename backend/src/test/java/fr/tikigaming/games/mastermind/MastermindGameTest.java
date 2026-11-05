@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -186,6 +187,43 @@ class MastermindGameTest {
         assertThat(game.snapshot().attemptsUsed()).isZero();
         assertThat(game.snapshot().history()).isEmpty();
         assertThat(game.snapshot().secret()).isNull();
+    }
+
+    @Test
+    void feedbackPropertiesHoldForManyGeneratedCodes() {
+        Random random = new Random(0x5EED);
+        MastermindColor[] colors = MastermindColor.values();
+
+        for (int sample = 0; sample < 1_000; sample++) {
+            List<MastermindColor> secret = randomCode(random, colors);
+            List<MastermindColor> guess = randomCode(random, colors);
+            MastermindFeedback feedback = MastermindGame.evaluate(secret, guess);
+
+            assertThat(feedback.exact()).isBetween(0, MastermindGame.CODE_LENGTH);
+            assertThat(feedback.misplaced()).isBetween(0, MastermindGame.CODE_LENGTH);
+            assertThat(feedback.exact() + feedback.misplaced()).isLessThanOrEqualTo(MastermindGame.CODE_LENGTH);
+        }
+    }
+
+    @Test
+    void generatedGameUsesOnlyDeclaredColorsAndKeepsScoreBounded() {
+        MastermindGame game = game();
+        List<MastermindColor> wrongGuess =
+                List.of(MastermindColor.ORANGE, MastermindColor.ORANGE, MastermindColor.ORANGE, MastermindColor.ORANGE);
+
+        for (int attempt = 0; attempt < MastermindGame.MAX_ATTEMPTS; attempt++) {
+            MastermindGameSnapshot snapshot = game.guess(wrongGuess);
+            snapshot.history()
+                    .forEach(result -> assertThat(result.guess())
+                            .allSatisfy(color -> assertThat(color).isIn((Object[]) MastermindColor.values())));
+            assertThat(snapshot.score()).isBetween(0, MastermindGame.MAX_ATTEMPTS);
+        }
+    }
+
+    private static List<MastermindColor> randomCode(Random random, MastermindColor[] colors) {
+        return random.ints(MastermindGame.CODE_LENGTH, 0, colors.length)
+                .mapToObj(index -> colors[index])
+                .toList();
     }
 
     private static MastermindGame game() {
