@@ -44,6 +44,13 @@ export default function TicTacToeGame({ ctx }: GameProps) {
         role="grid"
         aria-label="Grille de Tic-Tac-Toe"
       >
+        {status !== 'IN_PROGRESS' && (
+          <div className="tic-tac-toe-celebration" aria-hidden="true">
+            {Array.from({ length: 18 }, (_, index) => (
+              <span key={index} />
+            ))}
+          </div>
+        )}
         {Array.from({ length: 3 }, (_, row) =>
           Array.from({ length: 3 }, (_, column) => {
             const mark = game.cell(row, column)
