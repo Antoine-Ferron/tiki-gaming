@@ -37,6 +37,15 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-RES-01 | Une panne de Supabase est abandonnée au timeout puis coupée par un disjoncteur, et le service revient seul | SLO, résilience (docs/slo.md) |
 | REQ-SEC-01 | Les requêtes qui modifient des données exigent le jeton CSRF ; le front envoie les en-têtes de sécurité (CSP…) | OWASP |
 | REQ-API-01 | Le backend respecte le contrat d'API attendu par le front (forme des requêtes et réponses) | Intégration front/back |
+| REQ-RH-01 | Rush Hour : un véhicule ne glisse que dans son sens, sans traverser les bords ni les autres véhicules | Règles R4, R5 (docs/games/rush-hour/regles.md) |
+| REQ-RH-02 | Rush Hour : un coup = un glissement d'un véhicule, quelle que soit la distance ; les glissements successifs du même véhicule forment un seul coup | Règle R6 |
+| REQ-RH-03 | Rush Hour : le score d'un niveau suit le barème (coups en trop, indices), jamais négatif, et refuse une partie impossible | Score § 7 |
+| REQ-RH-04 | Rush Hour : le serveur rejoue les coups d'un niveau, calcule lui-même le score et refuse une partie truquée | Anti-triche S6 |
+| REQ-RH-05 | Rush Hour : seul le niveau 1 est ouvert au départ ; terminer un niveau ouvre le suivant ; un record ne baisse jamais | Progression N3, N5 |
+| REQ-RH-06 | Rush Hour : un plateau généré est résoluble, de la difficulté demandée, et ne compte pas au classement | Génération G2, G3, S4 |
+| REQ-RH-07 | Rush Hour : un indice donne le prochain coup de la solution la plus courte et coûte des points | Indices P5 |
+| REQ-RH-08 | Rush Hour : on joue à la souris (glisser-déposer calé sur une case) et au clavier (flèches dans le sens du véhicule) | Contrôles C1, C2 |
+| REQ-RH-09 | Rush Hour : le jeu et le serveur appliquent les mêmes niveaux, les mêmes règles et le même barème | Contrat partagé (shared/games/rush-hour/contrat.json) |
 
 ## Cas de test
 
@@ -96,6 +105,37 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-API-01 | REQ-API-01 | nominal | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › un joueur connecté enregistre le score de sa partie | PASSED | — |
 | TC-API-02 | REQ-API-01 | erreur | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › un score au-dessus du maximum est refusé avec un message pour le joueur | PASSED | — |
 | TC-API-03 | REQ-API-01 | nominal | contrat (Pact, provider) | `backend/src/test/java/fr/tikigaming/contract/PactProviderTest.java` › verifieLeContratDuFront | PASSED | — |
+| TC-RH-01 | REQ-RH-01 | nominal | unitaire | `frontend/src/games/rush-hour/domain/moves.test.ts` › un véhicule plus loin arrête la voiture juste avant lui | PASSED | — |
+| TC-RH-02 | REQ-RH-01 | erreur | unitaire | `frontend/src/games/rush-hour/domain/session.test.ts` › un glissement impossible est refusé et ne compte pas | PASSED | — |
+| TC-RH-03 | REQ-RH-01 | erreur | unitaire (backend, mutation) | `backend/src/test/java/fr/tikigaming/games/rush_hour/SolutionVerifierTest.java` › replayRefusesAVehicleBackingIntoAnother | PASSED | — |
+| TC-RH-04 | REQ-RH-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › un véhicule glissé trop loin s’arrête contre l’obstacle (R5) | PASSED | — |
+| TC-RH-05 | REQ-RH-02 | nominal | unitaire | `frontend/src/games/rush-hour/domain/session.test.ts` › deux glissements de suite du même véhicule comptent 1 coup | PASSED | — |
+| TC-RH-06 | REQ-RH-02 | erreur | unitaire | `frontend/src/games/rush-hour/domain/session.test.ts` › un aller-retour du même véhicule ne compte aucun coup | PASSED | — |
+| TC-RH-07 | REQ-RH-02 | nominal | unitaire (backend, mutation) | `backend/src/test/java/fr/tikigaming/games/rush_hour/SolutionVerifierTest.java` › replayCountsAMergedMoveFollowedByAnotherVehicle | PASSED | — |
+| TC-RH-08 | REQ-RH-03 | nominal | BDD | `frontend/src/games/rush-hour/features/fin-de-niveau.feature` › Le score d'un niveau dépend des coups en trop et des indices | PASSED | — |
+| TC-RH-09 | REQ-RH-03 | erreur | unitaire (BVA) | `frontend/src/games/rush-hour/domain/score.test.ts` › refuse une partie jouée en moins de coups que le minimum | PASSED | — |
+| TC-RH-10 | REQ-RH-03 | erreur | unitaire (BVA) | `frontend/src/games/rush-hour/domain/score.test.ts` › refuse un nombre d’indices négatif | PASSED | — |
+| TC-RH-11 | REQ-RH-04 | nominal | unitaire (backend, MockMvc) | `backend/src/test/java/fr/tikigaming/games/rush_hour/RushHourControllerTest.java` › returnsTheScoreComputedByTheServer | PASSED | — |
+| TC-RH-12 | REQ-RH-04 | erreur | unitaire (backend, MockMvc) | `backend/src/test/java/fr/tikigaming/games/rush_hour/RushHourControllerTest.java` › refusesACheatedGameWith422 | PASSED | — |
+| TC-RH-13 | REQ-RH-04 | erreur | composant | `frontend/src/games/rush-hour/RushHourGame.test.tsx` › partie refusée par le serveur : le refus s’affiche, sans score ni envoi au classement | PASSED | — |
+| TC-RH-14 | REQ-RH-04 | nominal | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › le niveau 1 se gagne à la souris, et la partie est vérifiée par le serveur | PASSED | — |
+| TC-RH-15 | REQ-RH-05 | nominal | BDD | `frontend/src/games/rush-hour/features/deblocage-des-niveaux.feature` › Un niveau est ouvert quand le précédent est terminé | PASSED | — |
+| TC-RH-16 | REQ-RH-05 | erreur | composant | `frontend/src/games/rush-hour/RushHourGame.test.tsx` › au départ, seul le niveau 1 est ouvert | PASSED | — |
+| TC-RH-17 | REQ-RH-05 | erreur | unitaire (Fakes) | `frontend/src/games/rush-hour/services/completeLevel.test.ts` › record de 800, score $label | PASSED | — |
+| TC-RH-18 | REQ-RH-06 | nominal | unitaire (graine fixe) | `frontend/src/games/rush-hour/domain/generator.test.ts` › $difficulty, graine $seed : plateau valide, résoluble et de la bonne difficulté | PASSED | — |
+| TC-RH-19 | REQ-RH-06 | nominal | unitaire (mutation) | `frontend/src/games/rush-hour/domain/generator.test.ts` › le tirage peut choisir la disposition n°$index | PASSED | — |
+| TC-RH-20 | REQ-RH-06 | erreur | composant | `frontend/src/games/rush-hour/RushHourGame.test.tsx` › un plateau généré se gagne comme un niveau, mais ne compte pas au classement | PASSED | — |
+| TC-RH-21 | REQ-RH-07 | nominal | unitaire | `frontend/src/games/rush-hour/domain/session.test.ts` › l’indice est le prochain coup de la solution la plus courte, et il est compté | PASSED | — |
+| TC-RH-22 | REQ-RH-07 | erreur | unitaire (mutation) | `frontend/src/games/rush-hour/domain/session.test.ts` › plateau sans solution : pas d’indice, et rien n’est compté | PASSED | — |
+| TC-RH-23 | REQ-RH-07 | nominal | composant | `frontend/src/games/rush-hour/RushHourGame.test.tsx` › chaque indice coûte 200 points au score du niveau | PASSED | — |
+| TC-RH-24 | REQ-RH-08 | nominal | composant | `frontend/src/games/rush-hour/RushHourGame.test.tsx` › une flèche dans le sens du véhicule le déplace et compte un coup | PASSED | — |
+| TC-RH-25 | REQ-RH-08 | erreur | composant | `frontend/src/games/rush-hour/RushHourGame.test.tsx` › une flèche dans l’autre axe ne fait rien | PASSED | — |
+| TC-RH-26 | REQ-RH-08 | nominal | unitaire (BVA) | `frontend/src/games/rush-hour/components/drag.test.ts` › décalage de $offset case(s) → $delta | PASSED | BUG-04 |
+| TC-RH-27 | REQ-RH-08 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › un glissé de moins d’une demi-case n’est pas un coup | PASSED | — |
+| TC-RH-28 | REQ-RH-09 | nominal | contrat (front) | `frontend/src/games/rush-hour/contract.test.ts` › le jeu a exactement les niveaux du contrat, case par case | PASSED | — |
+| TC-RH-29 | REQ-RH-09 | nominal | contrat (backend) | `backend/src/test/java/fr/tikigaming/games/rush_hour/ContractTest.java` › serverReplaysTheContractGames | PASSED | — |
+| TC-RH-30 | REQ-RH-09 | erreur | contrat (front) | `frontend/src/games/rush-hour/contract.test.ts` › contrat partagé avec le serveur : parties rejouées | PASSED | — |
+| TC-A11Y-03 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/accessibilite.spec.ts` › ['Rush Hour', '/games/rush-hour', 'Rush Hour'] | PASSED | BUG-05 |
 
 ## Anomalies
 
@@ -107,3 +147,5 @@ P0 immédiate → P3 basse (matrice dans [CONTRIBUTING.md](../CONTRIBUTING.md#an
 | BUG-01 | [Inscription][Pseudo] un « À » décomposé (A + accent combinant) est cité comme un accent seul au lieu de la lettre entière | S3 | P2 | Closed | de8d841, trouvé par fast-check (bea7dd3) |
 | BUG-02 | [Profil][Suppression du compte] le joueur arrive sur /login au lieu de l'accueil avec la confirmation | S2 | P1 | Closed | c8cad48, trouvé par l'E2E |
 | BUG-03 | [Classement][Pic de charge ×10] P95 de 23 s et 8 % d'erreurs au lieu de P95 < 300 ms (environnement local) | S2 | P3 | Open | — |
+| BUG-04 | [Rush Hour][Glisser-déposer] une demi-case vers la gauche ou le haut laisse le véhicule en place au lieu de le déplacer d'une case comme vers la droite ou le bas | S3 | P2 | Closed | 97f4fc24, trouvé par le test rouge de dropDelta (415d7f95) |
+| BUG-05 | [Rush Hour][Choix du niveau] le nom lu des boutons de niveau (« Niveau 1, à jouer ») ne contient pas leur texte visible au lieu de le contenir (WCAG 2.5.3) | S2 | P2 | Closed | 87ad47ab, trouvé par l'audit axe (d8c9b25c) |
