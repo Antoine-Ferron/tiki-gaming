@@ -67,14 +67,14 @@ public final class BangBrowserApplication {
         }
     }
 
-    /** Quatre comptes fixes : connexion par AuthController et sessions/CSRF réels, sans Supabase distant. */
+    /** Cinq créateurs de tables indépendantes : connexion par AuthController et sessions/CSRF réels. */
     @RestController
     @Profile("bang-browser")
     @RequestMapping("/api/test-supabase")
     static class SupabaseFixture {
         @PostMapping("/auth/v1/token")
         Map<String, AuthUser> login(@RequestBody Map<String, String> credentials) {
-            for (int seat = 1; seat <= 4; seat++) {
+            for (int seat = 1; seat <= 5; seat++) {
                 if (("bang" + seat + "@example.test").equals(credentials.get("email"))
                         && "bang-browser-test-only".equals(credentials.get("password"))) {
                     return Map.of("user", new AuthUser(accountId(seat), credentials.get("email")));
@@ -85,7 +85,7 @@ public final class BangBrowserApplication {
 
         @GetMapping("/rest/v1/profiles")
         Map<String, Object> profile(@RequestParam String id) {
-            for (int seat = 1; seat <= 4; seat++) {
+            for (int seat = 1; seat <= 5; seat++) {
                 if (("eq." + accountId(seat)).equals(id)) {
                     return Map.of("id", accountId(seat), "username", "bang_test_" + seat);
                 }
