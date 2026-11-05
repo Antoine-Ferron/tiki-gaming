@@ -10,10 +10,13 @@ const hand = (page: Page) => page.getByRole('region', { name: /^Ta main/ })
 // Les cartes de la main : leur nom accessible décrit l'effet et finit par le coût et le statut.
 const handCards = (page: Page) => hand(page).getByRole('button', { name: /, coût / })
 const myCity = (page: Page) => page.getByRole('list', { name: 'Tes bâtiments' })
+// Premier affichage après une navigation : le serveur de dev de Vite sert alors tous les modules du jeu, ce qui peut
+// dépasser les 5 s par défaut sur un poste lent (WebKit sous Windows notamment). On attend toujours un élément visible.
+const AFTER_NAVIGATION = { timeout: 15_000 }
 
 async function startAsGuest(page: Page) {
   await page.goto('/games/sdv-civilisation')
-  await expect(page.getByRole('heading', { name: 'Choisis ta merveille' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Choisis ta merveille' })).toBeVisible(AFTER_NAVIGATION)
   await page.getByRole('button', { name: `Choisir ${WONDER}` }).click()
   await expect(page.getByRole('heading', { name: /^Ta main · 7 cartes à jouer/ })).toBeVisible()
 }
@@ -76,7 +79,9 @@ test.describe('SDV Civilisation en invité', () => {
     await page.reload()
 
     // Alors la partie est reprise au tour 2, avec la même main et la même cité
-    await expect(page.getByRole('status').filter({ hasText: /Partie reprise : âge .+, tour 2\./ })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: /Partie reprise : âge .+, tour 2\./ })).toBeVisible(
+      AFTER_NAVIGATION,
+    )
     await expect(handCards(page)).toHaveCount(6)
     await expect(myCity(page).getByRole('listitem', { name: new RegExp(`^${BUILT_CARD} :`) })).toBeVisible()
   })
@@ -106,7 +111,7 @@ test.describe('SDV Civilisation en invité', () => {
     const stale = await context.newPage()
     await mockPlatform(stale)
     await stale.goto('/games/sdv-civilisation')
-    await expect(stale.getByRole('heading', { name: /^Ta main · 7 cartes à jouer/ })).toBeVisible()
+    await expect(stale.getByRole('heading', { name: /^Ta main · 7 cartes à jouer/ })).toBeVisible(AFTER_NAVIGATION)
 
     // Quand le premier onglet joue l'Atelier, puis le second rejoue la même carte sur l'ancien tour
     // (chaque onglet est mis au premier plan, comme par le joueur : un onglet caché suspend ses animations)
