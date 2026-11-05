@@ -11,7 +11,9 @@ test.describe('Échecs', () => {
     await page.route('**/api/games/echecs/destinations', (route) =>
       route.fulfill({ json: { destinations: ['e3', 'e4'] } }),
     )
-    await page.route('**/api/games/echecs/moves', (route) => route.fulfill({ json: { fen: AFTER_E4 } }))
+    await page.route('**/api/games/echecs/moves', (route) =>
+      route.fulfill({ json: { fen: AFTER_E4, status: 'ONGOING' } }),
+    )
   })
 
   test('ouvrir le jeu, choisir le pion e2 et le jouer en e4', async ({ page }) => {
