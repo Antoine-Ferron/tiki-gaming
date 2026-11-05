@@ -14,6 +14,8 @@ afterEach(cleanup)
 test('le même siège reste le seul Shérif quand les quatre joueurs se passent le plateau local', () => {
   render(<LocalTable />)
   for (const seat of [1, 2, 3, 4]) {
+    const handoff = screen.queryByRole('button', { name: `Afficher la main de la place ${seat}` })
+    if (handoff) fireEvent.click(handoff)
     const mats = screen.getAllByRole('region', { name: /^Tapis de la place/ })
     const sheriffSeats = new Set(
       mats
@@ -33,5 +35,21 @@ test('le même siège reste le seul Shérif quand les quatre joueurs se passent 
     }
     fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
   }
+  const handoff = screen.queryByRole('button', { name: 'Afficher la main de la place 1' })
+  if (handoff) fireEvent.click(handoff)
   expect(within(screen.getByRole('region', { name: 'Tapis de la place 1' })).getByText('Devant toi')).toBeTruthy()
+})
+
+test('tirer dépense un BANG ! puis masque les mains et rôles privés avant de passer à la cible', () => {
+  render(<LocalTable />)
+  fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+  const hand = within(screen.getByRole('region', { name: 'Ta main' }))
+  expect(hand.getAllByRole('listitem')).toHaveLength(7)
+  fireEvent.click(hand.getAllByRole('button', { name: 'BANG !' })[0])
+  fireEvent.click(screen.getByRole('button', { name: 'Viser la place 2' }))
+  expect(within(screen.getByRole('region', { name: 'Tapis de la place 1' })).getByText('6 en main')).toBeTruthy()
+  expect(screen.queryByRole('region', { name: 'Ta main' })).toBeNull()
+  expect(screen.queryByText('Rôle privé')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Afficher la main de la place 2' }))
+  expect(screen.getByRole('status').textContent).toBe('La place 1 te vise : esquive ou accepte le tir.')
 })
