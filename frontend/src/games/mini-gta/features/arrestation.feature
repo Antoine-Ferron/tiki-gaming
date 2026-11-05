@@ -1,8 +1,8 @@
 # language: fr
 Fonctionnalité: Réapparition en jeu (R7)
-  Pour qu'une arrestation coûte plus cher qu'une mort
   En tant que joueur
   Je veux perdre mes armes quand je suis arrêté, et les garder quand je meurs
+  Afin qu'une arrestation coûte plus cher qu'une mort
 
   Contexte:
     Soit une partie en cours

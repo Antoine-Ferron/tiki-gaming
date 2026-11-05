@@ -29,6 +29,11 @@ afterAll(() => t?.dispose())
 
 beforeEach(() => {
   useGameStore.getState().load(newSave())
+  // Loin de tout objet : les billets oubliés par un scénario précédent expirent (à plus de 200 m du joueur)
+  // et tous les objets fixes déjà ramassés réapparaissent (le plus long délai est de 240 s).
+  const s = game.city.locations.spawn
+  game.player.respawnAt(s.x + 1000, s.y, s.z + 1000)
+  game.pickups.update(240)
   away()
   notes = []
 })

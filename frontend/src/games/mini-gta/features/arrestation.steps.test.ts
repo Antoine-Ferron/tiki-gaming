@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describeFeature, loadFeature } from '@amiceli/vitest-cucumber'
 import { expect, vi } from 'vitest'
-import { addWeapon } from '../systems/weapons'
+import { addWeapon, createInventory } from '../systems/weapons'
 import { createTestGame, type TestGame } from '../game/testing/harness'
 
 vi.mock('../net/api', () => import('../game/testing/fakeApi'))
@@ -25,7 +25,9 @@ describeFeature(feature, ({ Background, Scenario, BeforeAllScenarios, AfterAllSc
   }
 
   Background(({ Given, And }) => {
+    // Chaque scénario repart d'un joueur neuf : rien ne dépend du scénario précédent.
     Given('une partie en cours', () => {
+      t.game.player.inventory = createInventory()
       t.game.player.respawnAt(0, 0.2, 0)
     })
     And("un joueur armé d'un pistolet et d'un fusil d'assaut", () => {

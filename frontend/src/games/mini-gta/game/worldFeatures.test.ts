@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Building } from '../world/city'
 import { Groups } from '../physics/physics'
 import { createTestGame, type TestGame } from './testing/harness'
@@ -17,6 +17,13 @@ beforeAll(async () => {
 }, 60_000)
 
 afterAll(() => t?.dispose())
+
+beforeEach(() => {
+  // Joueur à pied au départ, et plus aucune voiture laissée par un autre scénario (devant une porte, au pied
+  // d'un tremplin) : seuls les véhicules de départ restent.
+  t.reset()
+  for (const v of [...game.vehicles]) if (!v.persistent) game.removeVehicle(v)
+})
 
 const SIDE_OUT: [number, number][] = [
   [0, -1],

@@ -17,8 +17,8 @@ import fr.tikigaming.games.mini_gta.world.RoadNode;
 import fr.tikigaming.games.mini_gta.world.WorldConstants;
 import io.cucumber.java.fr.Alors;
 import io.cucumber.java.fr.Et;
+import io.cucumber.java.fr.Etantdonné;
 import io.cucumber.java.fr.Quand;
-import io.cucumber.java.fr.Soit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -35,25 +35,31 @@ public class CitySteps {
 
     private JsonNode first;
     private JsonNode second;
+    private String from;
     private JsonNode route;
+    private List<Ramp> ramps;
+    private List<Building> ordinary;
+    private List<Building> open;
 
-    @Quand("un premier joueur charge la ville")
-    public void unPremierJoueurChargeLaVille() {
-        first = MiniGtaApi.get("/world");
+    @Etantdonné("deux joueurs")
+    public void deuxJoueurs() {
+        first = null;
+        second = null;
     }
 
-    @Quand("un second joueur charge la ville")
-    public void unSecondJoueurChargeLaVille() {
+    @Quand("chacun charge la ville")
+    public void chacunChargeLaVille() {
+        first = MiniGtaApi.get("/world");
         second = MiniGtaApi.get("/world");
     }
 
-    @Alors("les deux villes sont identiques")
-    public void lesDeuxVillesSontIdentiques() {
+    @Alors("ils reçoivent la même ville")
+    public void ilsRecoiventLaMemeVille() {
         assertThat(second).isEqualTo(first);
     }
 
-    @Et("la ville est générée avec la graine {int}")
-    public void laVilleEstGenereeAvecLaGraine(int seed) {
+    @Et("cette ville vient de la graine {int}")
+    public void cetteVilleVientDeLaGraine(int seed) {
         assertThat(first.get("seed").asLong()).isEqualTo(seed);
     }
 
@@ -62,9 +68,14 @@ public class CitySteps {
         assertThat(first.get("locations").get("missionGivers").size()).isEqualTo(count);
     }
 
-    @Quand("^il demande l'itinéraire de \\((\\S+), (\\S+)\\) à \\((\\S+), (\\S+)\\)$")
-    public void ilDemandeLItineraire(String fromX, String fromZ, String toX, String toZ) {
-        route = MiniGtaApi.get("/route?fromX=" + fromX + "&fromZ=" + fromZ + "&toX=" + toX + "&toZ=" + toZ);
+    @Etantdonné("un joueur au point \\({int}, {int})")
+    public void unJoueurAuPoint(int x, int z) {
+        from = x + "&fromZ=" + z;
+    }
+
+    @Quand("^il demande au GPS d'aller en \\((\\S+), (\\S+)\\)$")
+    public void ilDemandeAuGps(String toX, String toZ) {
+        route = MiniGtaApi.get("/route?fromX=" + from + "&toX=" + toX + "&toZ=" + toZ);
     }
 
     @Alors("l'itinéraire passe par plusieurs points")
@@ -79,15 +90,31 @@ public class CitySteps {
         assertThat(last.get("z").asDouble()).isEqualTo(z);
     }
 
-    @Soit("la ville du jeu")
+    @Alors("le GPS refuse la destination")
+    public void leGpsRefuseLaDestination() {
+        MiniGtaApi.assertRefused(400);
+    }
+
+    @Etantdonné("la ville du jeu")
     public void laVilleDuJeu() {
         if (city == null) city = CityGenerator.generate(MiniGtaWorld.SEED);
     }
 
-    @Alors("la ville a au moins un tremplin en {word}")
-    public void laVilleAUnTremplinEn(String material) {
+    @Quand("on recense ses tremplins")
+    public void onRecenseSesTremplins() {
+        ramps = city.ramps();
+    }
+
+    @Quand("on recense ses bâtiments ouverts")
+    public void onRecenseSesBatimentsOuverts() {
+        ordinary = city.buildings().stream().filter(b -> b.special == null).toList();
+        open = ordinary.stream().filter(b -> b.doorSide != null).toList();
+    }
+
+    @Alors("au moins un tremplin est en {word}")
+    public void auMoinsUnTremplinEstEn(String material) {
         assertThat(MATERIALS).containsKey(material);
-        assertThat(city.ramps()).anyMatch(r -> r.kind() == MATERIALS.get(material));
+        assertThat(ramps).anyMatch(r -> r.kind() == MATERIALS.get(material));
     }
 
     private static double reach(Ramp r) {
@@ -97,7 +124,7 @@ public class CitySteps {
     @Alors("aucun tremplin n'empiète sur une route empruntée par le trafic")
     public void aucunTremplinSurUneRoute() {
         RoadGraph g = city.roads().graph();
-        for (Ramp r : city.ramps()) {
+        for (Ramp r : ramps) {
             for (RoadEdge e : g.edges) {
                 RoadNode a = g.nodes.get(e.a());
                 RoadNode b = g.nodes.get(e.b());
@@ -110,7 +137,7 @@ public class CitySteps {
 
     @Et("aucun tremplin ne chevauche un bâtiment")
     public void aucunTremplinSurUnBatiment() {
-        for (Ramp r : city.ramps()) {
+        for (Ramp r : ramps) {
             for (Building b : city.buildings()) {
                 double margin = (b.rot == 0 ? 0 : Math.max(b.hw, b.hd)) + reach(r);
                 boolean overlaps = Math.abs(b.x - r.x()) < b.hw + margin && Math.abs(b.z - r.z()) < b.hd + margin;
@@ -123,32 +150,24 @@ public class CitySteps {
 
     @Et("aucun tremplin n'est dans l'eau")
     public void aucunTremplinDansLEau() {
-        assertThat(city.ramps()).allMatch(r -> r.x() - WorldConstants.shoreX(r.z()) > 10);
+        assertThat(ramps).allMatch(r -> r.x() - WorldConstants.shoreX(r.z()) > 10);
     }
 
-    private static List<Building> ordinary() {
-        return city.buildings().stream().filter(b -> b.special == null).toList();
-    }
-
-    private static List<Building> open() {
-        return ordinary().stream().filter(b -> b.doorSide != null).toList();
-    }
-
-    @Alors("entre {int} % et {int} % des bâtiments ordinaires ont un rez-de-chaussée accessible")
+    @Alors("entre {int} % et {int} % des bâtiments ordinaires sont ouverts")
     public void unBatimentSurCinqEstOuvert(int min, int max) {
-        double share = 100.0 * open().size() / ordinary().size();
+        double share = 100.0 * open.size() / ordinary.size();
         assertThat(share).isBetween((double) min, (double) max);
     }
 
     @Et("des maisons comme des immeubles sont ouverts")
     public void desMaisonsCommeDesImmeubles() {
-        assertThat(open()).anyMatch(b -> b.style == FacadeStyle.HOUSE);
-        assertThat(open()).anyMatch(b -> b.style != FacadeStyle.HOUSE);
+        assertThat(open).anyMatch(b -> b.style == FacadeStyle.HOUSE);
+        assertThat(open).anyMatch(b -> b.style != FacadeStyle.HOUSE);
     }
 
-    @Alors("chaque bâtiment ouvert a une porte du côté de la rue")
+    @Alors("chacun a sa porte du côté de la rue")
     public void chaqueBatimentOuvertAUnePorteCoteRue() {
-        for (Building b : open()) {
+        for (Building b : open) {
             Block block = city.blocks().stream()
                     .filter(bl -> bl.containsStrict(b.x, b.z))
                     .findFirst()
@@ -162,9 +181,9 @@ public class CitySteps {
         }
     }
 
-    @Et("le rez-de-chaussée de chaque bâtiment ouvert fait au moins {double} m de haut, sans dépasser le bâtiment")
+    @Et("le rez-de-chaussée de chacun fait au moins {double} m de haut, sans dépasser le bâtiment")
     public void leRezDeChausseeEstAccessible(double minHeight) {
-        for (Building b : open()) {
+        for (Building b : open) {
             assertThat(b.floorHeight).as("rez-de-chaussée du bâtiment %d", b.id).isBetween(minHeight, b.h);
         }
     }

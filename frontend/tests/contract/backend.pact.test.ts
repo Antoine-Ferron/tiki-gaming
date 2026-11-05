@@ -11,6 +11,8 @@ import { serverVerifier } from '@/games/rush-hour/services/levelVerifier'
 import { ApiError, apiDelete } from '@/lib/api'
 import { clearSession, fetchSession } from '@/lib/session'
 import { accept, dodge, fire, getView, joinTable } from '@/games/bang/api'
+import { newSave } from '@/games/mini-gta/domain/save'
+import { api as miniGta } from '@/games/mini-gta/net/api'
 
 const { like, eachLike, integer, regex } = MatchersV3
 
@@ -346,6 +348,107 @@ describe('contrat front → backend', () => {
           const refusal = await play(START, 'e2', 'e5').catch((err: unknown) => err)
           expect(refusal).toBeInstanceOf(ApiError)
           expect(refusal).toMatchObject({ status: 422 })
+        })
+    })
+  })
+
+  describe('API de MiniGTA (sans état : le front envoie la progression, le serveur applique les règles d’argent)', () => {
+    // Nouvelle partie : 500 $, rien de gagné, inventaire de départ (null), aucune mission.
+    const progress = newSave()
+    const progressBody = (money: number, totalEarned: number) =>
+      like({ ...progress, money: integer(money), totalEarned: integer(totalEarned) })
+
+    test('le catalogue des missions donne pour chacune son identifiant, son titre et sa récompense', async () => {
+      await pact
+        .addInteraction()
+        .given('aucun joueur n’est connecté')
+        .uponReceiving('la lecture du catalogue des missions de MiniGTA')
+        .withRequest('GET', '/api/games/mini-gta/missions')
+        .willRespondWith(200, (res) =>
+          res.jsonBody(
+            eachLike({
+              id: like('express'),
+              title: like('Colis express'),
+              reward: integer(800),
+              giver: { x: like(39.0), z: like(268.0) },
+            }),
+          ),
+        )
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          const missions = await miniGta.missions()
+          expect(missions[0]).toMatchObject({ id: 'express', reward: 800 })
+        })
+    })
+
+    test('une mission réussie est payée et renvoie la progression à sauvegarder', async () => {
+      await pact
+        .addInteraction()
+        .given('aucun joueur n’est connecté')
+        .uponReceiving('la réussite de la mission « Colis express » sur une nouvelle partie')
+        .withRequest('POST', '/api/games/mini-gta/missions/express/complete', (req) =>
+          req.headers({ 'Content-Type': 'application/json', ...csrfHeader }).jsonBody({ progress }),
+        )
+        .willRespondWith(200, (res) =>
+          res.jsonBody({ rewarded: true, reward: integer(800), progress: progressBody(1300, 800) }),
+        )
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          const r = await miniGta.completeMission(progress, 'express')
+          expect(r).toMatchObject({ rewarded: true, reward: 800, progress: { money: 1300, totalEarned: 800 } })
+        })
+    })
+
+    test('un achat à l’armurerie débite le prix et donne les munitions', async () => {
+      await pact
+        .addInteraction()
+        .given('aucun joueur n’est connecté')
+        .uponReceiving('l’achat d’un pistolet avec 500 $')
+        .withRequest('POST', '/api/games/mini-gta/shop/purchase', (req) =>
+          req
+            .headers({ 'Content-Type': 'application/json', ...csrfHeader })
+            .jsonBody({ progress, item: 'weapon', weapon: 'pistol' }),
+        )
+        .willRespondWith(200, (res) =>
+          res.jsonBody({ ok: true, price: integer(300), rounds: integer(24), progress: progressBody(200, 0) }),
+        )
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          const r = await miniGta.purchase(progress, 'weapon', 'pistol')
+          expect(r).toMatchObject({ ok: true, price: 300, rounds: 24, progress: { money: 200 } })
+        })
+    })
+
+    test('une réapparition après une mort prélève les frais d’hôpital', async () => {
+      await pact
+        .addInteraction()
+        .given('aucun joueur n’est connecté')
+        .uponReceiving('la réapparition après une mort avec 500 $')
+        .withRequest('POST', '/api/games/mini-gta/respawn', (req) =>
+          req.headers({ 'Content-Type': 'application/json', ...csrfHeader }).jsonBody({ progress, reason: 'dead' }),
+        )
+        .willRespondWith(200, (res) => res.jsonBody({ fee: integer(100), progress: progressBody(400, 0) }))
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          const r = await miniGta.respawn(progress, 'dead')
+          expect(r).toMatchObject({ fee: 100, progress: { money: 400 } })
+        })
+    })
+
+    test('une progression invalide est refusée (400)', async () => {
+      await pact
+        .addInteraction()
+        .given('aucun joueur n’est connecté')
+        .uponReceiving('une réapparition avec un solde négatif')
+        .withRequest('POST', '/api/games/mini-gta/respawn', (req) =>
+          req
+            .headers({ 'Content-Type': 'application/json', ...csrfHeader })
+            .jsonBody({ progress: { ...progress, money: -1 }, reason: 'dead' }),
+        )
+        .willRespondWith(400, (res) => res.jsonBody({ error: like('Le solde ne peut pas être négatif.') }))
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          await expect(miniGta.respawn({ ...progress, money: -1 }, 'dead')).rejects.toBeInstanceOf(ApiError)
         })
     })
   })
