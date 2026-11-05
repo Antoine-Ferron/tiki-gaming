@@ -44,7 +44,9 @@
 
 ## 3. Diagnostic
 
-**Le code smell est un faux positif.** `seededRandom` est notre hasard reproductible pour les tests (algorithme mulberry32). Le `| 0` ne sert pas à arrondir : il ramène le nombre à un entier sur **32 bits**, comme le demande l'algorithme. Avec `Math.trunc`, le nombre grandirait sans limite et les suites de nombres changeraient. Les plateaux générés dans les tests ne seraient plus les mêmes. On ne suit donc pas cette règle, et on explique pourquoi.
+**Le code smell est un faux positif.** `seededRandom` est notre hasard reproductible pour les tests (algorithme mulberry32). Le `| 0` ne sert pas à arrondir : il ramène l'état à un entier sur **32 bits**, qui « reboucle » au-delà de 2 147 483 647 (`2147483647 + 1 | 0` donne `-2147483648`), comme le demande l'algorithme. `Math.trunc` ne fait qu'enlever les décimales : l'état grandirait de 1,8 milliard à chaque tirage.
+
+Vérification faite en comparant les deux versions : les nombres tirés restent **identiques pendant 4 917 759 tirages**, parce que les opérations suivantes de l'algorithme reramènent tout à 32 bits. Mais au 4 917 760ᵉ tirage, l'état dépasse 2⁵³, le plus grand entier qu'un nombre JavaScript représente exactement : les additions sont arrondies et la suite devient fausse. Ce serait donc un **bug silencieux**, invisible dans nos tests (qui tirent quelques milliers de nombres). On ne suit pas cette règle, et on l'explique dans le code.
 
 **Le domaine est bien couvert, l'interface moins.** Les règles du jeu (déplacements, solveur, score, génération) et le back sont presque entièrement testés, parce qu'ils ont été écrits en TDD. Les trous sont dans le code d'interface :
 

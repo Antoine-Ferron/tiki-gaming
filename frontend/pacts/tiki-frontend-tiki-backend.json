@@ -210,6 +210,180 @@
       "type": "Synchronous/HTTP"
     },
     {
+      "description": "la vérification d’une partie gagnée du niveau 1 de Rush Hour",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "hints": 0,
+            "moves": [
+              {
+                "delta": 3,
+                "vehicle": "A"
+              },
+              {
+                "delta": -1,
+                "vehicle": "H"
+              },
+              {
+                "delta": 3,
+                "vehicle": "X"
+              }
+            ]
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/rush-hour/levels/1/results"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "moves": 3,
+            "optimal": 3,
+            "score": 1000
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.moves": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.optimal": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.score": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "la vérification d’une partie truquée du niveau 1 de Rush Hour",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "hints": 0,
+            "moves": [
+              {
+                "delta": 3,
+                "vehicle": "X"
+              }
+            ]
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/rush-hour/levels/1/results"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "error": "Partie refusée : Déplacement impossible : X de 3"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 422
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
       "description": "le coup e2-e4 depuis la position de départ",
       "pending": false,
       "providerStates": [
