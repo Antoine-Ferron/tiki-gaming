@@ -905,3 +905,105 @@ test.each([false, true])(
     expect(screen.queryByRole('alert')).toBeNull()
   },
 )
+
+test.each([0, 3])(
+  'le premier clic défausse la carte %i déjà proposée avant le 204 de fin, sans attendre sa relecture',
+  async (selectedIndex) => {
+    const cards = Array.from({ length: 7 }, (_, index) => ({ id: `carte-${index}`, type: 'BANG' }))
+    const drawing: GameView = {
+      ...fourPlayerView(),
+      currentSeat: 1,
+      phase: 'DRAW',
+      role: 'SHERIFF',
+      hand: cards.slice(0, 5),
+      players: fourPlayerView().players.map((p) => ({
+        ...p,
+        role: p.seat === 1 ? 'SHERIFF' : undefined,
+        ...(p.seat === 1 ? { health: 5, maxHealth: 5, handCount: 5 } : {}),
+      })),
+    }
+    const playing: GameView = {
+      ...drawing,
+      phase: 'PLAY',
+      hand: cards,
+      players: drawing.players.map((p) => (p.seat === 1 ? { ...p, handCount: 7 } : p)),
+    }
+    const discarding: GameView = { ...playing, phase: 'DISCARD' }
+    let view = drawing
+    let acknowledgeEnd!: (response: Response) => void
+    const endResponse = new Promise<Response>((resolve) => {
+      acknowledgeEnd = resolve
+    })
+    let deliverEndRead!: (response: Response) => void
+    const endRead = new Promise<Response>((resolve) => {
+      deliverEndRead = resolve
+    })
+    let reads = 0
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/state')) {
+        reads++
+        return reads === 4 ? endRead : Response.json(view)
+      }
+      if (url.endsWith('/turn/draw')) {
+        view = playing
+        return new Response(null, { status: 204 })
+      }
+      if (url.endsWith('/turn/end')) {
+        view = discarding
+        return endResponse
+      }
+      if (url.includes('/turn/discard/')) {
+        const id = url.slice(url.lastIndexOf('/') + 1)
+        view = {
+          ...view,
+          hand: view.hand.filter((card) => card.id !== id),
+          players: view.players.map((p) => (p.seat === 1 ? { ...p, handCount: 6 } : p)),
+        }
+        return new Response(null, { status: 204 })
+      }
+      return Response.json({ code: drawing.code, seat: 1, playerCount: 4 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    vi.useFakeTimers()
+    render(<OnlineTable accountId="compte-test" />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(reads).toBe(3)
+    expect(screen.getByRole('status').textContent).toBe("Tu as trop de cartes : défausse-en jusqu'à 5.")
+    const hand = screen.getByRole('region', { name: 'Ta main' })
+    expect(within(hand).getAllByRole('listitem')).toHaveLength(7)
+    await act(async () => {
+      acknowledgeEnd(new Response(null, { status: 204 }))
+    })
+    expect(reads).toBe(4)
+    await act(async () => {
+      fireEvent.click(within(hand).getAllByRole('button', { name: 'BANG !' })[selectedIndex])
+    })
+    await act(async () => {
+      deliverEndRead(Response.json(discarding))
+    })
+
+    const chosenId = cards[selectedIndex].id
+    const discards = fetch.mock.calls.filter(([url]) => url.includes('/turn/discard/'))
+    expect(discards).toHaveLength(1)
+    expect(discards[0]).toEqual([
+      `/api/games/bang/tables/ABC123/turn/discard/${chosenId}`,
+      expect.objectContaining({ method: 'POST' }),
+    ])
+    expect(view).toMatchObject({ currentSeat: 1, phase: 'DISCARD' })
+    expect(view.hand).toEqual(cards.filter((card) => card.id !== chosenId))
+    expect(within(screen.getByRole('region', { name: 'Ta main' })).getAllByRole('listitem')).toHaveLength(6)
+    expect(screen.getByRole('status').textContent).toBe("Tu as trop de cartes : défausse-en jusqu'à 5.")
+    expect(screen.queryByRole('alert')).toBeNull()
+  },
+)

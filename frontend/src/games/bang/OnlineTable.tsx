@@ -100,7 +100,9 @@ export function OnlineTable({ accountId }: { accountId: string }) {
       await action()
       if (command === 'end') {
         // Une fin acceptée invalide les lectures commencées avant son acquittement.
-        sending.current.afterRead = latestRead.current
+        const current = latestView.current
+        if (current?.phase === view?.phase && current?.currentSeat === view?.currentSeat)
+          sending.current.afterRead = latestRead.current
         appliedRead.current = latestRead.current
       }
       setError(null)
