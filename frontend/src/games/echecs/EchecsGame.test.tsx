@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { destinations, play } from './api'
 import { ApiError } from '@/lib/api'
+import { FakeRealtime } from '../testing/fakes'
+import type { GameContext } from '../types'
 import { START_FEN } from './board'
 import EchecsGame from './EchecsGame'
 
@@ -18,9 +20,38 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
+const AFTER_E4 = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
+
+/** Faux contexte de jeu (comme pour Mastermind) : aucune sauvegarde existante au départ. */
+function createContext(): GameContext {
+  return {
+    gameSlug: 'echecs',
+    player: null,
+    isGuest: true,
+    submitScore: vi.fn().mockResolvedValue(false),
+    getLeaderboard: vi.fn().mockResolvedValue([]),
+    getMyBest: vi.fn().mockResolvedValue(null),
+    loadSave: vi.fn().mockResolvedValue(null),
+    save: vi.fn().mockResolvedValue(undefined),
+    clearSave: vi.fn().mockResolvedValue(undefined),
+    realtime: new FakeRealtime(),
+  }
+}
+
+function renderGame(ctx: GameContext = createContext()) {
+  render(<EchecsGame ctx={ctx} />)
+  return ctx
+}
+
+/** Choisit la pièce `from` puis joue en `to` (le stub `destinations` doit proposer `to`). */
+async function playMove(from: string, to: RegExp) {
+  await userEvent.click(screen.getByRole('button', { name: new RegExp(`^${from},`) }))
+  await userEvent.click(await screen.findByRole('button', { name: to }))
+}
+
 test("l'échiquier affiche 64 cases, chacune utilisable comme un bouton (règle E1, accessibilité)", () => {
   // Arrange + Act
-  render(<EchecsGame />)
+  renderGame()
 
   // Assert
   const board = screen.getByRole('group', { name: 'Échiquier' })
@@ -29,7 +60,7 @@ test("l'échiquier affiche 64 cases, chacune utilisable comme un bouton (règle 
 
 test('la case h1 est claire et la case a1 est foncée (règle E3)', () => {
   // Arrange + Act
-  render(<EchecsGame />)
+  renderGame()
 
   // Assert
   expect(screen.getByRole('button', { name: /^h1,/ })).toHaveClass('echecs-square-light')
@@ -38,7 +69,7 @@ test('la case h1 est claire et la case a1 est foncée (règle E3)', () => {
 
 test('la partie commence sur la position de départ : chaque case annonce sa pièce (règle E4)', () => {
   // Arrange + Act
-  render(<EchecsGame />)
+  renderGame()
 
   // Assert : nom accessible pour un lecteur d'écran, symbole visible pour les autres
   expect(screen.getByRole('button', { name: 'e1, roi blanc' })).toHaveTextContent('♚')
@@ -50,7 +81,7 @@ test('la partie commence sur la position de départ : chaque case annonce sa pi�
 test('cliquer une pièce demande ses cases au serveur et les met en évidence', async () => {
   // Arrange : le stub répond comme le serveur pour le pion e2
   vi.mocked(destinations).mockResolvedValue(['e3', 'e4'])
-  render(<EchecsGame />)
+  renderGame()
 
   // Act
   await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
@@ -67,8 +98,8 @@ test('cliquer une case mise en évidence joue le coup et affiche la position ren
   // Arrange
   const afterE4 = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
   vi.mocked(destinations).mockResolvedValue(['e3', 'e4'])
-  vi.mocked(play).mockResolvedValue(afterE4)
-  render(<EchecsGame />)
+  vi.mocked(play).mockResolvedValue({ fen: afterE4, status: 'ONGOING' })
+  renderGame()
   await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
 
   // Act
@@ -85,7 +116,7 @@ test('un coup refusé par le serveur affiche son message et laisse la position i
   // Arrange : le stub simule le refus des règles (422)
   vi.mocked(destinations).mockResolvedValue(['e3', 'e4'])
   vi.mocked(play).mockRejectedValue(new ApiError(422, 'Coup refusé : Case inaccessible pour la pièce en e2 : e4'))
-  render(<EchecsGame />)
+  renderGame()
   await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
 
   // Act
@@ -99,8 +130,8 @@ test('un coup refusé par le serveur affiche son message et laisse la position i
 test('le trait est annoncé : aux Blancs au départ, aux Noirs après un coup blanc', async () => {
   // Arrange
   vi.mocked(destinations).mockResolvedValue(['e4'])
-  vi.mocked(play).mockResolvedValue('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1')
-  render(<EchecsGame />)
+  vi.mocked(play).mockResolvedValue({ fen: AFTER_E4, status: 'ONGOING' })
+  renderGame()
   expect(screen.getByRole('status')).toHaveTextContent('Aux Blancs de jouer')
 
   // Act
@@ -112,7 +143,7 @@ test('le trait est annoncé : aux Blancs au départ, aux Noirs après un coup bl
 })
 
 test('chaque type de pièce a son nom accessible (cavalier, fou, tour)', () => {
-  render(<EchecsGame />)
+  renderGame()
 
   expect(screen.getByRole('button', { name: 'b1, cavalier blanc' })).toHaveTextContent('♞')
   expect(screen.getByRole('button', { name: 'c8, fou noir' })).toHaveTextContent('♝')
@@ -120,7 +151,7 @@ test('chaque type de pièce a son nom accessible (cavalier, fou, tour)', () => {
 })
 
 test('cliquer une case vide sans pièce choisie ne sollicite pas le serveur', async () => {
-  render(<EchecsGame />)
+  renderGame()
 
   await userEvent.click(screen.getByRole('button', { name: 'e4, case vide' }))
 
@@ -131,7 +162,7 @@ test('cliquer une case vide sans pièce choisie ne sollicite pas le serveur', as
 test("une case vide qui n'est pas accessible ne joue aucun coup", async () => {
   // Arrange : e2 choisi, ses cases sont e3 et e4
   vi.mocked(destinations).mockResolvedValue(['e3', 'e4'])
-  render(<EchecsGame />)
+  renderGame()
   await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
   await screen.findByRole('button', { name: 'e4, case vide' })
 
@@ -146,7 +177,7 @@ test('le message d’erreur disparaît dès que le joueur réessaie', async () =
   // Arrange : un premier coup refusé
   vi.mocked(destinations).mockResolvedValue(['e4'])
   vi.mocked(play).mockRejectedValueOnce(new ApiError(422, 'Coup refusé : essai'))
-  render(<EchecsGame />)
+  renderGame()
   await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
   await userEvent.click(await screen.findByRole('button', { name: 'e4, case vide' }))
   expect(await screen.findByRole('alert')).toBeInTheDocument()
@@ -160,7 +191,7 @@ test('le message d’erreur disparaît dès que le joueur réessaie', async () =
 
 test('les pièces sont colorées selon leur camp : blanches en blanc, noires en noir', () => {
   // Arrange + Act
-  render(<EchecsGame />)
+  renderGame()
 
   // Assert : même symbole plein pour les deux camps, la couleur vient de la classe
   const whiteKing = within(screen.getByRole('button', { name: 'e1, roi blanc' })).getByText('♚')
@@ -169,4 +200,60 @@ test('les pièces sont colorées selon leur camp : blanches en blanc, noires en 
   expect(blackKing).toHaveClass('echecs-piece-black')
   // décoratif : le nom de la case est déjà lu par le lecteur d'écran
   expect(whiteKing).toHaveAttribute('aria-hidden', 'true')
+})
+
+test('après un coup, la case de départ et la case d’arrivée restent marquées (dernier coup joué)', async () => {
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockResolvedValue({ fen: AFTER_E4, status: 'ONGOING' })
+  renderGame()
+
+  await playMove('e2', /^e4,/)
+
+  expect(await screen.findByRole('button', { name: 'e4, pion blanc' })).toHaveClass('echecs-square-last')
+  expect(screen.getByRole('button', { name: 'e2, case vide' })).toHaveClass('echecs-square-last')
+})
+
+test('un roi en échec est annoncé et sa case est mise en évidence (règle P3)', async () => {
+  // Arrange : le serveur répond que les Noirs sont en échec
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockResolvedValue({ fen: AFTER_E4, status: 'CHECK' })
+  renderGame()
+
+  // Act
+  await playMove('e2', /^e4,/)
+
+  // Assert
+  expect(await screen.findByText('Échec ! Aux Noirs de jouer')).toHaveRole('status')
+  expect(screen.getByRole('button', { name: 'e8, roi noir' })).toHaveClass('echecs-square-check')
+})
+
+test('un échec et mat termine la partie : résultat affiché, plus aucun coup possible (F1, F8, P7)', async () => {
+  // Arrange : mat du lion, les Blancs sont mats (trait aux Blancs)
+  const mate = 'rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3'
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockResolvedValue({ fen: mate, status: 'CHECKMATE' })
+  renderGame()
+  await playMove('e2', /^e4,/)
+  expect(await screen.findByText('Échec et mat : les Noirs gagnent (0-1)')).toHaveRole('status')
+  vi.mocked(destinations).mockClear()
+
+  // Act : on essaie de jouer encore
+  await userEvent.click(screen.getByRole('button', { name: 'a2, pion blanc' }))
+
+  // Assert
+  expect(destinations).not.toHaveBeenCalled()
+})
+
+test.each([
+  ['STALEMATE', 'Pat : partie nulle (½-½)'],
+  ['DRAW_INSUFFICIENT_MATERIAL', 'Matériel insuffisant : partie nulle (½-½)'],
+  ['DRAW_FIFTY_MOVES', 'Règle des 50 coups : partie nulle (½-½)'],
+] as const)('la nulle %s est annoncée avec sa raison (F2, F3, F5)', async (status, message) => {
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockResolvedValue({ fen: AFTER_E4, status })
+  renderGame()
+
+  await playMove('e2', /^e4,/)
+
+  expect(await screen.findByText(message)).toHaveRole('status')
 })
