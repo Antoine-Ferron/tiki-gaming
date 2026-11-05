@@ -36,7 +36,7 @@ public class DameController {
     @ApiResponse(responseCode = "201", description = "Rencontre créée")
     ResponseEntity<DameGameView> start(@Valid @RequestBody DameRequests.Start body, HttpServletRequest request) {
         DameGameView view = service.start(request.getSession(true), body.whiteName(), body.blackName());
-        return ResponseEntity.created(URI.create("/api/games/dame/matches/" + (view == null ? "pending" : view.id())))
+        return ResponseEntity.created(URI.create("/api/games/dame/matches/" + view.id()))
                 .body(view);
     }
 

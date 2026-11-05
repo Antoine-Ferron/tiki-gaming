@@ -8,10 +8,12 @@ import fr.tikigaming.games.dame.Piece;
 import fr.tikigaming.games.dame.Player;
 import fr.tikigaming.games.dame.Position;
 import fr.tikigaming.games.dame.matches.Match;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /** Vue immuable construite par le serveur ; aucun plateau reçu du navigateur. */
@@ -29,17 +31,28 @@ public record DameGameView(
         String finishedAt) {
 
     public DameGameView {
+        Objects.requireNonNull(id);
+        Objects.requireNonNull(board);
+        Objects.requireNonNull(currentPlayer);
+        Objects.requireNonNull(status);
         legalMoves = List.copyOf(legalMoves);
     }
 
-    public record PieceView(int row, int column, Player owner, boolean king) {}
+    @Schema(name = "DamePieceView")
+    public record PieceView(int row, int column, Player owner, boolean king) {
+        public PieceView {
+            Objects.requireNonNull(owner);
+        }
+    }
 
+    @Schema(name = "DameBoardView")
     public record BoardView(int rows, int columns, List<PieceView> pieces) {
         public BoardView {
             pieces = List.copyOf(pieces);
         }
     }
 
+    @Schema(name = "DameLegalMove")
     public record MoveView(Position from, List<Position> landings) {
         public MoveView {
             landings = List.copyOf(landings);

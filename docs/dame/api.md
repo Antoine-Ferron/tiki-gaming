@@ -68,3 +68,14 @@ sérialisable, la concurrence de deux onglets, les versions périmées, les deux
 gagnants, les pannes avant écriture et les réponses perdues après écriture.
 Les positions de fin de partie sont uniquement des fixtures de test ; aucune
 route d'injection de plateau n'est créée.
+
+## GREEN
+
+Les mêmes **58 cas passent** sans changement de leurs assertions : création et
+lecture privées à la session, vrais coups du moteur, contrôle de version, un seul
+coup appliqué entre deux onglets, deux gagnants et reprise après panne.
+L'état serveur est un texte JSON ; le résultat est enregistré avant la session.
+
+Le seul test partagé adapté est `OpenApiDocsTest` : total de chemins 35 → 38 et
+ajout du tag `dame` à la liste admise. Les assertions des autres jeux restent
+inchangées. Le test Swagger propre à Dames vérifie ses trois résumés et ses erreurs.

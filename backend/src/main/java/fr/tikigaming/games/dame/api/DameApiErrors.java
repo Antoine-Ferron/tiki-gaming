@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(assignableTypes = DameController.class)
 public class DameApiErrors {
     @ExceptionHandler(MatchStorageException.class)
-    ResponseEntity<ApiError> storageUnavailable(MatchStorageException error) {
+    ResponseEntity<ApiError> storageUnavailable() {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(new ApiError("La rencontre n'a pas pu être enregistrée. Réessaie.", Map.of()));
     }
