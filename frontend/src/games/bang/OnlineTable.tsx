@@ -76,6 +76,13 @@ export function OnlineTable({ accountId }: { accountId: string }) {
 
   /** Lance une action, affiche son erreur éventuelle, puis relit la vue. */
   async function run(command: string, action: () => Promise<unknown>) {
+    const view = latestView.current
+    if (
+      command === 'end' &&
+      view?.phase === 'DISCARD' &&
+      view.hand.length > (view.players.find((player) => player.seat === view.seat)?.health ?? 0)
+    )
+      return
     if (acting.current !== null) {
       if (
         acting.current === 'sending' &&
@@ -91,6 +98,11 @@ export function OnlineTable({ accountId }: { accountId: string }) {
     sending.current = { command, afterRead: latestRead.current }
     try {
       await action()
+      if (command === 'end') {
+        // Une fin acceptée invalide les lectures commencées avant son acquittement.
+        sending.current.afterRead = latestRead.current
+        appliedRead.current = latestRead.current
+      }
       setError(null)
     } catch (err) {
       setError(messageOf(err))

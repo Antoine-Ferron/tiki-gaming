@@ -787,3 +787,121 @@ test.each([1, 2])(
     expect(within(screen.getByRole('region', { name: 'Ta main' })).getAllByRole('listitem')).toHaveLength(7)
   },
 )
+
+test.each([false, true])(
+  'le double clic reste unique avec une vue DISCARD déjà reçue=%s, puis la défausse autorise la fin suivante',
+  async (freshBetweenClicks) => {
+    const cards = Array.from({ length: 7 }, (_, index) => ({ id: `carte-${index}`, type: 'BANG' }))
+    const drawing: GameView = {
+      ...fourPlayerView(),
+      currentSeat: 1,
+      phase: 'DRAW',
+      role: 'SHERIFF',
+      hand: cards.slice(0, 5),
+      players: fourPlayerView().players.map((p) => ({
+        ...p,
+        role: p.seat === 1 ? 'SHERIFF' : undefined,
+        ...(p.seat === 1 ? { health: 5, maxHealth: 5, handCount: 5 } : {}),
+      })),
+    }
+    const playing: GameView = {
+      ...drawing,
+      phase: 'PLAY',
+      hand: cards,
+      players: drawing.players.map((p) => (p.seat === 1 ? { ...p, handCount: 7 } : p)),
+    }
+    let view = drawing
+    let acceptEnd!: (response: Response) => void
+    const endResponse = new Promise<Response>((resolve) => {
+      acceptEnd = resolve
+    })
+    let deliverStale!: (response: Response) => void
+    const staleRead = new Promise<Response>((resolve) => {
+      deliverStale = resolve
+    })
+    let deliverFresh!: (response: Response) => void
+    const freshRead = new Promise<Response>((resolve) => {
+      deliverFresh = resolve
+    })
+    let reads = 0
+    let ends = 0
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/state')) {
+        reads++
+        if (reads === 3) return staleRead
+        if (reads === 4) return freshRead
+        return Response.json(view)
+      }
+      if (url.endsWith('/turn/draw')) {
+        view = playing
+        return new Response(null, { status: 204 })
+      }
+      if (url.endsWith('/turn/end')) {
+        ends++
+        if (ends === 1) return endResponse
+        if (view.phase === 'DISCARD' && view.hand.length > 5)
+          return Response.json({ error: 'Tu dois encore te défausser.' }, { status: 409 })
+        view = { ...view, phase: 'DRAW', currentSeat: 2 }
+        return new Response(null, { status: 204 })
+      }
+      if (url.includes('/turn/discard/')) {
+        view = { ...view, hand: view.hand.filter((card) => !url.endsWith('/' + card.id)) }
+        return new Response(null, { status: 204 })
+      }
+      return Response.json({ code: drawing.code, seat: 1, playerCount: 4 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    vi.useFakeTimers()
+    render(<OnlineTable accountId="compte-test" />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(reads).toBe(3)
+    view = { ...playing, phase: 'DISCARD' }
+    await act(async () => {
+      acceptEnd(new Response(null, { status: 204 }))
+    })
+    expect(reads).toBe(4)
+    await act(async () => {
+      deliverStale(Response.json(playing))
+    })
+    if (freshBetweenClicks)
+      await act(async () => {
+        deliverFresh(Response.json(view))
+      })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+    })
+    if (!freshBetweenClicks)
+      await act(async () => {
+        deliverFresh(Response.json(view))
+      })
+
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/turn/end'))).toHaveLength(1)
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('status').textContent).toBe("Tu as trop de cartes : défausse-en jusqu'à 5.")
+    for (let count = 7; count > 5; count--) {
+      await act(async () => {
+        fireEvent.click(
+          within(screen.getByRole('region', { name: 'Ta main' })).getAllByRole('button', { name: 'BANG !' })[0],
+        )
+      })
+      expect(within(screen.getByRole('region', { name: 'Ta main' })).getAllByRole('listitem')).toHaveLength(count - 1)
+    }
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+    })
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/turn/end'))).toHaveLength(2)
+    expect(screen.getByRole('status').textContent).toBe('Au tour de la place 2.')
+    expect(screen.queryByRole('alert')).toBeNull()
+  },
+)
