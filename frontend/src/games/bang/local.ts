@@ -142,6 +142,22 @@ export function fire(game: LocalGame, cardId: string, targetSeat: number): Local
   }
 }
 
+export function respond(game: LocalGame, shotId: string, cardId: string): LocalGame {
+  const shot = game.pendingShot
+  if (!shot || shot.id !== shotId) throw new Error("Ce tir n'est plus en attente.")
+  const target = game.players.find((p) => p.seat === shot.targetSeat)!
+  const card = target.hand.find((c) => c.id === cardId && canUseAs(target.character, c.type, 'MISSED'))
+  if (!card) throw new Error('Carte indisponible.')
+  return {
+    ...game,
+    players: game.players.map((p) =>
+      p.seat === target.seat ? { ...p, hand: p.hand.filter((c) => c.id !== cardId) } : p,
+    ),
+    discardPile: [...game.discardPile, card],
+    pendingShot: undefined,
+  }
+}
+
 /** Ce que voit le joueur de la place `seat` : sa main et son rôle, des autres seulement le nombre de cartes et le Shérif. */
 export function viewOf(game: LocalGame, seat: number): GameView {
   const me = game.players.find((p) => p.seat === seat)!
