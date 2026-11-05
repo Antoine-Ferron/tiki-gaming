@@ -16,7 +16,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.time.Instant;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/games/bang/tables")
 @Tag(name = "bang", description = "Tables privées BANG! à quatre places, en mémoire, retirées après 1 h sans activité.")
 public class PrivateTableController {
+    private static final String GUEST_PLAYER = "bang.guest-player-id";
 
     /** Corps JSON du serveur embarqué après un refus CSRF avec Accept: application/json. */
     record CsrfErrorResponse(Instant timestamp, int status, String error, String path) {}
@@ -42,22 +45,18 @@ public class PrivateTableController {
     @PostMapping
     @Operation(
             summary = "Créer une table privée",
-            description = "Le compte connecté occupe la première place. "
-                    + "Chaque compte a au plus une table ouverte, dans une limite globale de 1 000 tables. "
+            description = "Le joueur occupe la première place, avec un compte ou comme invité de session. "
+                    + "Chaque joueur a au plus une table ouverte, dans une limite globale de 1 000 tables. "
                     + "La table et sa partie expirent après 1 h sans opération acceptée : création, jonction, démarrage, action de tour, tir ou réponse. "
                     + "Les lectures et les actions refusées ne renouvellent pas ce délai.")
-    @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du compte connecté")
+    @ApiResponse(responseCode = "201", description = "Table créée : code partageable et place du joueur")
     @ApiResponse(
             responseCode = "409",
-            description = "Ce compte a déjà une table privée ouverte",
+            description = "Ce joueur a déjà une table privée ouverte",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "503",
             description = "Le plafond global de tables privées est atteint",
-            content = @Content(schema = @Schema(implementation = ApiError.class)))
-    @ApiResponse(
-            responseCode = "401",
-            description = "Non connecté",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "403",
@@ -67,20 +66,16 @@ public class PrivateTableController {
                             mediaType = "application/json",
                             schema = @Schema(implementation = CsrfErrorResponse.class)))
     ResponseEntity<TableSeat> create(HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(tables.create(connectedAccountId(request)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(tables.create(enteringPlayerId(request)));
     }
 
     @PostMapping("/{code}/join")
     @Operation(
             summary = "Rejoindre une table privée",
-            description = "Le code partagé donne une place libre. Un compte déjà assis retrouve sa place, "
-                    + "même à table pleine et avec une nouvelle session HTTP. "
+            description = "Le code partagé donne une place libre. Un joueur déjà assis retrouve sa place : "
+                    + "par son compte, même avec une nouvelle session HTTP, ou par sa session HTTP pour un invité. "
                     + "La casse et les espaces autour du code sont ignorés.")
-    @ApiResponse(responseCode = "200", description = "Code et place du compte connecté")
-    @ApiResponse(
-            responseCode = "401",
-            description = "Non connecté",
-            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(responseCode = "200", description = "Code et place du joueur")
     @ApiResponse(
             responseCode = "403",
             description = "Jeton CSRF absent ou invalide",
@@ -94,16 +89,16 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "409",
-            description = "Les quatre places sont déjà occupées par d'autres comptes",
+            description = "Les quatre places sont déjà occupées par d'autres joueurs",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     TableSeat join(@PathVariable String code, HttpServletRequest request) {
-        return tables.join(code, connectedAccountId(request));
+        return tables.join(code, enteringPlayerId(request));
     }
 
     @PostMapping("/{code}/start")
     @Operation(
             summary = "Démarrer une partie à quatre",
-            description = "Tout compte connecté et assis à cette table peut la démarrer. Le Shérif joue en premier. "
+            description = "Tout joueur assis à cette table peut la démarrer. Le Shérif joue en premier. "
                     + "La distribution initiale n'inclut pas la pioche de début de tour. "
                     + "Les demandes suivantes conservent la donne et la phase, même simultanées. "
                     + "La réponse contient uniquement le code de table et la place du joueur actif.")
@@ -114,7 +109,7 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "403",
-            description = "Jeton CSRF absent ou invalide (CsrfErrorResponse), ou compte non assis (ApiError)",
+            description = "Jeton CSRF absent ou invalide (CsrfErrorResponse), ou joueur non assis (ApiError)",
             content =
                     @Content(
                             mediaType = "application/json",
@@ -128,18 +123,18 @@ public class PrivateTableController {
             description = "Moins de quatre joueurs assis",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     GameStarted start(@PathVariable String code, HttpServletRequest request) {
-        return tables.start(code, connectedAccountId(request));
+        return tables.start(code, playerId(request));
     }
 
     @GetMapping("/{code}/state")
     @Operation(
             summary = "Consulter sa vue de la partie",
-            description = "La main et le rôle sont ceux du compte en session. Les rôles secrets des autres joueurs, "
+            description = "La main et le rôle sont ceux du joueur en session. Les rôles secrets des autres joueurs, "
                     + "leurs cartes en main et la pioche ne sont jamais transmis. "
-                    + "Le tir en attente (id, shooterSeat, targetSeat) et la main sont retrouvés par une nouvelle session du même compte. "
+                    + "Le tir en attente (id, shooterSeat, targetSeat) et la main sont retrouvés par le compte ou la session HTTP de l'invité. "
                     + "La casse et les espaces autour du code sont ignorés. "
                     + "Consulter la partie ne renouvelle pas le délai d'expiration de la table.")
-    @ApiResponse(responseCode = "200", description = "Vue privée du joueur connecté et informations publiques")
+    @ApiResponse(responseCode = "200", description = "Vue privée du joueur et informations publiques")
     @ApiResponse(
             responseCode = "401",
             description = "Non connecté",
@@ -150,14 +145,14 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "403",
-            description = "Compte non assis à cette table",
+            description = "Joueur non assis à cette table",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "409",
             description = "Partie non démarrée",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     PlayerGameView state(@PathVariable String code, HttpServletRequest request) {
-        return tables.state(code, connectedAccountId(request));
+        return tables.state(code, playerId(request));
     }
 
     @PostMapping("/{code}/turn/draw")
@@ -175,7 +170,7 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "403",
-            description = "Jeton CSRF invalide ou compte non actif",
+            description = "Jeton CSRF invalide ou joueur non actif",
             content =
                     @Content(
                             mediaType = "application/json",
@@ -190,7 +185,7 @@ public class PrivateTableController {
                     "Partie non démarrée, mauvaise phase ou moins de deux cartes au total dans la pioche et la défausse",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> draw(@PathVariable String code, HttpServletRequest request) {
-        tables.draw(code, connectedAccountId(request));
+        tables.draw(code, playerId(request));
         return ResponseEntity.noContent().build();
     }
 
@@ -208,7 +203,7 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "403",
-            description = "Jeton CSRF invalide ou compte non actif",
+            description = "Jeton CSRF invalide ou joueur non actif",
             content =
                     @Content(
                             mediaType = "application/json",
@@ -222,7 +217,7 @@ public class PrivateTableController {
             description = "Partie non démarrée, tir en attente, pioche attendue ou défausse incomplète",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> endTurn(@PathVariable String code, HttpServletRequest request) {
-        tables.endTurn(code, connectedAccountId(request));
+        tables.endTurn(code, playerId(request));
         return ResponseEntity.noContent().build();
     }
 
@@ -241,7 +236,7 @@ public class PrivateTableController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "403",
-            description = "Jeton CSRF invalide ou compte non actif",
+            description = "Jeton CSRF invalide ou joueur non actif",
             content =
                     @Content(
                             mediaType = "application/json",
@@ -256,7 +251,7 @@ public class PrivateTableController {
                     "Partie non démarrée, mauvaise phase, carte absente de sa main ou limite de main déjà respectée",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> discard(@PathVariable String code, @PathVariable String cardId, HttpServletRequest request) {
-        tables.discard(code, connectedAccountId(request), cardId);
+        tables.discard(code, playerId(request), cardId);
         return ResponseEntity.noContent().build();
     }
 
@@ -300,7 +295,7 @@ public class PrivateTableController {
                     @PathVariable
                     String targetSeat,
             HttpServletRequest request) {
-        String accountId = connectedAccountId(request);
+        String accountId = playerId(request);
         int seat;
         try {
             seat = Integer.parseInt(targetSeat);
@@ -346,7 +341,7 @@ public class PrivateTableController {
             @PathVariable String shotId,
             @PathVariable String cardId,
             HttpServletRequest request) {
-        tables.respond(code, connectedAccountId(request), shotId, cardId);
+        tables.respond(code, playerId(request), shotId, cardId);
         return ResponseEntity.noContent().build();
     }
 
@@ -382,13 +377,32 @@ public class PrivateTableController {
             description = "Partie non démarrée ou tir absent/périmé/déjà résolu ; aucun effet",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     ResponseEntity<Void> accept(@PathVariable String code, @PathVariable String shotId, HttpServletRequest request) {
-        tables.respond(code, connectedAccountId(request), shotId, null);
+        tables.respond(code, playerId(request), shotId, null);
         return ResponseEntity.noContent().build();
     }
 
-    private static String connectedAccountId(HttpServletRequest request) {
+    private static String playerId(HttpServletRequest request) {
         AuthUser user = AuthSession.currentUser(request);
-        if (user == null) throw new AuthException(401, "Non connecté");
-        return user.id();
+        if (user != null) return user.id();
+        HttpSession session = request.getSession(false);
+        String guest = session == null ? null : (String) session.getAttribute(GUEST_PLAYER);
+        if (guest == null) throw new AuthException(401, "Non connecté");
+        return guest;
+    }
+
+    /** Une identité BANG! reste dans la session HTTP, sans devenir un compte ni autoriser un score. */
+    private static String enteringPlayerId(HttpServletRequest request) {
+        AuthUser user = AuthSession.currentUser(request);
+        if (user != null) return user.id();
+        HttpSession session = request.getSession(true);
+        synchronized (session) {
+            String guest = (String) session.getAttribute(GUEST_PLAYER);
+            if (guest == null) {
+                guest = "guest:" + UUID.randomUUID();
+                request.changeSessionId();
+                session.setAttribute(GUEST_PLAYER, guest);
+            }
+            return guest;
+        }
     }
 }
