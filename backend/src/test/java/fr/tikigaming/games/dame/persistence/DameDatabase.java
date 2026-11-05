@@ -28,7 +28,8 @@ public final class DameDatabase implements AutoCloseable {
             .withNetworkAliases("db")
             .withEnv("POSTGRES_PASSWORD", PASSWORD)
             .withExposedPorts(5432)
-            .waitingFor(Wait.forListeningPort())
+            // Le port s'ouvre dès le serveur temporaire de l'init : on attend le second « ready ».
+            .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*", 2))
             .withStartupTimeout(Duration.ofMinutes(3));
     private final GenericContainer<?> api = new GenericContainer<>(DockerImageName.parse("postgrest/postgrest:v16.5"))
             .withNetwork(network)
