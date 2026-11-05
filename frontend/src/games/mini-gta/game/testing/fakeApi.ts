@@ -1,3 +1,4 @@
+import { MAX_SCORE } from '../../domain/save'
 import { TERRAIN_CELLS } from '../../world/constants'
 import type { MissionDto, Progress, PurchaseItem, WorldDto } from '../../net/api'
 import type { WeaponDef, WeaponId } from '../../systems/weapons'
@@ -21,7 +22,12 @@ function flatTerrain(): string {
 const defs = weapons as unknown as Record<WeaponId, WeaponDef & { price: number; ammoPrice: number; ammoPack: number }>
 const catalog = missions as unknown as MissionDto[]
 
-const gain = (p: Progress, n: number): Progress => ({ ...p, money: p.money + n, totalEarned: p.totalEarned + n })
+// Comme Progress.earn : le solde reçoit tout le gain, les gains cumulés (le score) s'arrêtent au plafond.
+const gain = (p: Progress, n: number): Progress => ({
+  ...p,
+  money: p.money + n,
+  totalEarned: Math.max(p.totalEarned, Math.min(MAX_SCORE, p.totalEarned + n)),
+})
 const spend = (p: Progress, n: number): Progress => ({ ...p, money: Math.max(0, p.money - n) })
 
 /** Appels reçus, pour vérifier ce que le jeu demande au serveur. */

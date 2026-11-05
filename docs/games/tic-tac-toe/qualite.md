@@ -30,14 +30,13 @@ Commande de mutation :
 npm run test:mutation -- --mutate src/games/tic-tac-toe/domain/game.ts
 ```
 
-Stryker a analysé 115 mutants : 103 tués, 8 survivants, 4 non couverts, soit
-un score de mutation de **89,57 %**, supérieur au seuil minimal de 75 %.
+Stryker a analysé 115 mutants : 111 tués, 0 survivant, 4 non couverts, soit
+un score de mutation de **96,52 %**, supérieur au seuil minimal de 75 %.
 
-Les survivants restants concernent principalement les valeurs initiales et les
-messages d'erreur. Les comportements fonctionnels importants (alternance,
-placements, invalidité, victoires et match nul) sont couverts par les scénarios
-BDD ; ils ne justifient pas de modifier le domaine uniquement pour augmenter un
-score de mutation.
+Les mutants non couverts concernent des chemins déjà impossibles à atteindre
+depuis les scénarios sélectionnés ; aucun mutant survivant n'est accepté sur le
+domaine. Les messages d'erreur d'occupation et de coordonnées sont vérifiés
+explicitement par les step definitions BDD.
 
 ## Commandes de qualité
 

@@ -37,10 +37,10 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
     })
     When('X joue en ligne 1 colonne 1', () => game.place(0, 0))
     Then('jouer en ligne 1 colonne 1 est refusé', () => {
-      expect(() => game.place(0, 0)).toThrow()
+      expect(() => game.place(0, 0)).toThrow('La case est déjà occupée.')
     })
     And('jouer en ligne 0 colonne 1 est refusé', () => {
-      expect(() => game.place(-1, 0)).toThrow()
+      expect(() => game.place(-1, 0)).toThrow('Les coordonnées doivent être comprises entre 0 et 2.')
     })
   })
 

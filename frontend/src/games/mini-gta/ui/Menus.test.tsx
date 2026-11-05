@@ -6,7 +6,15 @@ import { useGameStore } from '../state/gameStore'
 import { useHudStore } from '../state/hudStore'
 import { DEFAULT_SETTINGS, useSettingsStore } from '../state/settingsStore'
 import { useUiStore } from '../state/uiStore'
-import { createInventory, loadWeaponDefs, slotOf, type WeaponDef, type WeaponId } from '../systems/weapons'
+import {
+  addWeapon,
+  createInventory,
+  loadWeaponDefs,
+  slotOf,
+  WEAPONS,
+  type WeaponDef,
+  type WeaponId,
+} from '../systems/weapons'
 import weapons from '../systems/fixtures/weapons.json'
 import { Menus } from './Menus'
 
@@ -211,8 +219,9 @@ describe('réglages', () => {
 })
 
 describe('armurerie', () => {
-  function openShop(money: number, armor = 0) {
+  function openShop(money: number, armor = 0, owned: WeaponId[] = []) {
     const inventory = createInventory()
+    for (const id of owned) if (!slotOf(inventory, id)) addWeapon(inventory, id, WEAPONS[id].magazine * 5)
     const game = { player: { inventory, actor: { armor } } }
     currentGame = game
     useGameStore.getState().load({ ...newSave(), money })
@@ -246,7 +255,7 @@ describe('armurerie', () => {
   })
 
   test('arme possédée : munitions à acheter ; arme blanche : marquée possédée', async () => {
-    const game = openShop(500)
+    const game = openShop(500, 0, ['pistol'])
     expect(row('Pistolet').textContent).toContain('60 munitions')
     fireEvent.click(row('Batte').querySelector('button')!)
     await waitFor(() => expect(row('Batte').textContent).toContain('Possédé'))

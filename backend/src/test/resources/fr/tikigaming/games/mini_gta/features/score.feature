@@ -18,3 +18,16 @@ Fonctionnalité: Score de la partie (R8)
     Étant donné qu'il a réussi les missions "Colis express" et "La fuite"
     Quand il réussit la mission "Colis express"
     Alors son score est de 2300 $
+
+  Plan du scénario: Le score s'arrête à 1 000 000, l'argent gagné reste au joueur
+    Étant donné un joueur qui a déjà gagné <gains> $
+    Quand il réussit la mission "Commande spéciale"
+    Alors la mission lui rapporte 3000 $
+    Et son score est de <score> $
+
+    Exemples:
+      | gains   | score   |
+      | 996999  | 999999  |
+      | 997000  | 1000000 |
+      | 997001  | 1000000 |
+      | 1000000 | 1000000 |

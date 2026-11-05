@@ -92,7 +92,7 @@ class MastermindApiIntegrationTest {
             return request;
         }));
 
-        mvc.perform(get("/api/games/mastermind/{id}", created.get("id").asText())
+        mvc.perform(get("/api/games/mastermind/{id}", created.get("id").asString())
                         .with(request -> {
                             request.setRemoteAddr("198.51.100.11");
                             return request;
