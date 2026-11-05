@@ -168,7 +168,8 @@ export function readSession() {
   check(res, { 'session : 200': (r) => r.status === 200 })
 }
 
-// Partie gagnante du niveau 20 de Rush Hour (26 coups, le minimum), trouvée par le solveur du jeu.
+// Partie gagnante du niveau 20 de Rush Hour (26 coups, le minimum), trouvée par le solveur du jeu. Tout part d'une
+// seule adresse : lancer le backend avec TIKI_RUSHHOUR_MAXRESULTSPERMINUTE élevé (limite par client, 60/min par défaut).
 // prettier-ignore
 const RUSH_HOUR_LEVEL_20 = [
   ['I', -1], ['F', -1], ['B', 2], ['H', 1], ['K', -4], ['G', 1], ['D', 1], ['L', 1], ['F', 1], ['I', 3], ['F', -2],
