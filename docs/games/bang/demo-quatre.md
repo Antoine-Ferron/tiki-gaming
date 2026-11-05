@@ -1,6 +1,7 @@
 # BANG! — Catalogue et démo réelle à quatre (#61)
 
-Validation locale du 5 novembre 2026. Les issues GitHub #60 et #61 restent ouvertes
+Validation initiale locale du 5 novembre 2026 ; la revue corrective est consignée
+dans la dernière section. Les issues GitHub #60 et #61 restent ouvertes
 pour validation ; les changements sont enregistrés dans des commits locaux.
 
 ## Branches vérifiées
@@ -158,3 +159,132 @@ Le plateau a été inspecté visuellement ; ces artefacts générés ne sont pas
 Les commits propres à la #61 sont `9d9549ff` (reprise et premier parcours réel),
 `dfc66966` (table mémorisée inaccessible) et `2840ec3a` (reconnexion, isolation,
 preuves et refactorisation). Le présent commit complète le bilan documentaire.
+
+## Revue corrective : merge #60, clic perdu et contrôle du Shérif
+
+Revue du 5 novembre 2026, exclusivement sur `game/bang/61-demo-quatre`.
+L'état initial était propre : #60 à `05b4dd87`, #61 à `dbacc510`, branche commune
+locale/distante à `22a11fc1`. Les fetchs initial et final laissent `origin/dev`
+à `ece3ce79`, déjà ancêtre de la #61 ; aucune intégration supplémentaire de dev
+n'était nécessaire.
+
+### Résolution des conflits
+
+`git merge --no-ff --no-commit game/bang/60-plateau-tirs` a reproduit exactement :
+
+- un conflit de contenu dans `OnlineTable.tsx` ;
+- un conflit add/add dans `OnlineTable.test.tsx`.
+
+Les deux versions ont été examinées. Les versions #61 reprennent les comportements
+et tests #60 et ajoutent la reprise par compte, le nettoyage du stockage de test et
+les cas de table expirée/refusée. Elles ont été conservées dans les deux fichiers.
+L'arbre résolu, puis l'arbre du commit de merge `3d9390e1`, sont **identiques** à
+celui de `dbacc510` : `563612ce23104817dc620aca704b7df9d765a77e`.
+Les 181 tests front BANG! passaient après résolution. Le merge est un commit
+distinct du correctif ; ses parents sont `dbacc510` et `05b4dd87`.
+
+### TDD outside-in du clic perdu
+
+Le test a été ajouté au vrai `OnlineTable` avant toute modification du code de
+production. Seuls `fetch` et l'horloge sont contrôlés ; le client API, l'écran,
+le plateau et les cartes restent réels.
+
+1. Créer/ouvrir la table et afficher DRAW.
+2. Cliquer sur Piocher, recevoir le 204, garder sa lecture d'état en attente.
+3. Avancer l'horloge de 2 000 ms : la lecture périodique suivante applique PLAY.
+4. Cliquer une fois sur Finir le tour avant de libérer la première lecture.
+5. Compter les requêtes réellement parties vers `/api/games/bang/tables/ABC123/turn/end`.
+
+Rouge effectivement exécuté avec
+`npm test -- src/games/bang/OnlineTable.test.tsx` : **0 requête au lieu de 1**,
+18 autres tests de ce fichier réussis. Le bouton était présent, mais le verrou
+attendait encore la première lecture dans le `finally` de la commande précédente.
+
+Le correctif `be2b0664` conserve l'exclusivité pendant le POST, puis attend une
+lecture commencée après sa réponse. Dès qu'une telle lecture est appliquée, le
+clic suivant peut partir, même si une lecture plus ancienne attend toujours.
+Le test passe au vert : exactement un POST `/turn/end`. Les 182 tests BANG! de
+ce palier, le linter et les types passent avant le commit.
+
+Le test complémentaire de `2ea815f6` vérifie ensuite qu'une vieille lecture qui
+se termine ne libère pas le POST suivant encore en cours : le double clic conserve
+un seul POST. Une autre réponse PLAY ancienne arrivant après le passage au joueur
+suivant ne remplace pas la vue DRAW de la place 2. Les tests existants de double
+réponse et de lectures désordonnées restent verts. Aucune refactorisation
+supplémentaire du domaine n'a été nécessaire.
+
+### Démo et sièges Shérif
+
+`npm run test:e2e:bang` a réussi : **1 scénario, 21,1 s** (32,4 s avec le lancement
+des serveurs). Quatre contextes Chromium et quatre comptes distincts parcourent
+le catalogue, créent/rejoignent la table et démarrent. Le Shérif tire ; sa cible
+esquive après actualisation, puis accepte après déconnexion et nouvelle session.
+Le bonus de Bart, les quatre résultats publics, la confidentialité JSON et le
+passage à la place 2 en DRAW sont vérifiés. Un seul POST de fin de tour, émis par
+le compte de la place 1, est observé. Les routes BANG! ne sont pas interceptées ;
+la frontière Supabase de test décrite plus haut est conservée.
+
+La vérification des rôles compte les **sièges distincts**, en dédupliquant le rôle
+privé et le rôle public du même Shérif. Résultat dans chacune des quatre vues :
+`[1]`. Les rôles privés sont `SHERIFF`, `OUTLAW`, `OUTLAW`, `RENEGADE`. Chaque écran
+montre un seul tapis Shérif, celui de la place 1 : en bas, à droite, en haut puis
+à gauche selon le compte observateur. Une pièce jointe `roles-par-siege` est
+conservée dans la trace. Les quatre captures ont également été inspectées.
+
+`7c16e3f4` complète ce contrôle sur le vrai `LocalTable`, avec uniquement le mélange
+déterministe : quatre tours sont joués par les boutons de pioche, fin et défausse.
+À chaque passage de l'écran, le même siège 1 est l'unique Shérif. Aucun cas de deux
+tapis distincts affichant ce rôle n'a été reproduit ; les règles, cartes et
+personnages de Colleen sont conservés.
+
+Les artefacts de ce rejeu restent dans :
+
+```text
+D:\COURS\SDV_2026_2027\tiki-gaming\frontend\test-results\bang-du-catalogue-au-tour--4da0a-acceptation-et-vues-privées-chromium\
+```
+
+Fichiers : `trace.zip`, `place-1.png`, `place-2.png`, `place-3.png`, `place-4.png`.
+
+### Vérifications finales de cette revue
+
+| Commande réellement exécutée | Résultat |
+| --- | --- |
+| `npm test -- src/games/bang` | 184 tests réussis, 10 fichiers. |
+| `npm run format -- --log-level warn` puis `npm run format:check` | Succès. |
+| `npm run lint` et `npm run typecheck` | Succès. |
+| `npm run test:coverage` | 1 488 tests réussis, 124 fichiers ; lignes 93,78 %, branches 87,57 %, fonctions 91,55 %, instructions 92,59 %. |
+| `npm run build` | Succès, avec les avertissements existants de taille des chunks. |
+| `npm run test:contract` | 9 interactions réussies ; Pact régénéré sans différence de contenu. |
+| `npm run db:check` et `npm run rtm:check` | Succès : 17 migrations, traçabilité complète. |
+| `mvn -B -ntp '-Dtest=fr.tikigaming.games.bang.**' test` | 349 tests réussis, aucun ignoré, en rejeu isolé. |
+| `mvn -B -ntp spotless:apply clean verify` | BUILD SUCCESS sur le checkout détaché du commit `7c16e3f4` : 6 574 réussis, 1 ignoré, zéro échec/erreur. |
+
+Le lancement ciblé backend en parallèle de la couverture avait rencontré un timeout
+HTTP de 5 s dans `PrivateTablesCsrfHttpTest.swaggerMatchesTheJsonCsrfResponseFromTheEmbeddedServer`.
+Le rejeu ciblé isolé est vert sans modification Java ni augmentation de délai.
+Le `mvn clean verify` dans le dépôt principal a ensuite été empêché dès `clean`
+par un journal déjà ouvert dans `backend/target/local-run`.
+
+La validation complète a donc utilisé un checkout temporaire propre, au même
+commit, sans arrêter le processus existant ni supprimer son journal. Les vrais
+objectifs `clean` et `verify` ont été exécutés, sans désactivation de contrôle.
+Le checkout a été retiré après conservation des journaux et de JaCoCo. Le seul cas
+ignoré reste le scénario Échecs `@en-cours` décrit plus haut ; aucun BANG! n'est
+ignoré. JaCoCo reste à 99,03 % des lignes et 94,86 % des branches.
+
+Preuves locales : `frontend/node_modules/.cache/bang-review-*.log` et
+`bang-review-jacoco.xml`, notamment `bang-review-backend-isolated.log` pour le succès
+complet, et `bang-review-targeted-timeout.log` pour la première tentative ciblée.
+
+Après le dernier fetch, ces deux commandes réussissent :
+
+```powershell
+git merge-base --is-ancestor origin/dev game/bang/61-demo-quatre
+git merge-base --is-ancestor game/bang/60-plateau-tirs game/bang/61-demo-quatre
+```
+
+Commits locaux de la revue : `3d9390e1` (merge résolu), `be2b0664` (rouge/vert du
+clic), `2ea815f6` (verrou et démo/sièges), `7c16e3f4` (mode local), puis le présent
+bilan documentaire. La #61 est proposée pour revue avant fusion dans
+`game/bang/implementation`. Aucun push, aucune fusion vers cette branche commune
+et aucune clôture d'issue ne sont effectués.
