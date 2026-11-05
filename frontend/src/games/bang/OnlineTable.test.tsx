@@ -388,3 +388,48 @@ test('une lecture lente actualise encore le plateau quand la lecture suivante es
   })
   expect(hint).toBe('Au tour de la place 4.')
 })
+
+test('un clic sur Finir le tour part après la vue PLAY même si la première lecture attend encore', async () => {
+  const drawing: GameView = { ...fourPlayerView(), currentSeat: 1, phase: 'DRAW' }
+  const playing: GameView = { ...drawing, phase: 'PLAY' }
+  let finishSlow!: (response: Response) => void
+  const slow = new Promise<Response>((resolve) => {
+    finishSlow = resolve
+  })
+  let reads = 0
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/state')) {
+      reads++
+      if (reads === 2) return slow
+      return Response.json(reads === 1 ? drawing : playing)
+    }
+    if (url.endsWith('/turn/draw') || url.endsWith('/turn/end')) return new Response(null, { status: 204 })
+    return Response.json({ code: drawing.code, seat: 1, playerCount: 4 })
+  })
+  vi.stubGlobal('fetch', fetch)
+  vi.useFakeTimers()
+  render(<OnlineTable accountId="compte-test" />)
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+  })
+  expect(reads).toBe(2)
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2000)
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+  })
+  const sent = fetch.mock.calls.filter(([url]) => url.endsWith('/turn/end'))
+  await act(async () => {
+    finishSlow(Response.json(playing))
+  })
+
+  expect(sent).toHaveLength(1)
+  expect(fetch).toHaveBeenCalledWith(
+    '/api/games/bang/tables/ABC123/turn/end',
+    expect.objectContaining({ method: 'POST' }),
+  )
+})

@@ -21,37 +21,43 @@ export function OnlineTable({ accountId }: { accountId: string }) {
   const [joinCode, setJoinCode] = useState('')
   const [view, setView] = useState<GameView | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const acting = useRef(false)
+  // Après le POST, attend une lecture commencée au-delà de ce numéro ; "sending" garde le POST exclusif.
+  const acting = useRef<'sending' | number | null>(null)
   const latestRead = useRef(0)
   const appliedRead = useRef(0)
 
   const refresh = useCallback(
     (tableCode: string) => {
       const read = ++latestRead.current
-      return api.getView(tableCode).then(
-        (next) => {
-          if (read > appliedRead.current) {
-            appliedRead.current = read
-            setView(next)
-          }
-        },
-        (err: unknown) => {
-          if (read < appliedRead.current) return
-          appliedRead.current = read
-          // 409 : la partie n'a pas encore démarré, on attend.
-          if (err instanceof ApiError && err.status === 409) return
-          setError(messageOf(err))
-          if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
-            setView(null)
-            setCode(null)
-            try {
-              sessionStorage.removeItem(storageKey)
-            } catch {
-              // Un stockage refusé ne bloque pas le retour à l'accueil du jeu.
+      return api
+        .getView(tableCode)
+        .then(
+          (next) => {
+            if (read > appliedRead.current) {
+              appliedRead.current = read
+              setView(next)
             }
-          }
-        },
-      )
+          },
+          (err: unknown) => {
+            if (read < appliedRead.current) return
+            appliedRead.current = read
+            // 409 : la partie n'a pas encore démarré, on attend.
+            if (err instanceof ApiError && err.status === 409) return
+            setError(messageOf(err))
+            if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+              setView(null)
+              setCode(null)
+              try {
+                sessionStorage.removeItem(storageKey)
+              } catch {
+                // Un stockage refusé ne bloque pas le retour à l'accueil du jeu.
+              }
+            }
+          },
+        )
+        .finally(() => {
+          if (typeof acting.current === 'number' && appliedRead.current > acting.current) acting.current = null
+        })
     },
     [storageKey],
   )
@@ -65,16 +71,20 @@ export function OnlineTable({ accountId }: { accountId: string }) {
 
   /** Lance une action, affiche son erreur éventuelle, puis relit la vue. */
   async function run(action: () => Promise<unknown>) {
-    if (acting.current) return
-    acting.current = true
+    if (acting.current !== null) return
+    acting.current = 'sending'
     try {
       await action()
       setError(null)
     } catch (err) {
       setError(messageOf(err))
     } finally {
-      if (code) await refresh(code)
-      acting.current = false
+      if (code) {
+        acting.current = latestRead.current
+        await refresh(code)
+      } else {
+        acting.current = null
+      }
     }
   }
 
