@@ -556,3 +556,76 @@ test.each([
     expect(screen.getByRole('status').textContent).toBe(hint)
   },
 )
+
+test.each([1, 2])(
+  '%i clic(s) après le 204 de pioche finissent une seule fois pendant la lecture suivante',
+  async (clicks) => {
+    const drawing: GameView = {
+      ...fourPlayerView(),
+      currentSeat: 1,
+      phase: 'DRAW',
+      role: 'SHERIFF',
+      players: fourPlayerView().players.map((p) => ({
+        ...p,
+        role: p.seat === 1 ? 'SHERIFF' : undefined,
+        ...(p.seat === 1 ? { health: 5, maxHealth: 5, handCount: 5 } : {}),
+      })),
+    }
+    const playing: GameView = {
+      ...drawing,
+      phase: 'PLAY',
+      hand: Array.from({ length: 7 }, (_, index) => ({ id: `carte-${index}`, type: 'BANG' })),
+    }
+    let view = drawing
+    let acknowledge!: (response: Response) => void
+    const drawResponse = new Promise<Response>((resolve) => {
+      acknowledge = resolve
+    })
+    let releaseRead!: (response: Response) => void
+    const readResponse = new Promise<Response>((resolve) => {
+      releaseRead = resolve
+    })
+    let reads = 0
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/state')) {
+        reads++
+        return reads === 3 ? readResponse : Response.json(view)
+      }
+      if (url.endsWith('/turn/draw')) {
+        view = playing
+        return drawResponse
+      }
+      if (url.endsWith('/turn/end')) {
+        view = { ...playing, phase: 'DISCARD' }
+        return new Response(null, { status: 204 })
+      }
+      return Response.json({ code: drawing.code, seat: 1, playerCount: 4 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    vi.useFakeTimers()
+    render(<OnlineTable accountId="compte-test" />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    await act(async () => {
+      acknowledge(new Response(null, { status: 204 }))
+    })
+    expect(reads).toBe(3)
+    await act(async () => {
+      for (let click = 0; click < clicks; click++)
+        fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+    })
+    await act(async () => {
+      releaseRead(Response.json(playing))
+    })
+
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/turn/end'))).toHaveLength(1)
+    expect(screen.getByRole('status').textContent).toBe("Tu as trop de cartes : défausse-en jusqu'à 5.")
+  },
+)
