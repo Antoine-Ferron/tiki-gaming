@@ -23,6 +23,8 @@ export function OnlineTable({ accountId }: { accountId: string }) {
   const [error, setError] = useState<string | null>(null)
   // Après le POST, attend une lecture commencée au-delà de ce numéro ; "sending" garde le POST exclusif.
   const acting = useRef<'sending' | number | null>(null)
+  const sending = useRef({ command: '', afterRead: 0 })
+  const queued = useRef<{ command: string; action: () => Promise<unknown> } | null>(null)
   const latestRead = useRef(0)
   const appliedRead = useRef(0)
 
@@ -70,16 +72,31 @@ export function OnlineTable({ accountId }: { accountId: string }) {
   }, [code, refresh])
 
   /** Lance une action, affiche son erreur éventuelle, puis relit la vue. */
-  async function run(action: () => Promise<unknown>) {
-    if (acting.current !== null) return
+  async function run(command: string, action: () => Promise<unknown>) {
+    if (acting.current !== null) {
+      if (
+        acting.current === 'sending' &&
+        command !== sending.current.command &&
+        appliedRead.current > sending.current.afterRead
+      ) {
+        queued.current ??= { command, action }
+      }
+      return
+    }
     acting.current = 'sending'
+    sending.current = { command, afterRead: latestRead.current }
     try {
       await action()
       setError(null)
     } catch (err) {
       setError(messageOf(err))
     } finally {
-      if (code) {
+      const next = queued.current
+      queued.current = null
+      if (next) {
+        acting.current = null
+        await run(next.command, next.action)
+      } else if (code) {
         acting.current = latestRead.current
         await refresh(code)
       } else {
@@ -111,13 +128,13 @@ export function OnlineTable({ accountId }: { accountId: string }) {
           <p className="muted">
             Une partie se joue à quatre : crée une table et partage son code, ou rejoins celle d'un ami.
           </p>
-          <button type="button" onClick={() => void run(async () => enter(await api.createTable()))}>
+          <button type="button" onClick={() => void run('create', async () => enter(await api.createTable()))}>
             Créer une table
           </button>
           <form
             onSubmit={(event) => {
               event.preventDefault()
-              void run(async () => enter(await api.joinTable(joinCode)))
+              void run('join', async () => enter(await api.joinTable(joinCode)))
             }}
           >
             <label>
@@ -134,7 +151,7 @@ export function OnlineTable({ accountId }: { accountId: string }) {
             Table <strong>{code}</strong>
           </h2>
           <p className="muted">Partage ce code avec trois autres joueurs, puis démarre la partie.</p>
-          <button type="button" onClick={() => void run(() => api.startGame(code))}>
+          <button type="button" onClick={() => void run('start', () => api.startGame(code))}>
             Démarrer la partie
           </button>
         </section>
@@ -142,12 +159,16 @@ export function OnlineTable({ accountId }: { accountId: string }) {
       {code && view && (
         <GameScreen
           view={view}
-          onDraw={() => void run(() => api.draw(code))}
-          onEnd={() => void run(() => api.endTurn(code))}
-          onDiscard={(cardId) => void run(() => api.discard(code, cardId))}
-          onShoot={(cardId, targetSeat) => void run(() => api.fire(code, cardId, targetSeat))}
-          onDodge={(cardId) => void run(() => api.dodge(code, view.pendingShot!.id, cardId))}
-          onAccept={() => void run(() => api.accept(code, view.pendingShot!.id))}
+          onDraw={() => void run('draw', () => api.draw(code))}
+          onEnd={() => void run('end', () => api.endTurn(code))}
+          onDiscard={(cardId) => void run(`discard:${cardId}`, () => api.discard(code, cardId))}
+          onShoot={(cardId, targetSeat) =>
+            void run(`fire:${cardId}:${targetSeat}`, () => api.fire(code, cardId, targetSeat))
+          }
+          onDodge={(cardId) =>
+            void run(`dodge:${view.pendingShot!.id}:${cardId}`, () => api.dodge(code, view.pendingShot!.id, cardId))
+          }
+          onAccept={() => void run(`accept:${view.pendingShot!.id}`, () => api.accept(code, view.pendingShot!.id))}
         />
       )}
     </div>

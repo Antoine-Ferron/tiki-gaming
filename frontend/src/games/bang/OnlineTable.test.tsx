@@ -500,3 +500,59 @@ test('une ancienne lecture ne libère pas le POST suivant et ne remplace pas la 
   expect(screen.getByRole('status').textContent).toBe('Au tour de la place 2.')
   expect(screen.queryByRole('button', { name: 'Finir le tour' })).toBeNull()
 })
+
+test.each([
+  { cards: 4, clicks: 1, hint: 'Au tour de la place 2.' },
+  { cards: 6, clicks: 1, hint: "Tu as trop de cartes : défausse-en jusqu'à 4." },
+  { cards: 6, clicks: 2, hint: "Tu as trop de cartes : défausse-en jusqu'à 4." },
+])(
+  '$clicks clic(s) attendent la réponse de pioche puis finissent une seule fois avec $cards cartes',
+  async ({ cards, clicks, hint }) => {
+    const drawing: GameView = { ...fourPlayerView(), currentSeat: 1, phase: 'DRAW' }
+    const playing: GameView = {
+      ...drawing,
+      phase: 'PLAY',
+      hand: Array.from({ length: cards }, (_, index) => ({ id: `carte-${index}`, type: 'BANG' })),
+    }
+    let view = drawing
+    let acknowledge!: (response: Response) => void
+    const drawResponse = new Promise<Response>((resolve) => {
+      acknowledge = resolve
+    })
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/state')) return Response.json(view)
+      if (url.endsWith('/turn/draw')) {
+        view = playing
+        return drawResponse
+      }
+      if (url.endsWith('/turn/end')) {
+        view = { ...playing, phase: cards > 4 ? 'DISCARD' : 'DRAW', currentSeat: cards > 4 ? 1 : 2 }
+        return new Response(null, { status: 204 })
+      }
+      return Response.json({ code: drawing.code, seat: 1, playerCount: 4 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    vi.useFakeTimers()
+    render(<OnlineTable accountId="compte-test" />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    for (let click = 0; click < clicks; click++) {
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+      })
+    }
+    await act(async () => {
+      acknowledge(new Response(null, { status: 204 }))
+    })
+
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/turn/end'))).toHaveLength(1)
+    expect(screen.getByRole('status').textContent).toBe(hint)
+  },
+)
