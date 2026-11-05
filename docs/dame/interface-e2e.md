@@ -62,3 +62,46 @@ npm run test:contract
 cd ../backend
 mvn -Dtest=DamePactProviderTest,PactProviderTest test
 ```
+
+## Parcours navigateur
+
+`frontend/e2e/dame.spec.ts` s'exécute dans la configuration collective, sans
+changement de fixture partagée ni de workflow. Les six scénarios passent sous
+Chromium, Firefox et WebKit : **18 exécutions Dames vertes**.
+
+| Besoin | Preuve dans `dame.spec.ts` |
+|---|---|
+| Lobby → noms → partie → rechargement | `lobby, noms, coup au clavier puis reprise sans nouvelle création` |
+| Saisies absentes ou trop longues, aucun POST | `les noms invalides sont expliqués sans création` |
+| Réponse réseau perdue, état relu sans répéter le coup | `une réponse perdue se récupère par GET sans rejouer le coup` |
+| Rafle complète, résultat serveur et revanche | `une rafle complète mène au résultat du serveur puis au formulaire de revanche` |
+| Session expirée, retour au formulaire | `une session expirée revient au formulaire sans création automatique` |
+| Formulaire et damier à 360 px, audit axe | `formulaire et damier accessibles sur mobile, sans débordement horizontal` |
+
+La suite navigateur collective complète passe : **72/72 exécutions**. Les
+sélecteurs utilisent rôles et noms accessibles ; aucun délai arbitraire ni
+injection de plateau dans le vrai backend. Axe ne trouve aucune violation
+sérieuse ou critique WCAG 2.1 A/AA sur le formulaire et le damier. Une capture
+mobile est produite dans `frontend/test-results/` et a été relue visuellement.
+
+Conformément à `CONTRIBUTING`, ces parcours utilisent un vrai navigateur mais
+des réponses HTTP scriptées. Ils prouvent l'intégration de l'interface ; Pact
+et les 56 IT backend complètent la preuve côté serveur et base réelle.
+Les cas de règles de jeu restent dans les tests Java et Gherkin.
+
+```bash
+cd frontend
+npx playwright install
+npx playwright test e2e/dame.spec.ts
+npm run test:e2e
+```
+
+Sur ce Mac, Firefox 157 échoue au lancement de son profil standard. Les tests
+passent avec un `CFFIXED_USER_HOME` temporaire, nettoyé après exécution ; ni
+`HOME` ni la configuration Playwright ne sont modifiés. Ce problème et
+l'isolation du répertoire d'application sont décrits dans
+[l'issue Playwright #42768](https://github.com/microsoft/playwright/issues/42768).
+La CI Linux conserve sa commande habituelle.
+
+Validation backend finale : `mvn -Pintegration verify` passe avec **6 490 cas,
+aucun échec ni erreur, un scénario Échecs ignoré préexistant**, puis **56 IT**.

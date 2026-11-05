@@ -321,7 +321,7 @@ export default function DameGame() {
                       {view ? (player === 'WHITE' ? view.whiteName : view.blackName) : PLAYER_NAMES[player]}
                     </strong>
                     <span className="muted">
-                      {view ? `${counts.total} pièces · ${counts.kings} dames` : 'En préparation'}
+                      {`${counts.total} ${counts.total === 1 ? 'pièce' : 'pièces'} · ${counts.kings} ${counts.kings === 1 ? 'dame' : 'dames'}`}
                     </span>
                   </div>
                   {active && <span className="dame-player-turn">Au trait</span>}
