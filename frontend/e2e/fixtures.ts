@@ -1,6 +1,15 @@
 import type { Page } from '@playwright/test'
 
 export type LeaderboardRow = { user_id: string; username: string; best_score: number }
+type MastermindMockGame = {
+  id: string
+  status: string
+  attemptsUsed: number
+  attemptsRemaining: number
+  history: Array<{ guess: string[]; feedback: { exact: number; misplaced: number } }>
+  secret: null
+  score: number
+}
 
 /** Simule le backend (visiteur non connecté) et l'API REST Supabase ; tout autre appel externe est refusé. */
 export async function mockPlatform(page: Page, leaderboard: LeaderboardRow[] | { status: number } = []) {
@@ -14,16 +23,30 @@ export async function mockPlatform(page: Page, leaderboard: LeaderboardRow[] | {
     secret: null,
     score: 0,
   })
+  let game: MastermindMockGame = newGame()
 
   await page.route('**/api/auth/session', (route) => route.fulfill({ json: { user: null } }))
   await page.route('**/api/games/mastermind', async (route) => {
-    if (route.request().method() === 'POST') return route.fulfill({ json: newGame() })
+    if (route.request().method() === 'POST') {
+      game = newGame()
+      return route.fulfill({ json: game })
+    }
     return route.fallback()
   })
   await page.route('**/api/games/mastermind/**', async (route) => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: game })
     if (route.request().method() !== 'POST') return route.fallback()
-    if (route.request().url().endsWith('/restart')) return route.fulfill({ json: newGame() })
-    return route.fallback()
+    if (route.request().url().endsWith('/restart')) {
+      game = newGame()
+      return route.fulfill({ json: game })
+    }
+    game = {
+      ...game,
+      attemptsUsed: game.attemptsUsed + 1,
+      attemptsRemaining: game.attemptsRemaining - 1,
+      history: [...game.history, { guess: ['red', 'blue', 'green', 'yellow'], feedback: { exact: 0, misplaced: 0 } }],
+    }
+    return route.fulfill({ json: game })
   })
   await page.route('https://supabase.e2e.test/**', (route) => {
     const url = new URL(route.request().url())

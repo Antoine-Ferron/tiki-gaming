@@ -12,9 +12,12 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  // sockjs-client (dépendance de @stomp/stompjs pour le socle WebSocket) référence le `global` de Node ;
+  // Vite ne le fournit pas au navigateur, d'où « global is not defined » à la première connexion temps réel.
+  define: { global: 'globalThis' },
   // Tests d'intégration (Docker) et E2E : lancés par leurs propres commandes, pas par `npm test`.
   test: {
-    exclude: [...configDefaults.exclude, 'tests/**', 'e2e/**'],
+    exclude: [...configDefaults.exclude, 'tests/**', 'e2e/**', 'e2e-real/**'],
     // `npm run test:coverage` : rapport lcov lu par SonarQube (coverage/lcov.info).
     coverage: {
       provider: 'v8',
