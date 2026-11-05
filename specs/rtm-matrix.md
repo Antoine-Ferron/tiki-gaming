@@ -54,6 +54,19 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-RH-08 | Rush Hour : on joue à la souris (glisser-déposer calé sur une case) et au clavier (flèches dans le sens du véhicule) | Contrôles C1, C2 |
 | REQ-RH-09 | Rush Hour : le jeu et le serveur appliquent les mêmes niveaux, les mêmes règles et le même barème | Contrat partagé (shared/games/rush-hour/contrat.json) |
 | REQ-RH-10 | Rush Hour : un client ne peut pas faire vérifier plus de 60 parties par minute (429 au-delà), sans gêner les autres | Sécurité, OWASP API4 (docs/games/rush-hour/rapport-securite.md) |
+| REQ-TTT-01 | Tic-Tac-Toe : la page affiche une grille 3×3 jouable | Interface du jeu |
+| REQ-TTT-02 | Tic-Tac-Toe : les joueurs X et O jouent à tour de rôle et une case occupée ne peut pas être rejouée | Règles du jeu |
+| REQ-TTT-03 | Tic-Tac-Toe : une ligne, colonne ou diagonale complète termine la partie avec le bon gagnant | Règles du jeu |
+| REQ-TTT-04 | Tic-Tac-Toe : une grille pleine sans ligne gagnante affiche un match nul | Règles du jeu |
+| REQ-TTT-05 | Tic-Tac-Toe : le score de session compte les victoires X, les victoires O et les matchs nuls, et survit à Rejouer | Expérience joueur |
+| REQ-PRIS-01 | Prismine : un tir coûte une dose d'huile et révèle le trajet du faisceau ; il est refusé sur un bord déjà exploré ou lampe vide | Règles du jeu |
+| REQ-PRIS-02 | Prismine : le faisceau suit les règles d'optique (quart de tour sur la face en biais, retour sur les faces plates, couleurs, obsidienne) sur des étages déterministes et solubles | Règles du jeu |
+| REQ-PRIS-03 | Prismine : une carte juste fait descendre et remplit la lampe ; une carte fausse coûte trois doses ou éteint la lampe, une carte contredite ne coûte rien | Règles du jeu |
+| REQ-PRIS-04 | Prismine : seul le serveur calcule le score (100 points par étage, +50 % sans erreur) ; un score envoyé par un joueur est refusé | Anti-triche |
+| REQ-PRIS-05 | Prismine : la carte cachée et les expéditions restent côté serveur, illisibles et non modifiables par les joueurs, et sont effacées avec le compte | Anti-triche, RGPD |
+| REQ-PRIS-06 | Prismine : un joueur a une seule expédition en cours, qu'il reprend après un rechargement ; une requête illisible ou visant l'expédition d'un autre est refusée | Expérience joueur, sécurité |
+| REQ-PRIS-07 | Prismine : un étage validé en moins de 5 s est signalé une seule fois à l'audit, et une expédition inactive depuis plus de 24 h est purgée | Anti-triche, exploitation |
+| REQ-PRIS-08 | Prismine : le score d'un joueur est classé une seule fois avec sa durée, jamais pour un invité, et une panne de stockage est signalée | Règles du classement |
 
 ## Cas de test
 
@@ -157,6 +170,16 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-25 | REQ-RH-08 | erreur | composant | `frontend/src/games/rush-hour/RushHourGame.test.tsx` › une flèche dans l’autre axe ne fait rien | PASSED | — |
 | TC-RH-26 | REQ-RH-08 | nominal | unitaire (BVA) | `frontend/src/games/rush-hour/components/drag.test.ts` › décalage de $offset case(s) → $delta | PASSED | BUG-04 |
 | TC-RH-27 | REQ-RH-08 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › un glissé de moins d’une demi-case n’est pas un coup | PASSED | — |
+| TC-TTT-01 | REQ-TTT-01 | nominal | E2E Playwright | `frontend/e2e/tic-tac-toe.spec.ts` › joue une partie et affiche le gagnant et le score de session | PASSED | — |
+| TC-TTT-02 | REQ-TTT-01 | erreur | E2E Playwright | `frontend/e2e/tic-tac-toe.spec.ts` › rejoue une partie en conservant le score de session | PASSED | — |
+| TC-TTT-03 | REQ-TTT-02 | nominal | composant | `frontend/src/games/tic-tac-toe/TicTacToeGame.test.tsx` › allows alternating moves on the board | PASSED | — |
+| TC-TTT-04 | REQ-TTT-02 | erreur | composant | `frontend/src/games/tic-tac-toe/TicTacToeGame.test.tsx` › announces a winner and disables the board after three aligned moves | PASSED | — |
+| TC-TTT-05 | REQ-TTT-03 | nominal | composant | `frontend/src/games/tic-tac-toe/TicTacToeGame.test.tsx` › announces a winner and disables the board after three aligned moves | PASSED | — |
+| TC-TTT-06 | REQ-TTT-03 | erreur | BDD | `frontend/src/games/tic-tac-toe/features/tictactoe.feature` › Une ligne, colonne ou diagonale donne la victoire | PASSED | — |
+| TC-TTT-07 | REQ-TTT-04 | nominal | BDD | `frontend/src/games/tic-tac-toe/features/tictactoe.feature` › Une grille pleine sans ligne gagnante est un match nul | PASSED | — |
+| TC-TTT-08 | REQ-TTT-04 | erreur | BDD | `frontend/src/games/tic-tac-toe/features/tictactoe.feature` › Une case occupée ou des coordonnées invalides sont refusées | PASSED | — |
+| TC-TTT-09 | REQ-TTT-05 | nominal | composant | `frontend/src/games/tic-tac-toe/TicTacToeGame.test.tsx` › updates the session score after a win and keeps it after replay | PASSED | — |
+| TC-TTT-10 | REQ-TTT-05 | erreur | E2E Playwright | `frontend/e2e/tic-tac-toe.spec.ts` › rejoue une partie en conservant le score de session | PASSED | — |
 | TC-RH-28 | REQ-RH-09 | nominal | contrat (front) | `frontend/src/games/rush-hour/contract.test.ts` › le jeu a exactement les niveaux du contrat, case par case | PASSED | — |
 | TC-RH-29 | REQ-RH-09 | nominal | contrat (backend) | `backend/src/test/java/fr/tikigaming/games/rush_hour/ContractTest.java` › serverReplaysTheContractGames | PASSED | — |
 | TC-RH-30 | REQ-RH-09 | erreur | contrat (front) | `frontend/src/games/rush-hour/contract.test.ts` › contrat partagé avec le serveur : parties rejouées | PASSED | — |
@@ -183,6 +206,36 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-51 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/rush-hour.spec.ts` › aucune violation d’accessibilité pendant une partie, ni sur l’écran de victoire | PASSED | — |
 | TC-RH-52 | REQ-ERR-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › serveur en panne : un message lisible, et les niveaux restent jouables | PASSED | — |
 | TC-A11Y-03 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/accessibilite.spec.ts` › ['Rush Hour', '/games/rush-hour', 'Rush Hour'] | PASSED | BUG-05 |
+| TC-PRIS-01 | REQ-PRIS-01 | nominal | BDD (Gherkin) | `backend/src/test/resources/features/prismine/expedition.feature` › Un tir coûte une dose d'huile et révèle le trajet du faisceau | PASSED | — |
+| TC-PRIS-02 | REQ-PRIS-01 | erreur | BDD (Gherkin) | `backend/src/test/resources/features/prismine/expedition.feature` › Un bord déjà exploré ne peut pas être retenté | PASSED | — |
+| TC-PRIS-03 | REQ-PRIS-01 | erreur | BDD (Gherkin, BVA) | `backend/src/test/resources/features/prismine/expedition.feature` › Il faut au moins une dose pour tirer (<huile> en réserve) | PASSED | — |
+| TC-PRIS-04 | REQ-PRIS-01 | erreur | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/ExpeditionTest.java` › probeCostsOilAndIsRefusedOnAKnownEntryOrWithAnEmptyLamp | PASSED | — |
+| TC-PRIS-05 | REQ-PRIS-02 | nominal | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/EngineTest.java` › prismTurnsTheBeamOnItsHypotenuseAndSendsItBackOnItsFlatSides | PASSED | — |
+| TC-PRIS-06 | REQ-PRIS-02 | nominal | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/FloorsTest.java` › generatesDeterministicSolvableFloorsWithReversibleBeams | PASSED | — |
+| TC-PRIS-07 | REQ-PRIS-02 | erreur | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/EngineTest.java` › beamStartsWhiteMixesPrismColorsAndIsAbsorbedByObsidian | PASSED | — |
+| TC-PRIS-08 | REQ-PRIS-03 | nominal | BDD (Gherkin) | `backend/src/test/resources/features/prismine/expedition.feature` › Un étage réussi fait descendre et remplit la lampe | PASSED | — |
+| TC-PRIS-09 | REQ-PRIS-03 | erreur | BDD (Gherkin, BVA) | `backend/src/test/resources/features/prismine/expedition.feature` › Une carte fausse coûte trois doses, sinon la lampe s'éteint (<huile> en réserve) | PASSED | — |
+| TC-PRIS-10 | REQ-PRIS-03 | erreur | BDD (Gherkin) | `backend/src/test/resources/features/prismine/expedition.feature` › Une carte qui contredit un tir ne coûte rien | PASSED | — |
+| TC-PRIS-11 | REQ-PRIS-03 | erreur | E2E (3 navigateurs) | `frontend/e2e/prismine.spec.ts` › une carte contredite, puis fausse, et enfin une lampe éteinte | PASSED | — |
+| TC-PRIS-12 | REQ-PRIS-04 | nominal | BDD (Gherkin) | `backend/src/test/resources/features/prismine/expedition.feature` › Un étage rapporte 100 points par niveau, plus 50 % sans erreur | PASSED | — |
+| TC-PRIS-13 | REQ-PRIS-04 | nominal | E2E (3 navigateurs) | `frontend/e2e/prismine.spec.ts` › un invité joue une expédition complète, sans jamais envoyer de score | PASSED | — |
+| TC-PRIS-14 | REQ-PRIS-04 | erreur | BDD (Gherkin) | `backend/src/test/resources/features/prismine/expedition.feature` › Un joueur ne peut pas déclarer lui-même son score | PASSED | — |
+| TC-PRIS-15 | REQ-PRIS-04 | erreur | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineScoreValidatorTest.java` › refusesEveryScoreSentByAPlayer | PASSED | — |
+| TC-PRIS-16 | REQ-PRIS-05 | nominal | intégration (Testcontainers) | `frontend/tests/integration/prismine-runs.test.ts` › la suppression du compte efface ses expéditions | PASSED | — |
+| TC-PRIS-17 | REQ-PRIS-05 | nominal | intégration (Testcontainers) | `frontend/tests/integration/prismine-runs.test.ts` › une expédition d’invité n’a pas de compte rattaché | PASSED | — |
+| TC-PRIS-18 | REQ-PRIS-05 | erreur | intégration (Testcontainers) | `frontend/tests/integration/prismine-runs.test.ts` › un joueur ne peut pas lire sa propre expédition (la carte cachée reste secrète) | PASSED | — |
+| TC-PRIS-19 | REQ-PRIS-05 | erreur | intégration (Testcontainers) | `frontend/tests/integration/prismine-runs.test.ts` › un visiteur non connecté ne peut pas lire les expéditions | PASSED | — |
+| TC-PRIS-20 | REQ-PRIS-05 | erreur | intégration (Testcontainers) | `frontend/tests/integration/prismine-runs.test.ts` › un joueur ne peut ni créer, ni modifier, ni effacer une expédition | PASSED | — |
+| TC-PRIS-21 | REQ-PRIS-06 | nominal | E2E (3 navigateurs) | `frontend/e2e/prismine.spec.ts` › une expédition en cours se reprend après un rechargement de la page | PASSED | — |
+| TC-PRIS-22 | REQ-PRIS-06 | nominal | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineServiceTest.java` › stubbedSeedsAndInMemoryRegistryKeepOneSafeLiveRunPerPlayer | PASSED | — |
+| TC-PRIS-23 | REQ-PRIS-06 | erreur | unitaire (backend, MockMvc) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineControllerTest.java` › refusesAnUnreadableMapAnotherPlayersRunAndTooManyStarts | PASSED | — |
+| TC-PRIS-24 | REQ-PRIS-07 | nominal | unitaire (BVA, horloge injectée) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineServiceTest.java` › clockDrivesTheAuditThresholdAndTheRunPurgeWithoutSleeping | PASSED | — |
+| TC-PRIS-25 | REQ-PRIS-07 | nominal | intégration (Testcontainers) | `frontend/tests/integration/prismine-runs.test.ts` › chaque mise à jour rafraîchit updated_at (base de la purge des expéditions inactives) | PASSED | — |
+| TC-PRIS-26 | REQ-PRIS-07 | erreur | unitaire (simulacre) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineServiceTest.java` › auditsAnExpeditionOnlyOnceWhenFloorsAreClearedTooFast | PASSED | — |
+| TC-PRIS-27 | REQ-PRIS-08 | nominal | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineServiceTest.java` › recordsTheScoreWithItsDurationForAPlayerButNotForAGuest | PASSED | — |
+| TC-PRIS-28 | REQ-PRIS-08 | erreur | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/SupabaseAdaptersTest.java` › storesRunsAndScoresInSupabaseAndReportsItsFailures | PASSED | — |
+| TC-PRIS-29 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/prismine.spec.ts` › l’écran de jeu est conforme WCAG 2.1 AA | PASSED | — |
+| TC-PRIS-30 | REQ-ERR-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/prismine.spec.ts` › un refus du serveur est expliqué au joueur, qui peut continuer | PASSED | — |
 
 ## Anomalies
 
