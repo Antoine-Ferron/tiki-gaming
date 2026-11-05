@@ -7,7 +7,6 @@ import io.cucumber.java.AfterAll;
 import io.cucumber.java.Before;
 import io.cucumber.java.BeforeAll;
 import io.cucumber.java.ParameterType;
-import io.cucumber.java.fr.Alors;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -105,8 +104,7 @@ public class MiniGtaApi {
      * Le gestionnaire d'erreurs de la plateforme donne le même message à toute requête refusée par le contrôleur
      * (« Requête invalide. ») : seul le code distingue une mission introuvable d'une saisie invalide.
      */
-    @Alors("la demande est refusée avec le code {int}")
-    public void laDemandeEstRefusee(int code) {
+    static void assertRefused(int code) {
         assertThat(status).isEqualTo(code);
         assertThat(body.get("error").asString()).isEqualTo("Requête invalide.");
     }
