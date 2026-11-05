@@ -34,7 +34,10 @@ export default function BangGame({ ctx }: GameProps) {
           En ligne
         </button>
       </div>
-      {mode === 'local' ? <LocalTable /> : <OnlineTable key={playerId} accountId={playerId} />}
+      <div hidden={mode !== 'local'}>
+        <LocalTable />
+      </div>
+      {mode === 'online' && <OnlineTable key={playerId} accountId={playerId} />}
     </>
   )
 }
