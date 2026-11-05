@@ -64,6 +64,35 @@ public final class Game {
                 rights.blackQueenside() && untouched(from, to, "e8", "a8"));
     }
 
+    /** Règle L1 : le roi du camp {@code color} est attaqué par au moins une pièce adverse. */
+    public static boolean isInCheck(Position position, Color color) {
+        Square king = position.pieces().entrySet().stream()
+                .filter(e -> e.getValue().equals(new Piece(color, PieceType.KING)))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElseThrow();
+        return isAttacked(position, king, color == Color.WHITE ? Color.BLACK : Color.WHITE);
+    }
+
+    /** La case est-elle attaquée par une pièce du camp {@code by} ? (Un pion n'attaque qu'en diagonale.) */
+    static boolean isAttacked(Position position, Square square, Color by) {
+        for (Map.Entry<Square, Piece> entry : position.pieces().entrySet()) {
+            Piece piece = entry.getValue();
+            if (piece.color() != by) {
+                continue;
+            }
+            Square from = entry.getKey();
+            boolean attacks = piece.type() == PieceType.PAWN
+                    ? square.rank() - from.rank() == (by == Color.WHITE ? 1 : -1)
+                            && Math.abs(square.file() - from.file()) == 1
+                    : MoveGenerator.destinations(position, from).contains(square);
+            if (attacks) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean untouched(Square from, Square to, String king, String rook) {
         Square kingSquare = Square.of(king);
         Square rookSquare = Square.of(rook);
