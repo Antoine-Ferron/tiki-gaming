@@ -11,7 +11,7 @@ const sudoku: GameDefinition = {
   mode: 'solo',
   // Score renvoyé par /api/games/sudoku/check : partie parfaite en difficile (ScoreCalculator, backend).
   // Aligné avec games.max_score.
-  scoreLimits: { max: 6864 },
+  scoreLimits: { max: '6864' },
   component: lazy(() => import('./SudokuGame')),
 }
 

@@ -195,7 +195,7 @@ export default function SudokuGame({ ctx }: GameProps) {
           <>
             <p className="sudoku-stats">
               <span>Temps : {formatTime(seconds)}</span>
-              <span>Erreurs : {mistakesLabel(mistakes, maxMistakes)}</span>
+              <span>Fautes : {mistakesLabel(mistakes, maxMistakes)}</span>
             </p>
             <div className="sudoku-grid" role="group" aria-label="Grille de sudoku" onKeyDown={onKeyDown}>
               {values.map((v, i) => {

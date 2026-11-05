@@ -21,7 +21,7 @@ public class GameStore {
     static final int MAX_GAMES = 10_000;
     static final int MAX_PER_OWNER = 5;
     /** Erreurs permises : la partie est perdue à la suivante (la 4e). */
-    public static final int MAX_MISTAKES = 3;
+    public static final int MAX_MISTAKES = 4;
 
     /**
      * Résultat d'une saisie : `correct` si la valeur est celle de la solution ; `mistakes` cumule les erreurs ;

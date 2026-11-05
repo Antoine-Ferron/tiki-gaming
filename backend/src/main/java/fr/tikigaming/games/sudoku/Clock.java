@@ -1,6 +1,7 @@
 package fr.tikigaming.games.sudoku;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Source de l'heure courante. Contrat volontairement minimal : le code métier demande l'heure à cette interface
@@ -8,5 +9,5 @@ import java.time.Instant;
  */
 public interface Clock {
 
-    Instant now();
+  Instant   now();
 }

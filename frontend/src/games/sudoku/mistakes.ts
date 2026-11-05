@@ -8,7 +8,7 @@ export function remainingMistakes(mistakes: number, max: number): number {
 
 /** Perdue dès que les erreurs dépassent le plafond (la 4e pour un plafond de 3). */
 export function isLost(mistakes: number, max: number): boolean {
-  return mistakes > max
+  return mistakes >= max
 }
 
 /** Compteur affiché, jamais au-delà du plafond : « 2/3 ». */

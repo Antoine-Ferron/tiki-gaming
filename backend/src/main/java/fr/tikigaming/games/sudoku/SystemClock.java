@@ -24,6 +24,7 @@ public final class SystemClock implements Clock {
 
     @Override
     public Instant now() {
+        if (source == null) return Instant.EPOCH;
         return source.instant();
     }
 }
