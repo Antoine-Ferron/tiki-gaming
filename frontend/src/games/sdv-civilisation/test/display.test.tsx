@@ -2,7 +2,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { CardDetail } from '../CardDetail'
-import { effectIcons, effectText, paymentText } from '../cardText'
+import { CardFace } from '../CardFace'
+import { cardStatus, effectIcons, effectText, paymentText } from '../cardText'
 import { CityBoard } from '../CityBoard'
 import type { Card } from '../cards'
 import { Modal } from '../Modal'
@@ -122,5 +123,23 @@ describe('Affichage de la table', () => {
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledOnce()
+  })
+  it('une carte de la main est nommée par son propre texte visible, âge compris (WCAG 2.5.3)', () => {
+    // Étant donné le Chantier et l'Atelier de la main du contrat
+    const [chantier, atelierInHand] = [contract.start.hand[0], contract.start.hand[6]]
+
+    // Quand ils sont affichés face visible
+    for (const { card, build } of [chantier, atelierInHand])
+      render(<CardFace card={card} status={cardStatus(build)} selected={false} onSelect={vi.fn()} />)
+
+    // Alors aucun aria-label ne remplace le texte affiché : le nom lu reprend la carte dans l'ordre de lecture
+    const cards = screen.getAllByRole('button')
+    expect(cards.map((card) => card.getAttribute('aria-label'))).toEqual([null, null])
+    expect(
+      screen.getByRole('button', {
+        name: 'Chantier (Ressource naturelle), âge I : Produit bois, coût Gratuit. Constructible',
+      }),
+    ).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Atelier \(Science\), âge I : .+, coût verre\. / })).toBeTruthy()
   })
 })
