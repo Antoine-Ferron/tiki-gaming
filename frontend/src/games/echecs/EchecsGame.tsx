@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ApiError } from '@/lib/api'
 import { destinations, play } from './api'
 import { FILES, piecesFromFen, RANKS, squareLabel, START_FEN, SYMBOLS } from './board'
 import './echecs.css'
@@ -11,29 +12,45 @@ export default function EchecsGame() {
   const [fen, setFen] = useState(START_FEN)
   const [selected, setSelected] = useState<string | null>(null)
   const [targets, setTargets] = useState<string[]>([])
+  const [error, setError] = useState<string | null>(null)
   const pieces = piecesFromFen(fen)
 
-  async function select(square: string) {
-    setSelected(square)
-    setTargets(await destinations(fen, square))
+  /** Appelle le serveur ; en cas de refus (422) ou de panne, affiche le message prévu pour le joueur. */
+  async function call(action: () => Promise<void>) {
+    setError(null)
+    try {
+      await action()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Une erreur inattendue est survenue. Réessaie.')
+    }
   }
 
-  async function moveTo(square: string) {
+  function select(square: string) {
+    setSelected(square)
+    void call(async () => setTargets(await destinations(fen, square)))
+  }
+
+  function moveTo(square: string) {
     const from = selected as string
     setSelected(null)
     setTargets([])
-    setFen(await play(fen, from, square))
+    void call(async () => setFen(await play(fen, from, square)))
   }
 
   function handleClick(square: string) {
-    if (selected && targets.includes(square)) void moveTo(square)
-    else if (pieces[square]) void select(square)
+    if (selected && targets.includes(square)) moveTo(square)
+    else if (pieces[square]) select(square)
   }
 
   return (
     <div className="echecs">
       <section className="card">
         <h2>Échecs</h2>
+        {error && (
+          <p className="echecs-error" role="alert">
+            {error}
+          </p>
+        )}
         <div className="echecs-board" role="group" aria-label="Échiquier">
           {RANKS.map((rank) =>
             FILES.map((file, fileIndex) => {
