@@ -80,9 +80,11 @@ export class GameSession {
     this.stopwatch = new Stopwatch(this.clock)
   }
 
-  /** Prochain coup de la solution la plus courte depuis la position actuelle, compté comme indice. */
+  /**
+   * Prochain coup de la solution la plus courte depuis la position actuelle, compté comme indice. Aucun indice (null)
+   * si la partie est gagnée (la solution est vide) ou si le plateau n'a pas de solution.
+   */
   hint(): Move | null {
-    if (this.solved) return null
     const next = solve(this.current)?.[0] ?? null
     if (next) this.hints++
     return next

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createTestGame, type TestGame } from '../game/testing/harness'
 import { complete, execute, normalize, parse, VEHICLE_ALIASES } from './commands'
 import { VEHICLES } from '../procgen/vehicles/specs'
@@ -66,6 +66,9 @@ describe('commandes dans une partie', () => {
 
   afterAll(() => t?.dispose())
 
+  // Chaque commande est jouée depuis le point de départ, à pied et sans recherche.
+  beforeEach(() => t.reset())
+
   test('/summon avion : un avion apparaît devant le joueur, posé sur le sol', () => {
     const before = new Set(game.vehicles)
     const p = game.player.position.clone()
@@ -96,7 +99,10 @@ describe('commandes dans une partie', () => {
   })
 
   test('/nettoyer retire les véhicules invoqués et seulement eux', () => {
-    execute(game, '/summon moto')
+    // Repart sans véhicule invoqué par un autre scénario, puis en invoque exactement deux.
+    execute(game, '/nettoyer')
+    expect(execute(game, '/summon avion').ok).toBe(true)
+    expect(execute(game, '/summon moto').ok).toBe(true)
     const count = game.vehicles.size
 
     const r = execute(game, '/nettoyer')

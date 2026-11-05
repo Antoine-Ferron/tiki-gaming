@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.ResultActions;
                 "spring.autoconfigure.exclude="
                         + "org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration")
 @AutoConfigureMockMvc(addFilters = false)
-@Import(LevelResultService.class)
+@Import({LevelResultService.class, ResultRateLimiter.class})
 class RushHourControllerTest {
 
     /** Solution la plus courte du niveau 1 (3 coups). */

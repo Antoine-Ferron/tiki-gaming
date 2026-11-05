@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import worldAroundSpawn from './fixtures/world-spawn.json'
 import { createTestGame, type TestGame } from './testing/harness'
 
@@ -15,23 +15,39 @@ vi.setConfig({ testTimeout: 60_000 })
 
 let t: TestGame
 let game: TestGame['game']
+/** État du joueur et du monde relevé juste après le chargement, avant tout scénario. */
+let atStart: { x: number; z: number; state: string; vehicles: number }
 const simulate = (seconds: number) => t.simulate(seconds)
+
+/** Monte dans la berline de départ. */
+function enterStarterCar() {
+  const car = [...game.vehicles].find((v) => v.persistent && v.spec.id === 'sedan')!
+  game.player.respawnAt(car.position.x + 3, car.position.y + 0.2, car.position.z)
+  simulate(0.5)
+  game.player.tryEnterVehicle()
+  return car
+}
 
 beforeAll(async () => {
   t = await createTestGame({ traffic: 6, pedestrians: 6, meshes: true })
   game = t.game
+  const p = game.player.position
+  atStart = { x: p.x, z: p.z, state: game.player.state, vehicles: game.vehicles.size }
 }, 60_000)
 
 afterAll(() => t?.dispose())
+
+// Chaque scénario repart à pied du point de départ, sans recherche.
+beforeEach(() => t.reset())
 
 describe('simulation de MiniGTA', () => {
   test('le joueur apparaît au point de départ, à pied, avec des véhicules autour', () => {
     const spawn = worldAroundSpawn.locations.spawn
 
-    expect(game.player.position.x).toBeCloseTo(spawn.x, 0)
-    expect(game.player.position.z).toBeCloseTo(spawn.z, 0)
-    expect(game.player.state).toBe('foot')
-    expect(game.vehicles.size).toBeGreaterThan(0)
+    expect(atStart.x).toBeCloseTo(spawn.x, 0)
+    expect(atStart.z).toBeCloseTo(spawn.z, 0)
+    expect(atStart.state).toBe('foot')
+    expect(atStart.vehicles).toBeGreaterThan(0)
   })
 
   test('le joueur reste au sol après quelques secondes', () => {
@@ -52,11 +68,8 @@ describe('simulation de MiniGTA', () => {
   })
 
   test('le joueur monte dans la voiture de départ et roule vers l’avant', () => {
-    const car = [...game.vehicles].find((v) => v.persistent && v.spec.id === 'sedan')!
-    game.player.respawnAt(car.position.x + 3, car.position.y + 0.2, car.position.z)
-    simulate(0.5)
+    enterStarterCar()
 
-    game.player.tryEnterVehicle()
     t.key('KeyW', true)
     simulate(3)
     t.key('KeyW', false)
@@ -66,6 +79,9 @@ describe('simulation de MiniGTA', () => {
   })
 
   test('le joueur sort du véhicule', () => {
+    enterStarterCar()
+    expect(game.player.state).toBe('vehicle')
+
     game.player.exitVehicle(true)
     simulate(1)
 

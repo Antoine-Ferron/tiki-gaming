@@ -1,0 +1,867 @@
+{
+  "consumer": {
+    "name": "tiki-dame-frontend"
+  },
+  "interactions": [
+    {
+      "description": "la création d’une rencontre de dames",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucune rencontre de dames dans cette session"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "blackName": "Amadou",
+            "whiteName": "Chérif"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "csrf-dame"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/dame/matches"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "blackName": "Amadou",
+            "board": {
+              "columns": 10,
+              "pieces": [
+                {
+                  "column": 1,
+                  "king": false,
+                  "owner": "WHITE",
+                  "row": 6
+                }
+              ],
+              "rows": 10
+            },
+            "currentPlayer": "WHITE",
+            "finishedAt": null,
+            "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "legalMoves": [
+              {
+                "from": {
+                  "column": 1,
+                  "row": 6
+                },
+                "landings": [
+                  {
+                    "column": 0,
+                    "row": 5
+                  }
+                ]
+              }
+            ],
+            "startedAt": "2026-11-05T12:00:00Z",
+            "status": "IN_PROGRESS",
+            "version": 0,
+            "whiteName": "Chérif",
+            "winner": null
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.board.pieces": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.board.pieces[*].column": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.board.pieces[*].king": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.board.pieces[*].owner": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.board.pieces[*].row": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.legalMoves": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.legalMoves[*].from.column": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.legalMoves[*].from.row": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.legalMoves[*].landings": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.legalMoves[*].landings[*].column": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.legalMoves[*].landings[*].row": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.startedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 201
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "la lecture d’une rencontre de dames absente de sa session",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucune rencontre de dames dans cette session"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/games/dame/matches/7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "error": "Rencontre introuvable dans cette session."
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 404
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "la relecture de sa rencontre de dames",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "une rencontre de dames est en cours"
+        }
+      ],
+      "request": {
+        "generators": {
+          "path": {
+            "expression": "/api/games/dame/matches/${matchId}",
+            "type": "ProviderState"
+          }
+        },
+        "matchingRules": {
+          "path": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          }
+        },
+        "method": "GET",
+        "path": "/api/games/dame/matches/7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "blackName": "Amadou",
+            "board": {
+              "columns": 10,
+              "pieces": [
+                {
+                  "column": 1,
+                  "king": false,
+                  "owner": "WHITE",
+                  "row": 6
+                }
+              ],
+              "rows": 10
+            },
+            "currentPlayer": "WHITE",
+            "finishedAt": null,
+            "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "legalMoves": [
+              {
+                "from": {
+                  "column": 1,
+                  "row": 6
+                },
+                "landings": [
+                  {
+                    "column": 0,
+                    "row": 5
+                  }
+                ]
+              }
+            ],
+            "startedAt": "2026-11-05T12:00:00Z",
+            "status": "IN_PROGRESS",
+            "version": 0,
+            "whiteName": "Chérif",
+            "winner": null
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.board.pieces": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.board.pieces[*].column": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.board.pieces[*].king": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.board.pieces[*].owner": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.board.pieces[*].row": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.legalMoves": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.legalMoves[*].from.column": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.legalMoves[*].from.row": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.legalMoves[*].landings": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.legalMoves[*].landings[*].column": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.legalMoves[*].landings[*].row": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.startedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "le coup B4 vers A5 de sa rencontre de dames",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "une rencontre de dames est en cours"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "from": {
+              "column": 1,
+              "row": 6
+            },
+            "landings": [
+              {
+                "column": 0,
+                "row": 5
+              }
+            ],
+            "version": 0
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "generators": {
+          "path": {
+            "expression": "/api/games/dame/matches/${matchId}/moves",
+            "type": "ProviderState"
+          }
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "csrf-dame"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          },
+          "path": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/dame/matches/7c9e6679-7425-40de-944b-e07fc1f90ae7/moves"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "blackName": "Amadou",
+            "board": {
+              "columns": 10,
+              "pieces": [
+                {
+                  "column": 1,
+                  "king": false,
+                  "owner": "WHITE",
+                  "row": 6
+                }
+              ],
+              "rows": 10
+            },
+            "currentPlayer": "BLACK",
+            "finishedAt": null,
+            "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "legalMoves": [
+              {
+                "from": {
+                  "column": 1,
+                  "row": 6
+                },
+                "landings": [
+                  {
+                    "column": 0,
+                    "row": 5
+                  }
+                ]
+              }
+            ],
+            "startedAt": "2026-11-05T12:00:00Z",
+            "status": "IN_PROGRESS",
+            "version": 1,
+            "whiteName": "Chérif",
+            "winner": null
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.board.pieces": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.board.pieces[*].column": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.board.pieces[*].king": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.board.pieces[*].owner": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.board.pieces[*].row": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+                }
+              ]
+            },
+            "$.legalMoves": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.legalMoves[*].from.column": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.legalMoves[*].from.row": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.legalMoves[*].landings": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.legalMoves[*].landings[*].column": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.legalMoves[*].landings[*].row": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.startedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "un coup envoyé avec une ancienne version de la rencontre",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "une rencontre de dames a déjà avancé"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "from": {
+              "column": 1,
+              "row": 6
+            },
+            "landings": [
+              {
+                "column": 0,
+                "row": 5
+              }
+            ],
+            "version": 0
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "generators": {
+          "path": {
+            "expression": "/api/games/dame/matches/${matchId}/moves",
+            "type": "ProviderState"
+          }
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "csrf-dame"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          },
+          "path": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/dame/matches/7c9e6679-7425-40de-944b-e07fc1f90ae7/moves"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "error": "La partie a changé ou est terminée."
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 409
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "un coup interdit dans sa rencontre de dames",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "une rencontre de dames est en cours"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "from": {
+              "column": 1,
+              "row": 6
+            },
+            "landings": [
+              {
+                "column": 1,
+                "row": 4
+              }
+            ],
+            "version": 0
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "generators": {
+          "path": {
+            "expression": "/api/games/dame/matches/${matchId}/moves",
+            "type": "ProviderState"
+          }
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "csrf-dame"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          },
+          "path": {
+            "combine": "AND",
+            "matchers": [
+              {
+                "match": "type"
+              }
+            ]
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/dame/matches/7c9e6679-7425-40de-944b-e07fc1f90ae7/moves"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "error": "Ce coup n’est pas autorisé."
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 400
+      },
+      "type": "Synchronous/HTTP"
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "17.1.4"
+    },
+    "pactRust": {
+      "ffi": "0.5.8",
+      "models": "1.3.16"
+    },
+    "pactSpecification": {
+      "version": "4.0"
+    }
+  },
+  "provider": {
+    "name": "tiki-dame-backend"
+  }
+}

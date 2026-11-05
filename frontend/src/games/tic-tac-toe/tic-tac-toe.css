@@ -1,0 +1,543 @@
+.tic-tac-toe {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+  overflow: hidden;
+  gap: 1.25rem;
+  border-color: color-mix(in srgb, var(--cat-duel) 35%, var(--border));
+  box-shadow:
+    0 1.5rem 3rem rgb(0 0 0 / 18%),
+    inset 0 1px rgb(255 255 255 / 5%);
+  background:
+    radial-gradient(circle at 50% -20%, color-mix(in srgb, var(--cat-duel) 18%, transparent), transparent 45%),
+    var(--surface);
+}
+
+.tic-tac-toe::before {
+  position: absolute;
+  z-index: -1;
+  inset: auto -15% -40% 25%;
+  height: 12rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  content: '';
+  filter: blur(2rem);
+}
+
+.tic-tac-toe-heading {
+  display: grid;
+  gap: 0.15rem;
+  width: min(100%, 28rem);
+}
+
+.tic-tac-toe-heading p {
+  margin: 0;
+}
+
+.tic-tac-toe-kicker {
+  color: var(--cat-duel);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tic-tac-toe-score {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.2rem;
+}
+
+.tic-tac-toe-score span {
+  min-width: 4.5rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--bg) 65%, var(--surface));
+  box-shadow: inset 0 1px rgb(255 255 255 / 5%);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tic-tac-toe-score strong {
+  display: block;
+  font-size: 1.15rem;
+  line-height: 1.1;
+}
+
+.score-X {
+  color: var(--accent);
+}
+
+.score-O {
+  color: var(--cat-duel);
+}
+
+.score-draws {
+  color: var(--muted);
+}
+
+.tic-tac-toe-status {
+  min-height: 1.75rem;
+  margin: 0.25rem 0 0;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.status-finished {
+  animation: victory-pulse 900ms ease-out both;
+  color: var(--success);
+  font-weight: 800;
+}
+
+.status-X strong,
+.mark-X {
+  color: var(--accent);
+}
+
+.status-O strong,
+.mark-O {
+  color: var(--cat-duel);
+}
+
+.tic-tac-toe-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  padding: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--cat-duel) 65%, var(--border));
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--bg) 72%, var(--surface));
+  box-shadow:
+    0 1rem 2rem rgb(0 0 0 / 20%),
+    inset 0 1px rgb(255 255 255 / 8%);
+  overflow: hidden;
+  gap: 0.35rem;
+}
+
+.tic-tac-toe-board button {
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 92%, white), var(--surface));
+  color: var(--text);
+  font-size: clamp(2rem, 12vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.tic-tac-toe-board [role='row'] {
+  display: contents;
+}
+
+.tic-tac-toe-board button.mark-X,
+.tic-tac-toe-board button.mark-O {
+  animation: mark-pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.tic-tac-toe-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 620px);
+  padding: 1.75rem 5rem;
+  border: 1px solid color-mix(in srgb, var(--cat-duel) 24%, var(--border));
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 3%), transparent 45%), color-mix(in srgb, var(--bg) 35%, transparent);
+}
+
+.tic-tac-toe-stage.game-finished {
+  animation: board-win 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.tic-tac-toe-stage.game-finished::after {
+  position: absolute;
+  inset: -10%;
+  z-index: -1;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--success) 22%, transparent);
+  content: '';
+  filter: blur(1.5rem);
+  animation: victory-burst 1000ms ease-out both;
+}
+
+.tic-tac-toe-board {
+  position: relative;
+}
+
+.tic-tac-toe-celebration {
+  position: absolute;
+  z-index: 3;
+  inset: -4rem;
+  pointer-events: none;
+}
+
+.tic-tac-toe-victory {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  gap: 0.65rem;
+  justify-items: center;
+  color: #f7fff9;
+  pointer-events: none;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 45%);
+  transform: translate(-50%, -50%) rotate(-5deg);
+  animation: victory-title 1100ms cubic-bezier(0.15, 0.9, 0.25, 1.2) both;
+}
+
+.tic-tac-toe-victory span {
+  padding: 0.45rem 1.15rem 0.6rem;
+  border: 2px solid color-mix(in srgb, var(--success) 75%, white);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--bg) 88%, var(--success));
+  box-shadow:
+    0 0 0.8rem color-mix(in srgb, var(--success) 85%, transparent),
+    0 0.5rem 1.5rem rgb(0 0 0 / 45%),
+    inset 0 1px rgb(255 255 255 / 28%);
+  font-size: clamp(2.2rem, 11vw, 4.5rem);
+  font-weight: 1000;
+  letter-spacing: 0.04em;
+  line-height: 0.95;
+  white-space: nowrap;
+  text-shadow:
+    0 2px 0 #174c2c,
+    0 0 1rem color-mix(in srgb, var(--success) 75%, transparent);
+}
+
+.tic-tac-toe-victory small {
+  color: var(--bg);
+  font-size: clamp(0.9rem, 3.5vw, 1.2rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tic-tac-toe-winner {
+  padding: 0.35rem 0.8rem;
+  border: 2px solid color-mix(in srgb, var(--success) 80%, white);
+  border-radius: 999px;
+  background: var(--success);
+  box-shadow:
+    0 0 1rem color-mix(in srgb, var(--success) 70%, transparent),
+    0 0.35rem 1rem rgb(0 0 0 / 35%);
+  text-shadow: none;
+}
+
+.tic-tac-toe-celebration span {
+  --drift: 0px;
+  --fall: 130px;
+  --spin: 360deg;
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  width: 0.45rem;
+  height: 0.8rem;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0;
+  animation: confetti 1200ms cubic-bezier(0.1, 0.8, 0.3, 1) both;
+}
+
+.tic-tac-toe-celebration span:nth-child(3n) {
+  background: var(--cat-duel);
+}
+
+.tic-tac-toe-celebration span:nth-child(3n + 1) {
+  background: var(--success);
+}
+
+.tic-tac-toe-celebration span:nth-child(2n) {
+  width: 0.65rem;
+  height: 0.35rem;
+}
+
+.tic-tac-toe-celebration span:nth-child(1) {
+  --drift: -145px;
+  --fall: 95px;
+  --spin: 620deg;
+}
+.tic-tac-toe-celebration span:nth-child(2) {
+  --drift: -112px;
+  --fall: 175px;
+  --spin: -480deg;
+}
+.tic-tac-toe-celebration span:nth-child(3) {
+  --drift: -76px;
+  --fall: 125px;
+  --spin: 340deg;
+}
+.tic-tac-toe-celebration span:nth-child(4) {
+  --drift: -38px;
+  --fall: 205px;
+  --spin: -540deg;
+}
+.tic-tac-toe-celebration span:nth-child(5) {
+  --drift: -12px;
+  --fall: 145px;
+  --spin: 460deg;
+}
+.tic-tac-toe-celebration span:nth-child(6) {
+  --drift: 22px;
+  --fall: 190px;
+  --spin: -420deg;
+}
+.tic-tac-toe-celebration span:nth-child(7) {
+  --drift: 58px;
+  --fall: 115px;
+  --spin: 520deg;
+}
+.tic-tac-toe-celebration span:nth-child(8) {
+  --drift: 94px;
+  --fall: 180px;
+  --spin: -620deg;
+}
+.tic-tac-toe-celebration span:nth-child(9) {
+  --drift: 140px;
+  --fall: 105px;
+  --spin: 400deg;
+}
+.tic-tac-toe-celebration span:nth-child(10) {
+  --drift: -165px;
+  --fall: 160px;
+  --spin: -440deg;
+}
+.tic-tac-toe-celebration span:nth-child(11) {
+  --drift: -88px;
+  --fall: 225px;
+  --spin: 580deg;
+}
+.tic-tac-toe-celebration span:nth-child(12) {
+  --drift: -55px;
+  --fall: 80px;
+  --spin: -360deg;
+}
+.tic-tac-toe-celebration span:nth-child(13) {
+  --drift: 45px;
+  --fall: 230px;
+  --spin: 640deg;
+}
+.tic-tac-toe-celebration span:nth-child(14) {
+  --drift: 82px;
+  --fall: 75px;
+  --spin: -500deg;
+}
+.tic-tac-toe-celebration span:nth-child(15) {
+  --drift: 168px;
+  --fall: 155px;
+  --spin: 440deg;
+}
+.tic-tac-toe-celebration span:nth-child(16) {
+  --drift: -130px;
+  --fall: 245px;
+  --spin: -580deg;
+}
+.tic-tac-toe-celebration span:nth-child(17) {
+  --drift: 8px;
+  --fall: 255px;
+  --spin: 500deg;
+}
+.tic-tac-toe-celebration span:nth-child(18) {
+  --drift: 125px;
+  --fall: 220px;
+  --spin: -660deg;
+}
+
+.tic-tac-toe-stage.game-finished .tic-tac-toe-board button.mark-X,
+.tic-tac-toe-stage.game-finished .tic-tac-toe-board button.mark-O {
+  animation:
+    mark-pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both,
+    winning-mark 900ms ease-out 180ms both;
+}
+
+.tic-tac-toe-board button:not(:disabled):hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  box-shadow: 0 0 1rem color-mix(in srgb, var(--accent) 20%, transparent);
+  transform: translateY(-2px);
+}
+
+.tic-tac-toe-board button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.tic-tac-toe-board button.mark-X,
+.tic-tac-toe-board button.mark-O {
+  text-shadow: 0 0 1rem currentColor;
+}
+
+.tic-tac-toe-board button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  position: relative;
+}
+
+.tic-tac-toe > button {
+  min-width: 9rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, white);
+  box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 18%);
+  transition:
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.tic-tac-toe > button:hover {
+  box-shadow:
+    0 0.75rem 1.25rem rgb(0 0 0 / 25%),
+    0 0 1rem color-mix(in srgb, var(--accent) 28%, transparent);
+  transform: translateY(-2px);
+}
+
+@keyframes mark-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.45) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes board-win {
+  0%,
+  100% {
+    box-shadow:
+      0 1rem 2rem rgb(0 0 0 / 20%),
+      inset 0 1px rgb(255 255 255 / 8%);
+  }
+  35% {
+    box-shadow:
+      0 0 2rem color-mix(in srgb, var(--success) 48%, transparent),
+      0 1rem 2rem rgb(0 0 0 / 20%),
+      inset 0 1px rgb(255 255 255 / 8%);
+  }
+}
+
+@keyframes winning-mark {
+  0%,
+  100% {
+    text-shadow: 0 0 1rem currentColor;
+  }
+  45% {
+    text-shadow:
+      0 0 0.5rem currentColor,
+      0 0 2rem currentColor,
+      0 0 3rem color-mix(in srgb, currentColor 50%, transparent);
+  }
+}
+
+@keyframes victory-pulse {
+  0% {
+    opacity: 0;
+    transform: translateY(0.4rem) scale(0.96);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes victory-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+@keyframes victory-title {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) rotate(-18deg);
+  }
+  45% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2) rotate(4deg);
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(0.92) rotate(-3deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(-5deg);
+  }
+}
+
+@keyframes confetti {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) rotate(0);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--drift)), var(--fall)) scale(1) rotate(var(--spin));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-finished,
+  .tic-tac-toe-stage.game-finished,
+  .tic-tac-toe-stage.game-finished button.mark-X,
+  .tic-tac-toe-stage.game-finished button.mark-O,
+  .tic-tac-toe-board button.mark-X,
+  .tic-tac-toe-board button.mark-O,
+  .tic-tac-toe-stage.game-finished::after,
+  .tic-tac-toe-celebration span,
+  .tic-tac-toe-victory {
+    animation: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .tic-tac-toe-stage {
+    padding: 1.25rem 1rem;
+  }
+
+  .tic-tac-toe-score {
+    gap: 0.3rem;
+  }
+
+  .tic-tac-toe-score span {
+    min-width: 4rem;
+  }
+}

@@ -20,9 +20,9 @@ flowchart LR
     IT --> MF["Mutation Stryker"]
     IT --> MB["Mutation Pitest"]
     IT --> E2E["E2E"]
-    MF & MB & E2E --> PERF["Performance k6"]
-    MF & MB & E2E --> DAST["DAST ZAP"]
-    MF & MB & E2E --> SQ["SonarQube"]
+    IT --> PERF["Performance k6"]
+    IT --> DAST["DAST ZAP"]
+    MF & MB & E2E & PERF & DAST --> SQ["SonarQube"]
     SEC & RTM & PERF & DAST & SQ --> V["CI (verdict)"]
     V --> GATE{{"Checks obligatoires<br/>+ 1 relecture"}}
     GATE --> MERGE["Fusion<br/>(squash)"]
@@ -36,8 +36,8 @@ minutes de mutation ou de tests de charge sur du code qui ne passe pas le lint.
 |--------|------|-----------------|
 | 1. Statique et unitaires | `Frontend`, `Backend` (et `Traçabilité (RTM)`, `Security`, `CodeQL` en parallèle, toujours) | le code est formaté, typé ; tests unitaires, propriétés, contrat Pact et chaos passent avec la couverture minimale ; chaque exigence est tracée |
 | 2. Intégration | `Integration` | les migrations, la RLS et les triggers marchent sur un vrai PostgreSQL |
-| 3. Robustesse des tests et parcours | `Mutation (Stryker)`, `Mutation (Pitest)`, `E2E` | les tests détectent vraiment les bugs ; les parcours joueur et l'accessibilité tiennent |
-| 4. Non fonctionnel et quality gate | `Performance (k6)`, `DAST (ZAP baseline)`, `SonarQube Cloud` | performance, sécurité dynamique et qualimétrie |
+| 3. Tests dynamiques | `Mutation (Stryker)`, `Mutation (Pitest)`, `E2E`, `Performance (k6)`, `DAST (ZAP baseline)` | les tests détectent vraiment les bugs ; les parcours joueur et l'accessibilité tiennent ; performance et sécurité dynamique |
+| 4. Quality gate | `SonarQube Cloud` | qualimétrie, sur la couverture produite au palier 1 |
 | 5. Verdict | `CI (verdict)` | échoue si un seul job a échoué |
 
 Dans un job, les étapes s'arrêtent aussi au premier échec, de la plus rapide à la plus lente : format → lint →
@@ -71,10 +71,14 @@ vont jusqu'au bout : un seul run donne tous les problèmes du palier. Un job arr
 
 La CI démarre sur :
 
-- **chaque PR** qui vise `dev` ou `main`, à chaque nouveau commit poussé dessus ;
+- **chaque PR** qui vise `dev` ou `main`, à chaque nouveau commit poussé dessus. Une PR **en draft** ne lance que
+  le palier 1 (`Frontend`, `Backend`, plus `Security`, `Traçabilité` et `CodeQL`) : les paliers 2 à 4 apparaissent
+  « skipped ». La passer en *Ready for review* relance la CI au complet. Une draft ne se fusionne pas, donc rien
+  n'est fusionné sans les paliers 2 à 4 ; on libère juste les machines (20 jobs simultanés pour tout le dépôt) ;
 - **chaque push** sur `dev` ou `main`, c'est-à-dire après chaque fusion ;
 - **chaque nuit à 2 h UTC** sur la branche par défaut, et à la demande (*Run workflow*) : tous les jobs tournent,
-  quelle que soit la zone modifiée, et la mutation est complète (palier « nuit » : validation exhaustive).
+  quelle que soit la zone modifiée, et la mutation est complète (palier « nuit » : validation exhaustive). C'est
+  le seul run qui rejoue **tous** les mutants (~20 min pour Stryker).
 
 CodeQL tourne en plus **chaque lundi à 6 h UTC**, même sans changement : de nouvelles règles de détection sortent
 régulièrement.
@@ -91,7 +95,7 @@ ne tourne que si l'une de ses zones a changé :
 |-----|---------------------------------|
 | Frontend, E2E, Mutation (Stryker) | `frontend/**` |
 | Backend, Mutation (Pitest) | `backend/**` |
-| Integration | `frontend/**` ou `supabase/**` |
+| Integration | `frontend/**`, `supabase/**`, `quality/db-init/**`, `backend/pom.xml` ou le code du jeu SDV Civilisation (`backend/src/*/java/fr/tikigaming/games/sdv_civilisation/**`) |
 | Performance (k6) | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` |
 | DAST (ZAP) | `frontend/**`, `backend/**` ou `quality/**` |
 | SonarQube Cloud | `frontend/**` ou `backend/**` |
@@ -103,21 +107,43 @@ ne tourne que si l'une de ses zones a changé :
 
 Exemple : une PR qui ne touche que `docs/` ne lance que `Changes`, `Security` et `CodeQL`.
 
+### Analyse d'impact : seuls les tests des jeux touchés
+
+`Changes` regarde aussi **quels jeux** une PR touche (sortie `games`). Si **tous** les fichiers modifiés sont dans
+les dossiers d'un ou plusieurs jeux, les tests unitaires ne rejouent que ce qui les concerne :
+
+| Fichiers d'un jeu `<slug>` | Ce qui tourne |
+|----------------------------|---------------|
+| `frontend/src/games/<slug>/**`, `frontend/public/games/<slug>/**` | `Frontend` : `vitest --changed`, c'est-à-dire les tests qui importent un fichier modifié, même indirectement (registre, lobby compris) |
+| `backend/src/{main,test}/java/fr/tikigaming/games/<slug>/**`, `backend/src/test/resources/features/<slug>/**` | `Backend` : les tests du jeu, plus ceux du socle qui chargent tous les jeux (`config` : OpenAPI, sécurité ; `contract` : Pact provider) |
+| `docs/**` | rien de plus |
+
+- Le moindre autre fichier (socle, `registry.ts`, `src/games/{adapters,domain,testing}`, lockfile, `pom.xml`,
+  migrations, CI…) fait tout tourner : on ne devine pas l'impact d'un changement partagé.
+- La couverture d'un run partiel n'a pas de sens au global : les **seuils** (Vitest, JaCoCo) ne bloquent pas sur ces
+  PR. Le Quality Gate SonarQube, lui, porte toujours sur le nouveau code.
+- **Filet de sécurité** : chaque push sur `dev` et `main` et le run de nuit rejouent tous les tests avec les seuils.
+  Un jeu qui en casserait un autre est vu au plus tard à la fusion.
+- La mutation (Stryker, Pitest) est déjà incrémentale : elle ne rejoue que les mutants touchés.
+
 ## 3. Installation et caches
 
 Chaque job part d'une machine vide, puis :
 
 1. récupère le code (`actions/checkout`) ;
 2. installe **Node 24** et/ou **Java 21** (Temurin) ;
-3. installe les dépendances exactes du lockfile : `npm ci` côté front, Maven côté backend.
+3. installe les dépendances exactes du lockfile : `npm ci` côté front (ou restaure `node_modules` du cache, voir
+   ci-dessous), Maven côté backend.
 
 Pour ne pas refaire le même travail à chaque run, plusieurs caches sont réutilisés :
 
 | Cache | Ce qui est évité |
 |-------|------------------|
-| npm, Maven | retélécharger les dépendances |
+| `node_modules` du front (`.github/actions/node-modules`) | relancer `npm ci` (40 à 90 s) dans chacun des 7 jobs du front : clé = lockfile + Node + image Ubuntu ; seul le premier job qui la rate (en pratique `Frontend`) installe et sauvegarde |
+| Maven | retélécharger les dépendances |
 | Prettier, ESLint | revérifier les fichiers dont le **contenu** n'a pas changé |
-| Navigateurs Playwright | les retélécharger tant que la version ne change pas |
+| Navigateurs Playwright | les retélécharger tant que la version de Playwright (pas tout le lockfile) ne change pas |
+| Couverture (artefacts `couverture-frontend`, `couverture-backend`) | rejouer les tests dans `SonarQube Cloud` |
 | Stryker, Pitest | sur une PR, rejouer les mutants que le changement ne concerne pas |
 
 Les caches ne changent jamais le résultat d'un check : ils accélèrent, ils n'assouplissent rien (détails dans
@@ -193,6 +219,9 @@ mvn -B verify
    branches) sur le cœur métier (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`, `CircuitBreaker`) ;
 5. **Spotless** : le code doit être formaté (palantir-java-format). Pour corriger : `mvn spotless:apply`.
 
+Les scénarios Gherkin Dames sont inclus dans les tests du palier 1 ; leur rapport
+HTML/JSON/XML est publié dans l'artefact `rapport-bdd-dame`.
+
 ### Traçabilité (`Traçabilité (RTM)`)
 
 ```bash
@@ -209,6 +238,7 @@ tourne à chaque run, sans dépendance : renommer un test côté front ou backen
 ```bash
 npm run db:check           # dans frontend/, sans Docker : noms et versions des migrations
 npm run test:integration   # dans frontend/, Docker requis
+mvn -B test -Dtest=SdvCivilisationTestcontainersIT -Dsurefire.failIfNoSpecifiedTests=false   # dans backend/, Docker requis
 ```
 
 Deux vérifications passent d'abord, sans base de données :
@@ -225,6 +255,13 @@ Deux vérifications passent d'abord, sans base de données :
 L'ordre des dates, lui, n'a pas d'importance : une migration plus ancienne que la dernière appliquée est appliquée
 normalement.
 
+Le même palier exécute ensuite les `*IT` Java Dames :
+`mvn -B -Pintegration '-Dit.test=fr/tikigaming/games/dame/**/*IT' test-compile failsafe:integration-test failsafe:verify` depuis `backend/`.
+Ces tests vérifient l'adaptateur avec PostgreSQL et PostgREST réels ; leurs rapports
+sont publiés dans `rapport-integration-backend`. Ils tournent après le palier 1,
+avant mutation/E2E, sans rejouer toute la suite unitaire. Le filtre cible Dames :
+l'étape d'intégration SDV existante est conservée et n'est pas rejouée par Failsafe.
+
 **Testcontainers** démarre un vrai PostgreSQL (`supabase/postgres` 17.11, la même image que la production) dans un
 conteneur éphémère, rejoue **toutes les migrations** de `supabase/migrations/` sur une base vide, puis vérifie
 (`frontend/tests/integration/`) :
@@ -233,7 +270,12 @@ conteneur éphémère, rejoue **toutes les migrations** de `supabase/migrations/
   pas enregistrer un score au nom d'un autre ; un visiteur n'a aucun accès aux sauvegardes ;
 - les **triggers** : l'inscription crée le profil, et un pseudo déjà pris est dédoublonné ;
 - le **catalogue** : les catégories du front (`GAME_CATEGORIES`) correspondent à la contrainte en base ;
-- `find_auth_user_id` n'est accessible qu'au backend (`service_role`).
+- `find_auth_user_id` n'est accessible qu'au backend (`service_role`) ;
+- le **stockage des parties de SDV Civilisation** (`SdvCivilisationTestcontainersIT`, JUnit) : même image, mêmes
+  migrations, avec un vrai **PostgREST** devant la base, comme l'API REST de Supabase. Le vrai adaptateur
+  `SupabaseGames` enregistre et relit une partie, la colonne `data` reste chiffrée, le verrou optimiste
+  (`data->>version`) refuse une version périmée, et deux joueurs ne voient pas la partie l'un de l'autre. Les
+  classes `*IT` ne sont pas lancées par `mvn test`.
 
 Une migration qui ne s'applique pas sur une base neuve, ou une règle de sécurité cassée, est détectée ici, avant
 d'atteindre la production.
@@ -252,8 +294,9 @@ code est exécuté par les tests, mais rien ne vérifie vraiment son comportemen
 - Seuil bloquant : **au moins 75 %** de mutants tués, front comme backend.
 - Périmètre : le cœur du lobby côté front (`stryker.config.mjs`), les classes métier côté backend (profil
   `mutation` du `pom.xml`).
-- Sur une **PR**, seuls les mutants concernés par le changement sont rejoués. Sur un **push** vers `dev` ou
-  `main`, tout est rejoué.
+- Sur une **PR** et sur un **push** vers `dev` ou `main`, seuls les mutants concernés par le changement sont
+  rejoués ; le push met à jour le cache lu par les PR suivantes. Tout est rejoué **chaque nuit** et à la demande
+  (*Run workflow*).
 - Les rapports HTML sont publiés en **artefacts** (`rapport-mutation-frontend`, `rapport-mutation-backend`).
 
 ## 10. Tests de bout en bout et accessibilité (`E2E`)
@@ -261,7 +304,11 @@ code est exécuté par les tests, mais rien ne vérifie vraiment son comportemen
 ```bash
 npx playwright install --with-deps chromium firefox webkit   # une fois
 npm run test:e2e                              # dans frontend/
+npm run test:e2e -- --project=webkit          # un seul navigateur
 ```
+
+En CI, chaque navigateur a son job (`E2E (Playwright + axe, chromium)`, `…, firefox`, `…, webkit`), en parallèle :
+chacun n'installe que son navigateur. Rapport en artefact `rapport-e2e-<navigateur>` en cas d'échec.
 
 **Playwright** pilote les trois moteurs de rendu (Chromium, Firefox, WebKit) sur l'application, comme le ferait un
 joueur (`frontend/e2e/lobby.spec.ts`, `compte.spec.ts`) :
@@ -311,6 +358,8 @@ CSP trop permissive, clickjacking…
   régression fait échouer la CI), `IGNORE` pour les risques acceptés, chacun avec sa justification
   ([quality/README.md](../quality/README.md#zap--scan-dast)).
 - Rapports HTML en artefact (`rapport-zap`).
+- Les deux scans (front et API) tournent en parallèle. Le backend est le jar construit par `Backend` (artefact
+  `backend-jar`, lancé avec `java -jar`, comme pour k6) ; si `Backend` a été sauté, il est compilé dans le job.
 
 ## 13. Vulnérabilités des dépendances (`Security`)
 
@@ -334,7 +383,9 @@ apparaissent sur la PR et dans l'onglet **Security → Code scanning** du dépô
 
 Si le secret `SONAR_TOKEN` est configuré dans le dépôt, le job :
 
-1. régénère la couverture du front (lcov) et du backend (JaCoCo) ;
+1. récupère la couverture du front (lcov) et du backend (JaCoCo + classes compilées) produite au palier 1 par
+   `Frontend` et `Backend`, sans rejouer les tests ; si l'un des deux a été sauté (zone inchangée), il recalcule
+   la couverture de cette zone ;
 2. envoie le code et la couverture à **SonarQube Cloud** ;
 3. attend le **Quality Gate** (*Sonar way*) sur le nouveau code : 0 nouveau problème, couverture ≥ 80 %,
    duplication ≤ 3 %.
@@ -358,8 +409,8 @@ Ce sont les seuls blocages techniques. [CONTRIBUTING.md](../CONTRIBUTING.md#work
 se fusionne qu'avec une CI entièrement verte**, tous les jobs compris. La fusion se fait en *squash merge*, puis
 la branche est supprimée.
 
-Après la fusion, la CI tourne une nouvelle fois sur `dev` (étape 1) : c'est le run complet qui sert de référence
-aux PR suivantes.
+Après la fusion, la CI tourne une nouvelle fois sur `dev` (étape 1) : tous les tests, seuils compris, et la mutation
+incrémentale. Ce run sert de référence aux PR suivantes ; le run de nuit rejoue en plus tous les mutants.
 
 ---
 

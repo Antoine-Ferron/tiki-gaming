@@ -54,4 +54,17 @@ class SessionGameStoreTest {
         assertThat(store.load()).isEmpty();
         assertThat(new SessionGameStore(new MockHttpSession(), SEALER).load()).isEmpty();
     }
+
+    @Test
+    void aNewGameReplacesTheGuestGameInProgress() {
+        // Étant donné un invité dont la partie en cours est en version 3
+        SessionGameStore store = new SessionGameStore(session, SEALER);
+        store.save(saved(3), 0);
+
+        // Quand il commence une nouvelle partie (version attendue 0 : remplacer la partie, quelle qu'elle soit)
+        store.save(saved(1), 0);
+
+        // Alors la nouvelle partie remplace l'ancienne
+        assertThat(store.load()).contains(saved(1));
+    }
 }

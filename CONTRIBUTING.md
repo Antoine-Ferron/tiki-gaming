@@ -70,7 +70,8 @@ En minuscules, mots séparés par des tirets, sans accents.
    **Tant que le travail n'est pas terminé, la PR est en draft** (`gh pr create --draft`, ou
    *Convert to draft* / `gh pr ready 12 --undo` sur une PR déjà ouverte). Une draft ne se relit pas et ne
    se fusionne pas : la passer en *Ready for review* (`gh pr ready 12`) quand tout est livré et la CI verte,
-   et la repasser en draft si un retour de relecture demande encore du travail.
+   et la repasser en draft si un retour de relecture demande encore du travail. En draft, la CI ne lance que le
+   palier 1 (lint, types, tests unitaires, build) ; *Ready for review* lance tout ([détails](docs/ci.md#1-déclenchement)).
 5. **CI verte et 1 relecture approuvée minimum** avant de fusionner :
    - une PR qui ne touche que `frontend/src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut
      être relue par l'équipe du jeu ;
@@ -165,6 +166,14 @@ c'est le formatter qui tranche les questions de style.
 - **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
   écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
   le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+  Côté backend, les `.feature` vont dans `src/test/resources/<paquet du jeu>/features/` et sont exécutés par
+  `mvn test` (Cucumber JVM) : une classe `@Suite` par jeu. Pas de `cucumber-spring`, qui imposerait une
+  configuration Spring à toutes les suites : une suite qui a besoin de l'API démarre l'application elle-même
+  (`@BeforeAll`, port libre), comme `MiniGtaApi`.
+- **BDD Java Dames** (`backend/src/test/resources/features/dame`) : `DameBddTest` appelle le domaine et son fake
+  via Cucumber/JUnit Platform, sans Spring ni Docker. Depuis la racine :
+  `mvn -f backend/pom.xml -Dtest=DameBddTest test`. Rapport : `backend/target/cucumber/dame.html`, artefact CI
+  `rapport-bdd-dame` ; voir [la documentation Dames](docs/dame/bdd.md).
 - **Propriétés et fuzzing** (`*.property.test.ts`, fast-check) : une règle vraie pour toute entrée générée
   (« tout entier au-dessus du maximum est refusé »), et du fuzzing (« n'importe quelle saisie donne des données ou
   des messages, jamais une exception »). En cas d'échec, fast-check réduit l'entrée au plus petit contre-exemple
@@ -209,8 +218,9 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 |--------------------------|--------------------------------------------------------------------------|
 | `mvn spotless:apply`     | **Formatter** : reformate le code (palantir-java-format, 4 espaces, 120 colonnes) |
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
-| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
+| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc) et scénarios BDD (Cucumber) |
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, couverture minimale (JaCoCo), et échec si le code n'est pas formaté |
+| `mvn -Pintegration verify` | Ajoute les tests Java `*IT` PostgreSQL/PostgREST via Testcontainers ; Docker obligatoire |
 | `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
 
@@ -279,26 +289,30 @@ ce qui compte comme réussi pour la fusion :
 | 1 | `frontend` | `frontend/**` | `npm ci` → `format:check` → `lint` → `typecheck` → `rtm:check` → `test:coverage` (seuils) → `test:contract` (contrat à jour) → `build` |
 | 1 | `backend` | `backend/**` ou `frontend/pacts/**` | `spotless:check` → `mvn -B verify` (Checkstyle, tests dont Pact provider et chaos Toxiproxy, JaCoCo) |
 | 1 | `security` | toujours | `npm audit --audit-level=high` ; sur une PR, *dependency review* |
-| 2 | `integration` | `frontend/**` ou `supabase/**` | Testcontainers : migrations, RLS et triggers sur PostgreSQL réel |
+| 2 | `integration` | `frontend/**`, `supabase/**`, `quality/db-init/**`, `backend/pom.xml` ou paquets Java Dames/SDV Civilisation | Tests collectifs PostgreSQL, IT SDV, puis IT Dames PostgreSQL/PostgREST via Failsafe |
 | 3 | `mutation-frontend` | `frontend/**` | Stryker (seuil 75 %), rapport en artefact |
 | 3 | `mutation-backend` | `backend/**` | Pitest (seuil 75 %), rapport en artefact |
 | 3 | `e2e` | `frontend/**` | Playwright sous Chromium, Firefox et WebKit + audit WCAG 2.1 AA (axe) |
-| 4 | `performance` | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 profil `load` : P95 < 300 ms, P99 < 500 ms, < 1 % d'erreurs ([SLO](docs/slo.md)) |
-| 4 | `dast` | `frontend/**`, `backend/**` ou `quality/**` | ZAP baseline du front buildé et du backend |
-| 4 | `sonar` | `frontend/**` ou `backend/**` | SonarQube Cloud et son Quality Gate (secret `SONAR_TOKEN`) |
+| 3 | `performance` | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 profil `load` : P95 < 300 ms, P99 < 500 ms, < 1 % d'erreurs ([SLO](docs/slo.md)) |
+| 3 | `dast` | `frontend/**`, `backend/**` ou `quality/**` | ZAP baseline du front buildé et du backend |
+| 4 | `sonar` | `frontend/**` ou `backend/**` | SonarQube Cloud et son Quality Gate (secret `SONAR_TOKEN`), sur la couverture du palier 1 |
 | 5 | `verdict` | toujours | échoue si un seul job a échoué |
 
 Modifier `.github/workflows/ci.yml` relance tous les jobs. Si la détection des zones échoue, ou pour le run de
 nuit, tous les jobs tournent.
 
+Une PR qui ne touche que les dossiers d'un ou plusieurs jeux ne rejoue que leurs tests unitaires, sans seuils de
+couverture ; tout est rejoué, seuils compris, au push sur `dev` ([détails](docs/ci.md#analyse-dimpact--seuls-les-tests-des-jeux-touchés)).
+
 ### Caches
 
 | Cache | Effet |
 |-------|-------|
-| npm, Maven | dépendances téléchargées une fois (`setup-node`, `setup-java`) |
+| `node_modules` | `npm ci` seulement quand le lockfile, Node ou l'image Ubuntu change ; les autres jobs restaurent le dossier tel quel (`.github/actions/node-modules`) |
+| Maven | dépendances téléchargées une fois (`setup-java`) |
 | Prettier, ESLint | seuls les fichiers dont le **contenu** a changé sont revérifiés (aussi en local : `node_modules/.cache`) |
-| Playwright | navigateurs réinstallés seulement quand la version change |
-| Stryker, Pitest | **sur une PR**, seuls les mutants concernés par le changement sont rejoués ; un push vers `dev` ou `main` refait un run **complet**, qui sert de référence aux PR suivantes |
+| Playwright | navigateurs réinstallés seulement quand la version de Playwright change |
+| Stryker, Pitest | sur une PR et un push vers `dev` ou `main`, seuls les mutants concernés par le changement sont rejoués (le push alimente le cache des PR suivantes) ; le run de **nuit** rejoue tout |
 
 Les seuils et le résultat des checks ne changent pas : un test affaibli fait toujours apparaître ses
 mutants survivants, en incrémental comme en complet. En cas de doute sur un résultat de mutation d'une

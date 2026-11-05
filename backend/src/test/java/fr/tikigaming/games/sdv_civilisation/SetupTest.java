@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class SetupTest {
 
@@ -61,5 +63,19 @@ class SetupTest {
                         .extracting(Card::age)
                         .containsOnly(1));
         assertThat(game.hands().getFirst()).isEqualTo(Cards.ofAge(1));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(strings = {"Temple d’Ysar", "Phare de Sélène", "Jardins de Mirah", "Citadelle d’Orkan"})
+    void theChosenWonderIsNeverDealtToAnAi(String chosen) {
+        // Étant donné un mélange figé qui garde l'ordre du catalogue (stub) : sans filtre, la première merveille
+        // restante irait à "IA 1"
+        Wonder wonder = Wonders.byName(chosen);
+
+        // Quand "alice" choisit cette merveille
+        GameState game = engine.create("alice", wonder);
+
+        // Alors aucune IA ne la reçoit
+        assertThat(game.players().subList(1, 3)).extracting(PlayerState::wonder).doesNotContain(wonder);
     }
 }

@@ -107,13 +107,130 @@ date et ses initiales.
 | Résultat obtenu | |
 | Statut | À EXÉCUTER |
 
+### TC-UAT-07 · Rush Hour : niveau 1 terminé au minimum de coups, à la souris
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-RH-01, REQ-RH-02, REQ-RH-04, REQ-RH-05 |
+| Profil | Joueur connecté, navigateur de bureau, souris |
+| Préconditions | Compte de test qui n'a jamais joué à Rush Hour |
+| Jeu de données | Compte `recette_b` ; solution du niveau 1 : camion A de 3 cases vers le bas, voiture H d'1 case vers le haut, voiture rouge de 3 cases vers la droite |
+| Étapes | 1. Ouvrir Rush Hour · 2. Essayer d'ouvrir le niveau 2 · 3. Ouvrir le niveau 1 · 4. Glisser la voiture rouge vers la droite, au-delà du camion A · 5. Cliquer « Recommencer » · 6. Jouer la solution à la souris · 7. Revenir aux niveaux et relire le classement |
+| Résultat attendu | Étape 2 : niveau 2 fermé (cadenas) · Étape 4 : la voiture s'arrête contre le camion, « Coups : 1 (min. 3) » · Étape 6 : « Bravo ! 1000 points en 3 coups », véhicules bloqués · Étape 7 : niveau 2 « à jouer », « Score total : 1000 points », `recette_b` classé à 1000 |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-08 · Rush Hour : indice payant et record conservé
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-RH-03, REQ-RH-05, REQ-RH-07 |
+| Profil | Joueur connecté |
+| Préconditions | TC-UAT-07 exécutée : record de 1000 points au niveau 1 |
+| Jeu de données | Compte `recette_b` |
+| Étapes | 1. Rejouer le niveau 1 · 2. Cliquer « Indice (−200 points) » · 3. Suivre l'indice puis finir au minimum de coups · 4. Revenir aux niveaux |
+| Résultat attendu | Étape 2 : « Indice : Camion A, vertical de 3 cases vers le bas », le camion est mis en avant · Étape 3 : « Bravo ! 800 points en 3 coups » · Étape 4 : le niveau 1 affiche toujours 1000 points, score total inchangé (un record ne baisse jamais) |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-09 · Rush Hour : plateau généré en Difficile, hors classement
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-RH-06 |
+| Profil | Joueur connecté |
+| Préconditions | Score total connu au classement (par exemple 1000 après TC-UAT-07) |
+| Jeu de données | Compte `recette_b` |
+| Étapes | 1. Dans « Génération », cliquer « Difficile » · 2. Noter le minimum affiché · 3. Résoudre le plateau (les indices sont autorisés) · 4. Cliquer « Nouveau plateau » · 5. Revenir à l'écran de choix et relire le classement |
+| Résultat attendu | Étape 1 : un plateau s'affiche en moins de 2 secondes · Étape 2 : minimum d'au moins 17 coups · Étape 4 : un autre plateau Difficile · Étape 5 : « Difficile : 1 plateau réussi », score total et classement inchangés |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-10 · Rush Hour : jouer au doigt sur smartphone et au clavier seul
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-RH-08, REQ-A11Y-01 |
+| Profil | Invité, smartphone (écran tactile) puis navigateur de bureau au clavier seul |
+| Préconditions | — |
+| Jeu de données | Niveau 1 |
+| Étapes | 1. Sur smartphone, ouvrir le niveau 1 et glisser des véhicules au doigt, d'à peine plus d'une demi-case, dans les deux sens · 2. Sur ordinateur, sans souris : Tab jusqu'à la voiture rouge, flèche haut, puis flèche droite · 3. Finir le niveau au clavier |
+| Résultat attendu | Étape 1 : le plateau tient dans l'écran ; le véhicule suit le doigt et se cale sur la case la plus proche, de la même façon vers la gauche que vers la droite · Étape 2 : focus visible ; flèche haut sans effet sur une voiture horizontale, flèche droite la déplace d'une case · Étape 3 : écran de victoire, et le jeu invite l'invité à se connecter pour être classé |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-11 · MiniGTA : première partie en invité, mission « Colis express » et armurerie
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-02, REQ-GTA-03, REQ-GTA-05 |
+| Profil | Invité, navigateur de bureau, clavier et souris |
+| Préconditions | Aucune sauvegarde MiniGTA dans ce navigateur (`localStorage` vidé) |
+| Jeu de données | Nouvelle partie (500 $) |
+| Étapes | 1. Ouvrir `/games/mini-gta`, cliquer « Jouer » · 2. Prendre une voiture, réussir « Colis express » (GPS, chrono) · 3. À l'armurerie, acheter un pistolet · 4. Tenter d'acheter le sniper (2 500 $) · 5. Rejouer « Colis express » · 6. Échap → « Quitter » |
+| Résultat attendu | Étape 2 : +800 $, solde 1 300 $ · Étape 3 : −300 $, pistolet et munitions dans l'inventaire · Étape 4 : achat refusé, solde inchangé · Étape 5 : aucune récompense · Étape 6 : l'accueil affiche « Continuer », l'argent et « 1 / 4 » missions |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-12 · MiniGTA : score au classement et progression retrouvée sur un autre appareil
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-08 |
+| Profil | Joueur connecté, deux navigateurs (ou deux appareils) |
+| Préconditions | Compte `recette_c`, aucun score MiniGTA |
+| Jeu de données | Compte `recette_c` |
+| Étapes | 1. Connecté, réussir une mission puis ramasser des billets · 2. Dépenser à l'armurerie · 3. Quitter et relire le classement · 4. Se connecter avec le même compte sur l'autre navigateur et ouvrir MiniGTA |
+| Résultat attendu | Étape 3 : le classement affiche tout l'argent gagné (mission + billets), non diminué par l'achat · Étape 4 : « Continuer » avec le même argent et les mêmes missions |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-13 · MiniGTA : poursuite de police, arrestation et caution
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-06, REQ-GTA-07 |
+| Profil | Invité, navigateur de bureau |
+| Préconditions | Partie en cours avec plus de 1 500 $ et une arme achetée |
+| Jeu de données | Commande de chat `/recherche 2` autorisée pour gagner du temps |
+| Étapes | 1. Commettre un crime devant un témoin · 2. Se cacher hors de vue jusqu'à la fin de la recherche · 3. Recommencer, puis se laisser arrêter |
+| Résultat attendu | Étape 1 : des étoiles s'affichent · Étape 2 : elles clignotent puis disparaissent · Étape 3 : réapparition au commissariat, caution de 15 % (200 $ minimum) prélevée, plus que les poings dans l'inventaire |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-14 · MiniGTA : tremplin et bâtiment ouvert
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-09, REQ-GTA-10 |
+| Profil | Invité, navigateur de bureau |
+| Préconditions | Partie en cours |
+| Jeu de données | Commandes `/tp port` et `/summon sport` autorisées |
+| Étapes | 1. Au port, prendre une sportive et rouler vite sur une rampe de chargement · 2. En ville, entrer à pied dans un immeuble dont la porte est ouverte · 3. Essayer d'y entrer en voiture |
+| Résultat attendu | Étape 1 : la voiture décolle et retombe sans traverser le sol · Étape 2 : pièce meublée, plafond au-dessus du joueur · Étape 3 : la porte est trop étroite pour la voiture |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-15 · MiniGTA : smartphone et petit écran
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-11 |
+| Profil | Invité, smartphone (écran tactile) |
+| Préconditions | — |
+| Jeu de données | — |
+| Étapes | 1. Ouvrir `/games/mini-gta` sur le smartphone · 2. Relire le classement |
+| Résultat attendu | Étape 1 : « Ce jeu se joue au clavier et à la souris, sur ordinateur. », aucun bouton « Jouer » · Étape 2 : le classement reste lisible |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
 ## Procès-verbal de recette
 
 | Rubrique | Contenu |
 |----------|---------|
 | Version recettée | (commit ou tag) |
 | Période | du … au … |
-| Fiches exécutées | … / 6 |
+| Fiches exécutées | … / 15 |
 | Anomalies ouvertes | S0 : … · S1 : … · S2 : … · S3 : … |
 | Décision | ☐ Acceptée · ☐ Acceptée avec réserves (lister) · ☐ Refusée |
 | Recetteur | nom, date, signature |
