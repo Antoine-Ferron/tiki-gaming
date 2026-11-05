@@ -1,10 +1,11 @@
 # language: fr
 Fonctionnalité: Niveau de recherche (R6)
-  Pour que la police réagisse à mes crimes, sans me poursuivre indéfiniment
   En tant que joueur
   Je veux que mes crimes fassent monter le niveau de recherche, et qu'il retombe une fois hors de vue
+  Afin que la police réagisse à mes crimes sans me poursuivre indéfiniment
 
   Plan du scénario: Les crimes vus par un témoin font monter le niveau de recherche
+    Étant donné un joueur qui n'est pas recherché
     Quand il commet <fois> fois le crime "<crime>" devant un témoin
     Alors il est recherché avec <étoiles> étoile(s)
 
@@ -20,6 +21,7 @@ Fonctionnalité: Niveau de recherche (R6)
       | meurtre d'un policier | 10   | 5       |
 
   Scénario: Un crime sans témoin ne compte pas
+    Étant donné un joueur qui n'est pas recherché
     Quand il commet 3 fois le crime "meurtre d'un policier" sans témoin
     Alors il n'est pas recherché
 
@@ -39,7 +41,6 @@ Fonctionnalité: Niveau de recherche (R6)
 
   Scénario: Repéré par la police, le joueur doit à nouveau se cacher
     Étant donné un joueur recherché avec 1 étoile(s)
+    Et que la police, après l'avoir perdu de vue 17 secondes, vient de le repérer
     Quand la police le perd de vue pendant 17 secondes, dans la zone de recherche
-    Et la police le repère
-    Et la police le perd de vue pendant 17 secondes, dans la zone de recherche
     Alors il est recherché avec 1 étoile(s)
