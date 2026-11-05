@@ -53,3 +53,18 @@ Cette exception est annoncée avant modification et sera signalée à la platefo
 Sous-étapes avec commits distincts : contrats compilables, tests RED, logique
 GREEN, puis tests Spring/CSRF et validations. Les commandes métier sont encore
 squelettiques dans le premier commit ; aucune fonctionnalité terminée n'y est revendiquée.
+
+## RED observé
+
+Après le commit de contrats `95ea6d8`, la suite dédiée exécute **58 cas** :
+25 d'orchestration sans Spring et 33 HTTP avec la vraie chaîne Spring/CSRF.
+Résultat : **48 échecs d'assertion attendus, 0 erreur, 0 ignoré** ; les dix cas
+déjà verts sont les validations de création et la documentation des routes.
+La commande est `mvn -f backend/pom.xml
+-Dtest=DameApplicationServiceTest,DameApiHttpTest test`.
+
+Les tests couvrent la propriété de la session avant accès au dépôt, l'état
+sérialisable, la concurrence de deux onglets, les versions périmées, les deux
+gagnants, les pannes avant écriture et les réponses perdues après écriture.
+Les positions de fin de partie sont uniquement des fixtures de test ; aucune
+route d'injection de plateau n'est créée.
