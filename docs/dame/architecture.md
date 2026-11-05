@@ -1,8 +1,8 @@
-# Moteur de dames et tests unitaires — issue #18
+# Domaine Dames et tests unitaires — issue #18
 
-## Périmètre de cette première PR
+## Livraison initiale — PR #93
 
-La branche `game/dame/tests-unitaires` livre le moteur Java pur et ses tests unitaires. Elle part de `dev` à `0317320` et reprend les étapes TDD du travail original en conservant l'auteur et leur ordre. Le travail complet reste conservé sur `game/dame/implementation` ; API, SDK, interface et tests d'intégration feront l'objet d'une livraison séparée.
+La branche `game/dame/tests-unitaires`, fusionnée dans `dev` par la PR #93, livre le moteur Java pur et ses tests unitaires. Elle part de `dev` à `0317320` et reprend les étapes TDD du travail original en conservant l'auteur et leur ordre. Le travail complet reste conservé sur `game/dame/implementation` ; API, SDK, interface et tests d'intégration feront l'objet d'une livraison séparée.
 
 Cette PR ne modifie aucun jeu existant, endpoint, catalogue frontend, migration ou configuration de sécurité. Elle étend seulement les cibles du profil PIT existant au package Dames, en conservant les cibles d'authentification, les mutateurs et le seuil de 75 %.
 
@@ -38,3 +38,27 @@ Pour les rafles, `GameRules` utilise une recherche en profondeur (DFS) : il suit
 - JaCoCo du domaine : 187/187 lignes et 128/128 branches, soit 100 %.
 
 La couverture mesure l'exécution du code, pas la solidité des assertions. PIT mesure 149 mutations tuées sur 156 pour Dames, soit 95,51 %, sans timeout ni mutant non couvert. L'[analyse des sept survivants](mutation.md) distingue les équivalences argumentées d'une limite du contrat d'erreur. Voir l'[index des tests](tests-metier.md), la [stratégie](strategie-tests.md) et le [journal TDD](journal-tdd.md).
+
+## Étape suivante — rencontres locales
+
+La branche `game/dame/rencontres`, créée depuis `dev` à `e521099`, ajoute le
+sous-package pur `matches` : `Match`, `MatchRepository` et `MatchService`.
+Le service orchestre les noms des participants et la clôture à partir du résultat
+du moteur ; il ne dépend que d'un port de persistance, d'une horloge et d'un
+fournisseur d'identifiants. Le moteur initial reste inchangé.
+
+Les tests distinguent un fake fonctionnel en mémoire, des stubs de réponse et de
+panne, et des mocks d'interaction ciblés. Les règles, limites, résultats de
+vérification et étapes restantes sont décrits dans [rencontres.md](rencontres.md).
+La [persistance](persistance.md) dispose désormais d'un adaptateur PostgREST et
+de tests Testcontainers sur les vrais services PostgreSQL/PostgREST. La table est
+privée au backend et protège les transitions concurrentes. Le raccordement
+[API](api.md), l'[interface et les E2E](interface-e2e.md) sont désormais préparés
+dans la même PR #116 que la persistance ; leurs documents détaillent les
+contrats, validations et commandes de démonstration locale.
+
+Les [scénarios Gherkin](bdd.md) des rencontres, prises et victoire sont exécutés
+par `DameBddTest`. Les étapes Java utilisent le vrai moteur et `MatchService`
+avec le fake de dépôt partagé : 12 cas automatisés sans Spring, réseau ou Docker.
+Le rapport HTML est généré sous `backend/target/cucumber/dame.html` et publié en
+artefact par le check backend CI.
