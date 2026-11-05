@@ -469,6 +469,60 @@ Le score est borné : `scoreLimits: { max: 6864 }` dans `index.ts` (SDK, avant l
 dans `supabase/migrations/20261103140000_sudoku_max_score.sql` (base, contre une insertion directe). 6864 est
 le plafond de `ScoreCalculator` en difficile (partie parfaite en 0 s). Les deux valeurs doivent rester alignées.
 
+## Commandes des tests et de la qualité
+
+Toutes les commandes partent de la racine du dépôt. Le front demande Node 22 ou plus récent
+(`export PATH=~/.nvm/versions/node/v22.16.0/bin:$PATH` si ton shell prend une version plus ancienne).
+
+| Suite                              | Commande                                                                  | Prérequis        |
+|------------------------------------|---------------------------------------------------------------------------|------------------|
+| Tout le backend (le plus complet)  | `cd backend && mvn clean verify`                                          | Java 21          |
+| Tests unitaires Java du Sudoku     | `cd backend && mvn test -Dtest='fr.tikigaming.games.sudoku.*Test'`        | Java 21          |
+| Couverture Java (JaCoCo), rapport  | `cd backend && mvn test jacoco:report -Dtest='fr.tikigaming.games.sudoku.*Test'` puis `xdg-open target/site/jacoco/index.html` | Java 21 |
+| Couverture Java avec les seuils    | `cd backend && mvn clean verify` (échoue sous les seuils JaCoCo)          | Java 21          |
+| Une classe ou une méthode          | `cd backend && mvn test -Dtest=GameStoreTest` ou `-Dtest=GameStoreTest#nomDeLaMethode` | Java 21 |
+| Tests unitaires front (tout)       | `cd frontend && npm test`                                                 | Node 22          |
+| Tests unitaires front du Sudoku    | `cd frontend && npx vitest run src/games/sudoku`                          | Node 22          |
+| Tests d'intégration (Testcontainers) | `cd frontend && npm run test:integration`                               | Docker lancé     |
+| Intégration, Sudoku seulement      | `cd frontend && npx vitest run --config vitest.integration.config.ts tests/integration/sudoku.test.ts` | Docker lancé |
+| Tests E2E (Playwright), Sudoku     | `cd frontend && npx playwright test e2e/sudoku.spec.ts`                   | Navigateurs Playwright |
+| E2E, un seul navigateur            | `cd frontend && npx playwright test e2e/sudoku.spec.ts --project=chromium` | idem             |
+| Tous les E2E (comme la CI)         | `cd frontend && npm run test:e2e`                                         | idem             |
+| Mutation front (Stryker)           | `cd frontend && npm run test:mutation`                                    | Node 22          |
+| Mutation Java (Pitest)             | `cd backend && mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | Java 21 |
+| Couverture front                   | `cd frontend && npm run test:coverage`                                    | Node 22          |
+| Style Java (Checkstyle)            | `cd backend && mvn checkstyle:check`                                      | Java 21          |
+| Format Java (Spotless)             | `cd backend && mvn spotless:check` (vérifie) ou `mvn spotless:apply` (corrige) | Java 21     |
+| Lint front (ESLint)                | `cd frontend && npm run lint`                                             | Node 22          |
+| Format front (Prettier)            | `cd frontend && npm run format:check` (vérifie) ou `npm run format` (corrige) | Node 22      |
+| Types et build front               | `cd frontend && npm run typecheck && npm run build`                       | Node 22          |
+| Migrations de la base              | `cd frontend && npm run db:check`                                         | Node 22          |
+
+À savoir :
+
+- **Avant de pousser**, lance au minimum `cd backend && mvn clean verify` et
+  `cd frontend && npm run lint && npm run format:check && npm run build && npm test`.
+- **Couverture Java** : `mvn clean verify` écrit le rapport dans `backend/target/site/jacoco/index.html` et échoue
+  sous les seuils JaCoCo. La commande `mvn test jacoco:report -Dtest=…` génère le même rapport pour les seuls
+  tests du Sudoku, sans les seuils : dans l'arbre du rapport, ouvrir `fr.tikigaming.games.sudoku` (mesuré avec
+  ces 138 tests : lignes 100 %, branches 97,7 %). `target/site/jacoco/jacoco.xml` est le fichier que lit SonarQube.
+- **Mutation** : le rapport Stryker est dans `frontend/reports/mutation/mutation.html`, celui de Pitest dans
+  `backend/target/pit-reports/`. Stryker échoue sous 75 % ; le Sudoku (`logic.ts`, `mistakes.ts`) est dans son
+  périmètre. Pitest ne cible pas encore les classes du Sudoku (seulement l'authentification et la résilience) :
+  pour les mesurer, il faut ajouter `fr.tikigaming.games.sudoku.*` dans le profil `mutation` du `pom.xml`
+  (configuration commune du backend).
+- **Intégration** : le premier lancement télécharge l'image `supabase/postgres` ; compter quelques minutes.
+- **E2E** : aucun backend à lancer, le serveur Vite démarre seul sur le port 5199 et les appels sont simulés.
+  Si `npx playwright install` ne passe pas (disque plein, version de Chromium), voir
+  [Tests E2E](#tests-e2e-playwright) : on peut utiliser le Chrome du système.
+- **SonarQube en local** : `docker run -d -p 9000:9000 sonarqube:community`, puis `npx @sonar/scan` depuis la racine
+  avec `-Dsonar.sources=backend/src/main/java/fr/tikigaming/games/sudoku,frontend/src/games/sudoku` et les rapports
+  JaCoCo et lcov (détails dans [Analyse statique](#analyse-statique-sonarqube)). Sur un disque presque plein
+  (plus de 90 %), SonarQube peut échouer au démarrage : il faut alors désactiver le seuil disque d'Elasticsearch
+  (`-e SONAR_SEARCH_JAVAADDITIONALOPTS="-Dnode.store.allow_mmap=false -Dcluster.routing.allocation.disk.threshold_enabled=false"`
+  et `-e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true` sur la commande `docker run`).
+- **Clé Supabase** : aucune de ces commandes n'en demande ; seul `mvn spring-boot:run` a besoin de `backend/.env`.
+
 ## Écarts connus
 
 - **`/moves` sert d'oracle, mais borné** : un joueur peut deviner une case en lisant `correct`. Chaque essai raté
