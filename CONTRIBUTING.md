@@ -166,6 +166,10 @@ c'est le formatter qui tranche les questions de style.
 - **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
   écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
   le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+  Côté backend, les `.feature` vont dans `src/test/resources/<paquet du jeu>/features/` et sont exécutés par
+  `mvn test` (Cucumber JVM) : une classe `@Suite` par jeu. Pas de `cucumber-spring`, qui imposerait une
+  configuration Spring à toutes les suites : une suite qui a besoin de l'API démarre l'application elle-même
+  (`@BeforeAll`, port libre), comme `MiniGtaApi`.
 - **BDD Java Dames** (`backend/src/test/resources/features/dame`) : `DameBddTest` appelle le domaine et son fake
   via Cucumber/JUnit Platform, sans Spring ni Docker. Depuis la racine :
   `mvn -f backend/pom.xml -Dtest=DameBddTest test`. Rapport : `backend/target/cucumber/dame.html`, artefact CI
@@ -214,7 +218,7 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 |--------------------------|--------------------------------------------------------------------------|
 | `mvn spotless:apply`     | **Formatter** : reformate le code (palantir-java-format, 4 espaces, 120 colonnes) |
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
-| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
+| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc) et scénarios BDD (Cucumber) |
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, couverture minimale (JaCoCo), et échec si le code n'est pas formaté |
 | `mvn -Pintegration verify` | Ajoute les tests Java `*IT` PostgreSQL/PostgREST via Testcontainers ; Docker obligatoire |
 | `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
