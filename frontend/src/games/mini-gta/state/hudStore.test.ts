@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createTestGame, type TestGame } from '../game/testing/harness'
 import { publishHud, useHudStore } from './hudStore'
 
@@ -12,6 +12,12 @@ beforeAll(async () => {
 }, 60_000)
 
 afterAll(() => t?.dispose())
+
+beforeEach(() => {
+  // Chaque scénario part à pied, poings en main et sans recherche.
+  t.reset()
+  t.game.combat.select('fists')
+})
 
 describe('publication du HUD', () => {
   test('à pied : santé, arme courante et aucune donnée de véhicule', () => {
@@ -39,7 +45,6 @@ describe('publication du HUD', () => {
     publishHud(t.game)
 
     expect(useHudStore.getState()).toMatchObject({ weapon: 'pistol', clip: 12, ammo: 48 })
-    t.game.combat.select('fists')
   })
 
   test('en voiture : vitesse en km/h, nom et état du véhicule', () => {
