@@ -39,7 +39,11 @@ export default function TicTacToeGame({ ctx }: GameProps) {
           </p>
         )}
       </div>
-      <div className="tic-tac-toe-board" role="grid" aria-label="Grille de Tic-Tac-Toe">
+      <div
+        className={`tic-tac-toe-board${status === 'IN_PROGRESS' ? '' : ' game-finished'}`}
+        role="grid"
+        aria-label="Grille de Tic-Tac-Toe"
+      >
         {Array.from({ length: 3 }, (_, row) =>
           Array.from({ length: 3 }, (_, column) => {
             const mark = game.cell(row, column)
