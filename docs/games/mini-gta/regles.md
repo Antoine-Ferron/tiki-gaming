@@ -138,6 +138,12 @@ reprend le sous-ensemble de l'API Rapier utilisé par le jeu, au-dessus de **can
 | Simulation | `game/*.test.ts`, `systems/*.test.ts`, `entities/*.test.ts` | parties sans WebGL sur une portion de la vraie ville (`game/testing/harness.ts`, `game/fixtures`) : véhicules, joueur, trafic, missions, combat, police. Le harnais démarre une ville vide et fixe la graine de `Math.random` : chaque fichier tourne en moins de 3 s |
 | Accueil | `MiniGtaGame.test.tsx` | invité, sauvegarde, sauvegarde corrompue, classement, erreur du SDK, écran tactile |
 | Logique client | `core/`, `systems/`, `world/` | boucle à pas fixe, RNG, bus d'événements, armes, niveau de recherche, missions, reconstruction du monde |
+| BDD, back | `backend/src/test/resources/.../mini_gta/features/*.feature` (Cucumber JVM, `MiniGtaFeaturesTest`) | R1, R3, R5, R7 (frais), R8 (gains), R9, R10 et GPS, en HTTP sur l'application réelle démarrée par la suite |
+| BDD, front | `features/*.feature` (vitest-cucumber, `*.steps.test.ts`) | R2 et sauvegarde corrompue, R4, R6, R7 (armes perdues à l'arrestation), R8 (score envoyé, invité) |
+
+Les scénarios Gherkin, en français, reprennent les règles de la section 2 avec leurs valeurs limites. Les
+messages d'erreur du contrôleur (« Mission inconnue. »…) sont remplacés par « Requête invalide. » par le
+gestionnaire d'erreurs de la plateforme : les scénarios de refus vérifient donc le code HTTP.
 
 `game/fixtures/world-spawn.json` est extrait de `GET /world` dans un rayon de 350 m autour du départ, terrain
 retiré. Il faut le régénérer si le format du monde change.

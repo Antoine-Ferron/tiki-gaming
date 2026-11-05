@@ -597,7 +597,8 @@
       "response": {
         "body": {
           "content": {
-            "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+            "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+            "status": "ONGOING"
           },
           "contentType": "application/json",
           "encoded": false
@@ -610,6 +611,14 @@
         "matchingRules": {
           "body": {
             "$.fen": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
               "combine": "AND",
               "matchers": [
                 {

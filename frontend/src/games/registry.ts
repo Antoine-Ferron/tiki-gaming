@@ -1,13 +1,16 @@
 import type { GameDefinition } from './types'
 import bang from './bang'
 import clicker from './clicker'
+import batailleNavale from './bataille-navale'
 import echecs from './echecs'
+import dame from './dame'
 import mastermind from './mastermind'
 import rushHour from './rush-hour'
 import yams from './yams'
 import sdvCivilisation from './sdv-civilisation'
 import sudoku from './sudoku'
 import miniGta from './mini-gta'
+import ticTacToe from './tic-tac-toe'
 import game2048 from './game-2048'
 
 /**
@@ -17,6 +20,7 @@ import game2048 from './game-2048'
  */
 export const games: GameDefinition[] = [
   clicker,
+  batailleNavale,
   rushHour,
   sdvCivilisation,
   mastermind,
@@ -25,6 +29,8 @@ export const games: GameDefinition[] = [
   yams,
   echecs,
   bang,
+  dame,
+  ticTacToe,
   game2048,
 ]
 

@@ -314,13 +314,17 @@ describe('contrat front → backend', () => {
             .jsonBody({ fen: START, from: 'e2', to: 'e4' }),
         )
         .willRespondWith(200, (res) =>
-          res.jsonBody({ fen: like('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1') }),
+          res.jsonBody({
+            fen: like('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'),
+            status: like('ONGOING'),
+          }),
         )
         .executeTest(async (server) => {
           routeApiTo(server.url)
-          await expect(play(START, 'e2', 'e4')).resolves.toBe(
-            'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
-          )
+          await expect(play(START, 'e2', 'e4')).resolves.toEqual({
+            fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+            status: 'ONGOING',
+          })
         })
     })
 
