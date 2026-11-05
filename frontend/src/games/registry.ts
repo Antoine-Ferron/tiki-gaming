@@ -12,6 +12,7 @@ import sdvCivilisation from './sdv-civilisation'
 import sudoku from './sudoku'
 import miniGta from './mini-gta'
 import ticTacToe from './tic-tac-toe'
+import game2048 from './game-2048'
 
 /**
  * Catalogue des jeux de la plateforme.
@@ -32,6 +33,7 @@ export const games: GameDefinition[] = [
   dame,
   ticTacToe,
   lemur,
+  game2048,
 ]
 
 export function getGame(slug: string): GameDefinition | undefined {
