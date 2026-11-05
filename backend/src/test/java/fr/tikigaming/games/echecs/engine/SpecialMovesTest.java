@@ -42,4 +42,30 @@ class SpecialMovesTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("romotion");
     }
+
+    @ParameterizedTest(name = "{1} → {2}")
+    @CsvSource({
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', e1, g1, 'r3k2r/8/8/8/8/8/8/R4RK1 b kq - 1 1'", // petit roque blanc
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', e1, c1, 'r3k2r/8/8/8/8/8/8/2KR3R b kq - 1 1'", // grand roque blanc
+        "'r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1', e8, g8, 'r4rk1/8/8/8/8/8/8/R3K2R w KQ - 1 2'", // petit roque noir
+        "'r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1', e8, c8, '2kr3r/8/8/8/8/8/8/R3K2R w KQ - 1 2'" // grand roque noir
+    })
+    void leRoqueDeplaceLeRoiDeDeuxCasesEtLaTourASesCotes(String fen, String from, String to, String expected) {
+        assertThat(play(fen, from, to, null)).isEqualTo(expected);
+    }
+
+    @ParameterizedTest(name = "{2}")
+    @CsvSource({
+        "'r3k2r/8/8/8/8/8/8/R3K2R w - - 0 1', '', plus de droit de roque (S3)",
+        "'r3k2r/8/8/8/8/8/8/RN2KB1R w KQkq - 0 1', '', une pièce entre le roi et la tour",
+        "'r3k2r/8/8/8/8/8/4r3/R3K2R w KQkq - 0 1', '', le roi est en échec",
+        "'r3k2r/8/8/8/8/8/5r2/R3K2R w KQkq - 0 1', c1, le roi traverserait f1 attaquée : seul le grand roque",
+        "'r3k2r/8/8/8/8/8/6r1/R3K2R w KQkq - 0 1', c1, le roi arriverait en g1 attaquée : seul le grand roque",
+        "'r3k2r/8/8/8/8/8/1r6/R3K2R w KQkq - 0 1', 'c1 g1', la tour (et b1) peuvent être attaquées : les deux roques"
+    })
+    void leRoqueNEstPermisQueSiLesSixConditionsSontReunies(String fen, String castlings, String why) {
+        var king = Game.legalDestinations(Fen.parse(fen), Square.of("e1"));
+        assertThat(king.contains(Square.of("g1"))).as("petit roque").isEqualTo(castlings.contains("g1"));
+        assertThat(king.contains(Square.of("c1"))).as("grand roque").isEqualTo(castlings.contains("c1"));
+    }
 }
