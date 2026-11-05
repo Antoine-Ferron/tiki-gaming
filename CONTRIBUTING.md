@@ -70,7 +70,8 @@ En minuscules, mots séparés par des tirets, sans accents.
    **Tant que le travail n'est pas terminé, la PR est en draft** (`gh pr create --draft`, ou
    *Convert to draft* / `gh pr ready 12 --undo` sur une PR déjà ouverte). Une draft ne se relit pas et ne
    se fusionne pas : la passer en *Ready for review* (`gh pr ready 12`) quand tout est livré et la CI verte,
-   et la repasser en draft si un retour de relecture demande encore du travail.
+   et la repasser en draft si un retour de relecture demande encore du travail. En draft, la CI ne lance que le
+   palier 1 (lint, types, tests unitaires, build) ; *Ready for review* lance tout ([détails](docs/ci.md#1-déclenchement)).
 5. **CI verte et 1 relecture approuvée minimum** avant de fusionner :
    - une PR qui ne touche que `frontend/src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut
      être relue par l'équipe du jeu ;
@@ -298,10 +299,11 @@ couverture ; tout est rejoué, seuils compris, au push sur `dev` ([détails](doc
 
 | Cache | Effet |
 |-------|-------|
-| npm, Maven | dépendances téléchargées une fois (`setup-node`, `setup-java`) |
+| `node_modules` | `npm ci` seulement quand le lockfile, Node ou l'image Ubuntu change ; les autres jobs restaurent le dossier tel quel (`.github/actions/node-modules`) |
+| Maven | dépendances téléchargées une fois (`setup-java`) |
 | Prettier, ESLint | seuls les fichiers dont le **contenu** a changé sont revérifiés (aussi en local : `node_modules/.cache`) |
 | Playwright | navigateurs réinstallés seulement quand la version de Playwright change |
-| Stryker, Pitest | **sur une PR**, seuls les mutants concernés par le changement sont rejoués ; un push vers `dev` ou `main` refait un run **complet**, qui sert de référence aux PR suivantes |
+| Stryker, Pitest | sur une PR et un push vers `dev` ou `main`, seuls les mutants concernés par le changement sont rejoués (le push alimente le cache des PR suivantes) ; le run de **nuit** rejoue tout |
 
 Les seuils et le résultat des checks ne changent pas : un test affaibli fait toujours apparaître ses
 mutants survivants, en incrémental comme en complet. En cas de doute sur un résultat de mutation d'une

@@ -821,8 +821,21 @@ button.sdv-civilisation-card[aria-pressed='true'] {
   box-shadow: 0 12px 26px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
+/* Carte non constructible : désaturée, mais à pleine opacité pour que son texte garde un contraste d'au moins 4,5:1
+   (WCAG 1.4.3 : elle reste un bouton actif, qu'on peut choisir pour la défausser ou bâtir sa merveille). Le gris
+   conserve la luminance des couleurs, donc les contrastes ; le statut « Ressources manquantes » le dit en clair. */
 button.sdv-civilisation-status-blocked:not([aria-pressed='true']) {
-  opacity: 0.6;
+  filter: grayscale(0.75);
+}
+
+/* Texte lu par les lecteurs d'écran seulement (nom complet d'une carte), hors de la mise en page. */
+.sdv-civilisation-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .sdv-civilisation-card-band {
@@ -1449,6 +1462,7 @@ button.sdv-civilisation-card-leave {
   animation: sdv-civilisation-badge calc(3200ms * var(--sdv-civilisation-tempo, 1)) ease forwards;
 }
 
+/* Le badge s'efface sans descendre sous 4,5:1 de contraste (WCAG 1.4.3) : environ 7,7:1 à 0,7. */
 @keyframes sdv-civilisation-badge {
   0% {
     opacity: 0;
@@ -1458,7 +1472,7 @@ button.sdv-civilisation-card-leave {
     opacity: 1;
   }
   100% {
-    opacity: 0.35;
+    opacity: 0.7;
   }
 }
 

@@ -68,10 +68,19 @@ export function codeForStatus(status: number): GameErrorCode | null {
   return null
 }
 
+/** `String()` d'une valeur quelconque, sans jamais lever (ex. `{ toString: [] }` généré par le fuzzing). */
+function safeString(value: unknown): string {
+  try {
+    return String(value)
+  } catch {
+    return ''
+  }
+}
+
 /** Statut HTTP éventuellement fourni par l'appelant (réponse supabase-js) ou porté par l'erreur. */
 function codeFor(err: ErrorLike, status: number | undefined): GameErrorCode | null {
   if (typeof err.code === 'string' && Object.hasOwn(BY_CODE, err.code)) return BY_CODE[err.code]
-  if (NETWORK_MESSAGE.test(String(err.message))) return 'network'
+  if (NETWORK_MESSAGE.test(safeString(err.message))) return 'network'
   // NaN quand aucun statut n'est connu : aucune des comparaisons suivantes ne réussit.
   const httpStatus = status ?? (typeof err.status === 'number' ? err.status : Number.NaN)
   return codeForStatus(httpStatus)

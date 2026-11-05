@@ -1,4 +1,5 @@
 import type { GameDefinition } from './types'
+import bang from './bang'
 import clicker from './clicker'
 import batailleNavale from './bataille-navale'
 import echecs from './echecs'
@@ -24,6 +25,7 @@ export const games: GameDefinition[] = [
   miniGta,
   yams,
   echecs,
+  bang,
 ]
 
 export function getGame(slug: string): GameDefinition | undefined {
