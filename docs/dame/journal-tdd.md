@@ -230,3 +230,102 @@ Les quatre premières étapes sont reprises en conservant l'auteur et l'ordre, m
 `mvn clean verify` réussit sur cette branche avec **847 cas**, dont **224 métier Dames et 623 collectifs**, zéro échec, erreur ou test ignoré. Checkstyle, Spotless et les seuils JaCoCo passent. Le domaine atteint **187/187 lignes et 128/128 branches (100 %)**. Les seules modifications du pom ajoutent le package et les tests Dames aux cibles du profil PIT existant, en conservant l'authentification, les mutateurs et le seuil de 75 %. Aucune dépendance, migration, API, modification SDK ou frontend dans cette PR.
 
 Le profil PIT complet réussit : **213 mutations tuées sur 220 (96,82 %)**, dont **149/156 pour Dames (95,51 %)** et 64/64 pour l'authentification. Aucun timeout, mutant non couvert ou erreur d'exécution. Les sept survivants du domaine sont documentés dans [mutation.md](mutation.md) : six équivalences argumentées et une limite de sensibilité au message du refus après fin de partie. Aucun seuil, mutateur ou exclusion affaibli. Cette PR ne revendique aucun test d'intégration propre à Dames et référence #18 sans fermer l'issue complète.
+
+## 4 novembre 2026 — rencontres locales, après fusion de #93
+
+À la demande de l'utilisateur, préparer les rencontres avant la persistance et
+faire un commit à chaque sous-étape. Branche `game/dame/rencontres` créée depuis
+`dev` à `e521099`. L'ancien travail API/interface reste conservé sur
+`game/dame/implementation` et les réglages VS Code restent locaux.
+
+- `d7da509` : modèle, port, service encore squelettique et contrat documenté.
+- `cbde5d0` : RED réellement exécuté, **59 cas, 57 échecs attendus, 0 erreur**.
+- `389b891` : GREEN des mêmes 59 cas ; **984 tests backend réussis**.
+- Renforcement après PIT : un cas supplémentaire refuse `IN_PROGRESS` même sans
+  date de fin ; PIT identifie ce nouveau test comme tueur du mutant survivant.
+  État final : **60 cas des rencontres**, **985 tests backend réussis**, JaCoCo
+  des rencontres **100 % lignes/branches**, PIT **22/22 mutants tués**.
+
+Les tests utilisent le vrai moteur, un fake de dépôt, des stubs de réponse/panne
+et des mocks ciblés sur les écritures. Aucun adaptateur de base, endpoint,
+changement frontend ou dépendance n'est ajouté dans cette étape. Détails,
+commandes, limites et suite dans [rencontres.md](rencontres.md).
+
+## 4 novembre 2026 — persistance réelle et tests d'intégration
+
+Branche `game/dame/rencontres` rebasée sur `dev` à `3af6766`. Les quatre commits
+unitaires conservent leurs auteurs et leur ordre, avec les nouveaux identifiants
+`d609bdf`, `6cc4202`, `a9cd566`, `88cdec0`. Docker Desktop est démarré localement.
+
+- `1dd018b` : structure de migration privée, adaptateur squelettique et profil
+  Failsafe avec deux dépendances de test gérées par Spring Boot.
+- `bef802d` : RED, **25 cas HTTP rouges**, **52 cas Testcontainers dont 33 échecs
+  attendus**, zéro erreur. Les vrais services PostgreSQL/PostgREST démarrent et
+  toutes les migrations sont appliquées.
+- `2960c5c` : contraintes SQL et transitions ; les **43 cas SQL passent**,
+  huit scénarios HTTP restent rouges.
+- `58edc4d` : adaptateur GREEN, **25 cas HTTP et 52 IT réussis** ; la concurrence
+  n'accepte qu'une clôture, sans écraser le premier résultat.
+- `c7c0b5e` : renforcement après mutation, **29 cas HTTP** ; réponses de plusieurs
+  lignes ou d'un mauvais UUID refusées. Dernière suite : **1 085 tests backend et
+  52 IT réussis**, puis **57 tests PostgreSQL collectifs** également verts.
+- Branchement CI : profil d'intégration obligatoire dans le check backend
+  existant, déclenché aussi par les migrations, rapports Failsafe en artefact.
+
+Persistance : JaCoCo **70/70 lignes et 18/18 branches** ; PIT **27/28 mutants
+tués (96,43 %)**, dernier survivant redondant documenté. Rencontres : PIT **22/22**.
+Profil PIT collectif : **262/270 (97,04 %)**. Aucun seuil, mutateur ou exclusion
+affaibli. Tests sur conteneurs éphémères uniquement, aucun push ni PR. Le raccord
+API/session et le formulaire restent à réaliser. Voir [persistance.md](persistance.md).
+
+## 4 novembre 2026 — premiers exemples BDD à relire
+
+À la demande de l'utilisateur, ajout de deux fichiers Gherkin français pour les
+rencontres et les prises/victoire : huit scénarios déclarés, dont deux plans,
+soit douze cas après développement des exemples. Leur lecture est vérifiée avec
+le parseur déjà installé dans le dépôt, sans nouvelle dépendance. Ils ne sont
+pas encore liés à des étapes Java et ne sont pas comptés comme tests verts.
+La prochaine étape sera la relecture des exemples puis leur automatisation
+sur le domaine et ses fakes ; voir [bdd.md](bdd.md).
+
+## 4 novembre 2026 — raccordement Gherkin, RED du runner
+
+À la demande de l'utilisateur, ajout du runner Cucumber Java/JUnit Platform et
+de ses seules dépendances de test. La suite lit les deux vrais fichiers et leurs
+tableaux : **12 cas découverts, 12 erreurs `UndefinedStepException`, 0 ignoré**
+avant l'écriture des étapes. Ce RED concerne les bindings absents, pas une nouvelle
+règle métier. Le scénario de résultat immuable précise les participants sans
+changer son comportement attendu. Rapports dans `backend/target/cucumber`.
+
+## 4 novembre 2026 — bindings BDD GREEN et rapport CI
+
+- `7c955f4` : runner RED, 12 cas découverts avec étapes indéfinies.
+- `89422f6` : `RencontreSteps` et `PrisesSteps` appellent les vrais objets métier ;
+  fake partagé dans les sources de test, horloge et identifiants fixes. Les
+  victoires proviennent de vraies captures par le moteur. **12 cas passent**.
+- Un contrôle négatif change temporairement deux valeurs d'exemples (gagnant
+  noir et limite de nom) : exactement deux échecs, puis restauration du Gherkin.
+  Les nombres et noms sont donc exécutés, pas recopiés dans une suite parallèle.
+- Vérification complète `mvn -Pintegration clean verify` : **1 097 tests backend
+  dont 12 BDD, et 52 tests d'intégration**, zéro échec, erreur ou ignoré ; format,
+  linter et seuils JaCoCo verts.
+- PIT : **262/270 mutants tués (97,04 %)**, sans erreur ou mutant non couvert ;
+  aucune exclusion ou règle de qualité changée.
+- CI : ajout de l'artefact `rapport-bdd-dame` (HTML/JSON/JUnit XML), syntaxe YAML
+  vérifiée. Aucun push ni nouvelle PR. Détails et commandes dans [bdd.md](bdd.md).
+
+## 5 novembre 2026 — synchronisation avant la PR rencontres
+
+À la demande de l'utilisateur, préparation de la PR backend avant le raccordement
+API/interface et les E2E. Sauvegarde des 14 commits dans un bundle local, puis
+rebase sur `dev` à `ece3ce7`, auteurs et ordre RED/GREEN conservés. Résolution des
+conflits en prenant les nouvelles conventions de dev : Cucumber partagé, Pact,
+chaos et pipeline en paliers conservés ; Failsafe Dames au palier 2 uniquement.
+La méthode de fusion reste celle de CONTRIBUTING (squash), conformément au choix
+explicite de l'utilisateur.
+
+Le backend passe 6 358 cas (un scénario Échecs ignoré par son filtre préexistant),
+les 52 IT Dames passent tous. Frontend collectif : 1 304 tests, 6 Pact, format,
+lint, types et build verts. Base collective : 61 tests, RTM et versions des
+migrations valides. PIT : 441/453 détectés, dont 439 tués et 2 timeouts collectifs.
+Les mesures détaillées et limites figurent dans [persistance.md](persistance.md).

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import fr.tikigaming.games.echecs.api.EchecsRejectedException;
 import fr.tikigaming.games.echecs.api.EchecsService;
+import fr.tikigaming.games.echecs.api.MoveResult;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -19,6 +20,7 @@ public class JouerSteps {
     private final EchecsService service = new EchecsService();
     private String fen;
     private boolean refused;
+    private String status;
 
     @Given("la position de départ")
     public void laPositionDeDepart() {
@@ -28,7 +30,9 @@ public class JouerSteps {
     @When("je joue de {string} vers {string}")
     public void jeJoueDeVers(String from, String to) {
         try {
-            fen = service.play(fen, from, to);
+            MoveResult result = service.play(fen, from, to, null);
+            fen = result.fen();
+            status = result.status();
             refused = false;
         } catch (EchecsRejectedException e) {
             refused = true; // la position ne change pas
@@ -43,5 +47,15 @@ public class JouerSteps {
     @Then("le coup est refusé")
     public void leCoupEstRefuse() {
         assertThat(refused).isTrue();
+    }
+
+    @Given("une partie arrivée à la position {string}")
+    public void unePartieArriveeALaPosition(String position) {
+        fen = position;
+    }
+
+    @Then("la partie est terminée par {string}")
+    public void laPartieEstTermineePar(String expected) {
+        assertThat(status).isEqualTo(expected);
     }
 }

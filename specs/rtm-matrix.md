@@ -54,6 +54,11 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-RH-08 | Rush Hour : on joue à la souris (glisser-déposer calé sur une case) et au clavier (flèches dans le sens du véhicule) | Contrôles C1, C2 |
 | REQ-RH-09 | Rush Hour : le jeu et le serveur appliquent les mêmes niveaux, les mêmes règles et le même barème | Contrat partagé (shared/games/rush-hour/contrat.json) |
 | REQ-RH-10 | Rush Hour : un client ne peut pas faire vérifier plus de 60 parties par minute (429 au-delà), sans gêner les autres | Sécurité, OWASP API4 (docs/games/rush-hour/rapport-securite.md) |
+| REQ-TTT-01 | Tic-Tac-Toe : la page affiche une grille 3×3 jouable | Interface du jeu |
+| REQ-TTT-02 | Tic-Tac-Toe : les joueurs X et O jouent à tour de rôle et une case occupée ne peut pas être rejouée | Règles du jeu |
+| REQ-TTT-03 | Tic-Tac-Toe : une ligne, colonne ou diagonale complète termine la partie avec le bon gagnant | Règles du jeu |
+| REQ-TTT-04 | Tic-Tac-Toe : une grille pleine sans ligne gagnante affiche un match nul | Règles du jeu |
+| REQ-TTT-05 | Tic-Tac-Toe : le score de session compte les victoires X, les victoires O et les matchs nuls, et survit à Rejouer | Expérience joueur |
 
 ## Cas de test
 
@@ -157,6 +162,16 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-25 | REQ-RH-08 | erreur | composant | `frontend/src/games/rush-hour/RushHourGame.test.tsx` › une flèche dans l’autre axe ne fait rien | PASSED | — |
 | TC-RH-26 | REQ-RH-08 | nominal | unitaire (BVA) | `frontend/src/games/rush-hour/components/drag.test.ts` › décalage de $offset case(s) → $delta | PASSED | BUG-04 |
 | TC-RH-27 | REQ-RH-08 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › un glissé de moins d’une demi-case n’est pas un coup | PASSED | — |
+| TC-TTT-01 | REQ-TTT-01 | nominal | E2E Playwright | `frontend/e2e/tic-tac-toe.spec.ts` › joue une partie et affiche le gagnant et le score de session | PASSED | — |
+| TC-TTT-02 | REQ-TTT-01 | erreur | E2E Playwright | `frontend/e2e/tic-tac-toe.spec.ts` › rejoue une partie en conservant le score de session | PASSED | — |
+| TC-TTT-03 | REQ-TTT-02 | nominal | composant | `frontend/src/games/tic-tac-toe/TicTacToeGame.test.tsx` › allows alternating moves on the board | PASSED | — |
+| TC-TTT-04 | REQ-TTT-02 | erreur | composant | `frontend/src/games/tic-tac-toe/TicTacToeGame.test.tsx` › announces a winner and disables the board after three aligned moves | PASSED | — |
+| TC-TTT-05 | REQ-TTT-03 | nominal | composant | `frontend/src/games/tic-tac-toe/TicTacToeGame.test.tsx` › announces a winner and disables the board after three aligned moves | PASSED | — |
+| TC-TTT-06 | REQ-TTT-03 | erreur | BDD | `frontend/src/games/tic-tac-toe/features/tictactoe.feature` › Une ligne, colonne ou diagonale donne la victoire | PASSED | — |
+| TC-TTT-07 | REQ-TTT-04 | nominal | BDD | `frontend/src/games/tic-tac-toe/features/tictactoe.feature` › Une grille pleine sans ligne gagnante est un match nul | PASSED | — |
+| TC-TTT-08 | REQ-TTT-04 | erreur | BDD | `frontend/src/games/tic-tac-toe/features/tictactoe.feature` › Une case occupée ou des coordonnées invalides sont refusées | PASSED | — |
+| TC-TTT-09 | REQ-TTT-05 | nominal | composant | `frontend/src/games/tic-tac-toe/TicTacToeGame.test.tsx` › updates the session score after a win and keeps it after replay | PASSED | — |
+| TC-TTT-10 | REQ-TTT-05 | erreur | E2E Playwright | `frontend/e2e/tic-tac-toe.spec.ts` › rejoue une partie en conservant le score de session | PASSED | — |
 | TC-RH-28 | REQ-RH-09 | nominal | contrat (front) | `frontend/src/games/rush-hour/contract.test.ts` › le jeu a exactement les niveaux du contrat, case par case | PASSED | — |
 | TC-RH-29 | REQ-RH-09 | nominal | contrat (backend) | `backend/src/test/java/fr/tikigaming/games/rush_hour/ContractTest.java` › serverReplaysTheContractGames | PASSED | — |
 | TC-RH-30 | REQ-RH-09 | erreur | contrat (front) | `frontend/src/games/rush-hour/contract.test.ts` › contrat partagé avec le serveur : parties rejouées | PASSED | — |
