@@ -2,6 +2,8 @@
 .echecs {
   --echecs-square-light: #f0d9b5;
   --echecs-square-dark: #b58863;
+  --echecs-target: rgba(46, 125, 50, 0.55);
+  --echecs-selected: #1e6fd9;
   display: grid;
   gap: 16px;
 }
@@ -16,10 +18,46 @@
   overflow: hidden;
 }
 
+.echecs-square {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  font-size: clamp(1.4rem, 6vw, 2.6rem);
+  line-height: 1;
+  color: #111;
+  cursor: pointer;
+}
+
 .echecs-square-light {
   background: var(--echecs-square-light);
 }
 
 .echecs-square-dark {
   background: var(--echecs-square-dark);
+}
+
+/* Case où la pièce choisie peut aller : un rond au centre, visible sur les deux couleurs de case. */
+.echecs-square-target {
+  background-image: radial-gradient(circle, var(--echecs-target) 22%, transparent 24%);
+}
+
+.echecs-square[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 4px var(--echecs-selected);
+}
+
+.echecs-square:focus-visible {
+  outline: 3px solid var(--echecs-selected);
+  outline-offset: -3px;
+}
+
+.echecs-turn {
+  margin: 0;
+  font-weight: 600;
+}
+
+.echecs-error {
+  margin: 0;
+  color: var(--danger, #b3261e);
 }

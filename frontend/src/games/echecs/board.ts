@@ -7,12 +7,27 @@ export const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0
 
 /** Symbole Unicode de chaque lettre FEN. */
 export const SYMBOLS: Record<string, string> = {
-  K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
-  k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
+  K: '♔',
+  Q: '♕',
+  R: '♖',
+  B: '♗',
+  N: '♘',
+  P: '♙',
+  k: '♚',
+  q: '♛',
+  r: '♜',
+  b: '♝',
+  n: '♞',
+  p: '♟',
 }
 
 const NAMES: Record<string, string> = {
-  k: 'roi', q: 'dame', r: 'tour', b: 'fou', n: 'cavalier', p: 'pion',
+  k: 'roi',
+  q: 'dame',
+  r: 'tour',
+  b: 'fou',
+  n: 'cavalier',
+  p: 'pion',
 }
 
 /** Nom lu par un lecteur d'écran : « e2, pion blanc », « d8, dame noire », « e4, case vide ». */
