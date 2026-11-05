@@ -50,7 +50,7 @@ export function step(state: GameState, input: Input): GameState {
   const fallen = applyGravity(steered)
   const landing = findLanding(state.branches, steered, fallen)
   const maki = landing ? bounceOn(fallen, landing) : fallen
-  return { ...state, maki, cameraY: follow(state.cameraY, maki) }
+  return { ...state, maki, cameraY: follow(state.cameraY, maki), peakY: Math.max(state.peakY, maki.y) }
 }
 
 /** EF-2 : la caméra monte dès que le maki dépasse le milieu de l'écran, et ne redescend jamais. */
