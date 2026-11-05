@@ -46,6 +46,9 @@ export default function EchecsGame() {
     <div className="echecs">
       <section className="card">
         <h2>Échecs</h2>
+        <p className="echecs-turn" role="status">
+          {fen.split(' ')[1] === 'w' ? 'Aux Blancs de jouer' : 'Aux Noirs de jouer'}
+        </p>
         {error && (
           <p className="echecs-error" role="alert">
             {error}
