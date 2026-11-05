@@ -38,7 +38,7 @@ class EchecsServiceTest {
     @DisplayName("jouer un coup renvoie la FEN de la nouvelle position")
     void jouerUnCoupRenvoieLaNouvelleFen() {
         // Act + Assert
-        assertThat(service.play(START, "e2", "e4"))
+        assertThat(service.play(START, "e2", "e4", null).fen())
                 .isEqualTo("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
     }
 
@@ -47,7 +47,7 @@ class EchecsServiceTest {
     @DisplayName("un coup refusé par les règles devient une erreur 422 avec le message du moteur")
     void unCoupRefuseDevientUneErreur422(String from, String to, String reason) {
         // Act + Assert
-        assertThatThrownBy(() -> service.play(START, from, to))
+        assertThatThrownBy(() -> service.play(START, from, to, null))
                 .isInstanceOfSatisfying(
                         EchecsRejectedException.class,
                         e -> assertThat(e.status()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT))
@@ -66,7 +66,7 @@ class EchecsServiceTest {
     @DisplayName("une entrée mal écrite ou absente devient une erreur 400, distincte d'un coup refusé")
     void uneEntreeMalEcriteDevientUneErreur400(String fen, String from, String to) {
         // Act + Assert : pour jouer comme pour demander les cases
-        assertThatThrownBy(() -> service.play(fen, from, to))
+        assertThatThrownBy(() -> service.play(fen, from, to, null))
                 .isInstanceOfSatisfying(
                         EchecsInvalidInputException.class,
                         e -> assertThat(e.status()).isEqualTo(HttpStatus.BAD_REQUEST));
@@ -75,5 +75,49 @@ class EchecsServiceTest {
                     .isInstanceOf(EchecsInvalidInputException.class)
                     .hasMessageStartingWith("Entrée invalide : ");
         }
+    }
+
+    @Test
+    @DisplayName("les cases renvoyées sont les coups légaux : une pièce clouée n'en a aucune")
+    void lesCasesRenvoyeesSontLesCoupsLegaux() {
+        assertThat(service.destinations("4k3/8/8/8/4r3/8/4B3/4K3 w - - 0 1", "e2"))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("le coup renvoie aussi l'état de la partie : en cours, puis mat")
+    void leCoupRenvoieLEtatDeLaPartie() {
+        assertThat(service.play(START, "e2", "e4", null).status()).isEqualTo("ONGOING");
+        // mat du lion : la dame noire joue d8-h4
+        String beforeMate = "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2";
+        assertThat(service.play(beforeMate, "d8", "h4", null).status()).isEqualTo("CHECKMATE");
+    }
+
+    @Test
+    @DisplayName("la promotion se choisit par sa lettre FEN (q, r, b, n)")
+    void laPromotionSeChoisitParSaLettre() {
+        assertThat(service.play("k7/4P3/8/8/8/8/8/7K w - - 0 1", "e7", "e8", "n")
+                        .fen())
+                .isEqualTo("k3N3/8/8/8/8/8/8/7K b - - 0 1");
+    }
+
+    @Test
+    @DisplayName("une lettre de promotion inconnue est une entrée invalide (400)")
+    void uneLettreDePromotionInconnueDonne400() {
+        assertThatThrownBy(() -> service.play("k7/4P3/8/8/8/8/8/7K w - - 0 1", "e7", "e8", "x"))
+                .isInstanceOf(EchecsInvalidInputException.class);
+    }
+
+    @ParameterizedTest(name = "promotion « {0} » → {1}")
+    @CsvSource({
+        "q, 'k3Q3/8/8/8/8/8/8/7K b - - 0 1'",
+        "r, 'k3R3/8/8/8/8/8/8/7K b - - 0 1'",
+        "b, 'k3B3/8/8/8/8/8/8/7K b - - 0 1'"
+    })
+    @DisplayName("chaque lettre de promotion donne la bonne pièce (dame, tour, fou)")
+    void chaqueLettreDePromotionDonneLaBonnePiece(String letter, String expected) {
+        assertThat(service.play("k7/4P3/8/8/8/8/8/7K w - - 0 1", "e7", "e8", letter)
+                        .fen())
+                .isEqualTo(expected);
     }
 }

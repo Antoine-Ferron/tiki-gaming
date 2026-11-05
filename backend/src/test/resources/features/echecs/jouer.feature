@@ -29,3 +29,16 @@ Fonctionnalité: Jouer un coup
     Étant donné la position de départ
     Quand je joue de "e7" vers "e5"
     Alors le coup est refusé
+
+  Scénario: Le mat du lion : la partie se termine par un échec et mat
+    Étant donné la position de départ
+    Quand je joue de "f2" vers "f3"
+    Et je joue de "e7" vers "e5"
+    Et je joue de "g2" vers "g4"
+    Et je joue de "d8" vers "h4"
+    Alors la partie est terminée par "CHECKMATE"
+
+  Scénario: Le petit roque déplace le roi et la tour
+    Étant donné une partie arrivée à la position "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1"
+    Quand je joue de "e1" vers "g1"
+    Alors la position est "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 b kq - 1 1"
