@@ -167,7 +167,9 @@ c'est le formatter qui tranche les questions de style.
   écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
   le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
   Côté backend, les `.feature` vont dans `src/test/resources/<paquet du jeu>/features/` et sont exécutés par
-  `mvn test` (Cucumber JVM, `cucumber-spring`) : une classe `@Suite` par jeu, des étapes qui appellent l'API.
+  `mvn test` (Cucumber JVM) : une classe `@Suite` par jeu. Pas de `cucumber-spring`, qui imposerait une
+  configuration Spring à toutes les suites : une suite qui a besoin de l'API démarre l'application elle-même
+  (`@BeforeAll`, port libre), comme `MiniGtaApi`.
 - **Propriétés et fuzzing** (`*.property.test.ts`, fast-check) : une règle vraie pour toute entrée générée
   (« tout entier au-dessus du maximum est refusé »), et du fuzzing (« n'importe quelle saisie donne des données ou
   des messages, jamais une exception »). En cas d'échec, fast-check réduit l'entrée au plus petit contre-exemple

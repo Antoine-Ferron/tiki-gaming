@@ -28,6 +28,8 @@
     <pitest-history.version>0.0.1</pitest-history.version>
     <!-- Ligne 3.x = Spring Boot 4.x (la 2.x de springdoc cible Spring Boot 3). -->
     <springdoc.version>3.2.0</springdoc.version>
+    <pact.version>4.7.7</pact.version>
+    <!-- Ligne 8.x = moteur JUnit 6 (la 7.x cible JUnit 5). -->
     <cucumber.version>8.0.4</cucumber.version>
   </properties>
 
@@ -106,12 +108,6 @@
     <dependency>
       <groupId>io.cucumber</groupId>
       <artifactId>cucumber-java</artifactId>
-      <version>${cucumber.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.cucumber</groupId>
-      <artifactId>cucumber-spring</artifactId>
       <version>${cucumber.version}</version>
       <scope>test</scope>
     </dependency>

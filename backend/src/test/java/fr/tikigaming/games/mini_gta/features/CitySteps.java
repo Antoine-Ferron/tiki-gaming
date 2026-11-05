@@ -33,23 +33,18 @@ public class CitySteps {
     private static final Map<String, RampKind> MATERIALS =
             Map.of("terre", RampKind.DIRT, "béton", RampKind.CONCRETE, "planches", RampKind.PLANKS);
 
-    private final MiniGtaApi api;
     private JsonNode first;
     private JsonNode second;
     private JsonNode route;
 
-    public CitySteps(MiniGtaApi api) {
-        this.api = api;
-    }
-
     @Quand("un premier joueur charge la ville")
     public void unPremierJoueurChargeLaVille() {
-        first = api.get("/world");
+        first = MiniGtaApi.get("/world");
     }
 
     @Quand("un second joueur charge la ville")
     public void unSecondJoueurChargeLaVille() {
-        second = api.get("/world");
+        second = MiniGtaApi.get("/world");
     }
 
     @Alors("les deux villes sont identiques")
@@ -69,7 +64,7 @@ public class CitySteps {
 
     @Quand("^il demande l'itinéraire de \\((\\S+), (\\S+)\\) à \\((\\S+), (\\S+)\\)$")
     public void ilDemandeLItineraire(String fromX, String fromZ, String toX, String toZ) {
-        route = api.get("/route?fromX=" + fromX + "&fromZ=" + fromZ + "&toX=" + toX + "&toZ=" + toZ);
+        route = MiniGtaApi.get("/route?fromX=" + fromX + "&fromZ=" + fromZ + "&toX=" + toX + "&toZ=" + toZ);
     }
 
     @Alors("l'itinéraire passe par plusieurs points")

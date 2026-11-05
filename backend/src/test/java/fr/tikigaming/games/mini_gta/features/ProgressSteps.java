@@ -19,13 +19,8 @@ import tools.jackson.databind.node.ObjectNode;
  */
 public class ProgressSteps {
 
-    private final MiniGtaApi api;
     private ObjectNode progress = (ObjectNode) MiniGtaApi.JSON.valueToTree(Progress.initial());
     private JsonNode result;
-
-    public ProgressSteps(MiniGtaApi api) {
-        this.api = api;
-    }
 
     @Soit("une nouvelle partie")
     public void uneNouvellePartie() {
@@ -42,8 +37,8 @@ public class ProgressSteps {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("progress", progress);
         payload.putAll(fields);
-        result = api.post(path, payload);
-        if (api.succeeded()) progress = (ObjectNode) result.get("progress");
+        result = MiniGtaApi.post(path, payload);
+        if (MiniGtaApi.succeeded()) progress = (ObjectNode) result.get("progress");
     }
 
     @Quand("il réussit la mission {string}")
