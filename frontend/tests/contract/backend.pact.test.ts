@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { supabaseScores } from '@/games/adapters/supabase'
 import { GameError } from '@/games/errors'
 import { destinations, play } from '@/games/echecs/api'
+import { serverVerifier } from '@/games/rush-hour/services/levelVerifier'
 import { ApiError, apiDelete } from '@/lib/api'
 import { clearSession, fetchSession } from '@/lib/session'
 import { accept, dodge, fire, getView, joinTable } from '@/games/bang/api'
@@ -167,6 +168,67 @@ describe('contrat front → backend', () => {
         .executeTest(async (server) => {
           routeApiTo(server.url)
           await expect(supabaseScores.insert('clicker', 120, {})).rejects.toMatchObject({ code: 'session' })
+        })
+    })
+  })
+
+  // Rush Hour : le serveur rejoue les coups d'un niveau et calcule lui-même le score (anti-triche, S6). Le front
+  // appelle le vrai adaptateur du jeu (serverVerifier) ; les états « visiteur » suffisent, le calcul n'a besoin de
+  // rien d'autre que les coups.
+  describe('POST /api/games/rush-hour/levels/{level}/results', () => {
+    // Solution du niveau 1 en 3 coups (shared/games/rush-hour/contrat.json)
+    const LEVEL_1_SOLUTION = [
+      { id: 'A', delta: 3 },
+      { id: 'H', delta: -1 },
+      { id: 'X', delta: 3 },
+    ]
+
+    test('une partie gagnée est rejouée par le serveur, qui renvoie le score, les coups et le minimum', async () => {
+      await pact
+        .addInteraction()
+        .given('aucun joueur n’est connecté')
+        .uponReceiving('la vérification d’une partie gagnée du niveau 1 de Rush Hour')
+        .withRequest('POST', '/api/games/rush-hour/levels/1/results', (req) =>
+          req.headers({ 'Content-Type': 'application/json', ...csrfHeader }).jsonBody({
+            moves: [
+              { vehicle: 'A', delta: 3 },
+              { vehicle: 'H', delta: -1 },
+              { vehicle: 'X', delta: 3 },
+            ],
+            hints: 0,
+          }),
+        )
+        .willRespondWith(200, (res) => res.jsonBody({ score: integer(1000), moves: integer(3), optimal: integer(3) }))
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          await expect(serverVerifier(1, { moves: LEVEL_1_SOLUTION, hintsUsed: 0 })).resolves.toEqual({
+            score: 1000,
+            moves: 3,
+            optimal: 3,
+          })
+        })
+    })
+
+    test('une partie truquée est refusée (422) avec un message que le jeu affiche', async () => {
+      await pact
+        .addInteraction()
+        .given('aucun joueur n’est connecté')
+        .uponReceiving('la vérification d’une partie truquée du niveau 1 de Rush Hour')
+        .withRequest('POST', '/api/games/rush-hour/levels/1/results', (req) =>
+          req
+            .headers({ 'Content-Type': 'application/json', ...csrfHeader })
+            .jsonBody({ moves: [{ vehicle: 'X', delta: 3 }], hints: 0 }),
+        )
+        .willRespondWith(422, (res) =>
+          res.jsonBody({ error: like('Partie refusée : Déplacement impossible : X de 3') }),
+        )
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          const refusal = await serverVerifier(1, { moves: [{ id: 'X', delta: 3 }], hintsUsed: 0 }).catch(
+            (err: unknown) => err,
+          )
+          expect(refusal).toBeInstanceOf(ApiError)
+          expect(refusal).toMatchObject({ status: 422, message: 'Partie refusée : Déplacement impossible : X de 3' })
         })
     })
   })
