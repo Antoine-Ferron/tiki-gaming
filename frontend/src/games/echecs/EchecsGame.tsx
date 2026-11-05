@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ApiError } from '@/lib/api'
 import { destinations, play } from './api'
-import { FILES, piecesFromFen, RANKS, squareLabel, START_FEN, SYMBOLS } from './board'
+import { FILES, isWhite, piecesFromFen, RANKS, squareLabel, START_FEN, SYMBOLS } from './board'
 import './echecs.css'
 
 /**
@@ -74,7 +74,14 @@ export default function EchecsGame() {
                   aria-pressed={selected === square}
                   onClick={() => handleClick(square)}
                 >
-                  {piece ? SYMBOLS[piece] : ''}
+                  {piece && (
+                    <span
+                      className={`echecs-piece ${isWhite(piece) ? 'echecs-piece-white' : 'echecs-piece-black'}`}
+                      aria-hidden="true"
+                    >
+                      {SYMBOLS[piece.toLowerCase()]}
+                    </span>
+                  )}
                 </button>
               )
             }),

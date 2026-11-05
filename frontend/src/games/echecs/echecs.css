@@ -26,8 +26,24 @@
   border: none;
   font-size: clamp(1.4rem, 6vw, 2.6rem);
   line-height: 1;
-  color: #111;
   cursor: pointer;
+}
+
+/* Même symbole plein pour les deux camps ; la couleur et un contour assurent le contraste sur les deux cases. */
+.echecs-piece {
+  font-variant-emoji: text;
+  line-height: 1;
+}
+
+.echecs-piece-white {
+  color: #ffffff;
+  -webkit-text-stroke: 1.5px #1a1a1a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.echecs-piece-black {
+  color: #111111;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.35);
 }
 
 .echecs-square-light {

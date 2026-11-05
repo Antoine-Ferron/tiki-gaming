@@ -5,20 +5,19 @@ export const RANKS = [8, 7, 6, 5, 4, 3, 2, 1] as const // rangée 8 en haut, vue
 
 export const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
 
-/** Symbole Unicode de chaque lettre FEN. */
+/** Symbole Unicode (plein) de chaque type de pièce : la couleur du camp est donnée par le CSS. */
 export const SYMBOLS: Record<string, string> = {
-  K: '♔',
-  Q: '♕',
-  R: '♖',
-  B: '♗',
-  N: '♘',
-  P: '♙',
   k: '♚',
   q: '♛',
   r: '♜',
   b: '♝',
   n: '♞',
   p: '♟',
+}
+
+/** Camp d'une lettre FEN : majuscule = blanc, minuscule = noir. */
+export function isWhite(piece: string): boolean {
+  return piece === piece.toUpperCase()
 }
 
 const NAMES: Record<string, string> = {
@@ -33,7 +32,7 @@ const NAMES: Record<string, string> = {
 /** Nom lu par un lecteur d'écran : « e2, pion blanc », « d8, dame noire », « e4, case vide ». */
 export function squareLabel(square: string, piece: string | undefined): string {
   if (!piece) return `${square}, case vide`
-  const white = piece === piece.toUpperCase()
+  const white = isWhite(piece)
   const name = NAMES[piece.toLowerCase()]
   const feminine = name === 'dame' || name === 'tour'
   const color = white ? (feminine ? 'blanche' : 'blanc') : feminine ? 'noire' : 'noir'
