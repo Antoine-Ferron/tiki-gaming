@@ -2,6 +2,7 @@ package fr.tikigaming.games.echecs.engine;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -17,6 +18,9 @@ public final class Game {
      * roi, roque, prise en passant, promotion (phases 3 et 4).
      */
     public static Position play(Position position, Square from, Square to) {
+        if (status(position).isOver()) {
+            throw new IllegalArgumentException("La partie est terminée : " + status(position));
+        }
         checkedMovingPiece(position, from, to);
         if (!legalDestinations(position, from).contains(to)) {
             throw new IllegalArgumentException(
@@ -106,6 +110,52 @@ public final class Game {
                 rights.whiteQueenside() && untouched(from, to, "e1", "a1"),
                 rights.blackKingside() && untouched(from, to, "e8", "h8"),
                 rights.blackQueenside() && untouched(from, to, "e8", "a8"));
+    }
+
+    /** L'état de la partie pour le camp qui a le trait (F1 mat, F2 pat, F3 matériel insuffisant, F5 50 coups). */
+    public static GameStatus status(Position position) {
+        boolean inCheck = isInCheck(position, position.turn());
+        if (!hasLegalMove(position)) {
+            return inCheck ? GameStatus.CHECKMATE : GameStatus.STALEMATE;
+        }
+        if (isInsufficientMaterial(position)) {
+            return GameStatus.DRAW_INSUFFICIENT_MATERIAL;
+        }
+        if (position.halfmoveClock() >= 100) {
+            return GameStatus.DRAW_FIFTY_MOVES;
+        }
+        return inCheck ? GameStatus.CHECK : GameStatus.ONGOING;
+    }
+
+    private static boolean hasLegalMove(Position position) {
+        return position.pieces().entrySet().stream()
+                .filter(e -> e.getValue().color() == position.turn())
+                .anyMatch(e -> !legalDestinations(position, e.getKey()).isEmpty());
+    }
+
+    /**
+     * Règle F3 : aucun mat possible. Roi contre roi, roi et une pièce légère (fou ou cavalier) contre roi, ou un fou
+     * de chaque côté sur des cases de même couleur.
+     */
+    private static boolean isInsufficientMaterial(Position position) {
+        List<Map.Entry<Square, Piece>> others = position.pieces().entrySet().stream()
+                .filter(e -> e.getValue().type() != PieceType.KING)
+                .toList();
+        if (others.isEmpty()) {
+            return true;
+        }
+        if (others.size() == 1) {
+            PieceType type = others.get(0).getValue().type();
+            return type == PieceType.BISHOP || type == PieceType.KNIGHT;
+        }
+        if (others.size() == 2
+                && others.stream().allMatch(e -> e.getValue().type() == PieceType.BISHOP)
+                && others.get(0).getValue().color() != others.get(1).getValue().color()) {
+            Square first = others.get(0).getKey();
+            Square second = others.get(1).getKey();
+            return (first.file() + first.rank()) % 2 == (second.file() + second.rank()) % 2;
+        }
+        return false;
     }
 
     /** Règle L1 : le roi du camp {@code color} est attaqué par au moins une pièce adverse. */
