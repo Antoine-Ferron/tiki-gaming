@@ -54,7 +54,7 @@ La [persistance](persistance.md) dispose désormais d'un adaptateur PostgREST et
 de tests Testcontainers sur les vrais services PostgreSQL/PostgREST. La table est
 privée au backend et protège les transitions concurrentes. Le raccordement
 [API](api.md), l'[interface et les E2E](interface-e2e.md) sont désormais préparés
-sur leurs branches distinctes de la PR #116 ; leurs documents détaillent les
+dans la même PR #116 que la persistance ; leurs documents détaillent les
 contrats, validations et commandes de démonstration locale.
 
 Les [scénarios Gherkin](bdd.md) des rencontres, prises et victoire sont exécutés

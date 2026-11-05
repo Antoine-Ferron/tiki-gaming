@@ -155,13 +155,13 @@ fichier `.env` ni base partagée n'est utilisé par ces tests. Rapports locaux :
 `backend/target/failsafe-reports`, `backend/target/site/jacoco/index.html`,
 `backend/target/pit-reports/index.html` (non versionnés).
 
-## Prochaine étape
+## API, interface et parcours regroupés
 
-La persistance est prête et vérifiée sur des bases éphémères. Il reste à relier
-les cas d'usage à l'API en associant l'UUID et le vrai moteur à la session HTTP,
-à tester cette autorisation et le CSRF, puis à raccorder le formulaire React
-des deux noms et l'enregistrement automatique à la victoire. Aucun endpoint
-ne permet encore au navigateur de créer ou clôturer une rencontre.
+La persistance est reliée à l'[API à session](api.md), au formulaire des deux
+noms et au damier React. Le serveur valide les coups et enregistre le résultat
+issu du moteur. Les [tests de contrat, E2E et commandes de démo](interface-e2e.md)
+complètent les IT réels. Ces étapes sont désormais regroupées dans la même
+PR #116, en conservant les commits intermédiaires, pour une seule revue.
 
 ## Validation avant publication — 5 novembre 2026
 
@@ -184,6 +184,7 @@ Vérifications locales sur cette base :
   **441/453 détectés (97,35 %)**, dont **439 tués et 2 timeouts collectifs**.
   Les 12 survivants globaux comprennent les 8 Dames déjà documentés.
 
-Les résultats GitHub de la PR restent distincts de ces mesures locales. Le lot
-référence #18 sans fermer l'issue : API/session et interface feront l'objet de la
-prochaine étape, avant les E2E Dames.
+Les résultats GitHub de la PR restent distincts de ces mesures locales
+historiques, antérieures au regroupement de l'API et de l'interface dans #116.
+Les validations du parcours complet sont dans [interface-e2e.md](interface-e2e.md).
+L'issue #18 reste ouverte ; les règles de nulle restent hors de ce lot.

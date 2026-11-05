@@ -285,7 +285,7 @@ ce qui compte comme réussi pour la fusion :
 | 1 | `frontend` | `frontend/**` | `npm ci` → `format:check` → `lint` → `typecheck` → `rtm:check` → `test:coverage` (seuils) → `test:contract` (contrat à jour) → `build` |
 | 1 | `backend` | `backend/**` ou `frontend/pacts/**` | `spotless:check` → `mvn -B verify` (Checkstyle, tests dont Pact provider et chaos Toxiproxy, JaCoCo) |
 | 1 | `security` | toujours | `npm audit --audit-level=high` ; sur une PR, *dependency review* |
-| 2 | `integration` | `frontend/**`, `backend/**`, `supabase/**` ou `quality/db-init/**` | Tests collectifs PostgreSQL, puis tests Java `*IT` PostgreSQL/PostgREST via Failsafe |
+| 2 | `integration` | `frontend/**`, `supabase/**`, `quality/db-init/**`, `backend/pom.xml` ou paquets Java Dames/SDV Civilisation | Tests collectifs PostgreSQL, IT SDV, puis IT Dames PostgreSQL/PostgREST via Failsafe |
 | 3 | `mutation-frontend` | `frontend/**` | Stryker (seuil 75 %), rapport en artefact |
 | 3 | `mutation-backend` | `backend/**` | Pitest (seuil 75 %), rapport en artefact |
 | 3 | `e2e` | `frontend/**` | Playwright sous Chromium, Firefox et WebKit + audit WCAG 2.1 AA (axe) |

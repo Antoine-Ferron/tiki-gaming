@@ -256,10 +256,11 @@ L'ordre des dates, lui, n'a pas d'importance : une migration plus ancienne que l
 normalement.
 
 Le même palier exécute ensuite les `*IT` Java Dames :
-`mvn -B -Pintegration test-compile failsafe:integration-test failsafe:verify` depuis `backend/`.
+`mvn -B -Pintegration '-Dit.test=fr/tikigaming/games/dame/**/*IT' test-compile failsafe:integration-test failsafe:verify` depuis `backend/`.
 Ces tests vérifient l'adaptateur avec PostgreSQL et PostgREST réels ; leurs rapports
 sont publiés dans `rapport-integration-backend`. Ils tournent après le palier 1,
-avant mutation/E2E, sans rejouer toute la suite unitaire.
+avant mutation/E2E, sans rejouer toute la suite unitaire. Le filtre cible Dames :
+l'étape d'intégration SDV existante est conservée et n'est pas rejouée par Failsafe.
 
 **Testcontainers** démarre un vrai PostgreSQL (`supabase/postgres` 17.11, la même image que la production) dans un
 conteneur éphémère, rejoue **toutes les migrations** de `supabase/migrations/` sur une base vide, puis vérifie

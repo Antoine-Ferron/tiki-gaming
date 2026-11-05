@@ -1,7 +1,10 @@
 # Interface et parcours navigateur — issue #18
 
-La branche `game/dame/interface-e2e` reprend les cinq commits validés de
-`game/dame/api`. La PR de persistance #116 reste indépendante.
+L'interface a été préparée sur `game/dame/interface-e2e`, après les cinq commits
+de `game/dame/api`. Ces dix commits sont maintenant regroupés avec la
+persistance dans **la PR #116**, sur `game/dame/rencontres`, afin de relire et
+valider un parcours complet dans une seule PR. Le dernier `dev` est repris et
+les commits intermédiaires conservent leur auteur.
 
 ## Contrat et RED
 
@@ -139,3 +142,44 @@ sur la même rencontre. Une lecture SQL directe du conteneur confirme les deux
 noms, une seule ligne `IN_PROGRESS` et l'absence de résultat prématuré.
 Les services ont ensuite été arrêtés et les conteneurs supprimés. Ce contrôle
 de démo complète les tests automatisés ; il ne remplace pas la suite CI.
+
+## Regroupement dans la PR #116
+
+La branche est remise à jour sur `dev` (`0eedc6e`) avant d'y reporter les dix
+commits API/interface/E2E. Les 25 commits de développement sont conservés avec
+leurs auteurs et leurs étapes RED/GREEN. Le code et les tests Dames sont
+identiques à ceux des branches préparées ; les conflits portent sur le registre,
+le total Swagger et l'assemblage CI.
+
+Bang est conservé au catalogue. Swagger vérifie les 43 chemins de `dev` et les
+3 chemins Dames, soit 46. La CI reprend le cache Node et l'étape SDV de `dev` ;
+le nouvel appel Failsafe cible `fr/tikigaming/games/dame/**/*IT`, pour ne pas
+rejouer les IT SDV déjà lancés par leur propre étape.
+
+Premières validations sur cette base : **6 870 cas backend sans échec/erreur**
+(un scénario Échecs ignoré préexistant), **59 IT réels** dont 56 Dames et 3 SDV,
+**22 contrats Pact**, **69 tests PostgreSQL collectifs**, formatage/lint/build
+réussis. Les **19 migrations** ont des versions uniques et la RTM collective
+est valide (32 exigences, 124 cas tracés).
+
+Le premier lancement frontend parallèle a rencontré des dépassements de délai
+sous charge et a été interrompu. La suite de couverture est relancée avec
+`npm run test:coverage -- --maxWorkers=1`, en conservant délais, assertions et
+seuils de couverture. Résultat : **1 555 tests verts**, **93,79 % des lignes** et
+**87,67 % des branches**. La commande CI filtrée exécute également **56 IT
+Dames verts**, sans sélectionner SDV.
+
+Le lancement navigateur collectif sur cette base termine les **44 parcours
+Chromium sans échec**. Sous la charge locale, des audits Firefox dépassent le
+délai global de 30 secondes ; cette exécution est interrompue et les parcours
+sont repris isolément avant publication, avec les mêmes assertions et délais.
+
+La mise à jour distante suivante (`4d3b811`, Morpion et accessibilité/E2E SDV)
+est ensuite intégrée sans conflit. Les fichiers métier et les tests Dames
+restent identiques. Validation des changements entrants et de la compatibilité :
+**89 tests backend ciblés**, **47 tests frontend ciblés**, formatage/lint/build
+verts, puis **33 parcours Dames/SDV verts** sur les trois navigateurs avec un
+seul worker. Les 18 exécutions Dames sont toutes incluses dans ce dernier lot.
+Les cinq audits Firefox collectifs précédemment en dépassement passent aussi
+lors de leur relance isolée : **5/5 en 11,1 secondes**, sans changement des
+assertions, des délais ou des configurations partagées.

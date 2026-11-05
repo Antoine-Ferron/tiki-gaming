@@ -2,13 +2,11 @@
 
 ## Périmètre et branche
 
-`game/dame/api` est une branche distincte : la PR #116 des rencontres est encore
-en review à sa création. Ses commits validés sont repris, avec le `dev`
-`85b61f5` et la résolution CI de #116, par rebase des seuls commits API.
-Aucun nouveau commit API n'est poussé sur #116.
-Après sa fusion en squash, seuls les commits API seront à reporter sur `dev`.
-Cette étape livre le backend ; formulaire React et E2E viendront ensuite.
-Cette suite est maintenant implémentée sur `game/dame/interface-e2e` ; voir
+L'API a été préparée sur `game/dame/api`, puis l'interface et les E2E sur
+`game/dame/interface-e2e`. À la demande de l'utilisateur, leurs dix commits
+sont désormais regroupés avec la persistance dans **la même PR #116**, sur
+`game/dame/rencontres`, remise à jour sur `dev` (`4d3b811`). Les étapes
+RED/GREEN et les auteurs sont conservés. Voir
 [l'interface, les parcours et la démo locale](interface-e2e.md).
 
 ## Contrat HTTP
@@ -49,8 +47,8 @@ champs inconnus, coordonnées hors 0–9 et parcours de plus de 20 arrivées son
 
 Sources et tests dans les packages Dames. Pas de nouvelle dépendance, migration,
 modification du SDK, de Jackson global, de SecurityConfig ou de la CI. La seule
-adaptation mécanique partagée est le test Swagger : `dev` expose 35 routes,
-les trois chemins Dames portent ce total à 38 et ajoutent le tag `dame`.
+adaptation mécanique partagée de l'API est le test Swagger : le dernier `dev`
+expose 43 routes ; les trois chemins Dames portent ce total à 46 et ajoutent le tag `dame`.
 Cette exception est annoncée avant modification et sera signalée à la plateforme.
 
 Sous-étapes avec commits distincts : contrats compilables, tests RED, logique
@@ -59,7 +57,7 @@ squelettiques dans le premier commit ; aucune fonctionnalité terminée n'y est 
 
 ## RED observé
 
-Après le commit de contrats `95ea6d8`, la suite dédiée exécute **58 cas** :
+Après le commit des contrats, la suite dédiée exécute **58 cas** :
 25 d'orchestration sans Spring et 33 HTTP avec la vraie chaîne Spring/CSRF.
 Résultat : **48 échecs d'assertion attendus, 0 erreur, 0 ignoré** ; les dix cas
 déjà verts sont les validations de création et la documentation des routes.
@@ -79,7 +77,8 @@ lecture privées à la session, vrais coups du moteur, contrôle de version, un 
 coup appliqué entre deux onglets, deux gagnants et reprise après panne.
 L'état serveur est un texte JSON ; le résultat est enregistré avant la session.
 
-Le seul test partagé adapté est `OpenApiDocsTest` : total de chemins 35 → 38 et
+Le seul test partagé adapté est `OpenApiDocsTest` : total initial de chemins 35 → 38,
+actualisé à 43 → 46 lors du regroupement sur le dernier `dev`, et
 ajout du tag `dame` à la liste admise. Les assertions des autres jeux restent
 inchangées. Le test Swagger propre à Dames vérifie ses trois résumés et ses erreurs.
 
