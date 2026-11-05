@@ -1,6 +1,7 @@
 package fr.tikigaming.games.bang.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,7 @@ import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 class GameTurnServiceTest {
     private final InitialDeal deal = mock(InitialDeal.class);
@@ -21,6 +23,28 @@ class GameTurnServiceTest {
     private final CardInstance second = new CardInstance("second", CardType.MISSED);
     private final CardInstance third = new CardInstance("third", CardType.BANG);
     private final CardInstance discarded = new CardInstance("discarded", CardType.MISSED);
+
+    @Test
+    void aRepeatedEndTurnIsRefusedUntilTheExcessCardHasBeenDiscarded() {
+        String code = startedTable(1);
+        tables.draw(code, "one");
+        tables.endTurn(code, "one");
+        var before = tables.state(code, "one");
+
+        assertThatThrownBy(() -> tables.endTurn(code, "one"))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        refusal -> assertThat(refusal.status()).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(tables.state(code, "one")).isEqualTo(before);
+
+        tables.discard(code, "one", "second");
+        assertThat(tables.state(code, "one").hand()).hasSize(1);
+        tables.endTurn(code, "one");
+        for (String account : List.of("one", "two", "three", "four")) {
+            assertThat(tables.state(code, account).currentSeat()).isEqualTo(2);
+            assertThat(tables.state(code, account).phase()).isEqualTo(GameState.Phase.DRAW);
+        }
+    }
 
     @Test
     void drawingMovesTheFirstTwoCardsIntoTheActiveHand() throws Exception {
@@ -72,7 +96,36 @@ class GameTurnServiceTest {
                 "one", 1, new RoleCard(Role.SHERIFF, true), BangCharacter.BART_CASSIDY, health, 5, List.of());
         when(deal.deal(anyList()))
                 .thenReturn(new GameState(
-                        List.of(sheriff), List.of(first, second, third), List.of(discarded), 1, GameState.Phase.DRAW));
+                        List.of(
+                                sheriff,
+                                new GameState.Player(
+                                        "two",
+                                        2,
+                                        new RoleCard(Role.OUTLAW, false),
+                                        BangCharacter.CALAMITY_JANET,
+                                        4,
+                                        4,
+                                        List.of()),
+                                new GameState.Player(
+                                        "three",
+                                        3,
+                                        new RoleCard(Role.OUTLAW, false),
+                                        BangCharacter.PAUL_REGRET,
+                                        3,
+                                        3,
+                                        List.of()),
+                                new GameState.Player(
+                                        "four",
+                                        4,
+                                        new RoleCard(Role.RENEGADE, false),
+                                        BangCharacter.WILLY_THE_KID,
+                                        4,
+                                        4,
+                                        List.of())),
+                        List.of(first, second, third),
+                        List.of(discarded),
+                        1,
+                        GameState.Phase.DRAW));
         tables.start(code, "one");
         return code;
     }
