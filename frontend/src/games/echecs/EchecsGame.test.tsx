@@ -257,3 +257,41 @@ test.each([
 
   expect(await screen.findByText(message)).toHaveRole('status')
 })
+
+/** Amène l'écran à une position où le pion blanc e7 peut être promu (le serveur est simulé). */
+async function reachPromotion() {
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockResolvedValueOnce({ fen: 'k7/4P3/8/8/8/8/8/K7 w - - 0 1', status: 'ONGOING' })
+  renderGame()
+  await playMove('e2', /^e4,/)
+  await screen.findByRole('button', { name: 'e7, pion blanc' })
+  vi.mocked(destinations).mockResolvedValue(['e8'])
+  await playMove('e7', /^e8,/)
+}
+
+test('un pion qui atteint la dernière rangée fait choisir sa promotion, envoyée au serveur (S6, P4)', async () => {
+  // Arrange
+  vi.mocked(play).mockResolvedValue({ fen: 'k3N3/8/8/8/8/8/8/K7 b - - 0 1', status: 'ONGOING' })
+  await reachPromotion()
+  const dialog = await screen.findByRole('dialog', { name: 'Promotion' })
+
+  // Act
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Cavalier' }))
+
+  // Assert
+  expect(play).toHaveBeenLastCalledWith('k7/4P3/8/8/8/8/8/K7 w - - 0 1', 'e7', 'e8', 'n')
+  expect(await screen.findByRole('button', { name: 'e8, cavalier blanc' })).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+test('fermer la fenêtre de promotion annule le coup (P4)', async () => {
+  await reachPromotion()
+  const dialog = await screen.findByRole('dialog', { name: 'Promotion' })
+  vi.mocked(play).mockClear()
+
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Annuler' }))
+
+  expect(play).not.toHaveBeenCalled()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'e7, pion blanc' })).toBeInTheDocument()
+})
