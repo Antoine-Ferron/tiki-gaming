@@ -10,6 +10,7 @@ export interface LocalPlayer {
   role: 'SHERIFF' | 'OUTLAW' | 'RENEGADE'
   character: Character
   health: number
+  maxHealth: number
   hand: ViewCard[]
 }
 
@@ -51,7 +52,7 @@ export function deal(shuffle: Shuffle = shuffleAtRandom): LocalGame {
     const health = CHARACTERS[character].lifePoints + (role === 'SHERIFF' ? 1 : 0)
     const hand = pile.slice(0, health)
     pile = pile.slice(health)
-    return { seat: index + 1, role, character, health, hand }
+    return { seat: index + 1, role, character, health, maxHealth: health, hand }
   })
   const sheriff = players.find((p) => p.role === 'SHERIFF')!
   return { players, drawPile: pile, discardPile: [], currentSeat: sheriff.seat, phase: 'DRAW', shotsThisTurn: 0 }
@@ -63,11 +64,10 @@ function withActive(game: LocalGame, change: Partial<LocalPlayer>): LocalPlayer[
   return game.players.map((p) => (p.seat === game.currentSeat ? { ...p, ...change } : p))
 }
 
-/** Les deux premières cartes de la pioche vont dans la main du joueur actif, qui passe en phase de jeu. */
-export function draw(game: LocalGame, shuffle: Shuffle = shuffleAtRandom): LocalGame {
-  if (game.pendingShot) throw new Error("La cible doit d'abord répondre au tir.")
-  if (game.phase !== 'DRAW') throw new Error('Tu as déjà pioché ce tour-ci.')
-  if (game.drawPile.length + game.discardPile.length < 2) throw new Error('La pioche ne contient pas assez de cartes.')
+function drawCards(game: LocalGame, seat: number, count: number, shuffle: Shuffle): LocalGame {
+  if (count === 0) return game
+  if (game.drawPile.length + game.discardPile.length < count)
+    throw new Error('La pioche ne contient pas assez de cartes.')
   let pile = [...game.drawPile]
   let discarded = [...game.discardPile]
   const recycle = () => {
@@ -78,18 +78,25 @@ export function draw(game: LocalGame, shuffle: Shuffle = shuffleAtRandom): Local
   }
   const drawn: ViewCard[] = []
   recycle()
-  for (let index = 0; index < 2; index++) {
+  for (let index = 0; index < count; index++) {
     drawn.push(pile.shift()!)
     recycle()
   }
-  const player = activeOf(game)
   return {
     ...game,
-    players: withActive(game, { hand: [...player.hand, ...drawn] }),
+    players: game.players.map((player) =>
+      player.seat === seat ? { ...player, hand: [...player.hand, ...drawn] } : player,
+    ),
     drawPile: pile,
     discardPile: discarded,
-    phase: 'PLAY',
   }
+}
+
+/** La pioche de début de tour et le bonus utilisent les mêmes piles, sans modifier l'état fourni. */
+export function draw(game: LocalGame, shuffle: Shuffle = shuffleAtRandom): LocalGame {
+  if (game.pendingShot) throw new Error("La cible doit d'abord répondre au tir.")
+  if (game.phase !== 'DRAW') throw new Error('Tu as déjà pioché ce tour-ci.')
+  return { ...drawCards(game, game.currentSeat, 2, shuffle), phase: 'PLAY' }
 }
 
 /** Avec plus de cartes que de PV, le tour passe par la défausse ; sinon il passe au joueur vivant suivant. */
@@ -142,10 +149,25 @@ export function fire(game: LocalGame, cardId: string, targetSeat: number): Local
   }
 }
 
-export function respond(game: LocalGame, shotId: string, cardId: string): LocalGame {
+export function respond(
+  game: LocalGame,
+  shotId: string,
+  cardId?: string,
+  shuffle: Shuffle = shuffleAtRandom,
+): LocalGame {
   const shot = game.pendingShot
   if (!shot || shot.id !== shotId) throw new Error("Ce tir n'est plus en attente.")
   const target = game.players.find((p) => p.seat === shot.targetSeat)!
+  if (cardId === undefined) {
+    const health = Math.max(0, target.health - 1)
+    const damaged: LocalGame = {
+      ...game,
+      players: game.players.map((p) => (p.seat === target.seat ? { ...p, health } : p)),
+      pendingShot: undefined,
+    }
+    const bonus = target.character === 'bart-cassidy' && health > 0 ? target.health - health : 0
+    return drawCards(damaged, target.seat, bonus, shuffle)
+  }
   const card = target.hand.find((c) => c.id === cardId && canUseAs(target.character, c.type, 'MISSED'))
   if (!card) throw new Error('Carte indisponible.')
   return {
@@ -173,7 +195,7 @@ export function viewOf(game: LocalGame, seat: number): GameView {
       seat: p.seat,
       character: p.character.toUpperCase().replace(/-/g, '_'),
       health: p.health,
-      maxHealth: p.health,
+      maxHealth: p.maxHealth,
       playedCards: [],
       handCount: p.hand.length,
       ...(p.role === 'SHERIFF' ? { role: 'SHERIFF' } : {}),

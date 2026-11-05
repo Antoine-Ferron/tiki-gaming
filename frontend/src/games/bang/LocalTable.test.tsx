@@ -3,13 +3,24 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, expect, test, vi } from 'vitest'
 import { LocalTable } from './LocalTable'
 
+const fixture = vi.hoisted(() => ({ bartTarget: false }))
+
 // Seul le mélange est contrôlé ; la donne, les vues et les tours restent réels.
 vi.mock('./local', async (importOriginal) => {
   const local = await importOriginal<typeof import('./local')>()
-  return { ...local, deal: () => local.deal((items) => items) }
+  return {
+    ...local,
+    deal: () =>
+      local.deal((items) =>
+        fixture.bartTarget && items[0] === 'bart-cassidy' ? [items[items.length - 1], ...items.slice(0, -1)] : items,
+      ),
+  }
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  fixture.bartTarget = false
+})
 
 test('le même siège reste le seul Shérif quand les quatre joueurs se passent le plateau local', () => {
   render(<LocalTable />)
@@ -68,4 +79,23 @@ test('la cible esquive avec sa carte autorisée, conserve ses PV et rend le mêm
   fireEvent.click(screen.getByRole('button', { name: 'Afficher la main de la place 1' }))
   expect(screen.getByRole('status').textContent).toContain('À toi de jouer : choisis un BANG !')
   expect(within(screen.getByRole('region', { name: 'Ta main' })).getAllByRole('listitem')).toHaveLength(6)
+})
+
+test('Bart encaisse un seul PV, conserve son maximum, reçoit son bonus et rend le même tour au tireur', () => {
+  fixture.bartTarget = true
+  render(<LocalTable />)
+  fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+  fireEvent.click(within(screen.getByRole('region', { name: 'Ta main' })).getAllByRole('button', { name: 'BANG !' })[0])
+  fireEvent.click(screen.getByRole('button', { name: 'Viser la place 2' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Afficher la main de la place 2' }))
+  const target = within(screen.getByRole('region', { name: 'Tapis de la place 2' }))
+  expect(target.getByText('4/4 PV')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Accepter le tir' }))
+  const damaged = within(screen.getByRole('region', { name: 'Tapis de la place 2' }))
+  expect(damaged.getByText('3/4 PV')).toBeTruthy()
+  expect(damaged.getByText('5 en main')).toBeTruthy()
+  expect(screen.queryByRole('region', { name: 'Ta main' })).toBeNull()
+  expect(screen.queryByText('Rôle privé')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Afficher la main de la place 1' }))
+  expect(screen.getByRole('status').textContent).toContain('À toi de jouer : choisis un BANG !')
 })

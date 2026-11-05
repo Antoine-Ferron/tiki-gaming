@@ -53,6 +53,7 @@ export function LocalTable() {
           onDiscard={(cardId) => run((current) => discard(current, cardId))}
           onShoot={(cardId, targetSeat) => run((current) => fire(current, cardId, targetSeat))}
           onDodge={(cardId) => run((current) => respond(current, view.pendingShot!.id, cardId))}
+          onAccept={() => run((current) => respond(current, view.pendingShot!.id))}
         />
       )}
     </div>
