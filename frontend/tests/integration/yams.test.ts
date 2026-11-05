@@ -1,5 +1,5 @@
 import { beforeEach, expect, test } from 'vitest'
-import { as, createUser, describeDb, useDatabase } from './db'
+import { as, asServer, createUser, describeDb, useDatabase } from './db'
 
 const MAX_SCORE = 375
 
@@ -44,11 +44,12 @@ describeDb('yams : atomicité de la fin de partie', () => {
   const db = useDatabase()
   let alice: string
 
-  // Comme finishGame (session.ts) : effacer la sauvegarde puis envoyer le score du joueur 1.
+  // Comme la fin de partie : effacer la sauvegarde puis enregistrer le score du joueur 1, en une seule étape.
+  // Depuis la migration scores_server_only, seul le backend (service_role) écrit les scores.
   const finishGame = (score: number) =>
-    as(db, alice, async () => {
+    asServer(db, async () => {
       await db.query(`delete from public.game_saves where user_id = $1 and game_slug = 'yams'`, [alice])
-      await db.query(`insert into public.scores (game_slug, score) values ('yams', $1)`, [score])
+      await db.query(`insert into public.scores (user_id, game_slug, score) values ($1, 'yams', $2)`, [alice, score])
     })
   const savesOfAlice = async () =>
     (await db.query(`select 1 from public.game_saves where user_id = $1 and game_slug = 'yams'`, [alice])).rowCount
@@ -61,7 +62,7 @@ describeDb('yams : atomicité de la fin de partie', () => {
   })
 
   test('score refusé (376, au-dessus du plafond) : rien n’est écrit, la sauvegarde effacée revient', async () => {
-    await expect(finishGame(MAX_SCORE + 1)).rejects.toMatchObject({ code: '42501' })
+    await expect(finishGame(MAX_SCORE + 1)).rejects.toMatchObject({ code: '23514' })
 
     expect(await savesOfAlice()).toBe(1)
     expect(await scoresOfAlice()).toEqual([])
