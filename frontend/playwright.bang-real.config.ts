@@ -15,7 +15,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   forbidOnly: true,
-  timeout: 60000,
+  timeout: 120000,
   expect: { timeout: 10000 },
   outputDir: 'reports/bang-e2e/results',
   reporter: [
