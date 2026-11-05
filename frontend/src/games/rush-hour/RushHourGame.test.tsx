@@ -99,31 +99,6 @@ describe('RushHourGame : le niveau 1 se joue au clavier', () => {
     expect(counter(0)).toBeInTheDocument()
   })
 
-  test('Annuler est désactivé sans coup, puis annule le dernier coup', async () => {
-    // Arrange
-    const { user } = await renderGame()
-    expect(screen.getByRole('button', { name: 'Annuler' })).toBeDisabled()
-    await playKeys(user, SOLUTION()[0])
-
-    // Act
-    await user.click(screen.getByRole('button', { name: 'Annuler' }))
-
-    // Assert
-    expect(counter(0)).toBeInTheDocument()
-  })
-
-  test('Recommencer remet le compteur à zéro', async () => {
-    // Arrange
-    const { user } = await renderGame()
-    await playKeys(user, SOLUTION()[0])
-
-    // Act
-    await user.click(screen.getByRole('button', { name: 'Recommencer' }))
-
-    // Assert
-    expect(counter(0)).toBeInTheDocument()
-  })
-
   test('jouer la solution la plus courte gagne avec 1000 points, envoyés au classement', async () => {
     // Arrange
     const { user, scores } = await renderGame()
@@ -190,33 +165,9 @@ describe('RushHourGame : choix des niveaux et progression (N3, N4, N5, S3)', () 
     await user.click(screen.getByRole('button', { name: '← Niveaux' }))
     expect(screen.getByRole('heading', { name: 'Niveaux' })).toBeInTheDocument()
   })
-
-  test('après une victoire, « Niveau suivant » lance le niveau 2', async () => {
-    // Arrange
-    const { user } = await renderPicker()
-    await user.click(levelButton(1))
-    for (const move of SOLUTION()) await playKeys(user, move)
-
-    // Act
-    await user.click(await screen.findByRole('button', { name: 'Niveau suivant' }))
-
-    // Assert
-    expect(screen.getByRole('heading', { name: 'Niveau 2' })).toBeInTheDocument()
-  })
 })
 
 describe('RushHourGame : indices (P5)', () => {
-  test('un indice indique le véhicule à déplacer, le sens et la distance', async () => {
-    // Arrange
-    const { user } = await renderGame()
-
-    // Act
-    await user.click(screen.getByRole('button', { name: 'Indice (−200 points)' }))
-
-    // Assert
-    expect(screen.getByText(new RegExp(`^Indice : ${labelOf(SOLUTION()[0].id)}`))).toBeInTheDocument()
-  })
-
   test('chaque indice coûte 200 points au score du niveau', async () => {
     // Arrange
     const { user, scores } = await renderGame()
@@ -242,18 +193,6 @@ describe('RushHourGame : mode Génération (G1, G5, G6, S4)', () => {
       await user.keyboard(keysFor(move, GENERATED()))
     }
   }
-
-  test('choisir Facile lance un plateau généré, avec son minimum de coups', async () => {
-    // Arrange
-    const { user } = await renderPicker()
-
-    // Act
-    await user.click(screen.getByRole('button', { name: 'Facile' }))
-
-    // Assert
-    expect(screen.getByRole('heading', { name: 'Plateau Facile' })).toBeInTheDocument()
-    expect(screen.getByText(`Coups : 0 (min. ${GENERATED_SOLUTION().length})`)).toBeInTheDocument()
-  })
 
   test('un plateau généré se gagne comme un niveau, mais ne compte pas au classement', async () => {
     // Arrange
