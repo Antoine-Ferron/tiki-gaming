@@ -61,3 +61,21 @@ test('cliquer une pièce demande ses cases au serveur et les met en évidence', 
   expect(screen.getByRole('button', { name: 'e4, case vide' })).toHaveClass('echecs-square-target')
   expect(screen.getByRole('button', { name: 'e5, case vide' })).not.toHaveClass('echecs-square-target')
 })
+
+test('cliquer une case mise en évidence joue le coup et affiche la position renvoyée par le serveur', async () => {
+  // Arrange
+  const afterE4 = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
+  vi.mocked(destinations).mockResolvedValue(['e3', 'e4'])
+  vi.mocked(play).mockResolvedValue(afterE4)
+  render(<EchecsGame />)
+  await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
+
+  // Act
+  await userEvent.click(await screen.findByRole('button', { name: 'e4, case vide' }))
+
+  // Assert : le coup envoyé (mock), la nouvelle position affichée, plus de sélection
+  expect(play).toHaveBeenCalledWith(START_FEN, 'e2', 'e4')
+  expect(await screen.findByRole('button', { name: 'e4, pion blanc' })).toHaveTextContent('♙')
+  expect(screen.getByRole('button', { name: 'e2, case vide' })).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.getByRole('button', { name: 'e3, case vide' })).not.toHaveClass('echecs-square-target')
+})
