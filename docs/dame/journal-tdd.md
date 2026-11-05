@@ -313,3 +313,19 @@ changer son comportement attendu. Rapports dans `backend/target/cucumber`.
   aucune exclusion ou règle de qualité changée.
 - CI : ajout de l'artefact `rapport-bdd-dame` (HTML/JSON/JUnit XML), syntaxe YAML
   vérifiée. Aucun push ni nouvelle PR. Détails et commandes dans [bdd.md](bdd.md).
+
+## 5 novembre 2026 — synchronisation avant la PR rencontres
+
+À la demande de l'utilisateur, préparation de la PR backend avant le raccordement
+API/interface et les E2E. Sauvegarde des 14 commits dans un bundle local, puis
+rebase sur `dev` à `ece3ce7`, auteurs et ordre RED/GREEN conservés. Résolution des
+conflits en prenant les nouvelles conventions de dev : Cucumber partagé, Pact,
+chaos et pipeline en paliers conservés ; Failsafe Dames au palier 2 uniquement.
+La méthode de fusion reste celle de CONTRIBUTING (squash), conformément au choix
+explicite de l'utilisateur.
+
+Le backend passe 6 358 cas (un scénario Échecs ignoré par son filtre préexistant),
+les 52 IT Dames passent tous. Frontend collectif : 1 304 tests, 6 Pact, format,
+lint, types et build verts. Base collective : 61 tests, RTM et versions des
+migrations valides. PIT : 441/453 détectés, dont 439 tués et 2 timeouts collectifs.
+Les mesures détaillées et limites figurent dans [persistance.md](persistance.md).

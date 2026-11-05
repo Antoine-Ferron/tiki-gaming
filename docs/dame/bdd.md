@@ -84,7 +84,8 @@ open backend/target/cucumber/dame.html
 Le rapport HTML affiche les scénarios et leurs étapes. Le JSON et le JUnit XML
 sont également générés dans `backend/target/cucumber` ; aucun rapport généré
 n'est versionné. La suite est incluse dans `mvn test`, `mvn verify` et dans le
-profil d'intégration déjà exécuté par le check backend CI.
+profil d'intégration. En CI, les scénarios restent au palier 1 backend ; les vrais
+tests de persistance s'exécutent au palier 2 intégration.
 
 ## Qualité et CI
 

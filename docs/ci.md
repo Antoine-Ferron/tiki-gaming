@@ -219,6 +219,9 @@ mvn -B verify
    branches) sur le cœur métier (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`, `CircuitBreaker`) ;
 5. **Spotless** : le code doit être formaté (palantir-java-format). Pour corriger : `mvn spotless:apply`.
 
+Les scénarios Gherkin Dames sont inclus dans les tests du palier 1 ; leur rapport
+HTML/JSON/XML est publié dans l'artefact `rapport-bdd-dame`.
+
 ### Traçabilité (`Traçabilité (RTM)`)
 
 ```bash
@@ -251,6 +254,12 @@ Deux vérifications passent d'abord, sans base de données :
 
 L'ordre des dates, lui, n'a pas d'importance : une migration plus ancienne que la dernière appliquée est appliquée
 normalement.
+
+Le même palier exécute ensuite les `*IT` Java Dames :
+`mvn -B -Pintegration test-compile failsafe:integration-test failsafe:verify` depuis `backend/`.
+Ces tests vérifient l'adaptateur avec PostgreSQL et PostgREST réels ; leurs rapports
+sont publiés dans `rapport-integration-backend`. Ils tournent après le palier 1,
+avant mutation/E2E, sans rejouer toute la suite unitaire.
 
 **Testcontainers** démarre un vrai PostgreSQL (`supabase/postgres` 17.11, la même image que la production) dans un
 conteneur éphémère, rejoue **toutes les migrations** de `supabase/migrations/` sur une base vide, puis vérifie

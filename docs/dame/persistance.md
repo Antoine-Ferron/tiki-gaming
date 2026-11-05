@@ -33,7 +33,7 @@
 
 `mvn -f backend/pom.xml verify` garde la suite rapide sans Docker.
 `mvn -f backend/pom.xml -Pintegration verify` ajoute les `*IT` via Failsafe et
-échoue si Docker manque. Ce profil est rendu obligatoire dans le job backend CI.
+échoue si Docker manque. Les `*IT` sont obligatoires au palier intégration de la CI.
 
 ## Traçabilité
 
@@ -124,10 +124,13 @@ exclusion ne masque le mutant. PIT mesure le code Java, pas les contraintes SQL.
 ## CI et reproduction locale
 
 Le check existant `Backend (format + lint + tests)` conserve son nom et exécute
-`mvn -B -Pintegration verify`. Les changements de migrations et du script
-d'initialisation déclenchent aussi ce check ; les rapports Failsafe sont publiés
-en artefact. Il n'y a ni `continue-on-error`, ni test Docker désactivé, ni baisse
-de seuil. La syntaxe YAML et le branchement du profil ont été contrôlés localement.
+la commande collective `mvn -B verify` au palier 1, y compris le BDD. Le palier 2
+`Integration (Testcontainers)` exécute ensuite les tests collectifs de base puis
+`mvn -B -Pintegration test-compile failsafe:integration-test failsafe:verify` depuis
+`backend/`. Les changements backend, migrations et script d'initialisation
+déclenchent ce palier. Les rapports Failsafe sont publiés en artefact ; aucun test
+Docker ni seuil n'est désactivé. Les règles d'arrêt au premier échec de dev restent
+inchangées. La syntaxe YAML et le branchement du profil sont contrôlés localement.
 La CI GitHub n'a pas été exécutée sur ces commits locaux : aucun push ni PR.
 
 Depuis la racine, Docker Desktop démarré :
@@ -159,3 +162,28 @@ les cas d'usage à l'API en associant l'UUID et le vrai moteur à la session HTT
 à tester cette autorisation et le CSRF, puis à raccorder le formulaire React
 des deux noms et l'enregistrement automatique à la victoire. Aucun endpoint
 ne permet encore au navigateur de créer ou clôturer une rencontre.
+
+## Validation avant publication — 5 novembre 2026
+
+Les 14 commits du lot sont rebasés sur `dev` à `ece3ce7`, en préservant les auteurs
+et le cycle RED/GREEN. Les dépendances Cucumber 8.0.4 sont maintenant fournies par
+dev et ne sont pas dupliquées. Pact, chaos, cibles PIT collectives et paliers CI
+sont conservés ; les vrais tests Dames s'exécutent au palier 2 intégration.
+
+Vérifications locales sur cette base :
+
+- Backend complet : **6 358 cas**, 0 échec/erreur, 1 scénario Échecs `@en-cours`
+  ignoré par le filtre collectif préexistant. Les **12 cas BDD Dames** s'exécutent.
+- Failsafe : **52 tests Dames réussis**, aucun ignoré, sur les vrais conteneurs.
+- Frontend collectif : format, lint, typage, couverture (**1 304 cas**), contrat
+  Pact (**6 cas**) et build réussis. Aucun code frontend propre au lot modifié.
+- Base collective : **61 cas** réussis ; **17 migrations** aux versions uniques.
+- RTM collective : contrôle réussi, 24 exigences et 85 cas tracés.
+- JaCoCo Dames : moteur, rencontres et persistance à **100 % lignes/branches**.
+- PIT : rencontres **22/22**, persistance **27/28** tués ; profil collectif
+  **441/453 détectés (97,35 %)**, dont **439 tués et 2 timeouts collectifs**.
+  Les 12 survivants globaux comprennent les 8 Dames déjà documentés.
+
+Les résultats GitHub de la PR restent distincts de ces mesures locales. Le lot
+référence #18 sans fermer l'issue : API/session et interface feront l'objet de la
+prochaine étape, avant les E2E Dames.
