@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ApiError } from '@/lib/api'
-import type { GameProps } from '../types'
+import type { Json } from '@/lib/database.types'
+import type { GameProps, SaveSchema } from '../types'
 import { destinations, type GameStatus, play, type Promotion } from './api'
 import { FILES, isWhite, piecesFromFen, RANKS, squareLabel, START_FEN, SYMBOLS } from './board'
 import './echecs.css'
@@ -44,6 +45,43 @@ function statusMessage({ fen, status, ended }: Snapshot): string {
   return status === 'CHECK' ? `Échec ! ${turn}` : turn
 }
 
+const STATUSES: GameStatus[] = [
+  'ONGOING',
+  'CHECK',
+  'CHECKMATE',
+  'STALEMATE',
+  'DRAW_INSUFFICIENT_MATERIAL',
+  'DRAW_FIFTY_MOVES',
+]
+
+type Save = { history: Snapshot[] }
+
+const isText = (value: unknown) => typeof value === 'string'
+const isTextOrNull = (value: unknown) => value === null || isText(value)
+
+function isSnapshot(value: unknown): value is Snapshot {
+  if (typeof value !== 'object' || value === null) return false
+  const s = value as Record<string, unknown>
+  const lastMove = s.lastMove
+  return (
+    isText(s.fen) &&
+    STATUSES.includes(s.status as GameStatus) &&
+    (lastMove === null || (Array.isArray(lastMove) && lastMove.length === 2 && lastMove.every(isText))) &&
+    isTextOrNull(s.move) &&
+    isTextOrNull(s.ended)
+  )
+}
+
+/** SV3 : une sauvegarde illisible, corrompue ou d'une ancienne version est ignorée (nouvelle partie). */
+export const SAVE_SCHEMA: SaveSchema<Save> = {
+  safeParse(data: unknown) {
+    const history = (data as { history?: unknown } | null)?.history
+    return Array.isArray(history) && history.length > 0 && history.every(isSnapshot)
+      ? { success: true, data: { history } }
+      : { success: false }
+  },
+}
+
 function isOver(status: GameStatus): boolean {
   return status !== 'ONGOING' && status !== 'CHECK'
 }
@@ -62,8 +100,9 @@ function numberedMoves(history: Snapshot[]): string[] {
   return lines
 }
 
-export default function EchecsGame(_props: GameProps) {
+export default function EchecsGame({ ctx }: GameProps) {
   const [history, setHistory] = useState<Snapshot[]>([START])
+  const [resumable, setResumable] = useState<Save | null>(null)
   const [flipped, setFlipped] = useState(false)
   const game = history[history.length - 1]
   const [selected, setSelected] = useState<string | null>(null)
@@ -77,6 +116,22 @@ export default function EchecsGame(_props: GameProps) {
     game.status === 'CHECK' || game.status === 'CHECKMATE'
       ? Object.keys(pieces).find((square) => pieces[square] === (whiteToMove ? 'K' : 'k'))
       : undefined
+
+  // SV2 : au chargement, une partie en cours sauvegardée est proposée à la reprise.
+  useEffect(() => {
+    void ctx.loadSave(SAVE_SCHEMA).then((saved) => {
+      const last = saved?.history.at(-1)
+      if (saved && last && !isOver(last.status) && last.ended === null) setResumable(saved)
+    })
+  }, [ctx])
+
+  // SV1 / SV4 : après chaque coup la partie est sauvegardée ; terminée, la sauvegarde est effacée.
+  useEffect(() => {
+    if (history.length <= 1) return
+    const last = history[history.length - 1]
+    if (isOver(last.status) || last.ended !== null) void ctx.clearSave()
+    else void ctx.save({ history } as unknown as Json)
+  }, [ctx, history])
 
   /** Appelle le serveur ; en cas de refus (422) ou de panne, affiche le message prévu pour le joueur. */
   async function call(action: () => Promise<void>) {
@@ -129,7 +184,14 @@ export default function EchecsGame(_props: GameProps) {
 
   function newGame() {
     resetSelection()
+    setResumable(null)
     setHistory([START])
+    void ctx.clearSave()
+  }
+
+  function resume() {
+    if (resumable) setHistory(resumable.history)
+    setResumable(null)
   }
 
   function undo() {
@@ -168,6 +230,17 @@ export default function EchecsGame(_props: GameProps) {
           <p className="echecs-error" role="alert">
             {error}
           </p>
+        )}
+        {resumable && (
+          <div className="echecs-promotion" role="dialog" aria-modal="true" aria-label="Partie sauvegardée">
+            <p>Une partie est en cours.</p>
+            <button type="button" onClick={resume}>
+              Reprendre
+            </button>
+            <button type="button" onClick={newGame}>
+              Nouvelle partie
+            </button>
+          </div>
         )}
         {promotion && (
           <div className="echecs-promotion" role="dialog" aria-modal="true" aria-label="Promotion">
