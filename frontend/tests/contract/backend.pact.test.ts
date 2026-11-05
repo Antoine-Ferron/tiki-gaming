@@ -8,7 +8,7 @@ import { supabaseScores } from '@/games/adapters/supabase'
 import { GameError } from '@/games/errors'
 import { apiDelete } from '@/lib/api'
 import { clearSession, fetchSession } from '@/lib/session'
-import { accept, dodge, fire } from '@/games/bang/api'
+import { accept, dodge, fire, getView, joinTable } from '@/games/bang/api'
 
 const { like, integer, regex } = MatchersV3
 
@@ -42,6 +42,55 @@ afterEach(() => {
 })
 
 describe('contrat front → backend', () => {
+  describe('invité BANG! sans compte', () => {
+    test('rejoindre avec le CSRF renvoie la place attribuée par la session', async () => {
+      await pact
+        .addInteraction()
+        .given('une table BANG! est ouverte aux invités')
+        .uponReceiving('la jonction BANG! d’un invité sans compte')
+        .withRequest('POST', '/api/games/bang/tables/ABC123/join', (req) =>
+          req.headers({ 'Content-Type': 'application/json', ...csrfHeader }).jsonBody({}),
+        )
+        .willRespondWith(200, (res) =>
+          res.jsonBody({ code: like('ABC123'), seat: integer(3), playerCount: integer(3) }),
+        )
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          await expect(joinTable('ABC123')).resolves.toEqual({ code: 'ABC123', seat: 3, playerCount: 3 })
+        })
+    })
+
+    test('la session invitée lit sa main et son rôle privés sans compte', async () => {
+      const view = {
+        code: 'ABC123',
+        seat: 3,
+        currentSeat: 1,
+        phase: 'PLAY',
+        role: 'OUTLAW',
+        hand: [{ id: 'MISSED-7', type: 'MISSED' }],
+        players: ['WILLY_THE_KID', 'BART_CASSIDY', 'CALAMITY_JANET', 'PAUL_REGRET'].map((character, index) => ({
+          seat: index + 1,
+          character,
+          health: index === 0 ? 5 : index === 3 ? 3 : 4,
+          maxHealth: index === 0 ? 5 : index === 3 ? 3 : 4,
+          playedCards: [],
+          handCount: index === 2 ? 1 : 4,
+          ...(index === 0 ? { role: 'SHERIFF' } : {}),
+        })),
+      }
+      await pact
+        .addInteraction()
+        .given('un invité est assis à la table BANG!')
+        .uponReceiving('la lecture privée BANG! d’un invité sans compte')
+        .withRequest('GET', '/api/games/bang/tables/ABC123/state')
+        .willRespondWith(200, (res) => res.jsonBody(like(view)))
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          await expect(getView('ABC123')).resolves.toEqual(view)
+        })
+    })
+  })
+
   describe('actions de tir BANG!', () => {
     test.each([
       { action: 'tirer', path: '/shots/BANG-1/targets/2', send: () => fire('ABC123', 'BANG-1', 2) },
