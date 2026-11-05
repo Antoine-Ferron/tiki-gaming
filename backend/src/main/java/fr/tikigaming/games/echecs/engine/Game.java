@@ -12,21 +12,37 @@ public final class Game {
 
     private Game() {}
 
-    /**
-     * Joue le coup {@code from} → {@code to}. Refuse ({@link IllegalArgumentException}) un coup depuis une case vide,
-     * avec une pièce qui n'a pas le trait, ou vers une case qu'elle ne peut pas atteindre. Pas encore géré : échec au
-     * roi, roque, prise en passant, promotion (phases 3 et 4).
-     */
+    /** Joue un coup sans promotion (voir {@link #play(Position, Square, Square, Optional)}). */
     public static Position play(Position position, Square from, Square to) {
+        return play(position, from, to, Optional.empty());
+    }
+
+    /**
+     * Joue le coup {@code from} → {@code to}. Refuse ({@link IllegalArgumentException}) : une partie terminée (F8), une
+     * case de départ vide, une pièce qui n'a pas le trait, une case inaccessible, un coup qui laisse son roi en échec
+     * (L2), une promotion absente ou invalide (S6).
+     */
+    public static Position play(Position position, Square from, Square to, Optional<PieceType> promotion) {
         if (status(position).isOver()) {
             throw new IllegalArgumentException("La partie est terminée : " + status(position));
         }
-        checkedMovingPiece(position, from, to);
+        Piece moving = checkedMovingPiece(position, from, to);
         if (!legalDestinations(position, from).contains(to)) {
             throw new IllegalArgumentException(
                     "Coup interdit : il laisserait son roi en échec (" + from + " → " + to + ")");
         }
-        return apply(position, from, to);
+        boolean promotes = moving.type() == PieceType.PAWN && (to.rank() == 0 || to.rank() == 7);
+        if (promotes && promotion.isEmpty()) {
+            throw new IllegalArgumentException("Promotion obligatoire : choisir dame, tour, fou ou cavalier");
+        }
+        if (promotion.isPresent() && !promotes) {
+            throw new IllegalArgumentException("Promotion impossible : seul un pion qui atteint la dernière rangée");
+        }
+        if (promotion.isPresent() && (promotion.get() == PieceType.KING || promotion.get() == PieceType.PAWN)) {
+            throw new IllegalArgumentException(
+                    "Promotion en dame, tour, fou ou cavalier seulement : " + promotion.get());
+        }
+        return apply(position, from, to, promotion.map(type -> new Piece(moving.color(), type)));
     }
 
     /** Règle L2 : les cases où la pièce peut aller sans laisser son propre roi en échec. */
@@ -62,11 +78,11 @@ public final class Game {
     }
 
     /** Applique un coup déjà vérifié. */
-    private static Position apply(Position position, Square from, Square to) {
+    private static Position apply(Position position, Square from, Square to, Optional<Piece> promoted) {
         Piece moving = position.pieceAt(from).orElseThrow();
         Map<Square, Piece> pieces = new HashMap<>(position.pieces());
         pieces.remove(from);
-        Piece captured = pieces.put(to, moving);
+        Piece captured = pieces.put(to, promoted.orElse(moving));
         boolean resetsClock = moving.type() == PieceType.PAWN || captured != null;
         boolean blackMoved = position.turn() == Color.BLACK;
         return new Position(
