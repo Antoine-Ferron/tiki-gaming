@@ -3,12 +3,7 @@ import { apiPost } from '@/lib/api'
 
 /** État de la partie renvoyé par le serveur pour le camp au trait. */
 export type GameStatus =
-  | 'ONGOING'
-  | 'CHECK'
-  | 'CHECKMATE'
-  | 'STALEMATE'
-  | 'DRAW_INSUFFICIENT_MATERIAL'
-  | 'DRAW_FIFTY_MOVES'
+  'ONGOING' | 'CHECK' | 'CHECKMATE' | 'STALEMATE' | 'DRAW_INSUFFICIENT_MATERIAL' | 'DRAW_FIFTY_MOVES'
 
 /** Promotion d'un pion : dame, tour, fou ou cavalier (lettres FEN). */
 export type Promotion = 'q' | 'r' | 'b' | 'n'
