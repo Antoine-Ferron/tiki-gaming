@@ -277,6 +277,7 @@ jobs:
           restore-keys: |
             stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-${{ github.head_ref || github.ref_name }}-
             stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-
+            stryker-${{ runner.os }}-
       - if: github.event_name == 'pull_request'
         run: npm run test:mutation -- --incremental
       - if: github.event_name != 'pull_request'
@@ -402,6 +403,9 @@ jobs:
       SUPABASE_ANON_KEY: ci-anon-key
       SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
       SUPABASE_JWT_SECRET: ci-jwt-secret-with-at-least-32-characters
+      # k6 envoie toutes ses parties de Rush Hour depuis une seule adresse : on mesure la capacité du serveur, pas la
+      # limite par client (testée par ResultRateLimiterTest), qu'on relève donc pour ce job.
+      TIKI_RUSHHOUR_MAXRESULTSPERMINUTE: 1000000
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
