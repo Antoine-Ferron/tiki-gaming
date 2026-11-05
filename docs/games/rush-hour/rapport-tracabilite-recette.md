@@ -21,7 +21,7 @@ La plateforme tient une **matrice de traçabilité** (`specs/rtm-matrix.md`) vé
 ### Matrice RTM
 
 - **9 exigences Rush Hour** (`REQ-RH-01` à `09`), chacune rattachée à sa source dans le cahier des charges : déplacements (R4, R5), coups (R6), score (§ 7), vérification serveur (S6), progression (N3, N5), génération (G2, G3, S4), indices (P5), contrôles (C1, C2), contrat front/back.
-- **31 cas de test**. Chaque exigence a **au moins un cas nominal et un cas d'erreur**, comme l'exige le script. Les preuves pointent vers de vrais tests, à tous les étages de la pyramide : unitaire, composant, BDD, contrat, E2E et accessibilité. Plusieurs viennent des campagnes SonarQube et mutation de cette PR.
+- **36 cas de test** (dont 5 tests de propriété fast-check ajoutés ensuite). Chaque exigence a **au moins un cas nominal et un cas d'erreur**, comme l'exige le script. Les preuves pointent vers de vrais tests, à tous les étages de la pyramide : unitaire, composant, BDD, contrat, E2E et accessibilité. Plusieurs viennent des campagnes SonarQube et mutation de cette PR.
 - **2 anomalies** au format du cours, `[Module][Action] observé au lieu de attendu`, avec sévérité, priorité et correctif :
 
 | Anomalie | Titre (résumé) | Sévérité | Priorité | Statut | Trouvée par |
@@ -35,7 +35,7 @@ Le script le confirme :
 
 ```
 $ npm run rtm:check
-24 exigences, 85 cas de test (84 PASSED), 5 anomalies : traçabilité complète.
+24 exigences, 90 cas de test (89 PASSED), 5 anomalies : traçabilité complète.
 ```
 
 **La traçabilité se lit dans les deux sens.**

@@ -31,7 +31,8 @@ export function parseBoard(map: string[]): Board {
   map.forEach((line, row) => {
     ;[...line].forEach((id, col) => {
       if (id === '.') return
-      if (!/^[A-Z]$/.test(id)) throw new Error(`Caractère interdit : ${id}`)
+      // `id` est un seul caractère ([...line]) : pas besoin d'ancres ^ et $ dans l'expression.
+      if (!/[A-Z]/.test(id)) throw new Error(`Caractère interdit : ${id}`)
       cellsById.set(id, [...(cellsById.get(id) ?? []), { row, col }])
     })
   })
@@ -50,10 +51,9 @@ function toVehicle(id: string, cells: Cell[]): Vehicle {
 
   const [first] = cells
   const orientation: Orientation = cells.every((c) => c.row === first.row) ? 'H' : 'V'
+  // Horizontal : toutes les cases sont déjà sur la même ligne (c'est ce qui définit H), seules les colonnes comptent.
   const continuous = cells.every((c, i) =>
-    orientation === 'H'
-      ? c.row === first.row && c.col === first.col + i
-      : c.col === first.col && c.row === first.row + i,
+    orientation === 'H' ? c.col === first.col + i : c.col === first.col && c.row === first.row + i,
   )
   if (!continuous) throw new Error(`Le véhicule ${id} doit être d’un seul tenant`)
 
