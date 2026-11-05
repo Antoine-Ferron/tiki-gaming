@@ -3,6 +3,8 @@ name: CI
 on:
   pull_request:
     branches: [dev, main]
+    # ready_for_review : une PR brouillon ne lance que le palier 1 ; la passer en « prête » lance tout.
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [dev, main]
   # Palier « nuit » : run complet (toutes les zones, mutation complète) sur la branche par défaut, et à la demande.
@@ -126,14 +128,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 2
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      # Après `npm ci`, qui vide node_modules. Prettier et ESLint comparent le contenu des fichiers (pas leur date) :
-      # un fichier modifié est toujours revérifié. Une nouvelle clé par run, la plus récente est restaurée.
+      - uses: ./.github/actions/node-modules
+      # Après node_modules, qui est mis en cache sans ses sous-caches (voir .github/actions/node-modules). Prettier et
+      # ESLint comparent le contenu des fichiers (pas leur date) : un fichier modifié est toujours revérifié. Une
+      # nouvelle clé par run, la plus récente est restaurée.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: frontend/node_modules/.cache
@@ -197,6 +195,12 @@ jobs:
           tests="fr/tikigaming/config/**/*,fr/tikigaming/contract/**/*"
           for game in ${GAMES//,/ }; do tests="$tests,fr/tikigaming/games/${game//-/_}/**/*"; done
           mvn -B verify -Dtest="$tests" -Dsurefire.failIfNoSpecifiedTests=false -Djacoco.haltOnFailure=false
+      # Lancé tel quel par k6 et ZAP (palier 3) au lieu de recompiler avec spring-boot:run.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: backend-jar
+          path: backend/target/tiki-gaming-backend-*.jar
+          retention-days: 1
       # Relus par SonarQube (palier 4) : rapport JaCoCo et classes compilées (sonar.java.binaries).
       - uses: actions/upload-artifact@v7
         with:
@@ -222,20 +226,16 @@ jobs:
   integration:
     name: Integration (Testcontainers)
     needs: [changes, frontend, backend]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.database != 'false' }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft != true && needs.changes.outputs.database != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+      - uses: ./.github/actions/node-modules
       # Le runner identifie une migration par sa version (horodatage) : deux fichiers de même version, et le second
-      # serait ignoré sans bruit en prod. Sans dépendance : passe avant npm ci.
+      # serait ignoré sans bruit en prod.
       - name: Migrations (format des noms, versions uniques)
         run: npm run db:check
       # Une migration déjà sur la branche cible est (ou sera) appliquée en prod, et le runner ne rejoue jamais une
@@ -252,7 +252,6 @@ jobs:
             echo "$changed"
             exit 1
           fi
-      - run: npm ci
       # Conteneur supabase/postgres éphémère, migrations rejouées sur base vide, puis RLS et catalogue.
       - run: npm run test:integration
       # Même image et mêmes migrations, avec un vrai PostgREST devant : stockage des parties de SDV Civilisation
@@ -266,25 +265,21 @@ jobs:
         working-directory: backend
         run: mvn -B test -Dtest=SdvCivilisationTestcontainersIT -Dsurefire.failIfNoSpecifiedTests=false
 
-  # Mutation : incrémental sur les PR (seuls les mutants touchés par le changement sont rejoués), complet sur un
-  # push vers dev ou main, qui sert de filet de sécurité et alimente le cache lu par les PR suivantes. La clé
-  # contient le lockfile et la config : changer de version d'outil ou de config repart d'un run complet.
+  # Mutation : incrémental sur les PR et les push vers dev ou main (seuls les mutants touchés par le changement sont
+  # rejoués ; le push alimente le cache lu par les PR suivantes), complet au run de nuit et à la demande, qui servent
+  # de filet de sécurité (un run complet de Stryker prend ~20 min). La clé contient le lockfile et la config :
+  # changer de version d'outil ou de config repart d'un run complet.
   mutation-frontend:
     name: Mutation (Stryker)
     needs: [changes, frontend, backend, integration]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.frontend != 'false' }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft != true && needs.changes.outputs.frontend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - uses: ./.github/actions/node-modules
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: frontend/reports/stryker-incremental.json
@@ -293,9 +288,9 @@ jobs:
             stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-${{ github.head_ref || github.ref_name }}-
             stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-
             stryker-${{ runner.os }}-
-      - if: github.event_name == 'pull_request'
+      - if: github.event_name == 'pull_request' || github.event_name == 'push'
         run: npm run test:mutation -- --incremental
-      - if: github.event_name != 'pull_request'
+      - if: github.event_name != 'pull_request' && github.event_name != 'push'
         run: npm run test:mutation -- --incremental --force
       - uses: actions/upload-artifact@v7
         if: always()
@@ -306,7 +301,7 @@ jobs:
   mutation-backend:
     name: Mutation (Pitest)
     needs: [changes, frontend, backend, integration]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.backend != 'false' }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft != true && needs.changes.outputs.backend != 'false' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -327,11 +322,11 @@ jobs:
           restore-keys: |
             pitest-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}-${{ github.head_ref || github.ref_name }}-
             pitest-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}-
-      - if: github.event_name == 'pull_request'
+      - if: github.event_name == 'pull_request' || github.event_name == 'push'
         run: >-
           mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
           -DhistoryInputFile=$PIT_HISTORY -DhistoryOutputFile=$PIT_HISTORY
-      - if: github.event_name != 'pull_request'
+      - if: github.event_name != 'pull_request' && github.event_name != 'push'
         run: >-
           mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
           -DhistoryOutputFile=$PIT_HISTORY
@@ -361,22 +356,22 @@ jobs:
         with:
           fail-on-severity: high
 
+  # Un job par moteur de rendu, en parallèle : chacun n'installe que son navigateur et ses dépendances système.
   e2e:
-    name: E2E (Playwright + axe)
+    name: E2E (Playwright + axe, ${{ matrix.browser }})
     needs: [changes, frontend, backend, integration]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.frontend != 'false' }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft != true && needs.changes.outputs.frontend != 'false' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - uses: ./.github/actions/node-modules
       # Navigateurs Playwright mis en cache selon la seule version de Playwright, pas tout le lockfile : sinon chaque
       # mise à jour de dépendance les retéléchargeait (~6 min). Les dépendances système (apt) ne se mettent pas en
       # cache et sont réinstallées à chaque run.
@@ -392,23 +387,23 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.playwright }}
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.playwright }}-${{ matrix.browser }}
       - if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium firefox webkit
+        run: npx playwright install --with-deps ${{ matrix.browser }}
       - if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium firefox webkit
-      # Parcours du lobby et audit WCAG 2.1 AA sous Chromium, Firefox et WebKit ; backend et Supabase simulés.
-      - run: npm run test:e2e
+        run: npx playwright install-deps ${{ matrix.browser }}
+      # Parcours du lobby et audit WCAG 2.1 AA sous ce navigateur ; backend et Supabase simulés.
+      - run: npm run test:e2e -- --project=${{ matrix.browser }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: rapport-e2e
+          name: rapport-e2e-${{ matrix.browser }}
           path: frontend/playwright-report/
 
   performance:
     name: Performance (k6)
     needs: [changes, frontend, backend, integration]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.database != 'false' || needs.changes.outputs.quality != 'false') }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft != true && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.database != 'false' || needs.changes.outputs.quality != 'false') }}
     runs-on: ubuntu-latest
     env:
       # Valeurs factices : aucun appel externe tant qu'aucun joueur n'est connecté (voir OpenApiDocsTest).
@@ -423,18 +418,18 @@ jobs:
       TIKI_RUSHHOUR_MAXRESULTSPERMINUTE: 1000000
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+      - uses: ./.github/actions/node-modules
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
           cache: maven
-      - run: npm ci
-        working-directory: frontend
+      # Jar produit par Backend ; si Backend a été sauté (zone inchangée), le backend est compilé ici.
+      - uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: backend-jar
+          path: backend-jar
       # Base éphémère (image de prod) + migrations du dépôt + 1 000 joueurs factices, puis PostgREST.
       - run: docker compose -f quality/docker-compose.yml up -d --wait db
       - run: npm run quality:seed
@@ -442,7 +437,8 @@ jobs:
       - run: docker compose -f quality/docker-compose.yml up -d rest
       - name: Backend en arrière-plan
         run: |
-          (cd backend && mvn -B -q spring-boot:run > ../backend.log 2>&1 &)
+          jar=$(ls backend-jar/*.jar 2>/dev/null | head -n 1)
+          if [ -n "$jar" ]; then (java -jar "$jar" > backend.log 2>&1 &); else (cd backend && mvn -B -q spring-boot:run > ../backend.log 2>&1 &); fi
           for i in $(seq 1 90); do curl -sf http://localhost:8080/api/auth/session && curl -sf -o /dev/null http://localhost:54330/ && break; sleep 2; done
       # Seuils bloquants (quality/k6/lobby.js) : P95 < 300 ms par scénario, moins de 1 % d'erreurs.
       - run: mkdir -p quality/reports && HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f quality/docker-compose.yml run --rm k6
@@ -455,7 +451,7 @@ jobs:
   dast:
     name: DAST (ZAP baseline)
     needs: [changes, frontend, backend, integration]
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.quality != 'false') }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft != true && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.quality != 'false') }}
     runs-on: ubuntu-latest
     env:
       GOOGLE_CLIENT_ID: ci-client-id
@@ -468,31 +464,42 @@ jobs:
       VITE_SUPABASE_ANON_KEY: ci-anon-key
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+      - uses: ./.github/actions/node-modules
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
           cache: maven
-      - run: npm ci && npm run build
+      - run: npm run build
         working-directory: frontend
+      # Jar produit par Backend ; si Backend a été sauté (zone inchangée), le backend est compilé ici.
+      - uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          name: backend-jar
+          path: backend-jar
       - name: Front buildé (vite preview, avec les en-têtes de sécurité) et backend en arrière-plan
         run: |
           (cd frontend && npx vite preview --host 0.0.0.0 --port 4173 --strictPort > ../preview.log 2>&1 &)
-          (cd backend && mvn -B -q spring-boot:run > ../backend.log 2>&1 &)
+          jar=$(ls backend-jar/*.jar 2>/dev/null | head -n 1)
+          if [ -n "$jar" ]; then (java -jar "$jar" > backend.log 2>&1 &); else (cd backend && mvn -B -q spring-boot:run > ../backend.log 2>&1 &); fi
           for i in $(seq 1 90); do curl -sf -o /dev/null http://localhost:4173/ && curl -sf http://localhost:8080/api/auth/session && break; sleep 2; done
       # Scan passif. Échoue sur une alerte non acceptée ; les risques acceptés sont justifiés dans quality/zap/rules.tsv.
+      # Les deux cibles sont scannées en parallèle ; le job échoue si l'un des deux scans échoue.
       - name: ZAP baseline
         run: |
           mkdir -p quality/reports && chmod 777 quality/reports
+          pids=()
           for target in front:4173 api:8080; do
             docker compose -f quality/docker-compose.yml run --rm zap zap-baseline.py \
-              -t "http://host.docker.internal:${target#*:}/" -c /zap/rules/rules.tsv -r "zap-${target%%:*}.html"
+              -t "http://host.docker.internal:${target#*:}/" -c /zap/rules/rules.tsv -r "zap-${target%%:*}.html" \
+              > "zap-${target%%:*}.log" 2>&1 &
+            pids+=($!)
           done
+          status=0
+          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          cat zap-front.log zap-api.log
+          exit $status
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -511,7 +518,7 @@ jobs:
       - e2e
       - performance
       - dast
-    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false') }}
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft != true && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false') }}
     runs-on: ubuntu-latest
     # Actif dès que le secret SONAR_TOKEN est configuré (Settings → Secrets → Actions), voir quality/README.md.
     env:
@@ -521,12 +528,8 @@ jobs:
         if: env.SONAR_TOKEN != ''
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/node-modules
         if: env.SONAR_TOKEN != ''
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
       - uses: actions/setup-java@v6
         if: env.SONAR_TOKEN != ''
         with:
@@ -547,13 +550,20 @@ jobs:
         with:
           name: couverture-backend
           path: backend/target
-      - name: Couverture (Vitest lcov + JaCoCo) et dépendances (analyse TypeScript, sonar.java.libraries)
+      - name: Couverture (Vitest lcov + JaCoCo) et dépendances Java (sonar.java.libraries)
         if: env.SONAR_TOKEN != ''
         run: |
-          cd frontend && npm ci
+          cd frontend
           [ -f coverage/lcov.info ] || VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run test:coverage
           cd ../backend
           if [ -f target/site/jacoco/jacoco.xml ]; then mvn -B -q dependency:resolve; else mvn -B verify; fi
+      # Plugins d'analyse (Java, JS/TS…) téléchargés une fois. Clé fixe : un plugin mis à jour par SonarCloud est
+      # retéléchargé à chaque run jusqu'à ce qu'on incrémente la version de la clé.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: env.SONAR_TOKEN != ''
+        with:
+          path: ~/.sonar/cache
+          key: sonar-${{ runner.os }}-v1
       - uses: SonarSource/sonarqube-scan-action@v8
         if: env.SONAR_TOKEN != ''
         with:
