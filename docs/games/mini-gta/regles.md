@@ -140,6 +140,17 @@ reprend le sous-ensemble de l'API Rapier utilisé par le jeu, au-dessus de **can
 | Logique client | `core/`, `systems/`, `world/` | boucle à pas fixe, RNG, bus d'événements, armes, niveau de recherche, missions, reconstruction du monde |
 | BDD, back | `backend/src/test/resources/.../mini_gta/features/*.feature` (Cucumber JVM, `MiniGtaFeaturesTest`) | R1, R3, R5, R7 (frais), R8 (gains), R9, R10 et GPS, en HTTP sur l'application réelle démarrée par la suite |
 | BDD, front | `features/*.feature` (vitest-cucumber, `*.steps.test.ts`) | R2 et sauvegarde corrompue, R4, R6, R7 (armes perdues à l'arrestation), R8 (score envoyé, invité) |
+| Propriétés et fuzzing | `domain/save.property.test.ts`, `systems/*.property.test.ts` (fast-check), `TransactionsPropertyTest` (graine fixe) | toute donnée stockée est acceptée ou refusée sans exception, aller-retour JSON, score jamais au-delà du plafond, saisie du chat, niveau de recherche borné, règles d'argent sur 2 000 progressions générées |
+| Fake du serveur | `game/testing/fakeApi.test.ts` | le fake utilisé par les simulations applique les mêmes règles d'armurerie que `Transactions.java` |
+| Contrat | `frontend/tests/contract/backend.pact.test.ts` (Pact), rejoué par `PactProviderTest` | missions, réussite d'une mission, achat, réapparition, progression invalide (400) |
+| Intégration | `frontend/tests/integration/mini-gta.test.ts` (Testcontainers, vraie base, migrations rejouées) | plafond du score aux valeurs limites, classement, progression `jsonb` sous RLS |
+| E2E | `frontend/e2e/mini-gta.spec.ts` (Playwright, 3 navigateurs, axe) | accueil invité, sauvegarde reprise ou corrompue, classement en panne, écran étroit, accessibilité |
+| Mutation | `stryker.config.mjs`, profil `mutation` du `pom.xml` (seuil 75 %) | front : sauvegarde, session, missions, balistique, recherche ; back : règles d'argent, RNG, outils, GPS |
+
+Les tests de simulation partagent une partie par fichier (coûteuse à construire) ; chaque test pose ses propres
+préconditions, et la suite passe dans un ordre mélangé (`--sequence.shuffle`). La simulation reçoit son temps en
+paramètre (pas fixe de 60 Hz, `update(dt)`) : seule l'interface lit l'horloge (`performance.now()`, fondus du
+HUD et du chat), testée avec `vi.useFakeTimers`.
 
 Les scénarios Gherkin, en français, reprennent les règles de la section 2 avec leurs valeurs limites. Ils
 n'emploient que le vocabulaire du joueur (noms des missions et des armes, « solde », « caution ») : la traduction
@@ -176,4 +187,4 @@ Le code est en anglais. Chaque terme des règles et des scénarios correspond à
 
 ## 7. Hors périmètre
 
-Contrôles tactiles, multijoueur, tables Supabase dédiées, smoke test navigateur en CI, choix de la graine.
+Contrôles tactiles, multijoueur, tables Supabase dédiées, partie jouée dans un navigateur en CI (WebGL : la simulation est testée par le harnais), choix de la graine.
