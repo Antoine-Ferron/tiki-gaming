@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createTestGame, type TestGame } from '../game/testing/harness'
+import { addWeapon, createInventory, slotOf } from '../systems/weapons'
 import { publishHud, useHudStore } from './hudStore'
 
 vi.mock('../net/api', () => import('../game/testing/fakeApi'))
@@ -14,8 +15,10 @@ beforeAll(async () => {
 afterAll(() => t?.dispose())
 
 beforeEach(() => {
-  // Chaque scénario part à pied, poings en main et sans recherche.
+  // Chaque scénario part à pied, poings en main, un pistolet chargé dans l'inventaire et sans recherche.
   t.reset()
+  t.game.player.inventory = createInventory()
+  if (!slotOf(t.game.player.inventory, 'pistol')) addWeapon(t.game.player.inventory, 'pistol', 60)
   t.game.combat.select('fists')
 })
 

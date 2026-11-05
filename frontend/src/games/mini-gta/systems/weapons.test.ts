@@ -16,6 +16,13 @@ import defs from './fixtures/weapons.json'
 
 beforeAll(() => loadWeaponDefs(defs as Record<WeaponId, WeaponDef>))
 
+/** Inventaire de départ auquel on ajoute un pistolet chargé (12 + 48), comme après un achat à l'armurerie. */
+function withPistol() {
+  const inv = createInventory()
+  if (!slotOf(inv, 'pistol')) addWeapon(inv, 'pistol', 60)
+  return inv
+}
+
 describe('weapons', () => {
   it('starts with fists and a loaded pistol', () => {
     const inv = createInventory()
@@ -24,14 +31,14 @@ describe('weapons', () => {
   })
 
   it('consumes the magazine then refuses to fire', () => {
-    const inv = createInventory()
+    const inv = withPistol()
     inv.current = 'pistol'
     for (let i = 0; i < 12; i++) expect(consumeShot(inv)).toBe(true)
     expect(consumeShot(inv)).toBe(false)
   })
 
   it('reloads from the reserve without exceeding the magazine', () => {
-    const inv = createInventory()
+    const inv = withPistol()
     inv.current = 'pistol'
     for (let i = 0; i < 5; i++) consumeShot(inv)
     expect(reload(inv)).toBe(5)
@@ -45,7 +52,7 @@ describe('weapons', () => {
   })
 
   it('adds new weapons sorted by slot and loads the first magazine', () => {
-    const inv = createInventory()
+    const inv = withPistol()
     addWeapon(inv, 'rifle', 90)
     addWeapon(inv, 'bat', 0)
     expect(inv.weapons.map((w) => w.id)).toEqual(['fists', 'bat', 'pistol', 'rifle'])
@@ -62,7 +69,7 @@ describe('weapons', () => {
   })
 
   it('cycles through owned weapons in both directions', () => {
-    const inv = createInventory()
+    const inv = withPistol()
     expect(cycleWeapon(inv, 1)).toBe('pistol')
     expect(cycleWeapon(inv, 1)).toBe('fists')
     expect(cycleWeapon(inv, -1)).toBe('pistol')
