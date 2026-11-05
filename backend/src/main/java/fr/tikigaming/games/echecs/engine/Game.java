@@ -53,12 +53,65 @@ public final class Game {
         }
         Color color = moving.get().color();
         Set<Square> legal = new HashSet<>();
-        for (Square to : MoveGenerator.destinations(position, from)) {
+        for (Square to : candidateDestinations(position, from)) {
             if (!leavesKingInCheck(position, from, to, color)) {
                 legal.add(to);
             }
         }
         return legal;
+    }
+
+    /** Coups candidats : déplacements de base (MoveGenerator) et coups spéciaux (roque), avant le filtre de l'échec. */
+    private static Set<Square> candidateDestinations(Position position, Square from) {
+        Set<Square> candidates = new HashSet<>(MoveGenerator.destinations(position, from));
+        Piece piece = position.pieceAt(from).orElseThrow();
+        if (piece.type() == PieceType.KING) {
+            candidates.addAll(castlingDestinations(position, from, piece.color()));
+        }
+        return candidates;
+    }
+
+    /**
+     * Règles S1-S2 : le roi va de deux cases vers la tour si le droit existe encore (S3), si les cases entre eux sont
+     * vides, si le roi n'est pas en échec, ne traverse pas et n'arrive pas sur une case attaquée (la tour, elle, peut
+     * être attaquée).
+     */
+    private static Set<Square> castlingDestinations(Position position, Square from, Color color) {
+        int rank = color == Color.WHITE ? 0 : 7;
+        Set<Square> castlings = new HashSet<>();
+        if (!from.equals(new Square(4, rank)) || isInCheck(position, color)) {
+            return castlings;
+        }
+        Color enemy = color == Color.WHITE ? Color.BLACK : Color.WHITE;
+        CastlingRights rights = position.castling();
+        boolean kingside = color == Color.WHITE ? rights.whiteKingside() : rights.blackKingside();
+        boolean queenside = color == Color.WHITE ? rights.whiteQueenside() : rights.blackQueenside();
+        if (kingside
+                && isOwnRook(position, new Square(7, rank), color)
+                && allEmpty(position, rank, 5, 6)
+                && notAttacked(position, rank, enemy, 5, 6)) {
+            castlings.add(new Square(6, rank));
+        }
+        if (queenside
+                && isOwnRook(position, new Square(0, rank), color)
+                && allEmpty(position, rank, 1, 2, 3)
+                && notAttacked(position, rank, enemy, 3, 2)) {
+            castlings.add(new Square(2, rank));
+        }
+        return castlings;
+    }
+
+    private static boolean isOwnRook(Position position, Square square, Color color) {
+        return position.pieceAt(square).equals(Optional.of(new Piece(color, PieceType.ROOK)));
+    }
+
+    private static boolean allEmpty(Position position, int rank, int... files) {
+        return java.util.Arrays.stream(files)
+                .allMatch(f -> position.pieceAt(new Square(f, rank)).isEmpty());
+    }
+
+    private static boolean notAttacked(Position position, int rank, Color enemy, int... files) {
+        return java.util.Arrays.stream(files).noneMatch(f -> isAttacked(position, new Square(f, rank), enemy));
     }
 
     private static boolean leavesKingInCheck(Position position, Square from, Square to, Color color) {
@@ -83,6 +136,11 @@ public final class Game {
         Map<Square, Piece> pieces = new HashMap<>(position.pieces());
         pieces.remove(from);
         Piece captured = pieces.put(to, promoted.orElse(moving));
+        if (moving.type() == PieceType.KING && Math.abs(to.file() - from.file()) == 2) {
+            boolean kingside = to.file() == 6;
+            Piece rook = pieces.remove(new Square(kingside ? 7 : 0, from.rank()));
+            pieces.put(new Square(kingside ? 5 : 3, from.rank()), rook); // la tour passe de l'autre côté du roi
+        }
         boolean resetsClock = moving.type() == PieceType.PAWN || captured != null;
         boolean blackMoved = position.turn() == Color.BLACK;
         return new Position(
@@ -102,7 +160,7 @@ public final class Game {
         if (moving.color() != position.turn()) {
             throw new IllegalArgumentException("Ce n'est pas le trait de cette pièce : " + from);
         }
-        if (!MoveGenerator.destinations(position, from).contains(to)) {
+        if (!candidateDestinations(position, from).contains(to)) {
             throw new IllegalArgumentException("Case inaccessible pour la pièce en " + from + " : " + to);
         }
         return moving;
