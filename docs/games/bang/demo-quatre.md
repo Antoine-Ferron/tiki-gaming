@@ -4,12 +4,12 @@ Validation initiale locale du 5 novembre 2026 ; la revue corrective est consign�
 dans la dernière section. Les issues GitHub #60 et #61 restent ouvertes
 pour validation ; les changements sont enregistrés dans des commits locaux.
 
-État courant après la revue de `c4d9b75e` : les trois ordres de réponse autour du
-204 de pioche sont couverts. La première lecture PLAY peut apparaître après le
-204 alors que la lecture suivante attend encore : le clic unique est conservé.
-La suite habituelle comprend sept scénarios avec le vrai serveur ; partie locale,
-passages privés et reprises des invités restent couverts. Le bilan détaillé figure
-en fin de document. Les sections précédentes conservent leurs résultats historiques.
+État courant après la revue de `428e0cbf` : le premier clic valide après la pioche
+reste envoyé, et un vrai double clic n'envoie qu'une fin de tour même si une
+ancienne lecture PLAY arrive entre les deux clics. Après défausse, la fin suivante
+reste possible. La suite habituelle comprend huit scénarios avec le vrai serveur.
+Le bilan détaillé figure en fin de document. Les sections précédentes conservent
+leurs résultats historiques.
 
 ## Branches vérifiées
 
@@ -775,3 +775,163 @@ Le SHA testé est **`bd1e77cf362a2b97ede981873f23b0599e75acc3`** : correctif
 Seul ce bilan documentaire est ajouté ensuite. Les commits restent locaux sur
 `game/bang/61-demo-quatre` ; aucun push, aucune PR ni fusion vers la branche
 commune, `dev` ou `main`.
+
+## Revue de `428e0cbf` — double clic et fin après défausse
+
+### Base et rouges réellement observés (5 novembre 2026)
+
+La branche active est bien `game/bang/61-demo-quatre`, tête initiale `428e0cbf`,
+sans changement local. Après `git fetch origin --prune`, `origin/dev` (`ece3ce79`)
+et `origin/game/bang/implementation` (`22a11fc1`) sont déjà des ancêtres ; aucun
+merge supplémentaire n'est nécessaire.
+
+Le scénario fourni dans `controle-61-428e0cbf-4rshhxop/frontend/e2e-real/` est
+repris tel quel dans `frontend/e2e-real/revue-geste.spec.ts`, ajouté à la suite
+habituelle, puis exécuté **avant toute modification de production** :
+
+```powershell
+npm run test:e2e:bang -- --grep "un double clic garde"
+```
+
+Rouge métier : **2 POST `/turn/end`**, réponses **204 puis 409**, siège 1 en
+DISCARD et alerte « Tu dois encore te défausser. ». Le rapport du vrai geste
+Chromium contient les détails de clic `[1, 2]` et montre la lecture PLAY périmée
+livrée après le premier 204, avant le second clic. Le vrai `dblclick({ delay: 180 })`
+et les points de synchronisation de la reproduction sont conservés. L'intervalle
+observé des événements dans ce rouge est de 371 ms ; aucune temporisation n'est
+ajoutée au code de production.
+
+Le test intérieur traverse le vrai `OnlineTable`, le plateau et le client API.
+Seuls fetch et l'horloge sont contrôlés. La lecture périodique obtient PLAY
+pendant le premier POST, puis sa réponse est retenue jusqu'à l'acceptation de la
+fin. Le second clic arrive après cette lecture, avant la vue DISCARD suivante.
+Rouge : **2 POST au lieu de 1**. Une deuxième variante livre aussi DISCARD avant
+le second clic : elle expose le même doublon alors que sept cartes dépassent
+encore les cinq PV.
+
+### Correctif et verts
+
+`3aa4104` modifie uniquement l'envoi depuis `OnlineTable` :
+
+- Après une fin acceptée, les numéros des lectures déjà lancées deviennent la
+  borne à dépasser. Leurs anciennes vues PLAY ne peuvent plus libérer le verrou
+  ni réautoriser la même fin. La pioche conserve sa borne de début de commande :
+  les trois ordres du premier clic valide restent couverts.
+- En DISCARD, tant que la main dépasse les PV lus dans la vue du joueur, aucune
+  nouvelle fin n'est envoyée. Dès que la main respecte cette limite, le bouton
+  peut envoyer la fin suivante. Le serveur reste responsable des règles.
+
+Vert du même vrai double clic : **1 POST**, réponses **[204]**, siège 1 en
+**DISCARD**, aucune alerte. L'intervalle mesuré de ce rejeu isolé est de 383 ms.
+Les 34 tests de `OnlineTable` passent, y compris tous les clics simples précédents,
+les anciennes réponses et les intentions devenues invalides. Aucune alerte n'est
+masquée pour obtenir le vert : le test compte les requêtes réellement envoyées.
+
+Le parcours est prolongé, dans le composant et le vrai navigateur : deux cartes
+sont défaussées (7 → 6 → 5), puis un nouveau clic valide envoie la deuxième fin,
+reçoit 204 et passe au siège 2 en DRAW, toujours sans alerte. Les métriques du
+geste sont attachées avant cette continuation : **un POST pour le double clic**,
+puis **un autre POST légitime après défausse**, soit `[204, 204]` au total.
+
+La fixture de test propose six créateurs pour les six tables indépendantes de
+la suite. Le nouveau scénario utilise les comptes 6, 1, 2, 4 ; chaque table reste
+à quatre joueurs. Les identités supplémentaires sont dans `src/test`, sous le
+profil `bang-browser`. La donne, les cartes, les personnages et le moteur de
+Colleen ne sont pas modifiés. Le typage du contrôle de tick fourni est adapté au
+`Window` DOM pour TypeScript, sans changer le callback, le geste ou son ordre.
+
+### Huit parcours sur le SHA corrigé
+
+SHA testé : **`d6e7666cffbed260d3baafa9a3b2cca35193c954`**. Il contient le correctif
+`3aa4104` et l'intégration du huitième scénario. La commande habituelle
+`npm run test:e2e:bang` réussit : **8 scénarios ensemble, zéro retry, 1,5 min**,
+Chromium et vrai serveur Spring. Elle est exécutée dans un terminal persistant
+(PTY), sans changement des gestes, des attentes ou de la configuration des retries.
+
+Racine des artefacts :
+`D:\COURS\SDV_2026_2027\tiki-gaming\frontend\test-results\`.
+
+| Scénario vert | Sous-répertoire contenant `trace.zip` |
+| --- | --- |
+| Quatre comptes : catalogue, tirs, esquive, reconnexion, bonus Bart et joueur suivant | `bang-du-catalogue-au-tour--4da0a-acceptation-et-vues-privées-chromium` |
+| Deux comptes / deux invités : sièges distincts, confidentialité, tirs et reprises | `review.probe-deux-invités--df334-èges-auprès-de-deux-comptes-chromium` |
+| Quatre joueurs sur le même écran : tirs, réponses et passages privés | `review.probe-sur-un-écran-le-BANG-atteint-un-voisin-à-portée-chromium` |
+| Partie locale conservée après changement de mode | `controle-limites-un-détour-a85ee-la-partie-sur-le-même-écran-chromium` |
+| Premier clic valide pendant la réponse de pioche | `review.probe-un-seul-clic--88735-nse-du-POST-de-pioche-tarde-chromium` |
+| Premier clic valide après le 204, PLAY déjà affiché | `controle-limites-le-clic-e-42f94-lle-lecture-termine-le-tour-chromium` |
+| Premier clic valide quand la première lecture PLAY est livrée après le 204 | `revue-lectures-un-clic-res-b922a-4-affiche-PLAY-après-le-204-chromium` |
+| Vrai double clic : un POST, puis fin suivante après les deux défausses | `revue-geste-un-double-clic-b2cb2-imée-arrive-entre-les-clics-chromium` |
+
+La nouvelle trace contient `geste-et-commandes` (un POST et `[204]`, aucune alerte)
+et `fin-apres-defausse` (deux POST au total et `[204, 204]`, siège 2 en DRAW,
+cinq cartes restantes). Les captures des quatre places des scénarios comptes,
+mixte et local sont conservées dans leurs dossiers respectifs. Les contrôles
+existants d'un seul siège Shérif, de mains/rôles privés et d'absence de score
+invité/local pendant ces parcours restent verts.
+
+Le rouge navigateur et sa trace sont conservés dans
+`frontend/node_modules/.cache/bang-61-geste-acceptance-red.log` et
+`bang-61-geste-acceptance-red/trace.zip`. Le rouge et le vert intérieurs sont dans
+`bang-61-geste-component-red.log` et `bang-61-geste-component-green.log`.
+Le rejeu collectif final et son SHA figurent dans `bang-61-geste-e2e-final.log`
+et `bang-61-geste-tested-sha.txt`.
+
+Plusieurs lancements hors PTY ont rencontré une coupure de serveur et des
+fermetures de contexte navigateur : `ECONNRESET`, puis `ERR_CONNECTION_REFUSED`,
+ou échec d'une lecture pendant la fermeture du navigateur. Ils ne sont pas comptés
+comme des rouges métier. Les sorties sont gardées dans les fichiers
+`bang-61-geste-e2e-infrastructure*.log`, `bang-61-geste-webserver-diagnostic.log`
+et `bang-61-geste-e2e-ci-check.log`. La cause de ces fermetures n'est pas établie ;
+le passage en mode CI seul ne les a pas supprimées. Aucun contournement CI,
+augmentation de délai ou retry n'est ajouté au dépôt. Le rejeu normal en terminal
+persistant passe les huit scénarios sur le SHA ci-dessus.
+
+### Contrôles de cette revue
+
+| Commande exécutée | Résultat |
+| --- | --- |
+| `npm run test:e2e:bang -- --grep "un double clic garde"` avant le code de production | Rouge : deux POST, `[204, 409]`, alerte de défausse. |
+| Même commande après le correctif | Vert : un POST, `[204]`, DISCARD et aucune alerte. |
+| Même scénario prolongé après deux défausses | Nouvelle fin valide : 204, siège 2 en DRAW ; deux POST au total sur les deux fins distinctes. |
+| `npm test -- src/games/bang/OnlineTable.test.tsx` | **34 réussites** ; double clic avec lecture PLAY périmée ou DISCARD fraîche entre les clics, puis fin après défausse. Les clics simples et autres garde-fous existants restent verts. |
+| `npm test -- src/games/bang` | **219 réussites**, 11 fichiers. |
+| `npm run test:e2e:bang` sur `d6e7666c` | **8 réussites ensemble**, vrai Spring, Chromium, zéro retry ; 1,5 min avec les serveurs. |
+| `npm run format`, `npm run format:check`, `npm run lint`, `npm run typecheck` | Succès. |
+| `npm run test:coverage` | **1 523 réussites**, 125 fichiers ; lignes 93,86 %, branches 87,77 %, fonctions 91,86 %, instructions 92,67 %. Tous les seuils passent. |
+| `npm run test:contract` | **11 interactions réussies**, Pact régénéré sans différence de contenu. |
+| `npm run build` | Succès ; avertissement existant sur la taille des chunks conservé. |
+| `npm run rtm:check`, `npm run db:check` | Traçabilité complète : 24 exigences, 85 cas ; 17 migrations uniques. |
+| `mvn -B -ntp spotless:apply '-Dtest=BangBrowserIsolationTest' test` | Succès : fixture de comptes absente du contexte normal. |
+| `mvn -B -ntp clean verify` dans `backend/` | **BUILD SUCCESS** en 1 min 25 s : **6 588 réussites**, un scénario Échecs ignoré par le filtre existant `@en-cours`, zéro échec/erreur. Aucun BANG ! ignoré ; contrats fournisseur, tests Docker, Checkstyle, Spotless et seuils JaCoCo passent. |
+
+Sorties conservées dans `frontend/node_modules/.cache/bang-61-geste-*.log`,
+notamment `front-targeted`, `format`, `format-check`, `lint`, `typecheck`,
+`test-coverage`, `test-contract`, `build`, `fixture`, `clean-verify` et `e2e-final`.
+JaCoCo : lignes 99,03 %, branches 94,88 %. Son XML est également conservé dans
+`frontend/node_modules/.cache/bang-61-geste-jacoco.xml`. Le JAR ne contient aucune
+classe de fixture `BangBrowser`.
+
+### Limites conservées
+
+Le correctif ne touche pas aux règles du moteur ni au protocole des actions.
+La partie locale reste conservée uniquement en mémoire pendant la navigation
+entre modes. Les limites de victoire, de barème et de publication d'un résultat
+BANG ! final validé, décrites dans les bilans précédents, restent à raccorder ;
+l'absence d'envoi de score pendant les tours n'est pas une preuve de fin de partie.
+L'instabilité de certains lancements hors PTY est documentée ci-dessus ; sa cause
+n'est pas attribuée au correctif de clic.
+
+### Remise pour revue
+
+Après le dernier `git fetch origin --prune`, les deux commandes réussissent :
+
+```powershell
+git merge-base --is-ancestor origin/dev game/bang/61-demo-quatre
+git merge-base --is-ancestor origin/game/bang/implementation game/bang/61-demo-quatre
+```
+
+Les références restent `ece3ce79` et `22a11fc1`. Le SHA testé est
+**`d6e7666cffbed260d3baafa9a3b2cca35193c954`**, après le correctif `3aa4104` et
+l'intégration du huitième scénario. Seul le présent bilan documentaire est ajouté
+ensuite. Les commits restent locaux sur `game/bang/61-demo-quatre` : aucun push,
+aucune PR, aucun merge vers la branche commune, `dev` ou `main`.
