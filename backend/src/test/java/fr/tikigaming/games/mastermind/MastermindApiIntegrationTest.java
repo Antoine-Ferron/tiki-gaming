@@ -85,6 +85,22 @@ class MastermindApiIntegrationTest {
                 .andExpect(jsonPath("$.error").value("Partie introuvable."));
     }
 
+    @Test
+    void refusesAReadFromAnotherClient() throws Exception {
+        JsonNode created = read(postJson("/api/games/mastermind", "").with(request -> {
+            request.setRemoteAddr("198.51.100.10");
+            return request;
+        }));
+
+        mvc.perform(get("/api/games/mastermind/{id}", created.get("id").textValue())
+                        .with(request -> {
+                            request.setRemoteAddr("198.51.100.11");
+                            return request;
+                        }))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("Partie introuvable."));
+    }
+
     private JsonNode read(MockHttpServletRequestBuilder request) throws Exception {
         String body = mvc.perform(request)
                 .andExpect(status().isCreated())
