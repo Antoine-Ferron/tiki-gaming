@@ -100,11 +100,26 @@ export async function createTestGame({ traffic = 0, pedestrians = 0, meshes = fa
     for (let s = 0; s < maxSeconds && !cond(); s += 0.1) simulate(0.1)
     return cond()
   }
+  /**
+   * Remet la partie dans un état neutre, pour qu'un scénario ne dépende pas de ceux joués avant lui : joueur
+   * à pied et en pleine santé au point de départ (ou à `at`), tourné comme au départ, sans recherche ni police,
+   * colliders des props chargés autour de lui. Le hasard repart de la même graine : les tirages (dispersion
+   * des tirs, comportements) ne dépendent pas des scénarios joués avant.
+   */
+  const reset = (at: { x: number; z: number; heading?: number } = game.city.locations.spawn) => {
+    seedRandom()
+    game.police.clear()
+    game.player.respawnAt(at.x, game.city.terrain.heightAt(at.x, at.z) + 0.2, at.z)
+    game.player.actor.heading = at.heading ?? 0
+    const p = game.player.position
+    game.world.update(0, p, p, 0)
+    simulate(0.1)
+  }
   const dispose = () => {
     detach()
     game.dispose()
   }
-  return { game, input, simulate, until, press, hold, key, dispose }
+  return { game, input, simulate, until, press, hold, key, reset, dispose }
 }
 
 export type TestGame = Awaited<ReturnType<typeof createTestGame>>

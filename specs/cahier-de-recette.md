@@ -159,13 +159,78 @@ date et ses initiales.
 | Résultat obtenu | |
 | Statut | À EXÉCUTER |
 
+### TC-UAT-11 · MiniGTA : première partie en invité, mission « Colis express » et armurerie
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-02, REQ-GTA-03, REQ-GTA-05 |
+| Profil | Invité, navigateur de bureau, clavier et souris |
+| Préconditions | Aucune sauvegarde MiniGTA dans ce navigateur (`localStorage` vidé) |
+| Jeu de données | Nouvelle partie (500 $) |
+| Étapes | 1. Ouvrir `/games/mini-gta`, cliquer « Jouer » · 2. Prendre une voiture, réussir « Colis express » (GPS, chrono) · 3. À l'armurerie, acheter un pistolet · 4. Tenter d'acheter le sniper (2 500 $) · 5. Rejouer « Colis express » · 6. Échap → « Quitter » |
+| Résultat attendu | Étape 2 : +800 $, solde 1 300 $ · Étape 3 : −300 $, pistolet et munitions dans l'inventaire · Étape 4 : achat refusé, solde inchangé · Étape 5 : aucune récompense · Étape 6 : l'accueil affiche « Continuer », l'argent et « 1 / 4 » missions |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-12 · MiniGTA : score au classement et progression retrouvée sur un autre appareil
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-08 |
+| Profil | Joueur connecté, deux navigateurs (ou deux appareils) |
+| Préconditions | Compte `recette_c`, aucun score MiniGTA |
+| Jeu de données | Compte `recette_c` |
+| Étapes | 1. Connecté, réussir une mission puis ramasser des billets · 2. Dépenser à l'armurerie · 3. Quitter et relire le classement · 4. Se connecter avec le même compte sur l'autre navigateur et ouvrir MiniGTA |
+| Résultat attendu | Étape 3 : le classement affiche tout l'argent gagné (mission + billets), non diminué par l'achat · Étape 4 : « Continuer » avec le même argent et les mêmes missions |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-13 · MiniGTA : poursuite de police, arrestation et caution
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-06, REQ-GTA-07 |
+| Profil | Invité, navigateur de bureau |
+| Préconditions | Partie en cours avec plus de 1 500 $ et une arme achetée |
+| Jeu de données | Commande de chat `/recherche 2` autorisée pour gagner du temps |
+| Étapes | 1. Commettre un crime devant un témoin · 2. Se cacher hors de vue jusqu'à la fin de la recherche · 3. Recommencer, puis se laisser arrêter |
+| Résultat attendu | Étape 1 : des étoiles s'affichent · Étape 2 : elles clignotent puis disparaissent · Étape 3 : réapparition au commissariat, caution de 15 % (200 $ minimum) prélevée, plus que les poings dans l'inventaire |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-14 · MiniGTA : tremplin et bâtiment ouvert
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-09, REQ-GTA-10 |
+| Profil | Invité, navigateur de bureau |
+| Préconditions | Partie en cours |
+| Jeu de données | Commandes `/tp port` et `/summon sport` autorisées |
+| Étapes | 1. Au port, prendre une sportive et rouler vite sur une rampe de chargement · 2. En ville, entrer à pied dans un immeuble dont la porte est ouverte · 3. Essayer d'y entrer en voiture |
+| Résultat attendu | Étape 1 : la voiture décolle et retombe sans traverser le sol · Étape 2 : pièce meublée, plafond au-dessus du joueur · Étape 3 : la porte est trop étroite pour la voiture |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-15 · MiniGTA : smartphone et petit écran
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-GTA-11 |
+| Profil | Invité, smartphone (écran tactile) |
+| Préconditions | — |
+| Jeu de données | — |
+| Étapes | 1. Ouvrir `/games/mini-gta` sur le smartphone · 2. Relire le classement |
+| Résultat attendu | Étape 1 : « Ce jeu se joue au clavier et à la souris, sur ordinateur. », aucun bouton « Jouer » · Étape 2 : le classement reste lisible |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
 ## Procès-verbal de recette
 
 | Rubrique | Contenu |
 |----------|---------|
 | Version recettée | (commit ou tag) |
 | Période | du … au … |
-| Fiches exécutées | … / 10 |
+| Fiches exécutées | … / 15 |
 | Anomalies ouvertes | S0 : … · S1 : … · S2 : … · S3 : … |
 | Décision | ☐ Acceptée · ☐ Acceptée avec réserves (lister) · ☐ Refusée |
 | Recetteur | nom, date, signature |

@@ -1,3 +1,4 @@
+import { Euler, Quaternion } from 'three'
 import { describe, expect, test } from 'vitest'
 import {
   ActiveEvents,
@@ -173,6 +174,33 @@ describe('corps dynamiques', () => {
     expect(body.translation().x).toBeCloseTo(2)
     expect(body.translation().z).toBeCloseTo(1)
     expect(body.rotation().y).toBeCloseTo(Math.sin(0.25))
+  })
+
+  // Régression : le trafic des routes en pente passe un Quaternion de three.js, dont x, y, z et w sont des
+  // accesseurs. Une copie par décomposition ({ ...q }) les perdait et la voiture partait en NaN.
+  test('une rotation donnée par un Quaternion de three.js est appliquée, sans NaN', () => {
+    const world = new World({ x: 0, y: 0, z: 0 })
+    const body = world.createRigidBody(RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0, 0))
+    world.createCollider(ColliderDesc.cuboid(1, 1, 1), body)
+    const slope = new Quaternion().setFromEuler(new Euler(-0.14, 1.5, 0, 'YXZ'))
+
+    body.setNextKinematicTranslation({ x: 2, y: 0.3, z: 1 })
+    body.setNextKinematicRotation(slope)
+    world.step()
+
+    expect(body.translation()).toEqual({ x: expect.closeTo(2), y: expect.closeTo(0.3), z: expect.closeTo(1) })
+    expect(body.rotation().x).toBeCloseTo(slope.x)
+    expect(body.rotation().y).toBeCloseTo(slope.y)
+    expect(body.rotation().w).toBeCloseTo(slope.w)
+  })
+
+  test('une rotation initiale donnée par un Quaternion de three.js est gardée', () => {
+    const world = new World({ x: 0, y: 0, z: 0 })
+    const slope = new Quaternion().setFromEuler(new Euler(-0.14, 1.5, 0, 'YXZ'))
+    const body = world.createRigidBody(RigidBodyDesc.kinematicPositionBased().setRotation(slope))
+
+    expect(body.rotation().y).toBeCloseTo(slope.y)
+    expect(body.rotation().w).toBeCloseTo(slope.w)
   })
 
   test('passer en dynamique donne au corps sa masse', () => {
