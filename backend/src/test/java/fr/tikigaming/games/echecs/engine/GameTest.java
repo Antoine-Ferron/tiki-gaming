@@ -1,0 +1,140 @@
+package fr.tikigaming.games.echecs.engine;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Optional;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+class GameTest {
+
+    private static final String START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    @Test
+    @DisplayName("jouer un coup déplace la pièce : la case de départ se vide, la case d'arrivée reçoit la pièce")
+    void jouerUnCoupDeplaceLaPiece() {
+        // Act
+        Position after = play(START, "e2", "e4");
+
+        // Assert
+        assertThat(after.pieceAt(Square.of("e2"))).isEmpty();
+        assertThat(after.pieceAt(Square.of("e4"))).isEqualTo(Optional.of(new Piece(Color.WHITE, PieceType.PAWN)));
+    }
+
+    @Test
+    @DisplayName("après un coup, c'est à l'autre camp de jouer")
+    void apresUnCoupCEstALAutreCampDeJouer() {
+        // Act
+        Position afterWhite = play(START, "e2", "e4");
+        Position afterBlack = Game.play(afterWhite, Square.of("e7"), Square.of("e5"));
+
+        // Assert
+        assertThat(afterWhite.turn()).isEqualTo(Color.BLACK);
+        assertThat(afterBlack.turn()).isEqualTo(Color.WHITE);
+    }
+
+    @Test
+    @DisplayName("une prise remplace la pièce adverse par la pièce jouée")
+    void unePriseRemplaceLaPieceAdverse() {
+        // Arrange : pion blanc en e4, cavalier noir en d5
+        Position after = play("k7/8/8/3n4/4P3/8/8/7K w - - 0 1", "e4", "d5");
+
+        // Assert : un seul occupant en d5, le pion blanc ; le cavalier a disparu
+        assertThat(after.pieceAt(Square.of("d5"))).isEqualTo(Optional.of(new Piece(Color.WHITE, PieceType.PAWN)));
+        assertThat(after.pieces()).hasSize(3);
+    }
+
+    @Test
+    @DisplayName("on ne peut pas jouer une pièce de l'autre camp : c'est aux Blancs de commencer")
+    void onNePeutPasJouerUnePieceDeLAutreCamp() {
+        // Act + Assert : les Noirs essaient de jouer alors que le trait est aux Blancs
+        assertThatThrownBy(() -> play(START, "e7", "e5"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("trait");
+    }
+
+    @ParameterizedTest(name = "{0} → {1} est refusé")
+    @CsvSource({"e2, e5", "b1, b3", "e1, e2", "a1, a3"})
+    @DisplayName("un coup vers une case que la pièce ne peut pas atteindre est refusé")
+    void unCoupVersUneCaseInaccessibleEstRefuse(String from, String to) {
+        // Act + Assert : trop loin pour le pion, mauvais saut pour le cavalier, case amie, tour bloquée
+        assertThatThrownBy(() -> play(START, from, to))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("inaccessible");
+    }
+
+    @Test
+    @DisplayName("jouer depuis une case vide est refusé proprement")
+    void jouerDepuisUneCaseVideEstRefuse() {
+        // Act + Assert : e4 est vide dans la position de départ
+        assertThatThrownBy(() -> play(START, "e4", "e5"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("vide");
+    }
+
+    @ParameterizedTest(name = "{0} : {1} → {2} donne demi-coups {3}, coup n°{4}")
+    @CsvSource({
+        "'k7/8/8/8/8/8/8/R6K w - - 5 10', a1, a2, 6, 10", // coup blanc ordinaire : +1 demi-coup, même numéro
+        "'k7/8/8/8/8/8/8/R6K b - - 5 10', a8, b8, 6, 11", // coup noir : le numéro du coup avance
+        "'k7/8/8/8/8/8/4P3/7K w - - 5 10', e2, e3, 0, 10", // coup de pion : compteur des 50 coups remis à 0
+        "'k7/8/8/8/8/8/8/Rn5K w - - 5 10', a1, b1, 0, 10" // prise : compteur des 50 coups remis à 0
+    })
+    @DisplayName("les compteurs avancent : demi-coups (règle des 50 coups) et numéro du coup")
+    void lesCompteursAvancent(String fen, String from, String to, int halfmoves, int fullmove) {
+        // Act
+        Position after = play(fen, from, to);
+
+        // Assert
+        assertThat(after.halfmoveClock()).isEqualTo(halfmoves);
+        assertThat(after.fullmoveNumber()).isEqualTo(fullmove);
+    }
+
+    @ParameterizedTest(name = "{0} : {1} → {2} laisse les droits « {3} »")
+    @CsvSource({
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', e1, e2, kq", // le roi blanc bouge : plus de roque blanc
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', h1, g1, Qkq", // la tour h1 bouge : plus de petit roque blanc
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', a1, b1, Kkq", // la tour a1 bouge : plus de grand roque blanc
+        "'r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1', e8, d8, KQ", // le roi noir bouge
+        "'r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1', a8, b8, KQk", // la tour a8 bouge
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', h1, h8, Qq", // la tour h1 prend la tour h8 : les deux petits roques
+        // tombent
+        "'r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1', e1, f1, kq", // le roi blanc va en f1
+        "'r3k2r/8/8/8/8/8/P7/R3K2R w - - 0 1', a2, a3, -" // un droit déjà perdu ne revient pas (mutants Pitest)
+    })
+    @DisplayName("les droits de roque se perdent quand le roi ou une tour bouge, ou quand une tour est prise")
+    void lesDroitsDeRoqueSePerdent(String fen, String from, String to, String expected) {
+        // Act
+        Position after = play(fen, from, to);
+
+        // Assert : 3ᵉ champ de la FEN
+        assertThat(Fen.toFen(after).split(" ")[2]).isEqualTo(expected);
+    }
+
+    @ParameterizedTest(name = "{1} → {2}")
+    @CsvSource({
+        // double pas blanc : la case sautée (e3) devient la case de prise en passant
+        "'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', e2, e4,"
+                + " 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'",
+        // double pas noir : case c6
+        "'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1', c7, c5,"
+                + " 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2'",
+        // un pas simple de pion ne crée pas de case de prise en passant (mutant Pitest)
+        "'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', d2, d3,"
+                + " 'rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1'",
+        // tout autre coup efface la case de prise en passant
+        "'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2', g1, f3,"
+                + " 'rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2'"
+    })
+    @DisplayName("la FEN après un coup : case de prise en passant après un double pas, effacée sinon")
+    void laFenApresUnCoupIndiqueLaPriseEnPassant(String fen, String from, String to, String expected) {
+        // Act + Assert
+        assertThat(Fen.toFen(play(fen, from, to))).isEqualTo(expected);
+    }
+
+    private static Position play(String fen, String from, String to) {
+        return Game.play(Fen.parse(fen), Square.of(from), Square.of(to));
+    }
+}

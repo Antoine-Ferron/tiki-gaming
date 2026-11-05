@@ -87,9 +87,12 @@ describe('parseBoard : véhicules de 2 ou 3 cases, d’un seul tenant (R2)', () 
   test.each([
     { shape: 'en pointillés', top: ['A.A...', EMPTY_ROW] },
     { shape: 'en L', top: ['AA....', 'A.....'] },
+    { shape: 'vertical en pointillés', top: ['A.....', EMPTY_ROW, 'A.....'] },
+    { shape: 'vertical en L', top: ['A.....', 'AA....'] },
+    { shape: 'vertical décalé d’une colonne', top: ['A.....', '.A....'] },
   ])('refuse un véhicule $shape', ({ top }) => {
     // Arrange
-    const map = [...top, ...VALID.slice(2)]
+    const map = [...top, ...VALID.slice(top.length)]
 
     // Act
     const parse = () => parseBoard(map)

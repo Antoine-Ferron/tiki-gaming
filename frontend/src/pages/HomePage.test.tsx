@@ -23,7 +23,7 @@ describe('HomePage', () => {
   test('applique les filtres présents dans l’adresse', () => {
     renderPage(<HomePage />, { url: '/?categorie=multi&theme=strategie', route: '/' })
 
-    expect(titles()).toEqual(['SDV Civilisation'])
+    expect(titles()).toEqual(['SDV Civilisation', 'BANG !'])
     expect(chip('Thème', 'Stratégie').getAttribute('aria-pressed')).toBe('true')
   })
 

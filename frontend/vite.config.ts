@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
   },
   // Tests d'intégration (Docker) et E2E : lancés par leurs propres commandes, pas par `npm test`.
   test: {
-    exclude: [...configDefaults.exclude, 'tests/**', 'e2e/**'],
+    exclude: [...configDefaults.exclude, 'tests/**', 'e2e/**', 'e2e-real/**'],
     // `npm run test:coverage` : rapport lcov lu par SonarQube (coverage/lcov.info).
     coverage: {
       provider: 'v8',
@@ -29,18 +29,23 @@ export default defineConfig(({ mode }) => ({
       reporter: ['text-summary', 'lcov', 'html'],
       // Seuils bloquants (CI, job frontend). Le cœur du lobby doit rester couvert ; le global, juste sous
       // l'existant, empêche les régressions : le relever quand la couverture monte, jamais le baisser.
-      thresholds: {
-        lines: 78,
-        branches: 80,
-        functions: 75,
-        statements: 79,
-        '{src/games/domain/**,src/games/errors.ts,src/games/scoreQueue.ts,src/games/sdk.ts,src/lib/validation.ts}': {
-          lines: 95,
-          branches: 95,
-          functions: 95,
-          statements: 95,
-        },
-      },
+      // VITEST_PARTIAL : PR limitée à des jeux (`--changed`), seuls leurs tests tournent et la couverture
+      // globale n'a pas de sens ; les seuils sont vérifiés au push sur dev (voir docs/ci.md).
+      thresholds: process.env.VITEST_PARTIAL
+        ? undefined
+        : {
+            lines: 78,
+            branches: 80,
+            functions: 75,
+            statements: 79,
+            '{src/games/domain/**,src/games/errors.ts,src/games/scoreQueue.ts,src/games/sdk.ts,src/lib/validation.ts}':
+              {
+                lines: 95,
+                branches: 95,
+                functions: 95,
+                statements: 95,
+              },
+          },
     },
   },
   preview: {

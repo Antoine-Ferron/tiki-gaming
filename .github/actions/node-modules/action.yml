@@ -1,0 +1,39 @@
+# Node 24 et frontend/node_modules prêts à l'emploi, partagés par tous les jobs du front.
+#
+# Le cache de setup-node (`cache: npm`) ne garde que les paquets téléchargés : `npm ci` vide quand même node_modules,
+# réextrait ~700 Mo et relance les scripts d'installation (binaires Supabase, Pact, esbuild…), 40 à 90 s par job.
+# Ici, c'est node_modules lui-même qui est mis en cache, tel que `npm ci` l'a produit : même résultat, sans le refaire.
+#
+# Clé : lockfile, version exacte de Node (ABI des modules natifs) et image Ubuntu (binaires compilés pour elle). Sur un
+# cache raté, `npm ci` tourne puis le cache est sauvegardé tout de suite, avant que le job n'écrive dans node_modules
+# (caches ESLint, Vite, Stryker…). En pratique, seul le job Frontend (palier 1) le rate après un changement de lockfile ;
+# les paliers suivants le trouvent.
+name: Dépendances du front
+description: Installe Node 24 et restaure frontend/node_modules depuis le cache, ou lance npm ci puis le sauvegarde.
+runs:
+  using: composite
+  steps:
+    - id: node
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24
+    # ImageOS est une variable de la machine, lue ici par le shell (le contexte `env` des expressions ne la voit pas).
+    - id: key
+      shell: bash
+      run: echo "key=node-modules-${{ runner.os }}-${ImageOS:-unknown}-node${{ steps.node.outputs.node-version }}-${{ hashFiles('frontend/package-lock.json') }}" >> "$GITHUB_OUTPUT"
+    - id: cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: frontend/node_modules
+        key: ${{ steps.key.outputs.key }}
+    - if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: frontend
+      run: npm ci
+    # Deux jobs qui ratent le cache en même temps : le second ne peut pas réécrire la clé, sans conséquence.
+    - if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      continue-on-error: true
+      with:
+        path: frontend/node_modules
+        key: ${{ steps.key.outputs.key }}

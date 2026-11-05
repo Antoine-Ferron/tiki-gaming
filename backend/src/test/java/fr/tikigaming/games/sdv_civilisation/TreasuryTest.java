@@ -39,4 +39,14 @@ class TreasuryTest {
         assertThatThrownBy(() -> treasury.credit("bob", 0)).hasMessage("Le montant doit être un entier positif");
         assertThat(registry.balanceOf("bob")).isEqualTo(1);
     }
+
+    @Test
+    void refusesToDebitAZeroOrNegativeAmount() {
+        // Étant donné "alice" qui a 29 pièces (fake : registre en mémoire)
+        // Quand on lui débite 0 pièce, ou un montant négatif (qui la créditerait en douce)
+        // Alors c'est refusé, et son trésor ne bouge pas
+        assertThatThrownBy(() -> treasury.debit("alice", 0)).hasMessage("Le montant doit être un entier positif");
+        assertThatThrownBy(() -> treasury.debit("alice", -5)).hasMessage("Le montant doit être un entier positif");
+        assertThat(registry.balanceOf("alice")).isEqualTo(29);
+    }
 }
