@@ -147,6 +147,15 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-36 | REQ-RH-10 | nominal | unitaire (BVA, horloge injectée) | `backend/src/test/java/fr/tikigaming/games/rush_hour/ResultRateLimiterTest.java` › aNewMinuteGivesTheClientNewRequests | PASSED | — |
 | TC-RH-37 | REQ-RH-10 | erreur | unitaire (backend, MockMvc) | `backend/src/test/java/fr/tikigaming/games/rush_hour/RushHourRateLimitTest.java` › aClientOverTheLimitIsRefusedWith429 | PASSED | — |
 | TC-RH-38 | REQ-RH-10 | nominal | unitaire (backend, MockMvc) | `backend/src/test/java/fr/tikigaming/games/rush_hour/RushHourRateLimitTest.java` › anotherClientIsNotAffected | PASSED | — |
+| TC-RH-39 | REQ-RH-05 | nominal | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › gagner le niveau 1 ouvre le niveau 2, et la progression survit au rechargement | PASSED | — |
+| TC-RH-40 | REQ-RH-08 | nominal | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › le niveau 1 se gagne au clavier seul (accessibilité) | PASSED | — |
+| TC-RH-41 | REQ-RH-07 | nominal | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › un indice montre le coup à jouer, et le serveur reçoit l’indice utilisé | PASSED | — |
+| TC-RH-42 | REQ-RH-04 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › une partie refusée par le serveur affiche le refus, sans score | PASSED | — |
+| TC-RH-43 | REQ-RH-10 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › trop de parties envoyées : le joueur voit le message du serveur (429) | PASSED | — |
+| TC-RH-44 | REQ-RH-06 | nominal | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › un plateau généré en Facile se joue, avec un minimum de 3 à 8 coups | PASSED | — |
+| TC-RH-45 | REQ-RH-05 | nominal | intégration (Testcontainers) | `frontend/tests/integration/rush-hour.test.ts` › un joueur sauvegarde sa progression Rush Hour et la relit à l’identique | PASSED | — |
+| TC-RH-46 | REQ-RH-05 | erreur | intégration (Testcontainers) | `frontend/tests/integration/rush-hour.test.ts` › un joueur ne voit pas la progression Rush Hour d’un autre | PASSED | — |
+| TC-RH-47 | REQ-SCORE-01 | erreur | intégration (Testcontainers) | `frontend/tests/integration/rush-hour.test.ts` › refuse un score total de 20 001 (> 20 000), même envoyé par le backend | PASSED | — |
 | TC-A11Y-03 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/accessibilite.spec.ts` › ['Rush Hour', '/games/rush-hour', 'Rush Hour'] | PASSED | BUG-05 |
 
 ## Anomalies
