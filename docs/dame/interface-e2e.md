@@ -38,3 +38,27 @@ Validation : **1 324 tests frontend verts**, formatage, lint et build réussis.
 Couverture globale : **93,76 % des lignes**, **87,41 % des branches** ; seuils
 conservés. Les **62 tests PostgreSQL collectifs** passent avec la nouvelle
 migration de catalogue, sans modification de leur code.
+
+## Contrat Pact
+
+Le nouveau contrat `frontend/pacts/tiki-dame-frontend-tiki-dame-backend.json`
+est généré par `tests/contract/dame.pact.test.ts`, avec le vrai client HTTP du
+front. Ses six interactions couvrent création, relecture, coup valide, coup
+interdit (400), rencontre absente de la session (404) et version périmée (409).
+
+`DamePactProviderTest` les rejoue sur Spring démarré avec un vrai port HTTP,
+ses vrais cookies et son vrai filtre CSRF. Seul le dépôt est un fake. L'état
+Pact crée les rencontres par HTTP et fournit l'UUID à un générateur de chemin :
+aucun UUID de production n'est fixé et aucun plateau n'est injecté par une route.
+
+Les **15 interactions consommateur** et les **15 vérifications fournisseur**
+passent : 6 Dames et 9 collectives. Ni le contrat collectif ni son test
+fournisseur ne sont modifiés. Les configurations et la CI existantes découvrent
+les nouveaux fichiers.
+
+```bash
+cd frontend
+npm run test:contract
+cd ../backend
+mvn -Dtest=DamePactProviderTest,PactProviderTest test
+```
