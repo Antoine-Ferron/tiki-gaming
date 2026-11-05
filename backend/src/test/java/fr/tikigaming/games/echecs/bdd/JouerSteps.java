@@ -28,7 +28,7 @@ public class JouerSteps {
     @When("je joue de {string} vers {string}")
     public void jeJoueDeVers(String from, String to) {
         try {
-            fen = service.play(fen, from, to);
+            fen = service.play(fen, from, to, null).fen();
             refused = false;
         } catch (EchecsRejectedException e) {
             refused = true; // la position ne change pas
