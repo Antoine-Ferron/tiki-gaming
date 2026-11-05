@@ -66,6 +66,7 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-LEM-05 | LemurTiki : la partie se termine quand le maki tombe sous l'écran ou que la fossa l'attrape, puis plus rien ne bouge | EF-6.1 à EF-6.3 |
 | REQ-LEM-06 | LemurTiki : le score vaut les mètres entiers atteints + 10 par gousse de vanille, plafonné à 100 000 | EF-6.4, EF-6.5 |
 | REQ-LEM-07 | LemurTiki : le score d'une partie terminée part une seule fois au classement ; un invité est invité à se connecter ; une panne affiche un message sans empêcher de rejouer | EF-8.1, EF-8.3, EF-8.5 |
+| REQ-LEM-08 | LemurTiki : une partie commence au pied du baobab, se dirige au clavier (AZERTY et QWERTY), se met en pause (aussi quand l'onglet est masqué) et se termine sur un écran de fin qui permet de rejouer | EF-1.1, EF-5.1, EF-7.1 à EF-7.7 |
 | REQ-GTA-01 | MiniGTA : la ville est la même pour tous (graine fixe) et le GPS mène exactement à la destination | Règle R1 (docs/games/mini-gta/regles.md) |
 | REQ-GTA-02 | MiniGTA : une nouvelle partie commence avec 500 $, sans armure ; une sauvegarde corrompue ou d'une autre version donne une nouvelle partie | Règle R2, Sauvegarde |
 | REQ-GTA-03 | MiniGTA : chaque mission paie sa récompense une seule fois (800, 1 500, 2 500, 3 000 $) | Règle R3 |
@@ -248,6 +249,15 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-LEM-30 | REQ-LEM-07 | erreur | BDD (panne simulée, Fake) | `frontend/src/games/lemur/features/plateforme.feature` › Une coupure réseau n'empêche pas de rejouer | PASSED | — |
 | TC-LEM-31 | REQ-LEM-07 | erreur | unitaire (Stub) | `frontend/src/games/lemur/application/finish.test.ts` › $cas : affiche le message au joueur sans rejeter, pour qu’il puisse rejouer (EF-8.5) | PASSED | — |
 | TC-LEM-32 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/lemur.spec.ts` › aucune violation d’accessibilité WCAG 2.1 AA sérieuse ou critique sur la page du jeu | PASSED | — |
+| TC-LEM-33 | REQ-LEM-08 | nominal | BDD | `frontend/src/games/lemur/features/debut.feature` › Une partie commence au pied du baobab | PASSED | — |
+| TC-LEM-34 | REQ-LEM-08 | nominal | BDD | `frontend/src/games/lemur/features/debut.feature` › Le maki rebondit tout de suite sur sa première branche | PASSED | — |
+| TC-LEM-35 | REQ-LEM-08 | nominal | unitaire (BVA) | `frontend/src/games/lemur/controls.test.ts` › $touche → $commande | PASSED | — |
+| TC-LEM-36 | REQ-LEM-08 | nominal | composant (faux minuteurs) | `frontend/src/games/lemur/LemurGame.test.tsx` › Jouer lance une partie à 0 m, et le maki grimpe tout seul de branche en branche (EF-7.2) | PASSED | — |
+| TC-LEM-37 | REQ-LEM-08 | nominal | composant (faux minuteurs) | `frontend/src/games/lemur/LemurGame.test.tsx` › Échap met la partie en pause et la fige, P la reprend (EF-7.3, EF-7.5) | PASSED | — |
+| TC-LEM-38 | REQ-LEM-08 | erreur | composant | `frontend/src/games/lemur/LemurGame.test.tsx` › se met en pause tout seul quand l’onglet est masqué (EF-7.6) | PASSED | — |
+| TC-LEM-39 | REQ-LEM-08 | erreur | composant (faux minuteurs) | `frontend/src/games/lemur/LemurGame.test.tsx` › quand la fossa attrape le maki, l’écran de fin donne la cause, le score et invite l’invité à se connecter (EF-7.7, EF-8.3) | PASSED | — |
+| TC-LEM-40 | REQ-LEM-08 | nominal | unitaire (Fake du canvas) | `frontend/src/games/lemur/render.test.ts` › place une branche à l’écran selon la caméra : axe y du monde vers le haut, de l’écran vers le bas | PASSED | — |
+| TC-LEM-41 | REQ-LEM-08 | nominal | E2E (3 navigateurs, page.clock) | `frontend/e2e/lemur.spec.ts` › une partie complète : le maki rebondit, la fossa l’attrape, puis Rejouer relance à 0 m | PASSED | — |
 | TC-GTA-01 | REQ-GTA-01 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Deux joueurs reçoivent la même ville | PASSED | — |
 | TC-GTA-02 | REQ-GTA-01 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Le GPS mène exactement à la destination | PASSED | — |
 | TC-GTA-03 | REQ-GTA-01 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Le GPS refuse une destination illisible | PASSED | — |
