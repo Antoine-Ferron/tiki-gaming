@@ -2,7 +2,6 @@ package fr.tikigaming.games.echecs.api;
 
 import fr.tikigaming.games.echecs.engine.Fen;
 import fr.tikigaming.games.echecs.engine.Game;
-import fr.tikigaming.games.echecs.engine.MoveGenerator;
 import fr.tikigaming.games.echecs.engine.Position;
 import fr.tikigaming.games.echecs.engine.Square;
 import java.util.List;
@@ -18,7 +17,7 @@ public class EchecsService {
     /** Les cases où peut aller la pièce posée en {@code from}, triées (réponse stable pour l'API). */
     public List<String> destinations(String fen, String from) {
         Position position = position(fen);
-        return MoveGenerator.destinations(position, square(from)).stream()
+        return Game.legalDestinations(position, square(from)).stream()
                 .map(Square::toString)
                 .sorted()
                 .toList();
