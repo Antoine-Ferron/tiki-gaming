@@ -7,6 +7,11 @@
   gap: 1rem;
   text-align: center;
   overflow: hidden;
+  gap: 1.25rem;
+  border-color: color-mix(in srgb, var(--cat-duel) 35%, var(--border));
+  box-shadow:
+    0 1.5rem 3rem rgb(0 0 0 / 18%),
+    inset 0 1px rgb(255 255 255 / 5%);
   background:
     radial-gradient(circle at 50% -20%, color-mix(in srgb, var(--cat-duel) 18%, transparent), transparent 45%),
     var(--surface);
@@ -26,6 +31,7 @@
 .tic-tac-toe-heading {
   display: grid;
   gap: 0.15rem;
+  width: min(100%, 28rem);
 }
 
 .tic-tac-toe-heading p {
@@ -53,6 +59,7 @@
   border: 1px solid var(--border);
   border-radius: 0.6rem;
   background: color-mix(in srgb, var(--bg) 65%, var(--surface));
+  box-shadow: inset 0 1px rgb(255 255 255 / 5%);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -79,7 +86,14 @@
 
 .tic-tac-toe-status {
   min-height: 1.75rem;
+  margin: 0.25rem 0 0;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
   color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .status-finished {
@@ -145,7 +159,11 @@
   display: grid;
   place-items: center;
   width: min(100%, 620px);
-  padding: 1.5rem 5rem;
+  padding: 1.75rem 5rem;
+  border: 1px solid color-mix(in srgb, var(--cat-duel) 24%, var(--border));
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 3%), transparent 45%), color-mix(in srgb, var(--bg) 35%, transparent);
 }
 
 .tic-tac-toe-stage.game-finished {
@@ -380,6 +398,16 @@
   min-width: 9rem;
   border: 1px solid color-mix(in srgb, var(--accent) 70%, white);
   box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 18%);
+  transition:
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.tic-tac-toe > button:hover {
+  box-shadow:
+    0 0.75rem 1.25rem rgb(0 0 0 / 25%),
+    0 0 1rem color-mix(in srgb, var(--accent) 28%, transparent);
+  transform: translateY(-2px);
 }
 
 @keyframes mark-pop {
@@ -498,6 +526,14 @@
 
 @media (max-width: 560px) {
   .tic-tac-toe-stage {
-    padding-inline: 1.5rem;
+    padding: 1.25rem 1rem;
+  }
+
+  .tic-tac-toe-score {
+    gap: 0.3rem;
+  }
+
+  .tic-tac-toe-score span {
+    min-width: 4rem;
   }
 }
