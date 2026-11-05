@@ -71,10 +71,14 @@ vont jusqu'au bout : un seul run donne tous les problèmes du palier. Un job arr
 
 La CI démarre sur :
 
-- **chaque PR** qui vise `dev` ou `main`, à chaque nouveau commit poussé dessus ;
+- **chaque PR** qui vise `dev` ou `main`, à chaque nouveau commit poussé dessus. Une PR **en draft** ne lance que
+  le palier 1 (`Frontend`, `Backend`, plus `Security`, `Traçabilité` et `CodeQL`) : les paliers 2 à 4 apparaissent
+  « skipped ». La passer en *Ready for review* relance la CI au complet. Une draft ne se fusionne pas, donc rien
+  n'est fusionné sans les paliers 2 à 4 ; on libère juste les machines (20 jobs simultanés pour tout le dépôt) ;
 - **chaque push** sur `dev` ou `main`, c'est-à-dire après chaque fusion ;
 - **chaque nuit à 2 h UTC** sur la branche par défaut, et à la demande (*Run workflow*) : tous les jobs tournent,
-  quelle que soit la zone modifiée, et la mutation est complète (palier « nuit » : validation exhaustive).
+  quelle que soit la zone modifiée, et la mutation est complète (palier « nuit » : validation exhaustive). C'est
+  le seul run qui rejoue **tous** les mutants (~20 min pour Stryker).
 
 CodeQL tourne en plus **chaque lundi à 6 h UTC**, même sans changement : de nouvelles règles de détection sortent
 régulièrement.
@@ -274,8 +278,9 @@ code est exécuté par les tests, mais rien ne vérifie vraiment son comportemen
 - Seuil bloquant : **au moins 75 %** de mutants tués, front comme backend.
 - Périmètre : le cœur du lobby côté front (`stryker.config.mjs`), les classes métier côté backend (profil
   `mutation` du `pom.xml`).
-- Sur une **PR**, seuls les mutants concernés par le changement sont rejoués. Sur un **push** vers `dev` ou
-  `main`, tout est rejoué.
+- Sur une **PR** et sur un **push** vers `dev` ou `main`, seuls les mutants concernés par le changement sont
+  rejoués ; le push met à jour le cache lu par les PR suivantes. Tout est rejoué **chaque nuit** et à la demande
+  (*Run workflow*).
 - Les rapports HTML sont publiés en **artefacts** (`rapport-mutation-frontend`, `rapport-mutation-backend`).
 
 ## 10. Tests de bout en bout et accessibilité (`E2E`)
@@ -283,7 +288,11 @@ code est exécuté par les tests, mais rien ne vérifie vraiment son comportemen
 ```bash
 npx playwright install --with-deps chromium firefox webkit   # une fois
 npm run test:e2e                              # dans frontend/
+npm run test:e2e -- --project=webkit          # un seul navigateur
 ```
+
+En CI, chaque navigateur a son job (`E2E (Playwright + axe, chromium)`, `…, firefox`, `…, webkit`), en parallèle :
+chacun n'installe que son navigateur. Rapport en artefact `rapport-e2e-<navigateur>` en cas d'échec.
 
 **Playwright** pilote les trois moteurs de rendu (Chromium, Firefox, WebKit) sur l'application, comme le ferait un
 joueur (`frontend/e2e/lobby.spec.ts`, `compte.spec.ts`) :
@@ -333,6 +342,8 @@ CSP trop permissive, clickjacking…
   régression fait échouer la CI), `IGNORE` pour les risques acceptés, chacun avec sa justification
   ([quality/README.md](../quality/README.md#zap--scan-dast)).
 - Rapports HTML en artefact (`rapport-zap`).
+- Les deux scans (front et API) tournent en parallèle. Le backend est le jar construit par `Backend` (artefact
+  `backend-jar`, lancé avec `java -jar`, comme pour k6) ; si `Backend` a été sauté, il est compilé dans le job.
 
 ## 13. Vulnérabilités des dépendances (`Security`)
 
@@ -382,8 +393,8 @@ Ce sont les seuls blocages techniques. [CONTRIBUTING.md](../CONTRIBUTING.md#work
 se fusionne qu'avec une CI entièrement verte**, tous les jobs compris. La fusion se fait en *squash merge*, puis
 la branche est supprimée.
 
-Après la fusion, la CI tourne une nouvelle fois sur `dev` (étape 1) : c'est le run complet qui sert de référence
-aux PR suivantes.
+Après la fusion, la CI tourne une nouvelle fois sur `dev` (étape 1) : tous les tests, seuils compris, et la mutation
+incrémentale. Ce run sert de référence aux PR suivantes ; le run de nuit rejoue en plus tous les mutants.
 
 ---
 
