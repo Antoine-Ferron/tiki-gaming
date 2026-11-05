@@ -109,8 +109,11 @@ test.describe('SDV Civilisation en invité', () => {
     await expect(stale.getByRole('heading', { name: /^Ta main · 7 cartes à jouer/ })).toBeVisible()
 
     // Quand le premier onglet joue l'Atelier, puis le second rejoue la même carte sur l'ancien tour
+    // (chaque onglet est mis au premier plan, comme par le joueur : un onglet caché suspend ses animations)
+    await page.bringToFront()
     await buildTheContractCard(page)
     await expect(page.getByRole('heading', { name: /^Ta main · 6 cartes à jouer/ })).toBeVisible()
+    await stale.bringToFront()
     await buildTheContractCard(stale)
 
     // Alors le second onglet affiche le refus du serveur (409) et le tour en cours
