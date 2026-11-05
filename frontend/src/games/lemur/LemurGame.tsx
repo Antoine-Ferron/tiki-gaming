@@ -1,5 +1,10 @@
+import type { Random } from './domain/branches'
+import type { GameProps } from '../types'
+
+type Props = GameProps & { random?: Random }
+
 /** Écran provisoire : le jeu se branchera ici sur le domaine (advance) via un adaptateur canvas. */
-export default function LemurGame() {
+export default function LemurGame(_props: Props) {
   return (
     <section className="lemur">
       <h2>LemurTiki</h2>
