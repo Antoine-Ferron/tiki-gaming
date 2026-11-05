@@ -97,6 +97,13 @@
       <artifactId>spring-boot-starter-webmvc-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Tests d'intégration contre une vraie base et un vrai PostgREST (classes *IT : ignorées par `mvn test`,
+         lancées par le job CI « Integration (Testcontainers) »). Version gérée par Spring Boot. -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
     <!-- BDD : scénarios Gherkin (.feature) exécutés par JUnit, donc par mvn verify et la CI. -->
     <dependency>
       <groupId>io.cucumber</groupId>
@@ -281,12 +288,14 @@
                 <param>fr.tikigaming.games.dame.*</param>
                 <param>fr.tikigaming.games.rush_hour.*</param>
                 <param>fr.tikigaming.resilience.*</param>
+                <param>fr.tikigaming.games.sdv_civilisation.*</param>
               </targetClasses>
               <targetTests>
                 <param>fr.tikigaming.auth.*Test</param>
                 <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.dame.*Test</param>
                 <param>fr.tikigaming.games.rush_hour.*Test</param>
+                <param>fr.tikigaming.games.sdv_civilisation.*Test</param>
               </targetTests>
               <mutators>
                 <mutator>STRONGER</mutator>

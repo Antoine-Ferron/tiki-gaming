@@ -148,4 +148,20 @@ class SupabaseGamesIntegrationTest {
         // Alors son score part au classement de la plateforme, avec le détail par catégorie
         games.record(USER, new ScoreBreakdown(4, 3, 3, 8, 10, 0, 28));
     }
+
+    @Test
+    void aResponseWithoutBodyMeansNoGameToResumeAndAStaleSave() {
+        // Étant donné Supabase qui répond sans corps, à la lecture comme à la mise à jour
+        supabase.expect(requestTo(startsWith(SUPABASE_URL + ROW)))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess());
+        supabase.expect(requestTo(startsWith(SUPABASE_URL + ROW)))
+                .andExpect(method(HttpMethod.PATCH))
+                .andRespond(withSuccess());
+
+        // Quand le serveur charge la partie, puis enregistre le tour suivant
+        // Alors il n'y a pas de partie à reprendre, et l'enregistrement est refusé (aucune ligne confirmée)
+        assertThat(store.load()).isEmpty();
+        assertThatThrownBy(() -> store.save(saved(2), 1)).isInstanceOf(StaleGameException.class);
+    }
 }
