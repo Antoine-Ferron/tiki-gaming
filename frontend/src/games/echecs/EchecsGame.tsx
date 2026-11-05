@@ -1,29 +1,32 @@
+import { FILES, piecesFromFen, RANKS, squareLabel, START_FEN, SYMBOLS } from './board'
 import './echecs.css'
 
-const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-const RANKS = [8, 7, 6, 5, 4, 3, 2, 1] // rangée 8 en haut, vue des Blancs
-
 /**
- * Squelette du jeu : affiche un échiquier vide.
- * Les règles sont dans le moteur côté serveur (backend/.../games/echecs/), écrites en TDD ;
- * cet écran affichera la partie renvoyée par l'API.
+ * Écran du jeu d'échecs : affiche la position (FEN). Les règles sont dans le moteur côté serveur
+ * (backend/.../games/echecs/), appelé par le client ./api.
  */
 export default function EchecsGame() {
+  const pieces = piecesFromFen(START_FEN)
+
   return (
     <div className="echecs">
       <section className="card">
         <h2>Échecs</h2>
-        <p className="muted">Le jeu arrive bientôt : tu pourras jouer à deux sur le même écran.</p>
-        <div className="echecs-board" role="img" aria-label="Échiquier vide">
+        <div className="echecs-board" role="group" aria-label="Échiquier">
           {RANKS.map((rank) =>
             FILES.map((file, fileIndex) => {
+              const square = `${file}${rank}`
+              const piece = pieces[square]
               const light = (fileIndex + rank) % 2 === 0 // h1 est une case claire
               return (
-                <div
-                  key={`${file}${rank}`}
+                <button
+                  type="button"
+                  key={square}
                   className={`echecs-square ${light ? 'echecs-square-light' : 'echecs-square-dark'}`}
-                  data-square={`${file}${rank}`}
-                />
+                  aria-label={squareLabel(square, piece)}
+                >
+                  {piece ? SYMBOLS[piece] : ''}
+                </button>
               )
             }),
           )}
