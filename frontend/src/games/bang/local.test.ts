@@ -39,6 +39,24 @@ test('avec une seule carte disponible au total, refuse avant de mélanger et con
 
 const unchanged = <T>(items: T[]) => items
 
+test.each([
+  { from: 2, to: 4, allowed: false },
+  { from: 4, to: 1, allowed: true },
+])('la portée de $from vers $to suit le plus court trajet autour de la table', ({ from, to, allowed }) => {
+  const game = draw(deal(unchanged), unchanged)
+  game.currentSeat = from
+  const before = structuredClone(game)
+  const cardId = game.players[from - 1].hand[0].id
+  if (allowed) {
+    const shot = fire(game, cardId, to)
+    expect(shot.pendingShot).toMatchObject({ shooterSeat: from, targetSeat: to })
+    expect(shot.players[from - 1].hand).toEqual(before.players[from - 1].hand.filter((card) => card.id !== cardId))
+  } else {
+    expect(() => fire(game, cardId, to)).toThrow('La cible est hors de portée.')
+  }
+  expect(game).toEqual(before)
+})
+
 function expectAllCards(game: LocalGame) {
   const cards = [...game.players.flatMap((p) => p.hand), ...game.drawPile, ...game.discardPile]
   expect(cards).toHaveLength(37)
