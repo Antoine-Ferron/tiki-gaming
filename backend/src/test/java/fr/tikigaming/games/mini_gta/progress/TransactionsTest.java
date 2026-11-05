@@ -58,6 +58,7 @@ class TransactionsTest {
             assertThat(again.reward()).isZero();
             assertThat(again.progress()).isEqualTo(done);
         }
+
         @ParameterizedTest(name = "{0} $ déjà gagnés + 2500 $ → score {1} $")
         @CsvSource({"997499, 999999", "997500, 1000000", "997501, 1000000", "1000000, 1000000"})
         void lesGainsCumulesSArretentAuPlafondDuScore(int earned, int score) {

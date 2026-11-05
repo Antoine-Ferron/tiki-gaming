@@ -43,6 +43,9 @@ public record Progress(
 
         @NotNull(message = "Statistiques attendues.") @Valid Stats stats) {
 
+    /** Plafond des gains cumulés, donc du score (R8), aligné avec {@code games.max_score}. */
+    public static final int MAX_EARNED = 1_000_000;
+
     static final String UNKNOWN_FORMAT_MESSAGE = "Sauvegarde d'un format inconnu.";
     static final String ARMOR_RANGE_MESSAGE = "L'armure doit être comprise entre 0 et 100.";
 
@@ -82,9 +85,9 @@ public record Progress(
         return new Progress(version, amount, totalEarned, armor, inventory, completedMissions, stats);
     }
 
-    /** Ajoute un gain : il compte dans le solde et dans les gains cumulés, plafonnés à 1 000 000. */
+    /** Ajoute un gain : il compte dans le solde et dans les gains cumulés, plafonnés à {@link #MAX_EARNED}. */
     Progress earn(int amount) {
-        int earned = Math.min(1_000_000, totalEarned + amount);
+        int earned = Math.min(MAX_EARNED, totalEarned + amount);
         return new Progress(version, money + amount, earned, armor, inventory, completedMissions, stats);
     }
 
