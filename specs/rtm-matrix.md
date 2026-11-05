@@ -247,6 +247,7 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-LEM-29 | REQ-LEM-07 | erreur | BDD | `frontend/src/games/lemur/features/plateforme.feature` › Un invité joue sans être classé | PASSED | — |
 | TC-LEM-30 | REQ-LEM-07 | erreur | BDD (panne simulée, Fake) | `frontend/src/games/lemur/features/plateforme.feature` › Une coupure réseau n'empêche pas de rejouer | PASSED | — |
 | TC-LEM-31 | REQ-LEM-07 | erreur | unitaire (Stub) | `frontend/src/games/lemur/application/finish.test.ts` › $cas : affiche le message au joueur sans rejeter, pour qu’il puisse rejouer (EF-8.5) | PASSED | — |
+| TC-LEM-32 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/lemur.spec.ts` › aucune violation d’accessibilité WCAG 2.1 AA sérieuse ou critique sur la page du jeu | PASSED | — |
 | TC-GTA-01 | REQ-GTA-01 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Deux joueurs reçoivent la même ville | PASSED | — |
 | TC-GTA-02 | REQ-GTA-01 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Le GPS mène exactement à la destination | PASSED | — |
 | TC-GTA-03 | REQ-GTA-01 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Le GPS refuse une destination illisible | PASSED | — |
