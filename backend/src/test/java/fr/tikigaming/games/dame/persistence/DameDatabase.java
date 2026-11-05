@@ -17,7 +17,7 @@ import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
 /** Deux services éphémères réels, ports aléatoires, aucune configuration de production lue. */
-final class DameDatabase implements AutoCloseable {
+public final class DameDatabase implements AutoCloseable {
 
     private static final String PASSWORD = "postgres";
     private static final String SECRET = "tiki-dame-integration-secret-0123456789";
@@ -40,7 +40,7 @@ final class DameDatabase implements AutoCloseable {
             .waitingFor(Wait.forHttp("/").forStatusCode(200))
             .withStartupTimeout(Duration.ofMinutes(2));
 
-    void start() throws Exception {
+    public void start() throws Exception {
         try {
             Path root = Path.of(System.getProperty("dame.repositoryRoot", ".."));
             // Ce script doit tourner à l'initialisation en supabase_admin, comme dans docker-compose.yml.
@@ -66,18 +66,18 @@ final class DameDatabase implements AutoCloseable {
         }
     }
 
-    Connection connect() throws SQLException {
+    public Connection connect() throws SQLException {
         return DriverManager.getConnection(
                 "jdbc:postgresql://" + database.getHost() + ":" + database.getMappedPort(5432) + "/postgres",
                 "postgres",
                 PASSWORD);
     }
 
-    String restUrl() {
+    public String restUrl() {
         return "http://" + api.getHost() + ":" + api.getMappedPort(3000);
     }
 
-    String serviceToken() throws Exception {
+    public String serviceToken() throws Exception {
         Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
         String header = encoder.encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));
         String claims = encoder.encodeToString(

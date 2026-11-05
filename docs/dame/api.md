@@ -3,8 +3,9 @@
 ## Périmètre et branche
 
 `game/dame/api` est une branche distincte : la PR #116 des rencontres est encore
-en review à sa création. Ses commits validés sont repris, puis le dernier `dev`
-(`0001771`) est intégré par rebase. Aucun nouveau commit n'est poussé sur #116.
+en review à sa création. Ses commits validés sont repris, avec le `dev`
+`85b61f5` et la résolution CI de #116, par rebase des seuls commits API.
+Aucun nouveau commit API n'est poussé sur #116.
 Après sa fusion en squash, seuls les commits API seront à reporter sur `dev`.
 Cette étape livre le backend ; formulaire React et E2E viendront ensuite.
 
@@ -46,12 +47,12 @@ champs inconnus, coordonnées hors 0–9 et parcours de plus de 20 arrivées son
 
 Sources et tests dans les packages Dames. Pas de nouvelle dépendance, migration,
 modification du SDK, de Jackson global, de SecurityConfig ou de la CI. La seule
-adaptation mécanique partagée sera le test Swagger : `dev` expose 35 routes,
+adaptation mécanique partagée est le test Swagger : `dev` expose 35 routes,
 les trois chemins Dames portent ce total à 38 et ajoutent le tag `dame`.
 Cette exception est annoncée avant modification et sera signalée à la plateforme.
 
 Sous-étapes avec commits distincts : contrats compilables, tests RED, logique
-GREEN, puis tests Spring/CSRF et validations. Les commandes métier sont encore
+GREEN avec les tests Spring/CSRF, puis intégration réelle et validations. Les commandes métier sont encore
 squelettiques dans le premier commit ; aucune fonctionnalité terminée n'y est revendiquée.
 
 ## RED observé
@@ -79,3 +80,26 @@ L'état serveur est un texte JSON ; le résultat est enregistré avant la sessio
 Le seul test partagé adapté est `OpenApiDocsTest` : total de chemins 35 → 38 et
 ajout du tag `dame` à la liste admise. Les assertions des autres jeux restent
 inchangées. Le test Swagger propre à Dames vérifie ses trois résumés et ses erreurs.
+
+## Intégration API et persistance réelle
+
+`DameApiPersistenceIT` réutilise les conteneurs éphémères Dames et toutes les
+migrations du dépôt. Ses quatre tests appellent les routes avec MockMvc et la
+vraie chaîne Spring/CSRF, le cas d'usage et l'adaptateur PostgREST réel :
+
+- création des noms, victoire calculée par le moteur et résultat vérifié en SQL ;
+  un nouveau coup après la victoire reçoit 409 et conserve le résultat ;
+- coup interdit refusé, coup valide accepté, puis version périmée refusée ;
+  la rencontre en base reste en cours et conserve ses métadonnées ;
+- nom vide ou CSRF absent : aucun enregistrement et aucun plateau en session ;
+- accès d'une autre session : lecture et coup reçoivent 404, sans modification
+  de la rencontre réelle.
+
+La fixture de fin de partie est injectée uniquement dans la session du test.
+Ces tests utilisent la couche HTTP simulée de Spring : ce ne sont pas des E2E
+navigateur. Aucune doublure de dépôt ni base H2 n'est utilisée.
+
+Commande : `mvn -f backend/pom.xml -Pintegration -Dit.test=DameApiPersistenceIT
+test-compile failsafe:integration-test failsafe:verify`.
+Le profil et la CI existants découvrent automatiquement ce nouveau fichier `*IT`.
+Résultat ciblé observé : **4 tests verts, aucun échec, erreur ou ignoré**.
