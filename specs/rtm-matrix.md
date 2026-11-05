@@ -46,6 +46,7 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-RH-07 | Rush Hour : un indice donne le prochain coup de la solution la plus courte et coûte des points | Indices P5 |
 | REQ-RH-08 | Rush Hour : on joue à la souris (glisser-déposer calé sur une case) et au clavier (flèches dans le sens du véhicule) | Contrôles C1, C2 |
 | REQ-RH-09 | Rush Hour : le jeu et le serveur appliquent les mêmes niveaux, les mêmes règles et le même barème | Contrat partagé (shared/games/rush-hour/contrat.json) |
+| REQ-RH-10 | Rush Hour : un client ne peut pas faire vérifier plus de 60 parties par minute (429 au-delà), sans gêner les autres | Sécurité, OWASP API4 (docs/games/rush-hour/rapport-securite.md) |
 
 ## Cas de test
 
@@ -143,6 +144,9 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-33 | REQ-RH-02 | nominal | propriété (fast-check) | `frontend/src/games/rush-hour/domain/session.property.test.ts` › après n’importe quels coups légaux, tout annuler ramène au départ | PASSED | — |
 | TC-RH-34 | REQ-RH-03 | nominal | propriété (fast-check) | `frontend/src/games/rush-hour/domain/score.property.test.ts` › un coup en trop ou un indice de plus ne fait jamais monter le score | PASSED | — |
 | TC-RH-35 | REQ-RH-08 | nominal | propriété (fast-check) | `frontend/src/games/rush-hour/components/drag.property.test.ts` › au lâcher, le véhicule va sur la case la plus proche, de la même façon dans les deux sens | PASSED | BUG-04 |
+| TC-RH-36 | REQ-RH-10 | nominal | unitaire (BVA, horloge injectée) | `backend/src/test/java/fr/tikigaming/games/rush_hour/ResultRateLimiterTest.java` › aNewMinuteGivesTheClientNewRequests | PASSED | — |
+| TC-RH-37 | REQ-RH-10 | erreur | unitaire (backend, MockMvc) | `backend/src/test/java/fr/tikigaming/games/rush_hour/RushHourRateLimitTest.java` › aClientOverTheLimitIsRefusedWith429 | PASSED | — |
+| TC-RH-38 | REQ-RH-10 | nominal | unitaire (backend, MockMvc) | `backend/src/test/java/fr/tikigaming/games/rush_hour/RushHourRateLimitTest.java` › anotherClientIsNotAffected | PASSED | — |
 | TC-A11Y-03 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/accessibilite.spec.ts` › ['Rush Hour', '/games/rush-hour', 'Rush Hour'] | PASSED | BUG-05 |
 
 ## Anomalies
