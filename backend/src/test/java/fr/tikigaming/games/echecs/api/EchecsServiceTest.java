@@ -76,4 +76,11 @@ class EchecsServiceTest {
                     .hasMessageStartingWith("Entrée invalide : ");
         }
     }
+
+    @Test
+    @DisplayName("les cases renvoyées sont les coups légaux : une pièce clouée n'en a aucune")
+    void lesCasesRenvoyeesSontLesCoupsLegaux() {
+        assertThat(service.destinations("4k3/8/8/8/4r3/8/4B3/4K3 w - - 0 1", "e2"))
+                .isEmpty();
+    }
 }
