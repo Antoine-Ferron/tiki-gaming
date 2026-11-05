@@ -37,6 +37,13 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-RES-01 | Une panne de Supabase est abandonnée au timeout puis coupée par un disjoncteur, et le service revient seul | SLO, résilience (docs/slo.md) |
 | REQ-SEC-01 | Les requêtes qui modifient des données exigent le jeton CSRF ; le front envoie les en-têtes de sécurité (CSP…) | OWASP |
 | REQ-API-01 | Le backend respecte le contrat d'API attendu par le front (forme des requêtes et réponses) | Intégration front/back |
+| REQ-MM-01 | Le feedback compte correctement les couleurs exactes et mal placées, y compris les répétitions | Règles du Mastermind |
+| REQ-MM-02 | Une partie gagne, perd après dix essais, puis révèle le secret uniquement à la fin | Règles du Mastermind |
+| REQ-MM-03 | Une partie expirée est supprimée et une partie redémarrée repart sans historique | Robustesse du jeu |
+| REQ-MM-04 | Une partie est isolée par client et ses entrées sont validées côté serveur | Sécurité de l'API Mastermind |
+| REQ-MM-05 | Les invariants du feedback, des couleurs et du score restent vrais sur des entrées générées | Qualité du domaine |
+| REQ-MM-06 | Les parcours critiques du joueur sont accessibles au clavier et résistent aux erreurs réseau | Expérience joueur |
+| REQ-MM-07 | Les endpoints Mastermind respectent les objectifs de latence et d'erreurs | SLO Mastermind |
 | REQ-RH-01 | Rush Hour : un véhicule ne glisse que dans son sens, sans traverser les bords ni les autres véhicules | Règles R4, R5 (docs/games/rush-hour/regles.md) |
 | REQ-RH-02 | Rush Hour : un coup = un glissement d'un véhicule, quelle que soit la distance ; les glissements successifs du même véhicule forment un seul coup | Règle R6 |
 | REQ-RH-03 | Rush Hour : le score d'un niveau suit le barème (coups en trop, indices), jamais négatif, et refuse une partie impossible | Score § 7 |
@@ -107,6 +114,20 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-API-01 | REQ-API-01 | nominal | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › un joueur connecté enregistre le score de sa partie | PASSED | — |
 | TC-API-02 | REQ-API-01 | erreur | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › un score au-dessus du maximum est refusé avec un message pour le joueur | PASSED | — |
 | TC-API-03 | REQ-API-01 | nominal | contrat (Pact, provider) | `backend/src/test/java/fr/tikigaming/contract/PactProviderTest.java` › verifieLeContratDuFront | PASSED | — |
+| TC-MM-01 | REQ-MM-01 | nominal | BDD | `docs/games/mastermind/mastermind.feature` › Couleurs répétées | PASSED | — |
+| TC-MM-02 | REQ-MM-01 | erreur | unitaire | `backend/src/test/java/fr/tikigaming/games/mastermind/MastermindGameTest.java` › calculatesFeedbackIncludingRepeatedColors | PASSED | — |
+| TC-MM-03 | REQ-MM-02 | nominal | BDD | `docs/games/mastermind/mastermind.feature` › Victoire dès la première proposition | PASSED | — |
+| TC-MM-04 | REQ-MM-02 | erreur | unitaire | `backend/src/test/java/fr/tikigaming/games/mastermind/MastermindGameTest.java` › losesAfterTenIncorrectGuessesAndRejectsTheEleventh | PASSED | — |
+| TC-MM-05 | REQ-MM-03 | nominal | BDD | `docs/games/mastermind/mastermind.feature` › Redémarrage | PASSED | — |
+| TC-MM-06 | REQ-MM-03 | erreur | unitaire | `backend/src/test/java/fr/tikigaming/games/mastermind/MastermindServiceTest.java` › expiresUnplayedGameQuickly | PASSED | — |
+| TC-MM-07 | REQ-MM-04 | nominal | intégration (Spring MockMvc) | `backend/src/test/java/fr/tikigaming/games/mastermind/MastermindControllerTest.java` › returns400ForUnknownColor | PASSED | — |
+| TC-MM-08 | REQ-MM-04 | erreur | unitaire | `backend/src/test/java/fr/tikigaming/games/mastermind/MastermindServiceTest.java` › rejectsAccessFromAnotherClient | PASSED | — |
+| TC-MM-09 | REQ-MM-05 | nominal | propriété (fuzzing déterministe) | `backend/src/test/java/fr/tikigaming/games/mastermind/MastermindGameTest.java` › feedbackPropertiesHoldForManyGeneratedCodes | PASSED | — |
+| TC-MM-10 | REQ-MM-05 | erreur | propriété (fuzzing déterministe) | `backend/src/test/java/fr/tikigaming/games/mastermind/MastermindGameTest.java` › generatedGameUsesOnlyDeclaredColorsAndKeepsScoreBounded | PASSED | — |
+| TC-MM-11 | REQ-MM-06 | nominal | E2E Playwright | `frontend/e2e/mastermind.spec.ts` › supports keyboard selection and resumes after reload | PASSED | — |
+| TC-MM-12 | REQ-MM-06 | erreur | E2E Playwright | `frontend/e2e/mastermind.spec.ts` › displays an API error without breaking the board | PASSED | — |
+| TC-MM-13 | REQ-MM-07 | nominal | charge k6 | `quality/k6/mastermind.js` › seuils des endpoints Mastermind | PASSED | — |
+| TC-MM-14 | REQ-MM-07 | erreur | charge k6 | `quality/k6/mastermind.js` › erreurs sous 1 pour cent | PASSED | — |
 | TC-API-04 | REQ-API-01 | nominal | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une partie gagnée est rejouée par le serveur, qui renvoie le score, les coups et le minimum | PASSED | — |
 | TC-API-05 | REQ-API-01 | erreur | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une partie truquée est refusée (422) avec un message que le jeu affiche | PASSED | — |
 | TC-RH-01 | REQ-RH-01 | nominal | unitaire | `frontend/src/games/rush-hour/domain/moves.test.ts` › un véhicule plus loin arrête la voiture juste avant lui | PASSED | — |

@@ -40,8 +40,8 @@ public class MastermindController {
     @Operation(summary = "Consulter une partie")
     @ApiResponse(responseCode = "200", description = "État de la partie")
     @ApiResponse(responseCode = "404", description = "Partie introuvable")
-    MastermindGameSnapshot get(@PathVariable UUID id) {
-        return service.get(id);
+    MastermindGameSnapshot get(@PathVariable UUID id, HttpServletRequest request) {
+        return service.get(id, request.getRemoteAddr());
     }
 
     @PostMapping("/{id}/guesses")
@@ -50,16 +50,17 @@ public class MastermindController {
     @ApiResponse(responseCode = "400", description = "Combinaison invalide")
     @ApiResponse(responseCode = "404", description = "Partie introuvable")
     @ApiResponse(responseCode = "409", description = "Partie déjà terminée")
-    MastermindGameSnapshot guess(@PathVariable UUID id, @Valid @RequestBody GuessRequest request) {
-        return service.guess(id, request.parsedColors());
+    MastermindGameSnapshot guess(
+            @PathVariable UUID id, @Valid @RequestBody GuessRequest request, HttpServletRequest httpRequest) {
+        return service.guess(id, httpRequest.getRemoteAddr(), request.parsedColors());
     }
 
     @PostMapping("/{id}/restart")
     @Operation(summary = "Recommencer une partie")
     @ApiResponse(responseCode = "200", description = "Nouvelle partie")
     @ApiResponse(responseCode = "404", description = "Partie introuvable")
-    MastermindGameSnapshot restart(@PathVariable UUID id) {
-        return service.restart(id);
+    MastermindGameSnapshot restart(@PathVariable UUID id, HttpServletRequest request) {
+        return service.restart(id, request.getRemoteAddr());
     }
 
     record GuessRequest(@NotNull List<String> colors) {
