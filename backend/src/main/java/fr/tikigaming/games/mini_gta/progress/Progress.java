@@ -82,9 +82,10 @@ public record Progress(
         return new Progress(version, amount, totalEarned, armor, inventory, completedMissions, stats);
     }
 
-    /** Ajoute un gain : il compte dans le solde et dans les gains cumulés. */
+    /** Ajoute un gain : il compte dans le solde et dans les gains cumulés, plafonnés à 1 000 000. */
     Progress earn(int amount) {
-        return new Progress(version, money + amount, totalEarned + amount, armor, inventory, completedMissions, stats);
+        int earned = Math.min(1_000_000, totalEarned + amount);
+        return new Progress(version, money + amount, earned, armor, inventory, completedMissions, stats);
     }
 
     /** Débite une dépense ; le solde ne descend jamais sous 0 et les gains cumulés ne bougent pas. */
