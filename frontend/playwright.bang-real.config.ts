@@ -9,6 +9,7 @@ export default defineConfig({
     'controle-limites.spec.ts',
     'revue-lectures.spec.ts',
     'revue-geste.spec.ts',
+    'controle-premiere-defausse.spec.ts',
   ],
   workers: 1,
   retries: 0,
