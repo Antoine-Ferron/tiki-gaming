@@ -273,6 +273,10 @@
                 <param>fr.tikigaming.auth.SupabaseTokenService</param>
                 <param>fr.tikigaming.games.dame.*</param>
                 <param>fr.tikigaming.games.rush_hour.*</param>
+                <param>fr.tikigaming.games.prismine.Engine*</param>
+                <param>fr.tikigaming.games.prismine.Expedition*</param>
+                <param>fr.tikigaming.games.prismine.Floors*</param>
+                <param>fr.tikigaming.games.prismine.PrismineScoreValidator</param>
                 <param>fr.tikigaming.resilience.*</param>
               </targetClasses>
               <targetTests>
@@ -280,6 +284,7 @@
                 <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.dame.*Test</param>
                 <param>fr.tikigaming.games.rush_hour.*Test</param>
+                <param>fr.tikigaming.games.prismine.*Test</param>
               </targetTests>
               <mutators>
                 <mutator>STRONGER</mutator>
