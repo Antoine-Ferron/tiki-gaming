@@ -57,9 +57,7 @@ export interface Inventory {
 
 export function createInventory(): Inventory {
   return {
-    weapons: [
-      { id: 'fists', clip: 0, ammo: 0 },
-    ],
+    weapons: [{ id: 'fists', clip: 0, ammo: 0 }],
     current: 'fists',
   }
 }
