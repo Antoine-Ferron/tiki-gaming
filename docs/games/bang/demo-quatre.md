@@ -4,6 +4,12 @@ Validation initiale locale du 5 novembre 2026 ; la revue corrective est consign�
 dans la dernière section. Les issues GitHub #60 et #61 restent ouvertes
 pour validation ; les changements sont enregistrés dans des commits locaux.
 
+État courant après la revue de `109a2990` : les choix « Sur le même écran » et
+« En ligne » sont accessibles avec ou sans compte. Les invités en ligne ont une
+place liée à leur session HTTP. Les trois régressions de cette revue sont reprises
+dans la suite habituelle ; le bilan détaillé figure en fin de document. Les
+sections de validation précédentes conservent leurs résultats historiques.
+
 ## Branches vérifiées
 
 Après les fetchs initial et final, `origin/dev` est à `ece3ce79` et la branche
@@ -288,3 +294,179 @@ clic), `2ea815f6` (verrou et démo/sièges), `7c16e3f4` (mode local), puis le pr
 bilan documentaire. La #61 est proposée pour revue avant fusion dans
 `game/bang/implementation`. Aucun push, aucune fusion vers cette branche commune
 et aucune clôture d'issue ne sont effectués.
+
+## Revue de `109a2990` — invités, tir local et réponse de pioche
+
+### Base et ordre TDD (5 novembre 2026)
+
+Le dépôt était propre sur la branche existante `game/bang/61-demo-quatre`, à
+`109a2990`. Le fetch retrouve `origin/dev` à `ece3ce79`, déjà ancêtre : aucun
+nouveau merge de dev n'est nécessaire. La #60 (`05b4dd87`) est déjà intégrée par
+`3d9390e1`. Les comparaisons confirment que ce merge n'a pas modifié les deux
+fichiers `OnlineTable.tsx` / `OnlineTable.test.tsx` de sa première parenté, et que
+son arbre entier est identique à `dbacc510`. Les conflits restent résolus ; la
+branche commune `game/bang/implementation` reste à `22a11fc1`.
+
+Avant toute modification de production, les deux fichiers de reproduction ont
+été repris depuis l'archive `revue-61-109a2990-bf9e7cq1`, puis la commande demandée
+a été exécutée dans `frontend/` :
+
+```powershell
+npx playwright test --config playwright.lecture.config.ts
+```
+
+Résultat réellement observé : **3 échecs métier**, conservés dans
+`frontend/node_modules/.cache/bang-61-three-reds.log`. Les tests de composant ou
+HTTP ont ensuite guidé chaque étape, avec commits locaux au vert. Les composants,
+le client HTTP, les vues et les règles sont réels ; seuls le transport, l'horloge
+ou le mélange utiles au comportement sont contrôlés.
+
+| Comportement | Rouge exécuté avant le correctif | Commit(s) vert(s) |
+| --- | --- | --- |
+| Clic pendant la réponse du POST de pioche | Vrai serveur en PLAY, bouton actif, un clic, réponse de pioche libérée : **0 POST `/turn/end` au lieu de 1**. Même échec du vrai composant avec fetch et horloge contrôlés. | `2711bea0` : retient une seule commande suivante après application d'une lecture postérieure à la pioche, puis l'envoie à l'accusé de réception. Tests avec mains de 4 et 6 cartes, clic simple/double, état suivant ou DISCARD. |
+| Tir sur le même écran | Main **7 → 7**, message « Le tir n'est pas encore disponible », aucune réponse possible. Le test de composant observe aussi l'absence de passage privé à la cible. | `e2ebd57b` : BANG ! défaussé, tir en attente et passage d'écran sans main ni rôle privé. |
+| Esquive locale | Bouton d'esquive absent dans le test de composant sur un tir réel. | `2c09b11d` : carte autorisée défaussée, aucun PV perdu, écran rendu au tireur dans le même tour. |
+| Acceptation locale | Bouton d'acceptation absent après le tir ; test de composant rouge. | `c239e18e` : exactement un PV perdu, maximum conservé, bonus de Bart survivant et retour au tireur. |
+| Choix indépendant du compte | « En ligne » absent pour les invités dans le navigateur et les tests de composant ; le compte n'avait pas le choix local non plus. | `3a8c6ed8` : deux choix pour chaque joueur, préférence conservée après actualisation. |
+| Jonction des invités | Après accès au formulaire, les deux jonctions par l'interface renvoient encore **401 / 401** ; le nouveau test HTTP du vrai moteur attend 200 et reçoit 401. | `06c63a14` : identités invitées de session, sièges distincts, reprise, vues privées et actions BANG !. |
+| Session invitée perdue | En 401, le code mémorisé bloquait le retour au formulaire ; test de composant rouge. | `1446033f` : oubli du code et retour à la création/jonction, comme en 403/404. |
+
+`25485e4c` intègre les trois reproductions à `npm run test:e2e:bang`, complète les
+garde-fous locaux et retire le message de tir indisponible devenu inutile. Les
+tests de portée, limite, substitutions et bonus sont ajoutés au vert, sans
+fabriquer de nouveaux rouges. `2101ee1d` ajoute les contrats de jonction et de vue
+invitée, ainsi que leur vérification fournisseur.
+
+### Identités invitées et confidentialité
+
+Créer ou rejoindre sans compte attribue un identifiant aléatoire côté serveur,
+uniquement dans la session HTTP BANG !. La session est renouvelée à sa première
+attribution. L'initialisation est synchronisée ; une nouvelle requête de la même
+session réutilise cet identifiant. Un compte garde sa reprise par compte, même
+dans une nouvelle session HTTP. Aucun identifiant de siège ou de compte fourni
+par le client n'est utilisé comme identité.
+
+Le navigateur ne mémorise que le code de table et le choix du mode. Le cookie de
+session permet la reprise après actualisation ou interruption réseau ; le code
+seul ne restitue pas un siège à un nouveau navigateur. Après perte du cookie ou
+expiration, l'invité ne peut pas revendiquer son ancien siège par le code. Les
+tables restent en mémoire et expirent après une heure sans action acceptée.
+
+Les tests HTTP traversent Spring, le CSRF et le vrai moteur avec uniquement le
+mélange contrôlé. Ils vérifient deux invités distincts, leurs reprises à table
+pleine, la main et le rôle propres à chacun, le tir/esquive/acceptation, le bonus
+de Bart, le refus d'un acteur autre que la cible et d'une réponse périmée. Une
+session neuve est refusée en lecture ; une nouvelle jonction à table pleine ne
+prend pas la place demandée dans des paramètres falsifiés. Toutes les mutations
+restent refusées avec un CSRF absent ou erroné.
+
+### Rejeux réels et siège Shérif
+
+La suite habituelle comprend désormais quatre tests Chromium, sans retry :
+
+1. Quatre comptes dans quatre contextes isolés, depuis le catalogue : création,
+   jonction, tir du Shérif, esquive après actualisation, acceptation après
+   reconnexion avec nouvelle session, bonus de Bart, rejet des anciennes réponses,
+   confidentialité JSON et passage au joueur suivant.
+2. Quatre personnes sur le même écran : BANG ! défaussé (7 → 6), mains/rôles privés
+   masqués pendant chaque passage, vrai Raté ! défaussé sans dégâts, second tir
+   refusé sans perte de carte, Bart survivant qui pioche, passage par les quatre
+   places, puis cible ordinaire à 4/4 → 3/4. Le tireur reprend son même tour après
+   chaque réponse.
+3. Deux comptes et deux invités dans quatre contextes isolés : jonctions par les
+   formulaires, mains/rôles JSON isolés, passage des deux comptes, tir de Janet
+   invitée et bonus de Bart, tir de Paul invité, actualisation de Janet en attente,
+   vraie coupure réseau de Paul puis reprise avec le même siège/main/tir, esquive
+   et retour au même tour. `/api/auth/session` reste exactement `{ "user": null }`
+   pour les deux invités, sans JWT.
+4. Réponse du POST de pioche retenue après son acceptation par le vrai serveur :
+   une lecture affiche PLAY, le joueur clique une seule fois, puis la réponse est
+   libérée. Exactement un POST `/turn/end` et état **DISCARD**, siège 1, main de
+   sept cartes pour cinq PV. Aucun deuxième clic ni sommeil arbitraire.
+
+Pour les trois configurations de jeu, le contrôle compte les tapis/sièges, pas
+les occurrences du mot « Shérif ». Chaque vue désigne uniquement le siège 1,
+avec une orientation différente autour du plateau. Les rôles privés sont un
+Shérif, deux Hors-la-loi et un Renégat. Aucun cas de deux tapis distincts Shérifs
+simultanés n'est reproduit. Les cartes et personnages de Colleen ne sont pas
+modifiés ; leurs contrats passent, y compris Janet, Willy, Paul et Bart. Les
+contrôles locaux vérifient aussi la conservation des 37 cartes, les refus sans
+mutation, les tirs bloquants, le recyclage du bonus et l'absence de bonus après
+élimination de Bart.
+
+Les traces et les quatre captures de chaque configuration sont conservées sous
+`frontend/test-results/` (artefacts ignorés par Git) :
+
+| Configuration | Sous-répertoire | Fichiers |
+| --- | --- | --- |
+| Quatre comptes | `bang-du-catalogue-au-tour--4da0a-acceptation-et-vues-privées-chromium` | `trace.zip`, `place-1.png` à `place-4.png` |
+| Même écran | `review.probe-sur-un-écran-le-BANG-atteint-un-voisin-à-portée-chromium` | `trace.zip`, `place-locale-1.png` à `place-locale-4.png`, `tir-local.png` |
+| Deux comptes / deux invités | `review.probe-deux-invités--df334-èges-auprès-de-deux-comptes-chromium` | `trace.zip`, `place-mixte-1.png` à `place-mixte-4.png` |
+| Clic / POST retardé | `review.probe-un-seul-clic--88735-nse-du-POST-de-pioche-tarde-chromium` | `trace.zip` |
+
+Racine absolue : `D:\COURS\SDV_2026_2027\tiki-gaming\frontend\test-results\`.
+Les captures de la place invitée Janet et de la réponse locale de Janet ont aussi
+été inspectées visuellement. Les autres vues sont contrôlées par leurs tapis et
+leur JSON dans Playwright. `playwright.lecture.config.ts` reste disponible pour
+rejouer seulement les trois reproductions, dans `test-results-revue/`.
+
+### Scores : garanties actuelles et raccordement restant
+
+Le mode local ne reçoit aucun port de score, même lancé par un compte. Le jeu
+BANG ! n'appelle actuellement ni `ctx.submitScore` ni la file de scores, dans
+aucun mode. Une identité invitée BANG ! ne devient pas un `AuthUser` ; les tests
+HTTP tentent explicitement un `POST /api/scores` avec un résultat déclaré terminé
+pour chacun des deux invités et obtiennent 401. Le SDK invité ne publie et ne met
+pas de score en attente.
+
+Il manque encore la détection/résolution de victoire BANG !, un résultat final
+serveur attribué aux participants, le barème et son validateur, puis le branchement
+de publication réservé aux **comptes en ligne**. Le POST générique de scores
+n'est pas encore relié à un résultat BANG ! validé : son futur validateur devra
+vérifier côté serveur la partie, sa fin et le compte participant, sans faire
+confiance à un champ client « local/en ligne ». Les parties locales et sièges
+invités devront rester exclus de ce branchement et de sa file de reprise.
+
+Il n'existe donc pas de parcours de fin de partie/classement BANG ! validé dans
+cette livraison. L'absence d'un POST de score pendant les tours de la démo n'est
+pas utilisée comme preuve de son comportement à la fin. Aucun score final de
+compte BANG ! n'est encore publié non plus.
+
+### Contrôles de cette livraison
+
+| Commande exécutée | Résultat |
+| --- | --- |
+| `npx playwright test --config playwright.lecture.config.ts` avant le code de production | 3 rouges métier décrits ci-dessus. |
+| Même commande après corrections | 3 verts, dont les tirs/reprises des invités (43,4 s avec lancement des serveurs). |
+| `npm run test:e2e:bang` sur le résultat final | **4 tests réussis**, sans retry, en 1,1 min avec les serveurs : comptes, local, mixte et POST de pioche retardé. |
+| `npm test -- src/games/bang` | 205 tests réussis dans 11 fichiers. |
+| `npm run format:check`, `npm run lint`, `npm run typecheck` | Succès. |
+| `npm run test:coverage` | 1 509 tests réussis, 125 fichiers. Lignes 93,84 %, branches 87,75 %, fonctions 91,70 %, instructions 92,63 % ; tous les seuils passent. |
+| `npm run build` | Succès ; avertissement existant sur les gros chunks conservé. |
+| `npm run test:contract` | 11 interactions consommateur réussies, Pact régénéré et versionné. |
+| `npm run db:check`, `npm run rtm:check` | 17 migrations uniques ; traçabilité complète, 24 exigences et 85 cas. |
+| `mvn -B -ntp spotless:apply '-Dtest=fr.tikigaming.games.bang.**,PactProviderTest' test` | 372 réussites : 361 tests BANG ! et 11 interactions fournisseur, aucun ignoré. |
+| `mvn -B -ntp clean verify` dans `backend/` du dépôt principal | **BUILD SUCCESS** : 6 589 tests au total, 6 588 réussis, 1 ignoré ; zéro échec/erreur. Compilation, Checkstyle, Spotless, contrats, tests Docker et seuils JaCoCo passent. |
+
+Contrairement à la validation historique du précédent bilan, le `clean verify`
+de cette livraison réussit directement dans le dépôt principal : aucun journal
+n'y bloque désormais `clean`. Aucun processus existant n'a été arrêté. L'unique
+cas ignoré reste le scénario Échecs filtré `@en-cours`, aucun BANG ! n'est ignoré.
+JaCoCo global : lignes 99,03 %, branches 94,88 %. Le JAR produit ne contient
+aucune classe de fixture `BangBrowser`. Le rapport est aussi conservé sous
+`frontend/node_modules/.cache/bang-61-jacoco.xml`.
+
+Preuves conservées dans `frontend/node_modules/.cache/bang-61-*.log`, notamment
+`three-reds`, `modes-component-red`, `guests-http-unit-red`,
+`guest-session-expired-red`, `front-targeted`, `front-coverage`, `front-build`,
+`contract-consumer`, `backend-targeted`, `clean-verify` et `e2e-final`. Les rouges
+de tir/esquive/acceptation locale sont aussi conservés dans `local-*-red.log`.
+
+`7684a879` vérifie par les vrais boutons qu'un deuxième
+tir local de Bart est refusé dans le même tour, avec ses six cartes conservées et
+sans passage à la cible. Aucun nouveau correctif de règle n'était nécessaire.
+
+Le dernier `git fetch origin --prune` retrouve `origin/dev` à `ece3ce79` et la
+#60 à `05b4dd87`, tous deux ancêtres de la #61. La branche commune locale/distante
+reste à `22a11fc1`. Les commits restent locaux sur `game/bang/61-demo-quatre` :
+aucun push, merge dans `game/bang/implementation` ni clôture d'issue.
