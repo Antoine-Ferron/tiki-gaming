@@ -16,6 +16,7 @@ export default {
     'src/games/sdk.ts',
     'src/lib/validation.ts',
     'src/games/lemur/domain/**/*.ts',
+    'src/games/lemur/application/**/*.ts',
     '!src/**/*.test.ts',
   ],
   coverageAnalysis: 'perTest',
