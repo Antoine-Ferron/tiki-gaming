@@ -103,3 +103,53 @@ Commande : `mvn -f backend/pom.xml -Pintegration -Dit.test=DameApiPersistenceIT
 test-compile failsafe:integration-test failsafe:verify`.
 Le profil et la CI existants découvrent automatiquement ce nouveau fichier `*IT`.
 Résultat ciblé observé : **4 tests verts, aucun échec, erreur ou ignoré**.
+
+## Renforcement après mutation
+
+Le premier passage PIT ciblé sur tout le package API détecte **55/65 mutants
+(84,62 %)**. Cinq cas unitaires supplémentaires vérifient ensuite les sessions
+absentes ou non textuelles, les versions négatives, les statuts incohérents,
+les cases dupliquées et une rencontre supprimée avant le coup gagnant.
+La session et le dépôt ne sont pas modifiés après ces refus.
+
+Les **63 cas API** passent : 30 tests d'orchestration sans Spring et 33 tests
+HTTP avec le vrai filtre CSRF. Les doublures restent au niveau du port
+`MatchRepository` : fake en mémoire avec pannes contrôlées pour les unitaires
+et les tests HTTP ; adaptateur réel pour les quatre IT.
+
+Commande de mutation, depuis `backend/` :
+
+```bash
+mvn -B -ntp -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage \
+  '-DtargetClasses=fr.tikigaming.games.dame.api.*' \
+  '-DtargetTests=fr.tikigaming.games.dame.api.*Test' -Dthreads=2
+```
+
+Le ciblage concerne l'API ajoutée dans cette branche. Le profil, ses mutateurs
+`STRONGER` et son seuil de 75 % restent inchangés. Le rapport HTML est
+`backend/target/pit-reports/index.html` ; le détail vérifiable des mutants est
+`backend/target/pit-reports/mutations.xml`.
+
+Après renforcement : **59/65 mutants tués (90,77 %)**, aucun timeout.
+Les quatre mutants portant sur la session absente, la version négative, le
+statut incohérent et la case dupliquée sont désormais tués.
+
+Les six mutants restants sont conservés dans le score, sans exclusion :
+
+| Emplacement | Résultat | Analyse |
+|---|---|---|
+| `DameApplicationService.metadata` | survivant | La branche `finishedAt` non nul est inaccessible pour une commande sur une partie en cours ; une partie terminée est refusée avant cet appel. |
+| `DameGameView.of` | survivant | Pour un état terminal issu du moteur, le camp au trait n'a déjà aucun coup légal ; retirer le choix explicite de liste vide donne la même réponse. |
+| `DameRequests.unexpectedField` | survivant | Remplacer l'exception par `null` produit une exception lors du `throw` ; le JSON reste refusé avec 400, comme vérifié par les tests HTTP. |
+| `DameJsonTypes`, deux retours | non couverts | Ces retours suivent le rejet Jackson d'un type inattendu. Les tests vérifient les erreurs HTTP ; les instructions de retour ne sont pas atteintes. |
+| `DameApiConfiguration.dameApplicationService` | survivant | Point restant à renforcer dans la sélection PIT : le mutant n'est pas neutralisé, même si les suites Spring et les IT valident le démarrage et l'usage du bean réel. |
+
+## Validation complète du backend
+
+`mvn -B -ntp -Pintegration verify` : **6 479 cas**, aucun échec ou erreur,
+un scénario Échecs ignoré préexistant ; puis **56 IT verts** (52 de persistance,
+4 d'API). Spotless, Checkstyle et les seuils JaCoCo passent.
+Après les cinq nouveaux cas, la suite API ciblée passe à **63 cas verts**.
+Le rapport JaCoCo actualisé mesure **137/141 lignes (97,16 %)** et **35/36
+branches (97,22 %)** sur le package API. Il ne s'agit pas d'une couverture
+globale du projet ni d'un résultat E2E navigateur.

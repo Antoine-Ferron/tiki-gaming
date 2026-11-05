@@ -32,6 +32,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpSession;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /** Invariants de l'orchestration, sans Spring, réseau ou base réelle. */
 class DameApplicationServiceTest {
@@ -144,6 +146,41 @@ class DameApplicationServiceTest {
     }
 
     @Test
+    void missingOrNonTextSessionStateIsRejectedBeforeReadingTheDatabase() {
+        UUID id = new UUID(0, 1);
+        assertApi(() -> service.read(session, id), HttpStatus.NOT_FOUND);
+        session.setAttribute(DameApplicationService.ATTRIBUTE, 42);
+        assertApi(() -> service.read(session, id), HttpStatus.NOT_FOUND);
+        assertThat(repository.reads).isZero();
+        assertThat(repository.writes).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"negative-version", "inconsistent-status", "duplicate-square"})
+    void aDamagedSnapshotIsRefusedWithoutTouchingTheDatabase(String damage) {
+        DameGameView initial = start();
+        ObjectNode snapshot = JSON.valueToTree(initial);
+        switch (damage) {
+            case "negative-version" -> snapshot.put("version", -1);
+            case "inconsistent-status" -> snapshot.put("status", "WHITE_WON");
+            case "duplicate-square" -> {
+                ArrayNode pieces = (ArrayNode) snapshot.path("board").path("pieces");
+                pieces.add(pieces.get(0).deepCopy());
+            }
+            default -> throw new AssertionError("Cas de test inconnu : " + damage);
+        }
+        String corrupted = JSON.writeValueAsString(snapshot);
+        session.setAttribute(DameApplicationService.ATTRIBUTE, corrupted);
+
+        assertApi(() -> service.read(session, initial.id()), HttpStatus.NOT_FOUND);
+        assertApi(() -> service.play(session, initial.id(), 0, ordinaryMove()), HttpStatus.NOT_FOUND);
+        assertThat(session.getAttribute(DameApplicationService.ATTRIBUTE)).isEqualTo(corrupted);
+        assertThat(repository.reads).isZero();
+        assertThat(repository.writes).isEqualTo(1);
+        assertThat(repository.rows.get(initial.id()).status()).isEqualTo(GameStatus.IN_PROGRESS);
+    }
+
+    @Test
     void anOrdinaryMoveAdvancesTheServerStateButDoesNotWriteAnUnfinishedResult() {
         DameGameView initial = start();
 
@@ -235,6 +272,17 @@ class DameApplicationServiceTest {
         assertThat(service.play(session, before.id(), 7, winningMove(Player.WHITE))
                         .winner())
                 .isEqualTo(Player.WHITE);
+    }
+
+    @Test
+    void aMissingPersistedMatchCannotCommitTheWinningMove() {
+        DameGameView before = beforeVictory(Player.WHITE);
+        repository.rows.remove(before.id());
+
+        assertApi(() -> service.play(session, before.id(), 7, winningMove(Player.WHITE)), HttpStatus.NOT_FOUND);
+        assertThat(service.read(session, before.id())).isEqualTo(before);
+        assertThat(repository.rows).isEmpty();
+        assertThat(repository.writes).isEqualTo(1);
     }
 
     @Test
