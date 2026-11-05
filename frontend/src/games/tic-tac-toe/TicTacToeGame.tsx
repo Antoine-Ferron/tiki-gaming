@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { GameProps } from '../types'
 import { TicTacToeGame as TicTacToeDomain } from './domain/game'
+import './tic-tac-toe.css'
 
 const statusMessage = {
   IN_PROGRESS: null,
