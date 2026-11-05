@@ -3,7 +3,7 @@ import { GameScreen } from './GameScreen'
 import { BangBoard } from './board/BangBoard'
 import { deal, discard, draw, endTurn, fire, respond, viewOf, type LocalGame } from './local'
 
-/** Partie à quatre sur le même écran, sans compte : l'écran montre la main du joueur dont c'est le tour. */
+/** Partie à quatre sur le même écran : chaque changement de joueur masque les informations privées. */
 export function LocalTable() {
   const [game, setGame] = useState<LocalGame>(() => deal())
   const currentGame = useRef(game)

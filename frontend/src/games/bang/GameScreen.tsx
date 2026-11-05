@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { BangBoard } from './board/BangBoard'
 import { turnHint, type GameView } from './board/view'
 
@@ -20,22 +19,14 @@ export function GameScreen({
   onDodge?: (cardId: string) => void
   onAccept?: () => void
 }) {
-  // Le prototype local ne dispose pas encore des règles de tir du serveur.
-  const [shotNotice, setShotNotice] = useState(false)
-
   return (
     <>
       <p className="bang-turn" role="status">
         {turnHint(view)}
       </p>
-      {shotNotice && (
-        <p className="muted" role="note">
-          Le tir n'est pas encore disponible.
-        </p>
-      )}
       <BangBoard
         view={view}
-        onShoot={onShoot ?? (() => setShotNotice(true))}
+        onShoot={onShoot}
         onDiscard={onDiscard}
         onDraw={onDraw}
         onEnd={onEnd}

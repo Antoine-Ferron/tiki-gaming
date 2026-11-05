@@ -20,6 +20,7 @@
     "vitest.integration.config.ts",
     "playwright.config.ts",
     "playwright.bang-real.config.ts",
+    "playwright.lecture.config.ts",
     "vite.bang-e2e.config.ts",
     "e2e-real",
     "security-headers.ts",

@@ -2,8 +2,8 @@ import { CHARACTERS, canUseAs, type Character } from './cards/characters'
 import type { GameView, Phase, ViewCard } from './board/view'
 
 /**
- * Partie locale à quatre sur le même écran, sans serveur. Reprend la donne et les tours du serveur
- * (docs/games/bang/deroulement-tours.md) : à retirer quand le jeu en ligne sera la seule voie.
+ * Partie locale à quatre sur le même écran, sans serveur ni publication de score.
+ * Reprend la donne, les tours et les contrats de tir du serveur.
  */
 export interface LocalPlayer {
   seat: number
