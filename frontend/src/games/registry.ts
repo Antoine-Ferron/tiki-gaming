@@ -1,6 +1,7 @@
 import type { GameDefinition } from './types'
 import bang from './bang'
 import clicker from './clicker'
+import batailleNavale from './bataille-navale'
 import echecs from './echecs'
 import mastermind from './mastermind'
 import rushHour from './rush-hour'
@@ -16,6 +17,7 @@ import miniGta from './mini-gta'
  */
 export const games: GameDefinition[] = [
   clicker,
+  batailleNavale,
   rushHour,
   sdvCivilisation,
   mastermind,
