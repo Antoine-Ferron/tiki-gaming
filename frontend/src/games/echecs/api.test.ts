@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { destinations } from './api'
+import { destinations, play } from './api'
 
 vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }))
 
@@ -31,5 +31,16 @@ describe('client API des échecs', () => {
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('/api/games/echecs/destinations')
     expect(init).toMatchObject({ method: 'POST', body: JSON.stringify({ fen: START, from: 'e2' }) })
+  })
+
+  test('play : POST /api/games/echecs/moves avec le coup, renvoie la nouvelle FEN', async () => {
+    const after = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
+    fetchMock.mockResolvedValue(json(200, { fen: after }))
+
+    await expect(play(START, 'e2', 'e4')).resolves.toBe(after)
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('/api/games/echecs/moves')
+    expect(init).toMatchObject({ method: 'POST', body: JSON.stringify({ fen: START, from: 'e2', to: 'e4' }) })
   })
 })
