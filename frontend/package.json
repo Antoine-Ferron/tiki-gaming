@@ -21,6 +21,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:contract": "vitest run --config vitest.contract.config.ts",
     "test:e2e": "playwright test",
+    "test:e2e:bang": "playwright test --config playwright.bang-real.config.ts",
     "quality:seed": "node scripts/seed-quality.mjs",
     "test:coverage": "vitest run --coverage"
   },
