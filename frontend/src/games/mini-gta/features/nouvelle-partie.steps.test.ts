@@ -54,6 +54,9 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
       expect(save.inventory).toBeNull()
       expect(createInventory().current).toBe('fists')
     })
+    And('il ne possède aucune autre arme', () => {
+      expect(createInventory().weapons.map((w) => w.id)).toEqual(['fists'])
+    })
     And("aucune mission n'est terminée", () => {
       expect(save.completedMissions).toEqual([])
     })
