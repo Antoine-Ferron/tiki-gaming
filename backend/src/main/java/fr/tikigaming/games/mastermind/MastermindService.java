@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.random.RandomGenerator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,6 +21,7 @@ public class MastermindService {
     private final RandomGenerator random = RandomGenerator.getDefault();
     private final Clock clock;
 
+    @Autowired
     public MastermindService() {
         this(Clock.systemUTC());
     }
