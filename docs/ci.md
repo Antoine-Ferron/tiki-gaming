@@ -20,9 +20,9 @@ flowchart LR
     IT --> MF["Mutation Stryker"]
     IT --> MB["Mutation Pitest"]
     IT --> E2E["E2E"]
-    MF & MB & E2E --> PERF["Performance k6"]
-    MF & MB & E2E --> DAST["DAST ZAP"]
-    MF & MB & E2E --> SQ["SonarQube"]
+    IT --> PERF["Performance k6"]
+    IT --> DAST["DAST ZAP"]
+    MF & MB & E2E & PERF & DAST --> SQ["SonarQube"]
     SEC & RTM & PERF & DAST & SQ --> V["CI (verdict)"]
     V --> GATE{{"Checks obligatoires<br/>+ 1 relecture"}}
     GATE --> MERGE["Fusion<br/>(squash)"]
@@ -36,8 +36,8 @@ minutes de mutation ou de tests de charge sur du code qui ne passe pas le lint.
 |--------|------|-----------------|
 | 1. Statique et unitaires | `Frontend`, `Backend` (et `Traçabilité (RTM)`, `Security`, `CodeQL` en parallèle, toujours) | le code est formaté, typé ; tests unitaires, propriétés, contrat Pact et chaos passent avec la couverture minimale ; chaque exigence est tracée |
 | 2. Intégration | `Integration` | les migrations, la RLS et les triggers marchent sur un vrai PostgreSQL |
-| 3. Robustesse des tests et parcours | `Mutation (Stryker)`, `Mutation (Pitest)`, `E2E` | les tests détectent vraiment les bugs ; les parcours joueur et l'accessibilité tiennent |
-| 4. Non fonctionnel et quality gate | `Performance (k6)`, `DAST (ZAP baseline)`, `SonarQube Cloud` | performance, sécurité dynamique et qualimétrie |
+| 3. Tests dynamiques | `Mutation (Stryker)`, `Mutation (Pitest)`, `E2E`, `Performance (k6)`, `DAST (ZAP baseline)` | les tests détectent vraiment les bugs ; les parcours joueur et l'accessibilité tiennent ; performance et sécurité dynamique |
+| 4. Quality gate | `SonarQube Cloud` | qualimétrie, sur la couverture produite au palier 1 |
 | 5. Verdict | `CI (verdict)` | échoue si un seul job a échoué |
 
 Dans un job, les étapes s'arrêtent aussi au premier échec, de la plus rapide à la plus lente : format → lint →
@@ -103,6 +103,25 @@ ne tourne que si l'une de ses zones a changé :
 
 Exemple : une PR qui ne touche que `docs/` ne lance que `Changes`, `Security` et `CodeQL`.
 
+### Analyse d'impact : seuls les tests des jeux touchés
+
+`Changes` regarde aussi **quels jeux** une PR touche (sortie `games`). Si **tous** les fichiers modifiés sont dans
+les dossiers d'un ou plusieurs jeux, les tests unitaires ne rejouent que ce qui les concerne :
+
+| Fichiers d'un jeu `<slug>` | Ce qui tourne |
+|----------------------------|---------------|
+| `frontend/src/games/<slug>/**`, `frontend/public/games/<slug>/**` | `Frontend` : `vitest --changed`, c'est-à-dire les tests qui importent un fichier modifié, même indirectement (registre, lobby compris) |
+| `backend/src/{main,test}/java/fr/tikigaming/games/<slug>/**`, `backend/src/test/resources/features/<slug>/**` | `Backend` : les tests du jeu, plus ceux du socle qui chargent tous les jeux (`config` : OpenAPI, sécurité ; `contract` : Pact provider) |
+| `docs/**` | rien de plus |
+
+- Le moindre autre fichier (socle, `registry.ts`, `src/games/{adapters,domain,testing}`, lockfile, `pom.xml`,
+  migrations, CI…) fait tout tourner : on ne devine pas l'impact d'un changement partagé.
+- La couverture d'un run partiel n'a pas de sens au global : les **seuils** (Vitest, JaCoCo) ne bloquent pas sur ces
+  PR. Le Quality Gate SonarQube, lui, porte toujours sur le nouveau code.
+- **Filet de sécurité** : chaque push sur `dev` et `main` et le run de nuit rejouent tous les tests avec les seuils.
+  Un jeu qui en casserait un autre est vu au plus tard à la fusion.
+- La mutation (Stryker, Pitest) est déjà incrémentale : elle ne rejoue que les mutants touchés.
+
 ## 3. Installation et caches
 
 Chaque job part d'une machine vide, puis :
@@ -117,7 +136,8 @@ Pour ne pas refaire le même travail à chaque run, plusieurs caches sont réuti
 |-------|------------------|
 | npm, Maven | retélécharger les dépendances |
 | Prettier, ESLint | revérifier les fichiers dont le **contenu** n'a pas changé |
-| Navigateurs Playwright | les retélécharger tant que la version ne change pas |
+| Navigateurs Playwright | les retélécharger tant que la version de Playwright (pas tout le lockfile) ne change pas |
+| Couverture (artefacts `couverture-frontend`, `couverture-backend`) | rejouer les tests dans `SonarQube Cloud` |
 | Stryker, Pitest | sur une PR, rejouer les mutants que le changement ne concerne pas |
 
 Les caches ne changent jamais le résultat d'un check : ils accélèrent, ils n'assouplissent rien (détails dans
@@ -334,7 +354,9 @@ apparaissent sur la PR et dans l'onglet **Security → Code scanning** du dépô
 
 Si le secret `SONAR_TOKEN` est configuré dans le dépôt, le job :
 
-1. régénère la couverture du front (lcov) et du backend (JaCoCo) ;
+1. récupère la couverture du front (lcov) et du backend (JaCoCo + classes compilées) produite au palier 1 par
+   `Frontend` et `Backend`, sans rejouer les tests ; si l'un des deux a été sauté (zone inchangée), il recalcule
+   la couverture de cette zone ;
 2. envoie le code et la couverture à **SonarQube Cloud** ;
 3. attend le **Quality Gate** (*Sonar way*) sur le nouveau code : 0 nouveau problème, couverture ≥ 80 %,
    duplication ≤ 3 %.
