@@ -3,6 +3,8 @@
 Jeu solo de sudoku 9×9, jouable sans compte. Une partie a trois niveaux de difficulté, un chrono, un
 compteur d'erreurs et un score envoyé au classement.
 
+**Auteur** : Hector Priser ([@HectorPRISER](https://github.com/HectorPRISER), hector.priser@additi.fr)
+
 Le jeu a deux morceaux :
 
 | Partie   | Rôle                                                        | Où                                          |
@@ -244,6 +246,40 @@ partie perdue, nouvelle partie), `logic.test.ts` le format du temps, et `mistake
 
 Dans l'historique, la règle « valeur vide = manquante » est faite en cycle TDD : un commit `test`
 (rouge), un commit `fix` (vert), un commit `refactor`.
+
+### Doublures de test (stub, mock, fake, spy, dummy)
+
+Une doublure remplace une dépendance réelle (horloge, base, réseau) pour rendre un test rapide, déterministe et isolé. Les cinq types se distinguent par ce qu'ils font et par ce que le test vérifie.
+
+| Type | Définition | Dans le Sudoku | Fichier | Utilisé par | Ce que le test vérifie |
+|------|------------|----------------|---------|-------------|------------------------|
+| **Stub** | Renvoie des réponses figées, ne vérifie pas les appels | `StubCurrencyConverter` : taux de change fixe, refuse toute autre paire de devises | `backend/src/test/.../sudoku/StubCurrencyConverter.java` | `RewardServiceTest`, `RewardAuditMockTest` | Le montant converti. Il lève une exception si le code demande une mauvaise conversion |
+| **Stub** (horloge) | Heure figée, avancée à la main | `FixedClock` | `backend/src/test/.../sudoku/FixedClock.java` | `GameTimerTest`, `GameStoreTest`, `SudokuControllerTest`, `ClockTest`, `RewardServiceTest`, `RewardAuditMockTest` | Le chrono et l'expiration, sans jamais lire l'heure réelle ni attendre |
+| **Fake** | Vraie implémentation simplifiée, qui fonctionne | `InMemoryLedger` : registre en RAM (liste), même contrat `Ledger` que la production | `backend/src/test/.../sudoku/InMemoryLedger.java` | `RewardServiceTest`, `RewardAuditMockTest` | Le solde et les écritures, sans base de données |
+| **Fake** (front) | Ports du SDK en mémoire | `FakeScores` (avec `failNext` pour simuler une panne), `fakeDeps()` | `frontend/src/games/testing/fakes.ts` | `SudokuGame.test.tsx` | L'envoi du score, y compris les pannes et les reprises |
+| **Fake** (E2E) | Faux serveur à état | Serveur `/api/games/sudoku` simulé : grille de 3 cases vides, erreurs comptées, 409 à la 4e erreur | `frontend/e2e/sudokuServer.ts` | `sudoku.spec.ts` | Le parcours complet dans un vrai navigateur, sans backend |
+| **Spy** | Enregistre ce qu'il reçoit pour que le test le relise | `RecordingAuditNotifier` : garde les événements d'audit dans l'ordre | `backend/src/test/.../sudoku/RecordingAuditNotifier.java` | `AuditNotifierTest`, `RewardServiceTest` | Quels événements ont été émis, et dans quel ordre |
+| **Mock** | Objet programmé avec des attentes, qui vérifie les appels | `mock(AuditNotifier.class)` (Mockito) avec `verify`, `times`, `never` | `RewardAuditMockTest.java` | lui-même | Le nombre d'appels : `CRITICAL_THRESHOLD_CROSSED` émis une seule fois, jamais sous le seuil |
+| **Mock** (front) | Fonctions espionnes de Vitest | `vi.mock('@/lib/api')` : `apiGet` et `apiPost` en `vi.fn()` | `SudokuGame.test.tsx` | lui-même | Les appels au serveur, avec `mockRejectedValue` pour les erreurs (injoignable, partie expirée) |
+| **Fake** (temps, front) | Horloge simulée | `vi.useFakeTimers()` | `SudokuGame.test.tsx` | lui-même | Le chrono affiché, sans attendre |
+| **Dummy** | Valeur passée pour remplir un paramètre, jamais utilisée | Aucune doublure dédiée. Les `null` des tests d'entrée invalide ne sont pas des dummies : le test vérifie justement leur rejet | n/a | n/a | n/a |
+
+Description de chaque doublure du Sudoku :
+
+- **`StubCurrencyConverter`** : implémente `CurrencyConverter` avec un taux passé au constructeur. Il arrondit à 2 décimales et lève `IllegalStateException` si le code demande une autre paire de devises. Le test de `RewardService` n'appelle donc jamais un vrai service de change et vérifie en même temps que la bonne conversion est demandée.
+- **`FixedClock`** : implémente l'interface `Clock` du Sudoku avec une heure fixe, avancée par `advance(Duration)`. Elle sert à tester le chrono (`GameTimer`), l'expiration des parties (TTL de 2 h) et le temps écoulé envoyé au calcul du score, sans `Thread.sleep`.
+- **`InMemoryLedger`** : implémente `Ledger` avec une liste. `record`, `entriesOf` et `balanceOf` se comportent comme en production, mais en mémoire. Elle permet de tester les récompenses en pièces (soldes, écritures par joueur) sans base de données.
+- **`FakeScores` et `fakeDeps()`** : ports du SDK front (scores, sauvegardes, stockage, temps réel) gardés en mémoire. `FakeScores.failNext(erreur, n)` fait échouer les n prochains envois, ce qui teste la file de scores et les nouvelles tentatives.
+- **Faux serveur E2E (`sudokuServer.ts`)** : intercepte `/api/games/sudoku/**` dans Playwright. Il garde un état (grille, erreurs, partie perdue) et répond comme le vrai backend, y compris le `409` à la 4e erreur. Le navigateur est réel, le serveur ne l'est pas.
+- **`RecordingAuditNotifier`** : implémente `AuditNotifier` et garde chaque `AuditEvent` reçu dans une liste, relue par le test avec `events()`. Il vérifie le contenu et l'ordre des événements d'audit, pas seulement leur nombre.
+- **`mock(AuditNotifier.class)`** : mock Mockito dans `RewardAuditMockTest`. Il vérifie le *comportement* : l'événement `CRITICAL_THRESHOLD_CROSSED` est envoyé une seule fois quand le seuil est franchi, et jamais en dessous (`times(1)`, `never()`).
+- **`vi.mock('@/lib/api')`** : remplace `apiGet` et `apiPost` par des fonctions Vitest. `mockImplementation` simule le serveur nominal, `mockRejectedValue` simule une panne (serveur injoignable, partie inconnue ou expirée).
+- **`vi.useFakeTimers()`** : fige les minuteries du navigateur de test. Le chrono se fait avancer à la main au lieu d'attendre des secondes réelles.
+
+Les doublures se choisissent selon la question posée :
+- **Stub ou fake** pour tester un *résultat* : le test lit une valeur ou un état.
+- **Spy ou mock** pour tester un *comportement* : le test vérifie qu'un appel a bien eu lieu. Le mock est le plus fragile, parce qu'il lie le test à la façon dont le code appelle sa dépendance.
+- **Rien du tout** pour les tests d'intégration : ils utilisent une vraie base PostgreSQL (Testcontainers), car aucune doublure ne vérifie les contraintes SQL, les transactions ni la concurrence.
 
 ### Tests d'intégration (Testcontainers)
 
