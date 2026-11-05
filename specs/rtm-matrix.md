@@ -18,6 +18,9 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 [cahier-de-recette.md](cahier-de-recette.md), et le cycle de vie des anomalies dans
 [CONTRIBUTING.md](../CONTRIBUTING.md#anomalies).
 
+Les cas BANG! ajoutés ici portent la mention **recette simulée locale** : leur `PASSED` décrit le rejeu local
+documenté en fin de matrice. Les nouveaux jobs GitHub ne sont pas encore constatés, la branche restant non publiée.
+
 ## Exigences
 
 | Exigence | Besoin | Source |
@@ -37,6 +40,9 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-RES-01 | Une panne de Supabase est abandonnée au timeout puis coupée par un disjoncteur, et le service revient seul | SLO, résilience (docs/slo.md) |
 | REQ-SEC-01 | Les requêtes qui modifient des données exigent le jeton CSRF ; le front envoie les en-têtes de sécurité (CSP…) | OWASP |
 | REQ-API-01 | Le backend respecte le contrat d'API attendu par le front (forme des requêtes et réponses) | Intégration front/back |
+| REQ-BANG-01 | Recette simulée à deux comptes et deux invités isolés : jonction par code, secrets privés, tir et réponse, reprise du siège, passage de main sans score invité | BANG! #54, #56, #59, #60, #61 — Antoine |
+| REQ-BANG-02 | Le même tour déterministe local et serveur conserve le même siège actif, la même phase et les mêmes cartes à chaque étape | BANG! #55, #57 — Antoine |
+| REQ-BANG-03 | Dix tables distinctes jouent leurs commandes et leurs quarante sessions lisent leur vue toutes les deux secondes ; P95 < 300 ms, P99 < 500 ms, erreurs < 1 % | BANG! #61 — charge simulée locale |
 | REQ-MM-01 | Le feedback compte correctement les couleurs exactes et mal placées, y compris les répétitions | Règles du Mastermind |
 | REQ-MM-02 | Une partie gagne, perd après dix essais, puis révèle le secret uniquement à la fin | Règles du Mastermind |
 | REQ-MM-03 | Une partie expirée est supprimée et une partie redémarrée repart sans historique | Robustesse du jeu |
@@ -262,6 +268,15 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-GTA-48 | REQ-GTA-08 | erreur | unitaire (doublure Fake) | `frontend/src/games/mini-gta/game/testing/fakeApi.test.ts` › fakeApi : mêmes règles de mission que le serveur | PASSED | BUG-12 |
 | TC-GTA-49 | REQ-GTA-02 | nominal | unitaire | `frontend/src/games/mini-gta/systems/weapons.test.ts` › starts with fists only, as a new game (R2) | PASSED | BUG-09 |
 
+| TC-BANG-01 | REQ-BANG-01 | nominal | E2E Chromium — recette simulée locale | `frontend/e2e-real/review.probe.spec.ts` › deux invités rejoignent, tirent et reprennent leurs sièges auprès de deux comptes | PASSED | — |
+| TC-BANG-02 | REQ-BANG-01 | erreur | E2E Chromium — recette simulée locale | `frontend/e2e-real/bang.spec.ts` › du catalogue au tour suivant à quatre : esquive, reconnexion, acceptation et vues privées | PASSED | — |
+| TC-BANG-03 | REQ-BANG-02 | nominal | E2E Chromium — recette simulée locale | `frontend/e2e-real/review.probe.spec.ts` › sur un écran, le BANG! atteint un voisin à portée | PASSED | — |
+| TC-BANG-04 | REQ-BANG-02 | erreur | unitaire service — recette simulée locale | `backend/src/test/java/fr/tikigaming/games/bang/engine/GameTurnServiceTest.java` › aRepeatedEndTurnIsRefusedUntilTheExcessCardHasBeenDiscarded | PASSED | — |
+| TC-BANG-05 | REQ-BANG-03 | nominal | k6 nominal — recette simulée locale | `quality/k6/bang.js` › export default function (tables) | PASSED | — |
+| TC-BANG-06 | REQ-BANG-03 | erreur | frontière HTTP doublée — recette simulée locale | `quality/k6/bang-session.test.mjs` › un démarrage refusé fait échouer la charge au lieu de compter une table prête | PASSED | — |
+| TC-BANG-07 | REQ-BANG-03 | erreur | frontière HTTP doublée — recette simulée locale | `quality/k6/bang-session.test.mjs` › une commande refusée arrête la séquence et ne peut pas compter comme jouée | PASSED | — |
+| TC-BANG-08 | REQ-BANG-03 | erreur | frontière HTTP doublée — recette simulée locale | `quality/k6/bang-session.test.mjs` › un HTTP 204 ne suffit pas si le serveur conserve les cartes défaussées | PASSED | — |
+
 ## Anomalies
 
 Titre au format `[Module][Action] observé au lieu de attendu`. Sévérité : S0 bloquante → S3 cosmétique ; priorité :
@@ -282,3 +297,15 @@ P0 immédiate → P3 basse (matrice dans [CONTRIBUTING.md](../CONTRIBUTING.md#an
 | BUG-11 | [MiniGTA][Trafic en pente] une voiture du trafic sur une route en pente part en position NaN au lieu de suivre la route (copie d'un Quaternion par décomposition) | S1 | P1 | Closed | 981e04d1, test rouge 25444da6, trouvé en isolant les tests de simulation |
 | BUG-12 | [MiniGTA][Mission réussie] le serveur renvoie plus de 1 000 000 $ de gains cumulés au lieu de s'arrêter au plafond du score (R8) | S2 | P2 | Closed | 1ceeb6a6, tests rouges ecca4a81 (BDD) et 526470f6 (unitaire) |
 | BUG-13 | [MiniGTA][Mission réussie] un solde proche de Integer.MAX_VALUE déborde en négatif au lieu de rester positif (R7) | S2 | P2 | Closed | 58819f54, test rouge a0c2470f (propriété) |
+
+## Recette simulée BANG! — preuve locale
+
+Ces observations sont une recette simulée automatisée. Aucune validation humaine ni exécution des nouveaux
+jobs GitHub n'est revendiquée. Les fiches complètes figurent dans le [cahier de recette](cahier-de-recette.md).
+
+| Cas | Attendu | Observé localement | SHA testé | Trace / rapport |
+| --- | --- | --- | --- | --- |
+| TC-BANG-01, TC-BANG-02 | Deux comptes et deux invités isolés, secrets non divulgués, tir/réponse, reprise, absence de score invité et passage de main | 9/9 E2E verts ensemble, aucun retry ; quatre sessions distinctes, aucune main ou rôle secret adverse, aucun score invité, siège 1 en DRAW au terme du parcours mixte | `f54a600` | `frontend/reports/bang-e2e/results/review.probe-deux-invités--df334-èges-auprès-de-deux-comptes-chromium/trace.zip` ; `frontend/reports/bang-e2e/results.json` |
+| TC-BANG-03, TC-BANG-04 | Même phase, siège et identifiants/types des cartes pendant les six étapes du tour ; renvoi avant défausse refusé | Douze observations local/serveur concordantes jointes au test ; contrôle du service rejoué séparément | `f54a600` | `frontend/reports/bang-e2e/results/review.probe-sur-un-écran-le-BANG-atteint-un-voisin-à-portée-chromium/trace.zip` ; `quality/reports/bang/recette-charge/backend-bang.log` |
+| TC-BANG-05 | Dix tables, quarante sessions, environ 20 lectures/s et commandes valides, P95 < 300 ms, P99 < 500 ms, erreurs < 1 % | 10/10 tables ; 600 lectures, 19,72/s, P95 3,11 ms, P99 5,45 ms, 0 % ; 50 commandes, 1,64/s, P95 3,27 ms, P99 3,43 ms, 0 % | `d788c51` | `quality/reports/bang/k6-load.json` |
+| TC-BANG-06 à TC-BANG-08 | Une table non démarrée, une commande refusée ou un effet incorrect font échouer la charge | Six tests Node verts, dont les trois gardes ; les premiers rouges sont conservés | `d788c51` | `quality/reports/bang/recette-charge/k6-tests-final.log` et journaux `k6-*-red.log` |

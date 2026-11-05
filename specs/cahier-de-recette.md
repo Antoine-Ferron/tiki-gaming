@@ -235,3 +235,53 @@ date et ses initiales.
 | Décision | ☐ Acceptée · ☐ Acceptée avec réserves (lister) · ☐ Refusée |
 | Recetteur | nom, date, signature |
 | Responsable produit | nom, date, signature |
+
+## Recette simulée BANG! — exécution automatisée locale
+
+Cette section est une **recette simulée**, exécutée par Playwright/Chromium et k6 contre Spring local.
+Elle ne remplit pas les signatures du procès-verbal précédent et ne constitue pas une validation humaine.
+Les comptes et données sont factices ; le fournisseur d'identité est simulé, les sessions et le CSRF sont réels.
+Les nouveaux jobs CI sont préparés mais n'ont pas encore tourné sur GitHub, la branche restant non publiée.
+
+### TC-SIM-BANG-01 · Deux comptes et deux invités à la même table
+
+| Rubrique | Contenu |
+| --- | --- |
+| Exigence liée | REQ-BANG-01 ; #54, #56, #59, #60, #61 |
+| Nature | Recette simulée locale, quatre contextes Chromium isolés |
+| Préconditions | Serveur `BangBrowserApplication`, deux connexions par formulaire, deux invités |
+| Étapes | Créer une table, rejoindre par code, démarrer, observer les quatre vues privées, jouer et répondre aux tirs, actualiser les invités, terminer le dernier tour |
+| Attendu | Quatre sessions distinctes ; mains et rôles cachés non divulgués ; même siège/main/tir après actualisation ; aucune émission de score invité ; passage du siège 4 au siège 1 en DRAW après la réponse au dernier tir |
+| Observé | PASSED local : quatre sessions distinctes, JSON privés conformes, sièges/mains/tir retrouvés, aucun POST de score invité, siège 1 en DRAW après le dernier passage de main ; neuf E2E verts ensemble, zéro retry |
+| SHA testé | `f54a600becd8eebb29e810c596de452bdaf6c4d4` |
+| Trace | `frontend/reports/bang-e2e/results/review.probe-deux-invités--df334-èges-auprès-de-deux-comptes-chromium/trace.zip` |
+| Statut | PASSED — recette simulée, aucune signature humaine |
+
+### TC-SIM-BANG-02 · Même tour local et en ligne
+
+| Rubrique | Contenu |
+| --- | --- |
+| Exigence liée | REQ-BANG-02 ; #55, #57 |
+| Nature | Recette simulée ; même parcours dans `local.ts` et les endpoints Spring |
+| Étapes | Donne déterministe, piocher, finir le jeu, défausser deux cartes, passer la main |
+| Attendu | Siège 1 en DRAW/5 cartes puis PLAY/7, DISCARD/7, DISCARD/6, DISCARD/5 et enfin siège 2 en DRAW ; main du siège 2 inchangée à quatre cartes ; mêmes identifiants/types de cartes entre les moteurs à chaque étape |
+| Observé | PASSED : les deux vues correspondent à chacune des six étapes, cartes comprises ; douze observations dans l'attachement JSON `meme-tour-local-en-ligne` du rapport |
+| SHA testé | `f54a600becd8eebb29e810c596de452bdaf6c4d4` |
+| Trace | `frontend/reports/bang-e2e/results/review.probe-sur-un-écran-le-BANG-atteint-un-voisin-à-portée-chromium/trace.zip` |
+| Statut | PASSED — recette simulée |
+
+### TC-SIM-BANG-03 · Charge nominale à dix tables
+
+| Rubrique | Contenu |
+| --- | --- |
+| Exigence liée | REQ-BANG-03 ; #61 |
+| Nature | Charge simulée locale k6, quarante sessions invitées et vrais cookies/CSRF |
+| Attendu | Dix tables distinctes démarrées et jouées ; environ 20 lectures/s ; cinq commandes par table et effet vérifié ; P95 < 300 ms, P99 < 500 ms, erreurs < 1 % pour lectures et commandes séparées |
+| Observé | 10/10 tables démarrées et jouées ; 600 lectures à 19,72/s, P95 3,11 ms, P99 5,45 ms, erreurs 0 % ; 50 commandes à 1,64/s, P95 3,27 ms, P99 3,43 ms, erreurs 0 % |
+| SHA testé | `d788c51` ; le commit suivant modifie uniquement le workflow CI |
+| Trace de mesure | `quality/reports/bang/k6-load.json` et `quality/reports/bang/recette-charge/k6-load.log` |
+| Statut | PASSED — recette simulée locale, 30 secondes de charge |
+
+La [matrice RTM](rtm-matrix.md) relie ces fiches aux preuves et aux cas de refus. Le
+[bilan BANG!](../docs/games/bang/recette-simulee-charge.md) donne les commandes reproductibles,
+les limites, les traces rouges/vertes et la distinction entre les résultats locaux et GitHub.
