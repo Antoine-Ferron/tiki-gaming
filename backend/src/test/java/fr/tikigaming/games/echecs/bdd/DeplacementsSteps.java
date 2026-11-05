@@ -3,7 +3,7 @@ package fr.tikigaming.games.echecs.bdd;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import fr.tikigaming.games.echecs.engine.Fen;
-import fr.tikigaming.games.echecs.engine.MoveGenerator;
+import fr.tikigaming.games.echecs.engine.Game;
 import fr.tikigaming.games.echecs.engine.Position;
 import fr.tikigaming.games.echecs.engine.Square;
 import io.cucumber.java.en.Given;
@@ -29,7 +29,7 @@ public class DeplacementsSteps {
 
     @When("je regarde les cases accessibles depuis {string}")
     public void jeRegardeLesCasesAccessiblesDepuis(String square) {
-        destinations = MoveGenerator.destinations(position, Square.of(square));
+        destinations = Game.legalDestinations(position, Square.of(square));
     }
 
     @Then("les cases accessibles sont {string}")
