@@ -41,7 +41,7 @@ test('la partie commence sur la position de départ : chaque case annonce sa pi�
   render(<EchecsGame />)
 
   // Assert : nom accessible pour un lecteur d'écran, symbole visible pour les autres
-  expect(screen.getByRole('button', { name: 'e1, roi blanc' })).toHaveTextContent('♔')
+  expect(screen.getByRole('button', { name: 'e1, roi blanc' })).toHaveTextContent('♚')
   expect(screen.getByRole('button', { name: 'd8, dame noire' })).toHaveTextContent('♛')
   expect(screen.getByRole('button', { name: 'e2, pion blanc' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'e4, case vide' })).toHaveTextContent('')
@@ -76,7 +76,7 @@ test('cliquer une case mise en évidence joue le coup et affiche la position ren
 
   // Assert : le coup envoyé (mock), la nouvelle position affichée, plus de sélection
   expect(play).toHaveBeenCalledWith(START_FEN, 'e2', 'e4')
-  expect(await screen.findByRole('button', { name: 'e4, pion blanc' })).toHaveTextContent('♙')
+  expect(await screen.findByRole('button', { name: 'e4, pion blanc' })).toHaveTextContent('♟')
   expect(screen.getByRole('button', { name: 'e2, case vide' })).toHaveAttribute('aria-pressed', 'false')
   expect(screen.getByRole('button', { name: 'e3, case vide' })).not.toHaveClass('echecs-square-target')
 })
@@ -114,9 +114,9 @@ test('le trait est annoncé : aux Blancs au départ, aux Noirs après un coup bl
 test('chaque type de pièce a son nom accessible (cavalier, fou, tour)', () => {
   render(<EchecsGame />)
 
-  expect(screen.getByRole('button', { name: 'b1, cavalier blanc' })).toHaveTextContent('♘')
+  expect(screen.getByRole('button', { name: 'b1, cavalier blanc' })).toHaveTextContent('♞')
   expect(screen.getByRole('button', { name: 'c8, fou noir' })).toHaveTextContent('♝')
-  expect(screen.getByRole('button', { name: 'h1, tour blanche' })).toHaveTextContent('♖')
+  expect(screen.getByRole('button', { name: 'h1, tour blanche' })).toHaveTextContent('♜')
 })
 
 test('cliquer une case vide sans pièce choisie ne sollicite pas le serveur', async () => {
@@ -156,4 +156,17 @@ test('le message d’erreur disparaît dès que le joueur réessaie', async () =
 
   // Assert
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+test('les pièces sont colorées selon leur camp : blanches en blanc, noires en noir', () => {
+  // Arrange + Act
+  render(<EchecsGame />)
+
+  // Assert : même symbole plein pour les deux camps, la couleur vient de la classe
+  const whiteKing = within(screen.getByRole('button', { name: 'e1, roi blanc' })).getByText('♚')
+  const blackKing = within(screen.getByRole('button', { name: 'e8, roi noir' })).getByText('♚')
+  expect(whiteKing).toHaveClass('echecs-piece-white')
+  expect(blackKing).toHaveClass('echecs-piece-black')
+  // décoratif : le nom de la case est déjà lu par le lecteur d'écran
+  expect(whiteKing).toHaveAttribute('aria-hidden', 'true')
 })
