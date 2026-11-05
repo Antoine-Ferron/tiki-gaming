@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { type Board as BoardModel, EXIT_ROW, RED_CAR, SIZE, type Vehicle } from '../domain/board'
 import { moveRange } from '../domain/moves'
+import { dragOffset, dropDelta } from './drag'
 import { vehicleLabel } from './vehicleLabel'
 import { VehicleSprite } from './VehicleSprite'
 
@@ -49,14 +50,13 @@ export function Board({ board, locked, highlight, onMove }: BoardProps) {
 
   function onPointerMove(v: Vehicle, e: PointerEvent) {
     if (drag?.id !== v.id || !boardRef.current) return
-    const cell = boardRef.current.clientWidth / SIZE
-    const offset = Math.min(drag.max, Math.max(drag.min, (axis(v, e) - drag.start) / cell))
+    const offset = dragOffset(axis(v, e) - drag.start, boardRef.current.clientWidth / SIZE, drag)
     setDrag({ ...drag, offset })
   }
 
   function onPointerUp(v: Vehicle) {
     if (drag?.id !== v.id) return
-    const delta = Math.round(drag.offset)
+    const delta = dropDelta(drag.offset)
     setDrag(null)
     if (delta !== 0) onMove(v.id, delta)
   }
