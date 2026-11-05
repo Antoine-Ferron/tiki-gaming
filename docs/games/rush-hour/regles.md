@@ -19,7 +19,7 @@ Un casse-tête de parking : **fais glisser les voitures et les camions pour lib�
 | R3 | La **voiture rouge** est toujours horizontale, sur la **3ᵉ ligne**. La **sortie** est au bord droit de cette ligne. |
 | R4 | Un véhicule ne bouge **que dans son sens** : un véhicule horizontal va à gauche ou à droite, un vertical en haut ou en bas. Il ne tourne jamais. |
 | R5 | Un véhicule **ne traverse ni les bords ni les autres véhicules** : il s'arrête contre le premier obstacle. |
-| R6 | **Un coup** = faire glisser **un** véhicule, **quelle que soit la distance**. Glisser une voiture de 3 cases d'un seul geste = 1 coup. |
+| R6 | **Un coup** = faire glisser **un** véhicule, **quelle que soit la distance**. Glisser une voiture de 3 cases d'un seul geste = 1 coup. Déplacer à nouveau le même véhicule juste après (par exemple case par case au clavier) prolonge le même coup. |
 | R7 | **Victoire** : la voiture rouge touche la sortie. |
 | R8 | Chaque plateau a un **nombre minimal de coups** pour être résolu (l'« optimal »), calculé par le jeu. |
 
@@ -40,13 +40,13 @@ Un casse-tête de parking : **fais glisser les voitures et les camions pour lib�
 
 Le joueur choisit une difficulté et reçoit un plateau **nouveau**, créé par le jeu.
 
-> **MVP : génération par algorithme, sans IA.** Le plateau est créé par un programme dans le jeu lui-même (au hasard, puis vérifié). Aucun LLM n'est utilisé.
+> **MVP : génération par algorithme, sans IA.** Le plateau est créé par un programme dans le jeu lui-même (tiré au hasard dans une réserve, puis vérifié par le solveur). Aucun LLM n'est utilisé.
 > La génération par **LLM** est une évolution possible **après le MVP** (voir § 10) : elle demanderait un service côté serveur pour cacher la clé de l'API, et chaque plateau proposé par l'IA serait de toute façon vérifié par le même solveur.
 
 | N° | Règle |
 |----|-------|
 | G1 | Le joueur choisit **Facile**, **Moyen** ou **Difficile**. |
-| G2 | Le jeu place la voiture rouge et des véhicules **au hasard**, puis **vérifie** que le plateau respecte les règles R1 à R3, qu'il est **résoluble**, et que sa difficulté (§ 5) est **celle demandée**. Sinon, il recommence avec un autre tirage. |
+| G2 | Le jeu tire au hasard une **disposition de véhicules** dans une réserve préparée pendant le développement (différente des 20 niveaux), puis une **position de départ** au hasard parmi celles dont le minimum de coups est dans la plage de la difficulté demandée. Chaque disposition offre des milliers de positions de départ. |
 | G3 | Le joueur ne voit **jamais** un plateau impossible ou hors difficulté. |
 | G4 | La génération prend **moins de 2 secondes**, même en Difficile, et l'écran ne se fige pas pendant ce temps. |
 | G5 | Un plateau généré se joue exactement comme un niveau (mêmes règles, même score). |
@@ -115,8 +115,8 @@ Le score **ne descend jamais sous 0** et ne dépasse jamais 1000.
 | S2 | **Joueur connecté** : la sauvegarde suit son compte. **Invité** : elle reste dans son navigateur, et le jeu l'invite à se connecter pour être classé. |
 | S3 | **Classement** : chaque joueur a un **score total** = la somme de ses records sur les 20 niveaux (maximum 20 000). Il ne fait que monter. |
 | S4 | Les plateaux de la **Génération ne comptent pas** dans le classement (sinon on pourrait gonfler son total en jouant à l'infini). Le joueur voit à la place ses **statistiques** : nombre de plateaux réussis et meilleur score, par difficulté. |
-| S5 | **Envoi du score** : quand le score total augmente, le jeu l'envoie avec `ctx.submitScore` (le SDK de la plateforme), et met dans les **métadonnées** le niveau joué et la **liste des coups**. Le score total ne peut pas dépasser **20 000** (`scoreLimits` du jeu et `max_score` en base). |
-| S6 | **Vérification par le serveur (anti-triche)** : le backend sait **rejouer** une liste de coups sur un plateau, et la refuse si un coup est illégal (sortie du plateau, traversée d'un véhicule) ou si la voiture rouge n'est pas sortie. Il pourra s'appuyer sur les coups envoyés en métadonnées (S5) pour vérifier une partie. |
+| S5 | **Envoi du score** : à la fin d'un niveau, le score vérifié par le serveur (S6) met à jour le record ; si le score total augmente, le jeu l'envoie avec `ctx.submitScore` (le SDK de la plateforme), avec en **métadonnées** le niveau, le score du niveau, les indices, la durée et la **liste des coups**. Le score total ne peut pas dépasser **20 000** (`scoreLimits` du jeu et `max_score` en base). |
+| S6 | **Vérification par le serveur (anti-triche)** : à la fin d'un niveau, le jeu envoie la **liste des coups** et le nombre d'indices à `POST /api/games/rush-hour/levels/{niveau}/results`. Le serveur **rejoue** les coups et **calcule lui-même le score** ; il refuse (422) un coup illégal, une voiture rouge non sortie, moins de coups que le minimum ou des indices négatifs. C'est son score qui est gardé et envoyé au classement. Les plateaux de la Génération ne passent pas par le serveur (ils ne comptent pas au classement). |
 
 ## 9. Contrôles et affichage
 
@@ -149,7 +149,12 @@ Chaque règle ci-dessus devient un ou plusieurs tests, écrits **avant** le code
 | §5    | 8 coups → Facile, 9 coups → Moyen, 16 → Moyen, 17 → Difficile, 2 → refusé. |
 | §7    | Le score ne descend jamais sous 0, même avec 1000 coups de trop. |
 | G3    | Tout plateau généré est valide, résoluble et dans sa plage de difficulté. |
-| S6    | (Back) Les coups « camion C descend de 1, voiture rouge avance de 2 » sur le niveau 1 → acceptés ; « voiture rouge avance de 2 » seule → refusé (elle traverserait le camion). |
+| S6    | (Back) La solution la plus courte du niveau 1 → 1000 points ; la voiture rouge qui avance sans que la sortie soit libre → refusé (422) ; niveau 21 → inconnu (404). |
+
+Les règles existent dans le jeu (pour jouer sans délai) et sur le serveur (qui fait autorité sur le score). Pour
+qu'elles ne divergent jamais, `shared/games/rush-hour/contrat.json` contient les 20 niveaux (maps et minimums),
+des parties à rejouer (dont le regroupement R6 et les refus) et le barème : les tests du front
+(`contract.test.ts`) et du serveur (`ContractTest`) lisent ce même fichier.
 
 ---
 

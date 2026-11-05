@@ -14,7 +14,7 @@ function isPending(value: unknown): value is PendingScore {
 }
 
 /**
- * Scores dont l'envoi a échoué pour une raison passagère (réseau), gardés sur l'appareil du joueur
+ * Scores dont l'envoi a échoué pour une raison passagère (réseau, session perdue), gardés sur l'appareil du joueur
  * et renvoyés au prochain `flush`. Une erreur définitive (refus RLS, score invalide) les abandonne.
  */
 export function createScoreQueue(storage: KeyValueStorage, key: string) {

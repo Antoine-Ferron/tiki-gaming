@@ -1,7 +1,7 @@
 /** Barème (docs/games/rush-hour/regles.md, section Score). */
-export const MAX_LEVEL_SCORE = 1000
-export const EXTRA_MOVE_PENALTY = 50
-export const HINT_PENALTY = 200
+const MAX_LEVEL_SCORE = 1000
+const EXTRA_MOVE_PENALTY = 50
+const HINT_PENALTY = 200
 
 export interface LevelResult {
   moves: number

@@ -1,7 +1,9 @@
 package fr.tikigaming.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -56,6 +58,13 @@ class SecurityConfigTest {
     @Test
     void postWithoutCsrfTokenIsForbidden() throws Exception {
         mvc.perform(post("/api/auth/logout")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deletingTheAccountWithoutCsrfTokenIsForbidden() throws Exception {
+        // Un site tiers ne doit pas pouvoir supprimer le compte d'un joueur connecté.
+        mvc.perform(delete("/api/auth/account")).andExpect(status().isForbidden());
+        verifyNoInteractions(supabase);
     }
 
     @Test

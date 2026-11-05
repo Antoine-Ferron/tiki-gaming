@@ -37,9 +37,21 @@ class PrivateTablesCsrfHttpTest {
     private ObjectMapper json;
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/games/bang/tables", "/api/games/bang/tables/{code}/join"})
+    @ValueSource(
+            strings = {
+                "/api/games/bang/tables",
+                "/api/games/bang/tables/{code}/join",
+                "/api/games/bang/tables/{code}/start",
+                "/api/games/bang/tables/{code}/shots/{cardId}/targets/{targetSeat}",
+                "/api/games/bang/tables/{code}/shots/{shotId}/accept",
+                "/api/games/bang/tables/{code}/shots/{shotId}/dodge/{cardId}"
+            })
     void swaggerMatchesTheJsonCsrfResponseFromTheEmbeddedServer(String documentedPath) throws Exception {
-        String path = documentedPath.replace("{code}", "UNKNOWN");
+        String path = documentedPath
+                .replace("{code}", "UNKNOWN")
+                .replace("{cardId}", "card")
+                .replace("{targetSeat}", "2")
+                .replace("{shotId}", "shot");
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpResponse<String> response = client.send(
                     request(path).POST(HttpRequest.BodyPublishers.noBody()).build(),
@@ -64,6 +76,15 @@ class PrivateTablesCsrfHttpTest {
                     .path("content")
                     .path("application/json")
                     .path("schema");
+            if (schema.has("anyOf")) {
+                JsonNode alternatives = schema.get("anyOf");
+                for (int index = 0; index < alternatives.size(); index++) {
+                    JsonNode alternative = alternatives.get(index);
+                    if (alternative.path("$ref").asString().equals("#/components/schemas/CsrfErrorResponse")) {
+                        schema = alternative;
+                    }
+                }
+            }
             if (schema.has("$ref")) {
                 schema = openApi.at(schema.get("$ref").asString().substring(1));
             }

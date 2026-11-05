@@ -9,7 +9,14 @@ export const USERNAME_MIN = 3
 export const USERNAME_MAX = 24
 export const PASSWORD_MIN = 8
 
-const USERNAME_CHAR = /[A-Za-z0-9_]/
+// Aides affichées sous les champs (inscription, profil, nouveau mot de passe).
+export const USERNAME_HINT = `${USERNAME_MIN} à ${USERNAME_MAX} caractères : lettres sans accent, chiffres et _`
+export const PASSWORD_HINT = `${PASSWORD_MIN} caractères minimum`
+
+const USERNAME_CHAR = /^[A-Za-z0-9_]$/
+// Découpage en caractères tels que le joueur les voit (graphèmes) : un « À » saisi en deux points de code
+// (A + accent combinant) est cité entier, pas comme un accent seul.
+const GRAPHEMES = new Intl.Segmenter('fr', { granularity: 'grapheme' })
 
 function describeChar(char: string) {
   return /\s/.test(char) ? 'espace' : char
@@ -17,7 +24,8 @@ function describeChar(char: string) {
 
 /** Message nommant chaque caractère interdit du pseudo, ou null s'il n'y en a pas. */
 function forbiddenCharsMessage(value: string): string | null {
-  const forbidden = [...new Set([...value].filter((c) => !USERNAME_CHAR.test(c)).map(describeChar))]
+  const chars = Array.from(GRAPHEMES.segment(value), (s) => s.segment)
+  const forbidden = [...new Set(chars.filter((c) => !USERNAME_CHAR.test(c)).map(describeChar))]
   if (forbidden.length === 0) return null
   const label = forbidden.length === 1 ? 'Caractère non autorisé' : 'Caractères non autorisés'
   return `${label} : ${forbidden.join(', ')} — utilise uniquement des lettres sans accent, des chiffres et _.`

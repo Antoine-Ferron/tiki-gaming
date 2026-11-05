@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /** Génère des grilles à solution unique. */
@@ -34,6 +35,7 @@ public class SudokuGenerator {
 
     private final Random random;
 
+    @Autowired
     public SudokuGenerator() {
         this(new Random());
     }

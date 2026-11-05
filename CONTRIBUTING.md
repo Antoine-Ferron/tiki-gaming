@@ -21,6 +21,32 @@
   fermer l'issue comme complétée** (*Close as completed*, ou `gh issue close 12 --reason completed`),
   après avoir coché les cases de sa checklist. *Close as not planned* est réservé aux issues abandonnées.
 
+### Anomalies
+
+Un bug suit le cycle de vie ISTQB, porté par le label `statut: …` de son issue (modèle **Anomalie**,
+`.github/ISSUE_TEMPLATE/anomalie.yml`) :
+
+```
+New → Assigned → Open → Fixed → Retest → Closed
+                   ↑                 │
+                   └──── Reopened ◄──┘ (le re-test échoue)
+```
+
+- **Titre canonique** : `[Module][Action] observé au lieu de attendu`, reproduction pas à pas, preuves (HAR, logs,
+  stacktrace, captures).
+- **Règle absolue** : une anomalie n'est jamais fermée sans **re-test** probant. Le correctif arrive avec le test qui
+  reproduisait le bug (rouge avant, vert après), et ce test reste dans la suite comme non-régression.
+- **Sévérité** (impact technique, fixée par qui constate) et **priorité** (urgence métier, fixée au tri) sont
+  indépendantes :
+
+  | | Priorité haute (P0-P1) | Priorité basse (P2-P3) |
+  |---|---|---|
+  | **Sévérité haute (S0-S1)** | correctif immédiat (hotfix) | planifié dans le sprint, contournement documenté |
+  | **Sévérité basse (S2-S3)** | correction rapide : fort impact visible (texte faux sur l'accueil) | backlog, à traiter avec une refonte |
+
+- Un cas de test `FAILED` ou `BLOCKED` de la [matrice RTM](specs/rtm-matrix.md) pointe toujours une anomalie ;
+  `npm run rtm:check` le vérifie.
+
 ### Nommage
 
 | Préfixe                    | Usage                                         | Exemple                         |
@@ -44,7 +70,8 @@ En minuscules, mots séparés par des tirets, sans accents.
    **Tant que le travail n'est pas terminé, la PR est en draft** (`gh pr create --draft`, ou
    *Convert to draft* / `gh pr ready 12 --undo` sur une PR déjà ouverte). Une draft ne se relit pas et ne
    se fusionne pas : la passer en *Ready for review* (`gh pr ready 12`) quand tout est livré et la CI verte,
-   et la repasser en draft si un retour de relecture demande encore du travail.
+   et la repasser en draft si un retour de relecture demande encore du travail. En draft, la CI ne lance que le
+   palier 1 (lint, types, tests unitaires, build) ; *Ready for review* lance tout ([détails](docs/ci.md#1-déclenchement)).
 5. **CI verte et 1 relecture approuvée minimum** avant de fusionner :
    - une PR qui ne touche que `frontend/src/games/<slug>/` (+ sa migration d'ajout au catalogue) peut
      être relue par l'équipe du jeu ;
@@ -133,14 +160,33 @@ c'est le formatter qui tranche les questions de style.
   démarré une fois pour la suite, les migrations du dépôt y sont rejouées, puis chaque test tourne dans une
   transaction annulée à la fin. `as(db, userId, …)` exécute une requête avec les droits d'un joueur
   (`authenticated` + JWT) ou d'un visiteur (`anon`, `userId` à `null`) : c'est la RLS réelle qui est testée.
+  `asServer(db, …)` prend les droits du backend (`service_role`), seul autorisé à insérer des scores.
   **Toute nouvelle table ou politique RLS arrive avec ses tests d'intégration.** Sans Docker, ces tests sont
   ignorés en local (la CI, elle, échoue).
 - **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
   écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
   le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+  Côté backend, les `.feature` vont dans `src/test/resources/<paquet du jeu>/features/` et sont exécutés par
+  `mvn test` (Cucumber JVM) : une classe `@Suite` par jeu. Pas de `cucumber-spring`, qui imposerait une
+  configuration Spring à toutes les suites : une suite qui a besoin de l'API démarre l'application elle-même
+  (`@BeforeAll`, port libre), comme `MiniGtaApi`.
+- **BDD Java Dames** (`backend/src/test/resources/features/dame`) : `DameBddTest` appelle le domaine et son fake
+  via Cucumber/JUnit Platform, sans Spring ni Docker. Depuis la racine :
+  `mvn -f backend/pom.xml -Dtest=DameBddTest test`. Rapport : `backend/target/cucumber/dame.html`, artefact CI
+  `rapport-bdd-dame` ; voir [la documentation Dames](docs/dame/bdd.md).
+- **Propriétés et fuzzing** (`*.property.test.ts`, fast-check) : une règle vraie pour toute entrée générée
+  (« tout entier au-dessus du maximum est refusé »), et du fuzzing (« n'importe quelle saisie donne des données ou
+  des messages, jamais une exception »). En cas d'échec, fast-check réduit l'entrée au plus petit contre-exemple
+  et affiche sa graine (`seed`) pour le rejouer ; ce contre-exemple devient un test unitaire de non-régression.
+- **Contrat** (`tests/contract/*.pact.test.ts`, Pact) : le vrai code du front décrit ses appels au backend ; le
+  contrat généré (`pacts/`) est versionné et rejoué par le backend (`PactProviderTest`). Modifier un appel au
+  backend = relancer `npm run test:contract` et commiter le contrat (la CI vérifie qu'il est à jour).
 - **E2E** (`e2e/`) : peu de tests, réservés aux parcours vitaux (accueil → jeu → partie, panne, redirection)
   et à l'audit axe. Backend et Supabase sont simulés (`e2e/fixtures.ts`) ; le temps est contrôlé avec
-  `page.clock` (pas d'attente réelle de 10 s). Aucune violation WCAG sérieuse ou critique n'est tolérée.
+  `page.clock` (pas d'attente réelle de 10 s). Aucune violation WCAG sérieuse ou critique n'est tolérée. Chaque
+  test tourne sous Chromium, Firefox et WebKit.
+- **Traçabilité** : une nouvelle exigence du lobby entre dans [specs/rtm-matrix.md](specs/rtm-matrix.md) avec au
+  moins un cas nominal et un cas d'erreur ; `npm run rtm:check` vérifie que chaque preuve existe.
 - **Couverture minimale** : la CI échoue sous ces seuils (front : `vite.config.ts`,
   backend : règles JaCoCo de `pom.xml`, vérifiées par `mvn verify`).
 
@@ -148,7 +194,7 @@ c'est le formatter qui tranche les questions de style.
   |-----------|--------|----------|-----------|--------------|
   | Front, cœur du lobby (`games/domain`, `errors.ts`, `scoreQueue.ts`, `sdk.ts`, `lib/validation.ts`) | 95 % | 95 % | 95 % | 95 % |
   | Front, global | 78 % | 80 % | 75 % | 79 % |
-  | Backend, cœur (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`) | 95 % | 95 % | — | — |
+  | Backend, cœur (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`, `CircuitBreaker`) | 95 % | 95 % | — | — |
   | Backend, global | 52 % | 64 % | — | — |
 
   Le global est fixé juste sous la couverture actuelle : il empêche les régressions, y compris quand un jeu arrive
@@ -172,8 +218,9 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 |--------------------------|--------------------------------------------------------------------------|
 | `mvn spotless:apply`     | **Formatter** : reformate le code (palantir-java-format, 4 espaces, 120 colonnes) |
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
-| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
+| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc) et scénarios BDD (Cucumber) |
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, couverture minimale (JaCoCo), et échec si le code n'est pas formaté |
+| `mvn -Pintegration verify` | Ajoute les tests Java `*IT` PostgreSQL/PostgREST via Testcontainers ; Docker obligatoire |
 | `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
 
@@ -232,33 +279,40 @@ fr.tikigaming
 
 > Explication détaillée, étape par étape, avec les seuils et que faire en cas d'échec : [docs/ci.md](docs/ci.md).
 
-`.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main`. Un job ne tourne
-que si sa zone a changé ; sinon il apparaît « skipped », ce qui compte comme réussi pour la fusion :
+`.github/workflows/ci.yml` s'exécute sur chaque PR, chaque push vers `dev` et `main`, et chaque nuit (run complet).
+Les jobs sont rangés en **paliers** et la CI **s'arrête au premier échec** : un palier ne démarre que si aucun
+job des paliers précédents n'a échoué. Un job ne tourne que si sa zone a changé ; sinon il apparaît « skipped »,
+ce qui compte comme réussi pour la fusion :
 
-| Job                 | Tourne si                         | Étapes                                             |
-|---------------------|-----------------------------------|----------------------------------------------------|
-| `frontend`          | `frontend/**`                     | `npm ci` → `npm run format:check` → `npm run lint` → `npm run test:coverage` (seuils) → `npm run build` |
-| `backend`           | `backend/**`                      | `mvn -B verify` (linter, compilation, tests, format) |
-| `integration`       | `frontend/**` ou `supabase/**`    | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
-| `mutation-frontend` | `frontend/**`                     | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
-| `mutation-backend`  | `backend/**`                      | Pitest (seuil 75 %), rapport en artefact |
-| `e2e`               | `frontend/**`                     | `npm run test:e2e` : Playwright + audit WCAG 2.1 AA (axe), rapport en artefact en cas d'échec |
-| `performance`       | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 sur base éphémère + PostgREST + backend : P95 < 300 ms, < 1 % d'erreurs (voir [quality/](quality/README.md)) |
-| `dast`              | `frontend/**`, `backend/**` ou `quality/**` | Scan ZAP baseline du front buildé et du backend, échoue sur toute alerte non acceptée |
-| `sonar`             | `frontend/**` ou `backend/**`     | SonarQube Cloud et son Quality Gate, actif dès que le secret `SONAR_TOKEN` est configuré |
-| `security`          | toujours                          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
+| Palier | Job | Tourne si | Étapes |
+|--------|-----|-----------|--------|
+| 1 | `frontend` | `frontend/**` | `npm ci` → `format:check` → `lint` → `typecheck` → `rtm:check` → `test:coverage` (seuils) → `test:contract` (contrat à jour) → `build` |
+| 1 | `backend` | `backend/**` ou `frontend/pacts/**` | `spotless:check` → `mvn -B verify` (Checkstyle, tests dont Pact provider et chaos Toxiproxy, JaCoCo) |
+| 1 | `security` | toujours | `npm audit --audit-level=high` ; sur une PR, *dependency review* |
+| 2 | `integration` | `frontend/**`, `supabase/**`, `quality/db-init/**`, `backend/pom.xml` ou paquets Java Dames/SDV Civilisation | Tests collectifs PostgreSQL, IT SDV, puis IT Dames PostgreSQL/PostgREST via Failsafe |
+| 3 | `mutation-frontend` | `frontend/**` | Stryker (seuil 75 %), rapport en artefact |
+| 3 | `mutation-backend` | `backend/**` | Pitest (seuil 75 %), rapport en artefact |
+| 3 | `e2e` | `frontend/**` | Playwright sous Chromium, Firefox et WebKit + audit WCAG 2.1 AA (axe) |
+| 3 | `performance` | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 profil `load` : P95 < 300 ms, P99 < 500 ms, < 1 % d'erreurs ([SLO](docs/slo.md)) |
+| 3 | `dast` | `frontend/**`, `backend/**` ou `quality/**` | ZAP baseline du front buildé et du backend |
+| 4 | `sonar` | `frontend/**` ou `backend/**` | SonarQube Cloud et son Quality Gate (secret `SONAR_TOKEN`), sur la couverture du palier 1 |
+| 5 | `verdict` | toujours | échoue si un seul job a échoué |
 
-Modifier `.github/workflows/ci.yml` relance tous les jobs. Si le job `changes` (détection des zones)
-échoue, tous les jobs tournent aussi.
+Modifier `.github/workflows/ci.yml` relance tous les jobs. Si la détection des zones échoue, ou pour le run de
+nuit, tous les jobs tournent.
+
+Une PR qui ne touche que les dossiers d'un ou plusieurs jeux ne rejoue que leurs tests unitaires, sans seuils de
+couverture ; tout est rejoué, seuils compris, au push sur `dev` ([détails](docs/ci.md#analyse-dimpact--seuls-les-tests-des-jeux-touchés)).
 
 ### Caches
 
 | Cache | Effet |
 |-------|-------|
-| npm, Maven | dépendances téléchargées une fois (`setup-node`, `setup-java`) |
+| `node_modules` | `npm ci` seulement quand le lockfile, Node ou l'image Ubuntu change ; les autres jobs restaurent le dossier tel quel (`.github/actions/node-modules`) |
+| Maven | dépendances téléchargées une fois (`setup-java`) |
 | Prettier, ESLint | seuls les fichiers dont le **contenu** a changé sont revérifiés (aussi en local : `node_modules/.cache`) |
-| Playwright | navigateurs réinstallés seulement quand la version change |
-| Stryker, Pitest | **sur une PR**, seuls les mutants concernés par le changement sont rejoués ; un push vers `dev` ou `main` refait un run **complet**, qui sert de référence aux PR suivantes |
+| Playwright | navigateurs réinstallés seulement quand la version de Playwright change |
+| Stryker, Pitest | sur une PR et un push vers `dev` ou `main`, seuls les mutants concernés par le changement sont rejoués (le push alimente le cache des PR suivantes) ; le run de **nuit** rejoue tout |
 
 Les seuils et le résultat des checks ne changent pas : un test affaibli fait toujours apparaître ses
 mutants survivants, en incrémental comme en complet. En cas de doute sur un résultat de mutation d'une
@@ -309,6 +363,7 @@ const monJeu: GameDefinition = {
   title: 'Mon Jeu',
   description: 'Une phrase de présentation.',
   category: 'duel',        // obligatoire : 'solo' (1 joueur) · 'duel' (2) · 'multi' (3 et +)
+  theme: 'reflexion',      // obligatoire : 'action' · 'reflexion' · 'strategie' (filtre du lobby)
   mode: 'solo',            // accès : 'solo' = jouable sans compte · 'multiplayer' = connexion obligatoire
   thumbnail: '/games/mon-jeu/thumbnail.webp', // optionnel, fichier dans frontend/public/games/mon-jeu/
   scoreLimits: { max: 5000 }, // optionnel : score maximal plausible, refusé au-delà (aligné avec games.max_score)
@@ -319,7 +374,8 @@ export default monJeu
 
 La **catégorie** décrit le format de jeu, le **mode** dit seulement si un compte est nécessaire. Les
 deux sont indépendants : un jeu d'échecs contre une IA peut être `category: 'duel'` et `mode: 'solo'`.
-La liste des catégories est dans `frontend/src/games/categories.ts` ; en ajouter une passe par
+Le **thème** est le genre du jeu, proposé comme filtre dans le lobby avec la catégorie.
+Les listes sont dans `frontend/src/games/categories.ts` et `themes.ts` ; en ajouter une valeur passe par
 l'équipe plateforme (voir [docs/architecture.md](docs/architecture.md#catégories)).
 
 Puis l'ajouter dans `frontend/src/games/registry.ts` :
@@ -336,12 +392,12 @@ npx supabase migration new add_game_mon_jeu
 ```
 
 ```sql
-insert into public.games (slug, title, description, category)
-values ('mon-jeu', 'Mon Jeu', 'Une phrase de présentation.', 'duel');
+insert into public.games (slug, title, description, category, theme)
+values ('mon-jeu', 'Mon Jeu', 'Une phrase de présentation.', 'duel', 'reflexion');
 ```
 
-Sans cette ligne, l'envoi de score et la sauvegarde sont refusés (clé étrangère + RLS). La
-`category` est obligatoire et doit être la même que dans `index.ts`.
+Sans cette ligne, l'envoi de score et la sauvegarde sont refusés (clé étrangère). La
+`category` et le `theme` sont obligatoires et doivent être les mêmes que dans `index.ts`.
 
 ### 4. Utiliser le `GameContext`
 
@@ -368,11 +424,16 @@ d'adapter la réaction :
 
 | `code`      | Cas                                                        |
 |-------------|------------------------------------------------------------|
-| `invalid`   | score refusé avant l'envoi (pas un entier, négatif, au-dessus de `scoreLimits.max`) |
-| `queued`    | coupure réseau : le score est gardé sur l'appareil et renvoyé à la prochaine partie (5 essais) |
+| `invalid`   | score refusé, avant l'envoi (pas un entier, négatif, au-dessus de `scoreLimits.max`) ou par le serveur |
+| `queued`    | coupure réseau ou session perdue : le score est gardé sur l'appareil et renvoyé à la prochaine partie (5 essais) |
 | `network`   | serveur injoignable (lecture du classement, sauvegarde…) : réessayer plus tard |
-| `session`   | session expirée : se reconnecter                           |
-| `forbidden` / `not_found` | refusé par la RLS, ou jeu absent de `public.games` |
+| `session`   | session expirée (hors envoi de score) : se reconnecter     |
+| `forbidden` / `not_found` | jeu fermé ou refusé par la RLS, ou jeu absent de `public.games` |
+
+`ctx.submitScore` passe par `POST /api/scores` : le backend enregistre le score pour le joueur de la session,
+après les règles du catalogue (jeu actif, `max_score`). Pour un jeu compétitif, vérifier la partie côté
+serveur avec un bean `ScoreValidator` (`backend/src/main/java/fr/tikigaming/scores/`) : il reçoit le joueur,
+le score et les `metadata`, et lève une `ApiException` (message pour le joueur) pour refuser le score.
 
 Si le jeu plante pendant son rendu, la plateforme l'isole (`GameErrorBoundary`) : le joueur voit un
 message et un bouton « Relancer le jeu », le reste du site continue de fonctionner.

@@ -1,40 +1,108 @@
-// Test de charge du lobby (k6). Cible l'environnement local de quality/docker-compose.yml, jamais la production.
+// Tests de performance du lobby (k6). Cible l'environnement local de quality/docker-compose.yml, jamais la production.
 //   docker run --rm --network host -v "$PWD/quality:/quality" grafana/k6:2.3.0 run /quality/k6/lobby.js
-// Variables : REST_URL (PostgREST), BACKEND_URL (backend Java, scénario ignoré si vide), DURATION, JWT_SECRET.
+// Variables : PROFILE (voir PROFILES), REST_URL (PostgREST), BACKEND_URL (backend Java, scénario ignoré si vide),
+// DURATION (palier principal), JWT_SECRET.
+// Seuils = SLO de docs/slo.md : P95 < 300 ms, P99 < 500 ms, moins de 1 % d'erreurs. En CI : profil « load ».
 import { check } from 'k6'
+import exec from 'k6/execution'
 import crypto from 'k6/crypto'
 import encoding from 'k6/encoding'
 import http from 'k6/http'
 
 const REST_URL = __ENV.REST_URL || 'http://localhost:54330'
 const BACKEND_URL = __ENV.BACKEND_URL || ''
-const DURATION = __ENV.DURATION || '30s'
+const PROFILE = __ENV.PROFILE || 'load'
 // Secret de l'environnement local (quality/docker-compose.yml), pas celui de la production.
 const JWT_SECRET = __ENV.JWT_SECRET || 'tiki-quality-local-jwt-secret-0123456789'
 const PLAYERS = 1000 // = PLAYERS de frontend/scripts/seed-quality.mjs
 
-const scenario = (exec, rate) => ({
-  executor: 'constant-arrival-rate',
-  exec,
-  rate,
-  timeUnit: '1s',
-  duration: DURATION,
-  preAllocatedVUs: 20,
-  maxVUs: 100,
+// `rate` = débit nominal du scénario (requêtes par seconde). Chaque profil le module selon son objectif.
+const PROFILES = {
+  // Santé minimale à froid : 1 utilisateur, quelques requêtes.
+  smoke: () => ({
+    executor: 'per-vu-iterations',
+    vus: 1,
+    iterations: 5,
+    maxDuration: '30s',
+  }),
+  // Charge nominale constante : vérifie les SLO en régime de croisière (bloquant en CI).
+  load: (rate) => ({
+    ...arrival(rate),
+    executor: 'constant-arrival-rate',
+    rate,
+    duration: __ENV.DURATION || '30s',
+  }),
+  // Montée continue jusqu'à 8× le nominal : trouve la charge maximale et le mode d'effondrement.
+  stress: (rate) =>
+    ramp(rate, [
+      ['1m', 1],
+      ['2m', 2],
+      ['2m', 4],
+      ['2m', 8],
+      ['1m', 0],
+    ]),
+  // Pic brutal (×10 en 5 s) puis retour : vérifie que le service encaisse et se rétablit.
+  spike: (rate) =>
+    ramp(rate, [
+      ['30s', 1],
+      ['5s', 10],
+      ['30s', 10],
+      ['5s', 1],
+      ['30s', 1],
+    ]),
+  // Charge modérée longue (2 h par défaut) : fuites mémoire, épuisement des pools de connexions.
+  soak: (rate) => ({
+    ...arrival(rate),
+    executor: 'constant-arrival-rate',
+    rate: Math.ceil(rate / 2),
+    duration: __ENV.DURATION || '2h',
+  }),
+}
+
+function arrival(rate) {
+  return {
+    timeUnit: '1s',
+    preAllocatedVUs: 20,
+    maxVUs: Math.max(100, rate * 10),
+  }
+}
+
+function ramp(rate, stages) {
+  return {
+    ...arrival(rate * 8),
+    executor: 'ramping-arrival-rate',
+    startRate: rate,
+    stages: stages.map(([duration, factor]) => ({
+      duration,
+      target: rate * factor,
+    })),
+  }
+}
+
+if (!PROFILES[PROFILE]) throw new Error(`PROFILE inconnu : ${PROFILE} (${Object.keys(PROFILES).join(', ')})`)
+
+const scenario = (fn, rate) => ({ exec: fn, ...PROFILES[PROFILE](rate) })
+const slo = (name) => ({
+  [`http_req_duration{scenario:${name}}`]: ['p(95)<300', 'p(99)<500'],
 })
 
 export const options = {
+  // P99 absent par défaut du résumé k6 : ajouté pour handleSummary et le rapport.
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
   scenarios: {
     // Chaque ouverture d'une page de jeu lit le classement (visiteur ou joueur).
     leaderboard: scenario('readLeaderboard', 100),
-    // Fin de partie d'un joueur connecté : insertion contrôlée par la RLS (auth.uid(), max_score).
+    // Fin de partie d'un joueur connecté : l'insertion que fait le backend (service_role, trigger max_score).
     submit_score: scenario('submitScore', 20),
     ...(BACKEND_URL ? { session: scenario('readSession', 50) } : {}),
+    // Fin d'un niveau de Rush Hour : le serveur rejoue la partie et calcule le minimum (solveur). Niveau 20 = pire cas.
+    ...(BACKEND_URL ? { rush_hour_verify: scenario('verifyRushHourLevel', 20) } : {}),
   },
   thresholds: {
-    'http_req_duration{scenario:leaderboard}': ['p(95)<300'],
-    'http_req_duration{scenario:submit_score}': ['p(95)<300'],
-    ...(BACKEND_URL ? { 'http_req_duration{scenario:session}': ['p(95)<300'] } : {}),
+    ...slo('leaderboard'),
+    ...slo('submit_score'),
+    ...(BACKEND_URL ? slo('session') : {}),
+    ...(BACKEND_URL ? slo('rush_hour_verify') : {}),
     http_req_failed: ['rate<0.01'],
     checks: ['rate>0.99'],
   },
@@ -46,31 +114,47 @@ function playerId(i) {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
 }
 
-/** JWT HS256 au format Supabase (rôle authenticated, sub = joueur). */
-function jwtFor(sub) {
+/** JWT HS256 au format Supabase. */
+function jwt(claims) {
   const b64 = (obj) => encoding.b64encode(JSON.stringify(obj), 'rawurl')
-  const body = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub, role: 'authenticated', exp: 4102444800 })}`
+  const body = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ ...claims, exp: 4102444800 })}`
   return `${body}.${crypto.hmac('sha256', JWT_SECRET, body, 'base64rawurl')}`
 }
 
 export function setup() {
-  return { tokens: Array.from({ length: PLAYERS }, (_, i) => jwtFor(playerId(i + 1))) }
+  return {
+    players: Array.from({ length: PLAYERS }, (_, i) => playerId(i + 1)),
+    // Clé du backend : les joueurs n'ont pas le droit d'insérer dans scores (POST /api/scores écrit pour eux).
+    serviceRole: jwt({ role: 'service_role' }),
+  }
 }
 
 export function readLeaderboard() {
   const res = http.get(`${REST_URL}/leaderboard?game_slug=eq.clicker&order=best_score.desc,username.asc&limit=10`, {
     tags: { name: 'GET /leaderboard' },
   })
-  check(res, { 'classement : 200 et 10 lignes': (r) => r.status === 200 && r.json().length === 10 })
+  check(res, {
+    'classement : 200 et 10 lignes': (r) => r.status === 200 && r.json().length === 10,
+  })
 }
 
 export function submitScore(data) {
-  const token = data.tokens[Math.floor(Math.random() * PLAYERS)]
+  // Joueurs et scores parcourus dans l'ordre : charge reproductible, sans aléatoire.
+  const n = exec.scenario.iterationInTest
+  const player = data.players[n % PLAYERS]
   const res = http.post(
     `${REST_URL}/scores`,
-    JSON.stringify({ game_slug: 'clicker', score: Math.floor(Math.random() * 301) }),
+    JSON.stringify({
+      user_id: player,
+      game_slug: 'clicker',
+      score: (n * 7) % 301,
+    }),
     {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      headers: {
+        Authorization: `Bearer ${data.serviceRole}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
       tags: { name: 'POST /scores' },
     },
   )
@@ -78,19 +162,53 @@ export function submitScore(data) {
 }
 
 export function readSession() {
-  const res = http.get(`${BACKEND_URL}/api/auth/session`, { tags: { name: 'GET /api/auth/session' } })
+  const res = http.get(`${BACKEND_URL}/api/auth/session`, {
+    tags: { name: 'GET /api/auth/session' },
+  })
   check(res, { 'session : 200': (r) => r.status === 200 })
 }
 
+// Partie gagnante du niveau 20 de Rush Hour (26 coups, le minimum), trouvée par le solveur du jeu. Tout part d'une
+// seule adresse : lancer le backend avec TIKI_RUSHHOUR_MAXRESULTSPERMINUTE élevé (limite par client, 60/min par défaut).
+// prettier-ignore
+const RUSH_HOUR_LEVEL_20 = [
+  ['I', -1], ['F', -1], ['B', 2], ['H', 1], ['K', -4], ['G', 1], ['D', 1], ['L', 1], ['F', 1], ['I', 3], ['F', -2],
+  ['X', 2], ['K', 2], ['H', -4], ['E', -4], ['X', -2], ['K', -2], ['B', -2], ['C', -2], ['A', -4], ['L', 1], ['B', 1],
+  ['C', 1], ['J', -1], ['G', 2], ['X', 4],
+].map(([vehicle, delta]) => ({ vehicle, delta }))
+
+export function verifyRushHourLevel() {
+  // Jeton CSRF : lu dans le cookie que le backend pose à la visite (k6 vide les cookies entre deux itérations).
+  const jar = http.cookieJar()
+  let token = jar.cookiesForURL(BACKEND_URL)['XSRF-TOKEN']?.[0]
+  if (!token) {
+    http.get(`${BACKEND_URL}/api/auth/session`, { tags: { name: 'GET /api/auth/session (CSRF)' } })
+    token = jar.cookiesForURL(BACKEND_URL)['XSRF-TOKEN']?.[0]
+  }
+  const res = http.post(
+    `${BACKEND_URL}/api/games/rush-hour/levels/20/results`,
+    JSON.stringify({ moves: RUSH_HOUR_LEVEL_20, hints: 0 }),
+    {
+      headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': token },
+      tags: { name: 'POST /api/games/rush-hour/levels/{level}/results' },
+    },
+  )
+  check(res, { 'rush hour : 200 et 1000 points': (r) => r.status === 200 && r.json().score === 1000 })
+}
+
 export function handleSummary(data) {
-  const p95 = (s) => data.metrics[`http_req_duration{scenario:${s}}`]?.values['p(95)']
-  const lines = ['leaderboard', 'submit_score', 'session']
-    .filter((s) => p95(s) !== undefined)
-    .map((s) => `${s.padEnd(14)} P95 = ${p95(s).toFixed(1)} ms`)
+  const metric = (s, p) => data.metrics[`http_req_duration{scenario:${s}}`]?.values[p]
+  const lines = ['leaderboard', 'submit_score', 'session', 'rush_hour_verify']
+    .filter((s) => metric(s, 'p(95)') !== undefined)
+    .map((s) => `${s.padEnd(17)} P95 = ${metric(s, 'p(95)').toFixed(1)} ms   P99 = ${metric(s, 'p(99)').toFixed(1)} ms`)
   const text = [
+    `Profil   : ${PROFILE}`,
     `Requêtes : ${data.metrics.http_reqs.values.count} (${data.metrics.http_reqs.values.rate.toFixed(1)}/s)`,
     `Erreurs  : ${(data.metrics.http_req_failed.values.rate * 100).toFixed(2)} %`,
     ...lines,
   ].join('\n')
-  return { stdout: `\n${text}\n`, '/quality/reports/k6-summary.json': JSON.stringify(data, null, 2) }
+  return {
+    stdout: `\n${text}\n`,
+    [`/quality/reports/k6-${PROFILE === 'load' ? 'summary' : PROFILE}.json`]: JSON.stringify(data, null, 2),
+  }
 }

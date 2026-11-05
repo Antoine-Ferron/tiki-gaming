@@ -53,8 +53,11 @@ services:
     command: ['run', '--quiet', '/quality/k6/lobby.js']
     environment:
       REST_URL: http://rest:3000
-      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8080}
-      DURATION: ${K6_DURATION:-30s}
+      # `-` et non `:-` : BACKEND_URL= (vide) désactive le scénario session au lieu de reprendre la valeur par défaut.
+      BACKEND_URL: ${BACKEND_URL-http://host.docker.internal:8080}
+      # Profil (smoke, load, stress, spike, soak) et durée du palier principal : défauts dans k6/lobby.js.
+      PROFILE: ${K6_PROFILE:-load}
+      DURATION: ${K6_DURATION:-}
     volumes: ['.:/quality']
     user: '${HOST_UID:-1000}:${HOST_GID:-1000}'
     extra_hosts: ['host.docker.internal:host-gateway']

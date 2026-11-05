@@ -2,13 +2,10 @@ package fr.tikigaming.games.bang.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import fr.tikigaming.games.bang.model.TableSeat;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -26,7 +23,7 @@ import org.springframework.http.HttpStatus;
 class PrivateTableServiceTest {
 
     private final MutableClock clock = new MutableClock();
-    private final PrivateTableService tables = new PrivateTableService(clock);
+    private final PrivateTableService tables = new PrivateTableService(mock(InitialDeal.class), clock);
 
     @Test
     void createsATableWithAShareableCodeAndTheCreatorsSeat() {
@@ -211,28 +208,5 @@ class PrivateTableServiceTest {
         clock.advance(PrivateTableService.INACTIVITY_TIMEOUT);
 
         assertThat(tables.create("newcomer").seat()).isEqualTo(1);
-    }
-
-    private static final class MutableClock extends Clock {
-        private Instant now = Instant.parse("2026-11-03T12:00:00Z");
-
-        void advance(Duration duration) {
-            now = now.plus(duration);
-        }
-
-        @Override
-        public ZoneId getZone() {
-            return ZoneOffset.UTC;
-        }
-
-        @Override
-        public Clock withZone(ZoneId zone) {
-            return this;
-        }
-
-        @Override
-        public Instant instant() {
-            return now;
-        }
     }
 }

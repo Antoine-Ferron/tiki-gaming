@@ -1,0 +1,116 @@
+/* Jeu d'échecs : toutes les classes sont préfixées par le slug (charte graphique). */
+.echecs {
+  --echecs-square-light: #f0d9b5;
+  --echecs-square-dark: #b58863;
+  --echecs-target: rgba(46, 125, 50, 0.55);
+  --echecs-selected: #1e6fd9;
+  display: grid;
+  gap: 16px;
+}
+
+.echecs-board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  width: min(100%, 480px);
+  aspect-ratio: 1;
+  border: 2px solid var(--muted);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.echecs-square {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  font-size: clamp(1.4rem, 6vw, 2.6rem);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Même symbole plein pour les deux camps ; la couleur et un contour assurent le contraste sur les deux cases. */
+.echecs-piece {
+  font-variant-emoji: text;
+  line-height: 1;
+}
+
+.echecs-piece-white {
+  color: #ffffff;
+  -webkit-text-stroke: 1.5px #1a1a1a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.echecs-piece-black {
+  color: #111111;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.echecs-square-light {
+  background: var(--echecs-square-light);
+}
+
+.echecs-square-dark {
+  background: var(--echecs-square-dark);
+}
+
+/* Case où la pièce choisie peut aller : un rond au centre, visible sur les deux couleurs de case. */
+.echecs-square-target {
+  background-image: radial-gradient(circle, var(--echecs-target) 22%, transparent 24%);
+}
+
+.echecs-square[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 4px var(--echecs-selected);
+}
+
+.echecs-square:focus-visible {
+  outline: 3px solid var(--echecs-selected);
+  outline-offset: -3px;
+}
+
+.echecs-turn {
+  margin: 0;
+  font-weight: 600;
+}
+
+.echecs-error {
+  margin: 0;
+  color: var(--danger, #b3261e);
+}
+
+.echecs-square-last {
+  box-shadow: inset 0 0 0 100vmax rgba(255, 213, 79, 0.35);
+}
+
+.echecs-square-check {
+  background-image: radial-gradient(circle, rgba(211, 47, 47, 0.75) 35%, transparent 70%);
+}
+
+.echecs-promotion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  border: 2px solid var(--echecs-selected);
+  border-radius: 8px;
+}
+
+.echecs-promotion p {
+  margin: 0;
+  width: 100%;
+  font-weight: 600;
+}
+
+.echecs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.echecs-moves {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}

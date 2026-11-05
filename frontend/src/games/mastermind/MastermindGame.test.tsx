@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import MastermindGame from './MastermindGame'
+import { FakeRealtime } from '../testing/fakes'
 import type { GameContext } from '../types'
 import { ApiError, apiGet, apiPost } from '@/lib/api'
 
@@ -40,6 +41,7 @@ function createContext(): GameContext {
     loadSave: vi.fn().mockResolvedValue(null),
     save: vi.fn().mockResolvedValue(undefined),
     clearSave: vi.fn().mockResolvedValue(undefined),
+    realtime: new FakeRealtime(),
   }
 }
 
@@ -104,6 +106,33 @@ describe('MastermindGame', () => {
     expect(await screen.findByText('Bravo, combinaison trouvée !')).toBeInTheDocument()
     expect(apiPost).toHaveBeenCalledWith('/games/mastermind/game-1/guesses', { colors: ['red', 'red', 'red', 'red'] })
     expect(ctx.submitScore).toHaveBeenCalledWith(10, { attempts: 1 })
+  })
+
+  it('submits a double click only once', async () => {
+    mockApi()
+    const user = userEvent.setup()
+    render(<MastermindGame ctx={createContext()} />)
+    await screen.findByText('10 tentatives restantes')
+
+    for (let index = 0; index < 4; index++) await user.click(screen.getByRole('button', { name: 'Rouge' }))
+    await user.dblClick(screen.getByRole('button', { name: 'Valider la combinaison' }))
+
+    expect(vi.mocked(apiPost).mock.calls.filter(([path]) => path.endsWith('/guesses'))).toHaveLength(1)
+  })
+
+  it('continues when session storage is unavailable', async () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage disabled')
+    })
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage disabled')
+    })
+    mockApi()
+    render(<MastermindGame ctx={createContext()} />)
+
+    expect(await screen.findByText('10 tentatives restantes')).toBeInTheDocument()
+    getItem.mockRestore()
+    setItem.mockRestore()
   })
 
   it('shows the points rule in the accessible information tooltip', async () => {

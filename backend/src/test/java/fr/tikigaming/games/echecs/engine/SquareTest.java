@@ -1,0 +1,102 @@
+package fr.tikigaming.games.echecs.engine;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+class SquareTest {
+
+    @Test
+    @DisplayName("la case a1 est en colonne 0 et rangée 0")
+    void laCaseA1EstEnColonne0EtRangee0() {
+        // Arrange
+        String notation = "a1";
+
+        // Act
+        Square square = Square.of(notation);
+
+        // Assert
+        assertThat(square.file()).isEqualTo(0);
+        assertThat(square.rank()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("la case h8 est en colonne 7 et rangée 7")
+    void laCaseH8EstEnColonne7EtRangee7() {
+        // Arrange
+        String notation = "h8";
+
+        // Act
+        Square square = Square.of(notation);
+
+        // Assert
+        assertThat(square.file()).isEqualTo(7);
+        assertThat(square.rank()).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("la case e4 est en colonne 4 et rangée 3")
+    void laCaseE4EstEnColonne4EtRangee3() {
+        // Arrange
+        String notation = "e4";
+
+        // Act
+        Square square = Square.of(notation);
+
+        // Assert
+        assertThat(square.file()).isEqualTo(4);
+        assertThat(square.rank()).isEqualTo(3);
+    }
+
+    @ParameterizedTest(name = "{0} est refusée")
+    @ValueSource(strings = {"i1", "a9", "a0"})
+    @DisplayName("une case hors de l'échiquier est refusée (juste après h, après 8, avant 1)")
+    void uneCaseHorsDeLEchiquierEstRefusee(String notation) {
+        // Act + Assert
+        assertThatThrownBy(() -> Square.of(notation)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest(name = "\"{0}\" est refusée")
+    @NullAndEmptySource
+    @ValueSource(strings = {"e", "e44"})
+    @DisplayName("une notation de case mal formée est refusée (absente, vide, trop courte, trop longue)")
+    void uneNotationDeCaseMalFormeeEstRefusee(String notation) {
+        // Act + Assert
+        assertThatThrownBy(() -> Square.of(notation)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest(name = "colonne {0}, rangée {1} est refusée")
+    @CsvSource({"8, 0", "-1, 0", "0, 8", "0, -1"})
+    @DisplayName("une case construite hors des bornes 0 à 7 est refusée (invariant)")
+    void uneCaseConstruiteHorsDesBornesEstRefusee(int file, int rank) {
+        // Act + Assert
+        assertThatThrownBy(() -> new Square(file, rank)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("une case s'écrit en notation algébrique")
+    void uneCaseSEcritEnNotationAlgebrique() {
+        // Arrange
+        Square square = new Square(4, 3);
+
+        // Act
+        String notation = square.toString();
+
+        // Assert
+        assertThat(notation).isEqualTo("e4");
+    }
+
+    @ParameterizedTest(name = "{0} → lue puis réécrite → {0}")
+    @ValueSource(strings = {"a1", "h1", "a8", "h8", "e4"})
+    @DisplayName("lire puis réécrire une case redonne la même notation (aller-retour)")
+    void lirePuisReecrireUneCaseRedonneLaMemeNotation(String notation) {
+        // Act + Assert
+        assertThat(Square.of(notation).toString()).isEqualTo(notation);
+    }
+}

@@ -1,5 +1,6 @@
+import { ApiError, apiPost } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
-import { toGameError } from '../errors'
+import { GameError, toGameError } from '../errors'
 import type { SaveStore, ScoreRepository } from '../ports'
 
 type Result<T> = { data: T; error: unknown; status: number }
@@ -21,8 +22,14 @@ async function run<T>(query: PromiseLike<Result<T>>): Promise<T> {
 
 export const supabaseScores: ScoreRepository = {
   async insert(gameSlug, score, metadata) {
-    // user_id est rempli par défaut côté base (auth.uid()) et vérifié par la RLS.
-    await run(supabase.from('scores').insert({ game_slug: gameSlug, score, metadata }))
+    // Seul le backend écrit dans public.scores, pour le compte de la session HTTP : le navigateur n'en a pas le droit.
+    try {
+      await apiPost('/scores', { gameSlug, score, metadata })
+    } catch (err) {
+      // Score refusé (au-dessus du maximum, détails invalides…) : le message du backend s'adresse déjà au joueur.
+      if (err instanceof ApiError && err.status === 400) throw new GameError('invalid', err.message, { cause: err })
+      throw toGameError(err)
+    }
   },
 
   async leaderboard(gameSlug, limit) {

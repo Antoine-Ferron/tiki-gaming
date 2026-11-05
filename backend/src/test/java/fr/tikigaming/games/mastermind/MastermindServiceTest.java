@@ -40,6 +40,30 @@ class MastermindServiceTest {
     }
 
     @Test
+    void rejectsAccessFromAnotherClient() {
+        UUID id = service.create(CLIENT).id();
+
+        assertThatThrownBy(() -> service.get(id, "203.0.113.2")).isInstanceOf(MastermindNotFoundException.class);
+        assertThatThrownBy(() -> service.guess(id, "203.0.113.2", GUESS))
+                .isInstanceOf(MastermindNotFoundException.class);
+        assertThatThrownBy(() -> service.restart(id, "203.0.113.2")).isInstanceOf(MastermindNotFoundException.class);
+    }
+
+    @Test
+    void serializesConcurrentGuessesForOneGame() throws InterruptedException {
+        UUID id = service.create(CLIENT).id();
+        Thread first = new Thread(() -> service.guess(id, CLIENT, GUESS));
+        Thread second = new Thread(() -> service.guess(id, CLIENT, GUESS));
+
+        first.start();
+        second.start();
+        first.join();
+        second.join();
+
+        assertThat(service.get(id).attemptsUsed()).isEqualTo(2);
+    }
+
+    @Test
     void limitsActiveGamesPerClient() {
         for (int i = 0; i < MastermindService.MAX_GAMES_PER_CLIENT; i++) service.create(CLIENT);
 
