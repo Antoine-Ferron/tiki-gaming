@@ -217,6 +217,10 @@ test('deux invités rejoignent, tirent et reprennent leurs sièges auprès de de
     const seats = await Promise.all(responses.map((res) => res.json()))
     expect(seats.map((s) => s.seat)).toEqual([3, 4])
     const pages = [host, friend, ...guests]
+    const sessions = await Promise.all(
+      contexts.map(async (context) => (await context.cookies()).find((cookie) => cookie.name === 'JSESSIONID')!.value),
+    )
+    expect(new Set(sessions).size).toBe(4)
     await host.getByRole('button', { name: 'Démarrer la partie' }).click()
     for (const player of pages) await expect(player.getByRole('region', { name: 'Ta main' })).toBeVisible()
     checkPrivateViews(await Promise.all(pages.map((p) => state(p, code))))
@@ -283,6 +287,7 @@ test('deux invités rejoignent, tirent et reprennent leurs sièges auprès de de
     expect(dodged.players[2].health).toBe(pending.players[2].health)
     expect(dodged.currentSeat).toBe(4)
     expect(dodged.phase).toBe('PLAY')
+    await finishOnlineTurn(paul, code)
     for (const guest of guests) {
       expect(await (await guest.request.get('/api/auth/session')).json()).toEqual({ user: null })
       expect(
@@ -291,6 +296,11 @@ test('deux invités rejoignent, tirent et reprennent leurs sièges auprès de de
     }
     expect(guestScorePosts).toEqual([])
     const finalViews = await Promise.all(pages.map((p) => state(p, code)))
+    for (const view of finalViews) {
+      expect(view.currentSeat).toBe(1)
+      expect(view.phase).toBe('DRAW')
+      expect(view.pendingShot).toBeUndefined()
+    }
     checkPrivateViews(finalViews)
     await test.info().attach('roles-et-sieges-mixtes', {
       body: JSON.stringify(finalViews.map(({ seat, role }) => ({ seat, role }))),

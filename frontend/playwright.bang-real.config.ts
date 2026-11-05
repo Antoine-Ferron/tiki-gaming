@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
@@ -16,7 +17,13 @@ export default defineConfig({
   forbidOnly: true,
   timeout: 60000,
   expect: { timeout: 10000 },
-  reporter: 'list',
+  outputDir: 'reports/bang-e2e/results',
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'reports/bang-e2e/html', open: 'never' }],
+    ['json', { outputFile: 'reports/bang-e2e/results.json' }],
+  ],
+  metadata: { testedSha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() },
   use: { baseURL: 'http://localhost:5198', trace: 'on', locale: 'fr-FR' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
