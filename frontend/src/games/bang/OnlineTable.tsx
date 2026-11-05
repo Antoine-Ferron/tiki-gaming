@@ -111,7 +111,7 @@ export function OnlineTable({ accountId }: { accountId: string }) {
         acting.current = null
         await run(next.command, next.action)
       } else if (code) {
-        acting.current = appliedRead.current > sending.current.afterRead ? null : latestRead.current
+        acting.current = appliedRead.current > sending.current.afterRead ? null : sending.current.afterRead
         await refresh(code)
       } else {
         acting.current = null

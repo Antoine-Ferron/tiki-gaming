@@ -693,3 +693,97 @@ test.each(['tour suivant', 'défausse', 'tir en attente', 'session perdue'])(
       )
   },
 )
+
+test.each([1, 2])(
+  '%i clic(s) restent valides quand la première lecture PLAY est livrée après le 204',
+  async (clicks) => {
+    const cards = Array.from({ length: 7 }, (_, index) => ({ id: `carte-${index}`, type: 'BANG' }))
+    const drawing: GameView = {
+      ...fourPlayerView(),
+      currentSeat: 1,
+      phase: 'DRAW',
+      role: 'SHERIFF',
+      hand: cards.slice(0, 5),
+      players: fourPlayerView().players.map((p) => ({
+        ...p,
+        role: p.seat === 1 ? 'SHERIFF' : undefined,
+        ...(p.seat === 1 ? { health: 5, maxHealth: 5, handCount: 5 } : {}),
+      })),
+    }
+    const playing: GameView = {
+      ...drawing,
+      phase: 'PLAY',
+      hand: cards,
+      players: drawing.players.map((p) => (p.seat === 1 ? { ...p, handCount: 7 } : p)),
+    }
+    let view = drawing
+    let acknowledge!: (response: Response) => void
+    const drawResponse = new Promise<Response>((resolve) => {
+      acknowledge = resolve
+    })
+    let deliverFirst!: (response: Response) => void
+    const firstRead = new Promise<Response>((resolve) => {
+      deliverFirst = resolve
+    })
+    let deliverSecond!: (response: Response) => void
+    const secondRead = new Promise<Response>((resolve) => {
+      deliverSecond = resolve
+    })
+    let reads = 0
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/state')) {
+        reads++
+        if (reads === 2) return firstRead
+        if (reads === 3) return secondRead
+        return Response.json(view)
+      }
+      if (url.endsWith('/turn/draw')) {
+        view = playing
+        return drawResponse
+      }
+      if (url.endsWith('/turn/end')) {
+        view = { ...playing, phase: 'DISCARD' }
+        return new Response(null, { status: 204 })
+      }
+      return Response.json({ code: drawing.code, seat: 1, playerCount: 4 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    vi.useFakeTimers()
+    render(<OnlineTable accountId="compte-test" />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(reads).toBe(2)
+    expect(screen.queryByRole('button', { name: 'Finir le tour' })).toBeNull()
+    await act(async () => {
+      acknowledge(new Response(null, { status: 204 }))
+    })
+    expect(reads).toBe(3)
+    expect(screen.queryByRole('button', { name: 'Finir le tour' })).toBeNull()
+    await act(async () => {
+      deliverFirst(Response.json(playing))
+    })
+    const end = screen.getByRole('button', { name: 'Finir le tour' })
+    expect(end.hasAttribute('disabled')).toBe(false)
+    await act(async () => {
+      for (let click = 0; click < clicks; click++) fireEvent.click(end)
+    })
+    await act(async () => {
+      deliverSecond(Response.json(playing))
+    })
+
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/turn/end'))).toHaveLength(1)
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/games/bang/tables/ABC123/turn/end',
+      expect.objectContaining({ method: 'POST' }),
+    )
+    expect(screen.getByRole('status').textContent).toBe("Tu as trop de cartes : défausse-en jusqu'à 5.")
+    expect(within(screen.getByRole('region', { name: 'Ta main' })).getAllByRole('listitem')).toHaveLength(7)
+  },
+)
