@@ -298,7 +298,8 @@ couverture ; tout est rejoué, seuils compris, au push sur `dev` ([détails](doc
 
 | Cache | Effet |
 |-------|-------|
-| npm, Maven | dépendances téléchargées une fois (`setup-node`, `setup-java`) |
+| `node_modules` | `npm ci` seulement quand le lockfile, Node ou l'image Ubuntu change ; les autres jobs restaurent le dossier tel quel (`.github/actions/node-modules`) |
+| Maven | dépendances téléchargées une fois (`setup-java`) |
 | Prettier, ESLint | seuls les fichiers dont le **contenu** a changé sont revérifiés (aussi en local : `node_modules/.cache`) |
 | Playwright | navigateurs réinstallés seulement quand la version de Playwright change |
 | Stryker, Pitest | **sur une PR**, seuls les mutants concernés par le changement sont rejoués ; un push vers `dev` ou `main` refait un run **complet**, qui sert de référence aux PR suivantes |

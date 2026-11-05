@@ -128,13 +128,15 @@ Chaque job part d'une machine vide, puis :
 
 1. récupère le code (`actions/checkout`) ;
 2. installe **Node 24** et/ou **Java 21** (Temurin) ;
-3. installe les dépendances exactes du lockfile : `npm ci` côté front, Maven côté backend.
+3. installe les dépendances exactes du lockfile : `npm ci` côté front (ou restaure `node_modules` du cache, voir
+   ci-dessous), Maven côté backend.
 
 Pour ne pas refaire le même travail à chaque run, plusieurs caches sont réutilisés :
 
 | Cache | Ce qui est évité |
 |-------|------------------|
-| npm, Maven | retélécharger les dépendances |
+| `node_modules` du front (`.github/actions/node-modules`) | relancer `npm ci` (40 à 90 s) dans chacun des 7 jobs du front : clé = lockfile + Node + image Ubuntu ; seul le premier job qui la rate (en pratique `Frontend`) installe et sauvegarde |
+| Maven | retélécharger les dépendances |
 | Prettier, ESLint | revérifier les fichiers dont le **contenu** n'a pas changé |
 | Navigateurs Playwright | les retélécharger tant que la version de Playwright (pas tout le lockfile) ne change pas |
 | Couverture (artefacts `couverture-frontend`, `couverture-backend`) | rejouer les tests dans `SonarQube Cloud` |

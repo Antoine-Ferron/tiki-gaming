@@ -121,14 +121,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 2
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      # Après `npm ci`, qui vide node_modules. Prettier et ESLint comparent le contenu des fichiers (pas leur date) :
-      # un fichier modifié est toujours revérifié. Une nouvelle clé par run, la plus récente est restaurée.
+      - uses: ./.github/actions/node-modules
+      # Après node_modules, qui est mis en cache sans ses sous-caches (voir .github/actions/node-modules). Prettier et
+      # ESLint comparent le contenu des fichiers (pas leur date) : un fichier modifié est toujours revérifié. Une
+      # nouvelle clé par run, la plus récente est restaurée.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: frontend/node_modules/.cache
@@ -224,13 +220,9 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+      - uses: ./.github/actions/node-modules
       # Le runner identifie une migration par sa version (horodatage) : deux fichiers de même version, et le second
-      # serait ignoré sans bruit en prod. Sans dépendance : passe avant npm ci.
+      # serait ignoré sans bruit en prod.
       - name: Migrations (format des noms, versions uniques)
         run: npm run db:check
       # Une migration déjà sur la branche cible est (ou sera) appliquée en prod, et le runner ne rejoue jamais une
@@ -247,7 +239,6 @@ jobs:
             echo "$changed"
             exit 1
           fi
-      - run: npm ci
       # Conteneur supabase/postgres éphémère, migrations rejouées sur base vide, puis RLS et catalogue.
       - run: npm run test:integration
 
@@ -264,12 +255,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - uses: ./.github/actions/node-modules
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: frontend/reports/stryker-incremental.json
@@ -356,12 +342,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - uses: ./.github/actions/node-modules
       # Navigateurs Playwright mis en cache selon la seule version de Playwright, pas tout le lockfile : sinon chaque
       # mise à jour de dépendance les retéléchargeait (~6 min). Les dépendances système (apt) ne se mettent pas en
       # cache et sont réinstallées à chaque run.
@@ -408,18 +389,12 @@ jobs:
       TIKI_RUSHHOUR_MAXRESULTSPERMINUTE: 1000000
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+      - uses: ./.github/actions/node-modules
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
           cache: maven
-      - run: npm ci
-        working-directory: frontend
       # Base éphémère (image de prod) + migrations du dépôt + 1 000 joueurs factices, puis PostgREST.
       - run: docker compose -f quality/docker-compose.yml up -d --wait db
       - run: npm run quality:seed
@@ -453,17 +428,13 @@ jobs:
       VITE_SUPABASE_ANON_KEY: ci-anon-key
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+      - uses: ./.github/actions/node-modules
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
           cache: maven
-      - run: npm ci && npm run build
+      - run: npm run build
         working-directory: frontend
       - name: Front buildé (vite preview, avec les en-têtes de sécurité) et backend en arrière-plan
         run: |
@@ -506,12 +477,8 @@ jobs:
         if: env.SONAR_TOKEN != ''
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v7
+      - uses: ./.github/actions/node-modules
         if: env.SONAR_TOKEN != ''
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
       - uses: actions/setup-java@v6
         if: env.SONAR_TOKEN != ''
         with:
@@ -532,10 +499,10 @@ jobs:
         with:
           name: couverture-backend
           path: backend/target
-      - name: Couverture (Vitest lcov + JaCoCo) et dépendances (analyse TypeScript, sonar.java.libraries)
+      - name: Couverture (Vitest lcov + JaCoCo) et dépendances Java (sonar.java.libraries)
         if: env.SONAR_TOKEN != ''
         run: |
-          cd frontend && npm ci
+          cd frontend
           [ -f coverage/lcov.info ] || VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run test:coverage
           cd ../backend
           if [ -f target/site/jacoco/jacoco.xml ]; then mvn -B -q dependency:resolve; else mvn -B verify; fi
