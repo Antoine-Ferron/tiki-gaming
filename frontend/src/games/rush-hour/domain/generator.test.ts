@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from 'vitest'
 import { seededRandom } from '../testing/seededRandom'
-import { parseBoard } from './board'
+import { type Board, parseBoard } from './board'
 import { type Difficulty, difficultyOf } from './difficulty'
 import { generateBoard } from './generator'
 import { GENERATOR_LAYOUTS } from './generatorLayouts'
@@ -47,4 +47,25 @@ describe('generateBoard : un plateau tiré au hasard, de la difficulté demandé
     // Assert
     expect(new Set(maps).size).toBeGreaterThanOrEqual(4)
   })
+})
+
+/** Ce qui ne change jamais dans une disposition : chaque véhicule, son sens et la ligne (ou colonne) qu'il occupe. */
+function layoutOf(board: Board) {
+  return board.vehicles.map((v) => `${v.id}${v.orientation}${v.length}@${v.orientation === 'H' ? v.row : v.col}`).sort()
+}
+
+describe('generateBoard : toute la réserve sert (G3)', () => {
+  test.each(GENERATOR_LAYOUTS.map((map, index) => ({ map, index })))(
+    'le tirage peut choisir la disposition n°$index',
+    ({ map, index }) => {
+      // Arrange : un hasard qui tombe sur cette disposition
+      const random = () => (index + 0.5) / GENERATOR_LAYOUTS.length
+
+      // Act
+      const generated = generateBoard('facile', random)
+
+      // Assert : mêmes véhicules, sur les mêmes lignes et colonnes ; seules leurs positions changent
+      expect(layoutOf(parseBoard(generated))).toEqual(layoutOf(parseBoard(map)))
+    },
+  )
 })

@@ -46,6 +46,41 @@ class SolutionVerifierTest {
         assertThat(moves).isEqualTo(2);
     }
 
+    @Test
+    void replayCountsAMergedMoveFollowedByAnotherVehicle() {
+        // Arrange : la voiture B, en bas à gauche, ne gêne pas la voiture rouge
+        List<String> map = List.of(E, E, "XX....", "B.....", "B.....", E);
+
+        // Act : X avance en deux fois (1 coup), B descend (1 coup), puis X sort (1 coup)
+        int moves = SolutionVerifier.replay(
+                map, List.of(new Move('X', 1), new Move('X', 1), new Move('B', 1), new Move('X', 2)));
+
+        // Assert
+        assertThat(moves).isEqualTo(3);
+    }
+
+    @Test
+    void replayRefusesAVehicleBackingIntoAnother() {
+        // Arrange : la voiture B est juste derrière la voiture rouge
+        List<String> map = List.of(E, ".B....", ".BXX..", E, E, E);
+
+        // Act + Assert
+        assertThatThrownBy(() -> SolutionVerifier.replay(map, List.of(new Move('X', -1))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Déplacement impossible : X de -1");
+    }
+
+    @Test
+    void replayRefusesAVehicleGoingPastTheRightEdge() {
+        // Arrange : ligne libre, et la case qui suit le bord (début de la ligne suivante) aussi
+        List<String> map = List.of(E, E, "XX....", E, E, E);
+
+        // Act + Assert : 4 cases pour sortir (bord), 5 cases dépassent le plateau
+        assertThatThrownBy(() -> SolutionVerifier.replay(map, List.of(new Move('X', 5))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Déplacement impossible : X de 5");
+    }
+
     static Stream<Arguments> refusedGames() {
         return Stream.of(
                 Arguments.of(List.of(new Move('Z', 1)), "Véhicule inconnu : Z"),
