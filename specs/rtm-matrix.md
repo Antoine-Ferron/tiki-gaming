@@ -156,6 +156,11 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-45 | REQ-RH-05 | nominal | intégration (Testcontainers) | `frontend/tests/integration/rush-hour.test.ts` › un joueur sauvegarde sa progression Rush Hour et la relit à l’identique | PASSED | — |
 | TC-RH-46 | REQ-RH-05 | erreur | intégration (Testcontainers) | `frontend/tests/integration/rush-hour.test.ts` › un joueur ne voit pas la progression Rush Hour d’un autre | PASSED | — |
 | TC-RH-47 | REQ-SCORE-01 | erreur | intégration (Testcontainers) | `frontend/tests/integration/rush-hour.test.ts` › refuse un score total de 20 001 (> 20 000), même envoyé par le backend | PASSED | — |
+| TC-RH-48 | REQ-RH-05 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › rejouer un niveau moins bien ne fait pas baisser le record | PASSED | — |
+| TC-RH-49 | REQ-RH-08 | nominal | E2E (téléphone, 375 px) | `frontend/e2e/rush-hour.spec.ts` › le plateau tient dans l’écran et le niveau 1 se gagne au glisser-déposer | PASSED | — |
+| TC-RH-50 | REQ-RH-06 | nominal | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › a le minimum de coups de sa difficulté | PASSED | — |
+| TC-RH-51 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/rush-hour.spec.ts` › aucune violation d’accessibilité pendant une partie, ni sur l’écran de victoire | PASSED | — |
+| TC-RH-52 | REQ-ERR-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › serveur en panne : un message lisible, et les niveaux restent jouables | PASSED | — |
 | TC-A11Y-03 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/accessibilite.spec.ts` › ['Rush Hour', '/games/rush-hour', 'Rush Hour'] | PASSED | BUG-05 |
 
 ## Anomalies
