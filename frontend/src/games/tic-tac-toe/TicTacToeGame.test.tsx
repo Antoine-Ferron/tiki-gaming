@@ -46,4 +46,22 @@ describe('TicTacToeGame', () => {
     expect(screen.getByRole('status').textContent).toContain('Tour du joueur X')
     expect(screen.getByRole('gridcell', { name: 'Ligne 1, colonne 1, vide' }).textContent).toBe('')
   })
+
+  it('updates the session score after a win and keeps it after replay', () => {
+    render(<TicTacToeGame ctx={ctx} />)
+
+    for (const cell of [
+      [1, 1],
+      [2, 1],
+      [1, 2],
+      [2, 2],
+      [1, 3],
+    ]) {
+      fireEvent.click(screen.getByRole('gridcell', { name: `Ligne ${cell[0]}, colonne ${cell[1]}, vide` }))
+    }
+
+    expect(screen.getByLabelText('Score de la session').textContent).toContain('X 1')
+    fireEvent.click(screen.getByRole('button', { name: 'Rejouer' }))
+    expect(screen.getByLabelText('Score de la session').textContent).toContain('X 1')
+  })
 })

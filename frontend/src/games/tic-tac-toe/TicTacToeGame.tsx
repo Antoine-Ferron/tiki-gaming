@@ -12,11 +12,20 @@ const statusMessage = {
 
 export default function TicTacToeGame({ ctx }: GameProps) {
   const [game, setGame] = useState(() => new TicTacToeDomain())
+  const [score, setScore] = useState({ xWins: 0, oWins: 0, draws: 0 })
   const [, refresh] = useState(0)
   const status = game.status()
 
   function play(row: number, column: number) {
     game.place(row, column)
+    const newStatus = game.status()
+    if (newStatus !== 'IN_PROGRESS' && status === 'IN_PROGRESS') {
+      setScore((current) => ({
+        xWins: current.xWins + (newStatus === 'X_WON' ? 1 : 0),
+        oWins: current.oWins + (newStatus === 'O_WON' ? 1 : 0),
+        draws: current.draws + (newStatus === 'DRAW' ? 1 : 0),
+      }))
+    }
     refresh((value) => value + 1)
   }
 
@@ -29,6 +38,17 @@ export default function TicTacToeGame({ ctx }: GameProps) {
       <div className="tic-tac-toe-heading">
         <p className="tic-tac-toe-kicker">Duel local</p>
         <p className="muted">{ctx.isGuest ? 'Partie locale, sans classement.' : 'Partie locale.'}</p>
+        <div className="tic-tac-toe-score" aria-label="Score de la session">
+          <span className="score-X">
+            X <strong>{score.xWins}</strong>
+          </span>
+          <span className="score-draws">
+            Nuls <strong>{score.draws}</strong>
+          </span>
+          <span className="score-O">
+            O <strong>{score.oWins}</strong>
+          </span>
+        </div>
         {status === 'IN_PROGRESS' ? (
           <p className={`tic-tac-toe-status status-${game.currentPlayer()}`} role="status">
             Tour du joueur <strong>{game.currentPlayer()}</strong>
