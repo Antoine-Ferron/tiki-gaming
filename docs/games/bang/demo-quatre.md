@@ -4,11 +4,12 @@ Validation initiale locale du 5 novembre 2026 ; la revue corrective est consign�
 dans la dernière section. Les issues GitHub #60 et #61 restent ouvertes
 pour validation ; les changements sont enregistrés dans des commits locaux.
 
-État courant après la revue de `109a2990` : les choix « Sur le même écran » et
-« En ligne » sont accessibles avec ou sans compte. Les invités en ligne ont une
-place liée à leur session HTTP. Les trois régressions de cette revue sont reprises
-dans la suite habituelle ; le bilan détaillé figure en fin de document. Les
-sections de validation précédentes conservent leurs résultats historiques.
+État courant après la revue de `586486ba` : les deux fenêtres du clic sur
+« Finir le tour » sont couvertes, avant et après le 204 de pioche. Un détour en
+ligne conserve le tour local et son passage d'écran privé. La suite habituelle
+rejoue six scénarios avec le vrai serveur ; les invités gardent leur place de
+session. Le bilan détaillé figure en fin de document. Les sections précédentes
+conservent leurs résultats historiques.
 
 ## Branches vérifiées
 
@@ -470,3 +471,158 @@ Le dernier `git fetch origin --prune` retrouve `origin/dev` à `ece3ce79` et la
 #60 à `05b4dd87`, tous deux ancêtres de la #61. La branche commune locale/distante
 reste à `22a11fc1`. Les commits restent locaux sur `game/bang/61-demo-quatre` :
 aucun push, merge dans `game/bang/implementation` ni clôture d'issue.
+
+## Revue de `586486ba` — clic après le 204 et partie locale conservée
+
+### Base et rouges réellement observés (5 novembre 2026)
+
+La tête initiale est bien `586486ba`, sur la branche existante
+`game/bang/61-demo-quatre`, sans changement local à déplacer. Après
+`git fetch origin --prune`, `origin/dev` (`ece3ce79`) et
+`origin/game/bang/implementation` (`22a11fc1`) sont déjà des ancêtres. Aucun merge
+supplémentaire n'est nécessaire. Les règles, cartes, personnages et le moteur
+d'Antoine et Colleen sont réutilisés sans modification.
+
+Les deux fichiers fournis dans `controle-61-586486ba-9r78202g/frontend/` sont
+repris, puis cette commande est exécutée **avant toute modification de production** :
+
+```powershell
+npx playwright test --config playwright.controle-limites.config.ts
+```
+
+Les deux scénarios échouent sur le comportement attendu, avec le vrai serveur :
+
+| Comportement | Rouge navigateur | Test intérieur rouge | Commit vert |
+| --- | --- | --- | --- |
+| Clic après réception du 204 de pioche, lecture suivante retenue | **0 POST `/turn/end`**, serveur encore en **PLAY** après le clic unique et la libération de la lecture. | Vrai `OnlineTable`, fetch et horloge contrôlés : 0 POST au lieu de 1, clic simple comme double. | `6c8bb227` : après acquittement du POST, libère le verrou si une vue postérieure à la commande est déjà appliquée. Vert réel : 1 POST, siège 1 en DISCARD, sept cartes pour cinq PV. |
+| Clic retenu avant le 204 devenu invalide | Le scénario joueur initial guide la correction ; ce garde-fou complète le test intérieur. | Une fin de tour part malgré une nouvelle vue indiquant un autre joueur, DISCARD, un tir en attente ou une session perdue : **1 POST au lieu de 0** dans les quatre cas. | `5cbae880` : le clic retenu appartient au code/siège, joueur actif, phase et tir affichés. Une intention dont le contexte a changé est abandonnée. |
+| Détour par En ligne puis retour au même écran | Main **7 → 5**, nouvelle distribution et message « pioche tes deux cartes ». | Même perte dans `BangGame` réel, avec ou sans compte ; seul le mélange est contrôlé. | `dd34038e` : garde `LocalTable` monté en mémoire et masque son conteneur quand le mode en ligne est actif. Au retour : mêmes cartes, joueur, PV et phase ; aucun nouveau mélange. |
+
+La première correction n'ajoute ni attente réelle ni deuxième clic. Le POST reste
+exclusif pendant son envoi ; le clic avant le 204 reste retenu une seule fois. Les
+tests de lecture ancienne et de double clic sont conservés. Dans le nouveau test,
+la lecture PLAY retenue arrive après la lecture DISCARD du POST de fin de tour :
+elle ne fait pas reculer le plateau.
+
+La conservation locale réutilise tous les états existants de `LocalTable`, y
+compris le siège autorisé à regarder l'écran, le tir en attente et le tour du
+tireur. Aucun transfert de partie vers le serveur et aucune sauvegarde locale ne
+sont ajoutés. Les tests vérifient aussi l'aller-retour pendant le passage vers la
+cible **et** pendant le retour au tireur : la main et le rôle privé restent
+absents jusqu'au bouton de confirmation. Un BANG ! puis un vrai Raté ! peuvent
+être joués après le détour, dans le même tour.
+
+`67172923` intègre les deux reproductions dans `npm run test:e2e:bang`, ajoute les
+contrôles de passage privé et d'absence d'envoi/file de score dans les parcours,
+et corrige une option de Testing Library signalée par TypeScript. Les quatre
+scénarios précédents sont conservés.
+
+### Démo complète et portée des preuves
+
+`npm run test:e2e:bang` réussit : **6 tests, sans retry**, en 1,2 min avec le
+lancement des serveurs. Chromium et les vrais contrôleurs/services BANG ! sont
+utilisés ; seules les frontières Supabase de test et le mélange de la démo restent
+contrôlés, comme précédemment.
+
+- Quatre comptes isolés : catalogue, création/jonction, tir du Shérif, esquive
+  après actualisation, acceptation après reconnexion, bonus Bart, confidentialité
+  JSON, refus des anciennes réponses et joueur suivant.
+- Deux comptes et deux invités : sièges 3/4 distincts, mains/rôles isolés,
+  tirs/réponses, reprises après actualisation et coupure réseau. Les invités
+  restent sans `AuthUser`/JWT ; aucun POST de score ni score en file dans ce parcours.
+- Quatre joueurs locaux : défausse du BANG ! et du Raté !, perte exacte d'un PV,
+  bonus Bart survivant, refus du second tir sans perte de carte et retour au tireur.
+- Clic pendant la réponse du POST de pioche, scénario existant conservé : 1 POST,
+  puis DISCARD.
+- Clic après le 204 et avant la lecture suivante : 1 POST, puis DISCARD.
+- Aller-retour entre modes avec sept cartes, puis pendant les deux passages
+  privés. Le joueur poursuit son même tour ; aucun score local envoyé ni mis en file.
+
+Les trois configurations de joueurs continuent de désigner **un seul siège
+Shérif**, le siège 1, malgré les orientations différentes. Les mains et rôles
+privés des autres joueurs ne sont pas transmis dans les JSON en ligne. Le passage
+privé après retour de mode est aussi inspecté sur la capture `passage-prive-2.png`.
+
+Un incident de lancement a interrompu PowerShell lors du rejeu local, puis un
+second lancement a trouvé le port 18080 occupé. Le processus orphelin a été
+identifié par son application `BangBrowserApplication` et son heure de création ;
+seuls ce serveur de test et son lanceur ont été arrêtés. Le rejeu isolé a ensuite
+réussi, puis les six scénarios ont réussi ensemble. Cet incident n'est pas compté
+comme un rouge métier. Aucun timeout de serveur n'a été transformé en assertion
+de règle du jeu.
+
+### Traces et captures de cette revue
+
+Racine absolue du dernier rejeu :
+`D:\COURS\SDV_2026_2027\tiki-gaming\frontend\test-results\`.
+
+| Scénario | Sous-répertoire (contient `trace.zip`) | Captures |
+| --- | --- | --- |
+| Quatre comptes | `bang-du-catalogue-au-tour--4da0a-acceptation-et-vues-privées-chromium` | `place-1.png` à `place-4.png` |
+| Deux comptes / deux invités | `review.probe-deux-invités--df334-èges-auprès-de-deux-comptes-chromium` | `place-mixte-1.png` à `place-mixte-4.png` |
+| Même écran | `review.probe-sur-un-écran-le-BANG-atteint-un-voisin-à-portée-chromium` | `place-locale-1.png` à `place-locale-4.png`, `tir-local.png` |
+| Clic avant le 204 | `review.probe-un-seul-clic--88735-nse-du-POST-de-pioche-tarde-chromium` | Trace |
+| Clic après le 204 | `controle-limites-le-clic-e-42f94-lle-lecture-termine-le-tour-chromium` | Trace |
+| Modes et passage privé | `controle-limites-un-détour-a85ee-la-partie-sur-le-même-écran-chromium` | `retour-mode.png`, `passage-prive-2.png`, `passage-prive-1.png` |
+
+Les traces rouges réellement produites avant le correctif sont conservées dans
+`frontend/node_modules/.cache/bang-61-limites-red-traces/`. Les logs de cette revue
+sont préfixés `bang-61-limites-` dans ce même cache : `acceptance-red`,
+`clic-component-red`, `intention-red`, `modes-component-red`, leurs verts et
+`e2e-final`. Les archives de la revue fournie sont conservées à leur emplacement
+initial sans modification.
+
+### Commandes et résultats finaux
+
+Commandes exécutées dans `frontend/`, sauf la dernière dans `backend/` :
+
+| Commande | Résultat |
+| --- | --- |
+| `npx playwright test --config playwright.controle-limites.config.ts` avant le code de production | Les deux rouges métier décrits plus haut. |
+| Même commande avec `--grep 'le clic entre'` après son correctif | 1 vert : exactement un POST, état DISCARD. |
+| Même commande avec `--grep 'un détour'` après son correctif | 1 vert : sept cartes conservées, même tour. |
+| `npm test -- src/games/bang/OnlineTable.test.tsx` | 30 réussites : clic avant/après le 204, double clic, réponse ancienne et intentions périmées. |
+| `npm test -- src/games/bang/BangGame.test.tsx src/games/bang/LocalTable.test.tsx` | 11 réussites, avec/sans compte, reprise et confidentialité pendant les passages. |
+| `npm test -- src/games/bang` | **215 tests réussis**, 11 fichiers. |
+| `npm run test:e2e:bang` | **6 réussites**, zéro retry, 1,2 min avec les serveurs. |
+| `npm run format -- --log-level warn`, `npm run format:check`, `npm run lint`, `npm run typecheck` | Succès. |
+| `npm run test:coverage` | **1 519 réussites**, 125 fichiers. Lignes 93,84 %, branches 87,77 %, fonctions 91,70 %, instructions 92,64 % ; tous les seuils passent. |
+| `npm run test:contract` | **11 interactions réussies**, contrat régénéré sans modification de contenu. |
+| `npm run build` | Succès, avertissement existant sur la taille des chunks conservé. |
+| `npm run rtm:check`, `npm run db:check` | Traçabilité complète (24 exigences, 85 cas), 17 migrations uniques. |
+| `mvn -B -ntp clean verify` | **BUILD SUCCESS** dans le dépôt principal : 6 589 tests au total, **6 588 réussis**, un scénario Échecs ignoré par le filtre existant `@en-cours`, zéro échec/erreur. Contrats fournisseur, tests Docker, Checkstyle, Spotless et JaCoCo passent ; aucun BANG ! ignoré. |
+
+Les sorties sont conservées dans `frontend/node_modules/.cache/`, préfixées
+`bang-61-limites-`, notamment `front-targeted.log`, `front-coverage.log`,
+`contract.log`, `front-build.log`, `e2e-final.log` et `clean-verify.log`.
+Le rapport JaCoCo est aussi conservé dans `bang-61-limites-jacoco.xml`.
+Couverture JaCoCo : lignes 99,03 %, branches 94,88 %.
+
+### Limites conservées
+
+L'état local reste en mémoire tant que l'écran BANG ! reste monté. Un rechargement
+ou redémarrage ne restaure pas cette partie, conformément au périmètre demandé.
+Le code de table et le choix du mode restent mémorisés comme avant pour les
+reprises en ligne.
+
+Les contrôles de score portent sur les parcours joués et sur les frontières
+existantes : local sans port de score, SDK invité sans publication/file et refus
+HTTP de score invité. La détection de victoire, le barème et la publication d'un
+résultat BANG ! validé pour les seuls comptes en ligne restent à raccorder comme
+dans le bilan précédent. L'absence de score pendant un tour ne prouve pas un
+parcours de fin de partie encore absent.
+
+### Remise de la branche
+
+Le fetch final et les deux commandes suivantes confirment les ascendances :
+
+```powershell
+git fetch origin --prune
+git merge-base --is-ancestor origin/dev game/bang/61-demo-quatre
+git merge-base --is-ancestor origin/game/bang/implementation game/bang/61-demo-quatre
+```
+
+Les références restent respectivement `ece3ce79` et `22a11fc1`. Les commits de
+cette revue sont `6c8bb227`, `5cbae880`, `dd34038e`, `67172923`, puis le présent
+bilan. Ils restent locaux sur la #61, pour relecture. Aucun push, aucune PR,
+aucune fusion vers la branche commune, `dev` ou `main` n'ont été effectués.
