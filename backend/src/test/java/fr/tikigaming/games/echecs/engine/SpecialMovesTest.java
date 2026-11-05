@@ -68,4 +68,20 @@ class SpecialMovesTest {
         assertThat(king.contains(Square.of("g1"))).as("petit roque").isEqualTo(castlings.contains("g1"));
         assertThat(king.contains(Square.of("c1"))).as("grand roque").isEqualTo(castlings.contains("c1"));
     }
+
+    @Test
+    void laPriseEnPassantEnleveLePionQuiVientDAvancerDeDeuxCases() {
+        // S4 : le pion noir vient de jouer d7-d5 (case d6 notée dans la FEN)
+        assertThat(play("k7/8/8/3pP3/8/8/8/7K w - d6 0 2", "e5", "d6", null))
+                .isEqualTo("k7/8/3P4/8/8/8/8/7K b - - 0 2");
+    }
+
+    @ParameterizedTest(name = "{2}")
+    @CsvSource({
+        "'k7/8/8/3pP3/8/8/8/7K w - - 0 2', e6, S4 : plus de case de prise en passant (pas au coup suivant immédiat)",
+        "'8/8/8/K2pP2r/8/8/8/7k w - d6 0 2', e6, S5 : les deux pions quitteraient la rangée et découvriraient le roi"
+    })
+    void laPriseEnPassantNEstPasToujoursPermise(String fen, String expected, String why) {
+        assertThat(Game.legalDestinations(Fen.parse(fen), Square.of("e5"))).containsExactly(Square.of(expected));
+    }
 }
