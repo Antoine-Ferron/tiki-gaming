@@ -53,7 +53,9 @@ vérification et étapes restantes sont décrits dans [rencontres.md](rencontres
 La [persistance](persistance.md) dispose désormais d'un adaptateur PostgREST et
 de tests Testcontainers sur les vrais services PostgreSQL/PostgREST. La table est
 privée au backend et protège les transitions concurrentes. Le raccordement
-API/interface reste à réaliser.
+[API](api.md), l'[interface et les E2E](interface-e2e.md) sont désormais préparés
+sur leurs branches distinctes de la PR #116 ; leurs documents détaillent les
+contrats, validations et commandes de démonstration locale.
 
 Les [scénarios Gherkin](bdd.md) des rencontres, prises et victoire sont exécutés
 par `DameBddTest`. Les étapes Java utilisent le vrai moteur et `MatchService`

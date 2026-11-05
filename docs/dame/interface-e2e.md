@@ -105,3 +105,37 @@ La CI Linux conserve sa commande habituelle.
 
 Validation backend finale : `mvn -Pintegration verify` passe avec **6 490 cas,
 aucun échec ni erreur, un scénario Échecs ignoré préexistant**, puis **56 IT**.
+
+## Voir la vraie interface avec une base jetable
+
+Docker doit être démarré ; Java 21, Maven et les dépendances frontend du projet
+doivent être disponibles. Depuis la racine, dans deux terminaux :
+
+```bash
+# Terminal 1 : PostgreSQL/PostgREST jetables et vrai backend sur 8080
+./tools/dame/demo-backend.sh
+```
+
+```bash
+# Terminal 2 : Vite sur 5173, paramètres Supabase de démonstration
+./tools/dame/demo-frontend.sh
+```
+
+Ouvrir **http://localhost:5173/games/dame**, saisir les noms et jouer.
+Ce mode est prévu pour une partie locale en invité. La commande backend
+réutilise les conteneurs des IT, applique toutes les migrations sur leur base
+vide et branche le vrai dépôt PostgREST. Les paramètres Supabase/OAuth de
+démonstration sont prioritaires, sans modification de `.env` ou des fichiers
+communs. La migration distante reste à appliquer par l'équipe plateforme.
+
+`Ctrl+C` dans chaque terminal arrête la démo. L'arrêt du backend ferme ses
+conteneurs et détruit les données jetables ; une session d'une démo précédente
+peut demander de commencer une nouvelle rencontre. Le plateau n'est pas une
+sauvegarde durable et disparaît avec le backend.
+
+Vérification effectuée avec un vrai Chromium et **aucune interception réseau** :
+création HTTP 201, noms nettoyés, 20 pions par camp, coup B4→A5 et rechargement
+sur la même rencontre. Une lecture SQL directe du conteneur confirme les deux
+noms, une seule ligne `IN_PROGRESS` et l'absence de résultat prématuré.
+Les services ont ensuite été arrêtés et les conteneurs supprimés. Ce contrôle
+de démo complète les tests automatisés ; il ne remplace pas la suite CI.

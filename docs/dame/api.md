@@ -8,6 +8,8 @@ en review à sa création. Ses commits validés sont repris, avec le `dev`
 Aucun nouveau commit API n'est poussé sur #116.
 Après sa fusion en squash, seuls les commits API seront à reporter sur `dev`.
 Cette étape livre le backend ; formulaire React et E2E viendront ensuite.
+Cette suite est maintenant implémentée sur `game/dame/interface-e2e` ; voir
+[l'interface, les parcours et la démo locale](interface-e2e.md).
 
 ## Contrat HTTP
 
