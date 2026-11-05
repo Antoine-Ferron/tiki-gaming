@@ -20,7 +20,13 @@ class GameStatusTest {
         "'k7/8/8/8/8/8/8/5B1K w - - 0 1', DRAW_INSUFFICIENT_MATERIAL, F3 : roi et fou contre roi",
         "'k7/8/8/8/8/8/8/5N1K w - - 0 1', DRAW_INSUFFICIENT_MATERIAL, F3 : roi et cavalier contre roi",
         "'k7/8/8/8/8/8/8/5R1K w - - 0 1', ONGOING, roi et tour contre roi : le mat reste possible",
-        "'k7/8/8/8/8/8/8/R6K w - - 100 80', DRAW_FIFTY_MOVES, F5 : 100 demi-coups sans prise ni pion"
+        "'k7/8/8/8/8/8/8/R6K w - - 100 80', DRAW_FIFTY_MOVES, F5 : 100 demi-coups sans prise ni pion",
+        "'k1b5/8/8/8/8/8/8/5B1K w - - 0 1', DRAW_INSUFFICIENT_MATERIAL, F3 : un fou de chaque côté, même couleur de case",
+        "'kb6/8/8/8/8/8/8/5B1K w - - 0 1', ONGOING, un fou de chaque côté, couleurs de case différentes",
+        "'k7/8/8/8/8/8/8/4BB1K w - - 0 1', ONGOING, deux fous du même camp : le mat reste possible",
+        "'k7/8/8/8/8/8/8/3B1B1K w - - 0 1', ONGOING, deux fous du même camp sur la même couleur (après une promotion)",
+        "'k1n5/8/8/8/8/8/8/5B1K w - - 0 1', ONGOING, un fou contre un cavalier",
+        "'k7/8/8/8/8/8/5P2/7K w - - 0 1', ONGOING, un pion peut encore être promu"
     })
     void leStatutDeLaPartieSuitLesRegles(String fen, GameStatus expected, String why) {
         assertThat(Game.status(Fen.parse(fen))).isEqualTo(expected);

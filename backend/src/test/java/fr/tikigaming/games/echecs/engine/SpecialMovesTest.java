@@ -84,4 +84,36 @@ class SpecialMovesTest {
     void laPriseEnPassantNEstPasToujoursPermise(String fen, String expected, String why) {
         assertThat(Game.legalDestinations(Fen.parse(fen), Square.of("e5"))).containsExactly(Square.of(expected));
     }
+
+    @ParameterizedTest(name = "{2}")
+    @CsvSource({
+        "'r3k2r/8/8/8/8/8/8/R3K2R w K - 0 1', g1, seul le droit K : seulement le petit roque",
+        "'r3k2r/8/8/8/8/8/8/R3K2R w Q - 0 1', c1, seul le droit Q : seulement le grand roque",
+        "'r3k2r/8/8/8/8/8/8/4K3 w KQ - 0 1', '', plus de tour en h1 ni en a1 : aucun roque",
+        "'r3k2r/8/8/8/8/8/8/R3K2R b KQ - 0 1', '', droits des Blancs seulement : le roi noir ne roque pas"
+    })
+    void chaqueRoqueDemandeSonDroitEtSaTour(String fen, String castlings, String why) {
+        var position = Fen.parse(fen);
+        var king = Game.legalDestinations(position, Square.of(position.turn() == Color.WHITE ? "e1" : "e8"));
+        assertThat(king.contains(Square.of("g1")) || king.contains(Square.of("g8")))
+                .as("petit roque")
+                .isEqualTo(castlings.contains("g1"));
+        assertThat(king.contains(Square.of("c1")) || king.contains(Square.of("c8")))
+                .as("grand roque")
+                .isEqualTo(castlings.contains("c1"));
+    }
+
+    @Test
+    void seulUnPionPrendEnPassantUnFouEnDiagonaleNeRetirePasLaPieceVoisine() {
+        // mutant Pitest : un fou allant en diagonale sur une case vide « prenait » la pièce à côté
+        assertThat(play("k7/8/8/8/8/8/8/2BQ3K w - - 0 1", "c1", "d2", null))
+                .isEqualTo("k7/8/8/8/8/8/3B4/3Q3K b - - 1 1");
+    }
+
+    @Test
+    void seulUnPionPeutPrendreEnPassant() {
+        // mutant Pitest : un cavalier voisin de la case de prise en passant pouvait « prendre en passant »
+        assertThat(Game.legalDestinations(Fen.parse("k7/8/8/3pN3/8/8/8/7K w - d6 0 2"), Square.of("e5")))
+                .doesNotContain(Square.of("d6"));
+    }
 }

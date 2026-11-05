@@ -53,4 +53,19 @@ class CheckTest {
                 ? Set.of()
                 : Arrays.stream(notations.split(" ")).map(Square::of).collect(Collectors.toSet());
     }
+
+    @Test
+    void unPionBlancAttaqueLeRoiNoirEnDiagonaleVersLeHaut() {
+        // mutant Pitest : le sens d'attaque d'un pion blanc n'était vérifié par aucun test
+        assertThat(Game.isInCheck(Fen.parse("k7/1P6/8/8/8/8/8/7K b - - 0 1"), Color.BLACK))
+                .isTrue();
+        assertThat(Game.isInCheck(Fen.parse("k7/8/1P6/8/8/8/8/7K b - - 0 1"), Color.BLACK))
+                .isFalse();
+    }
+
+    @Test
+    void uneCaseVideNAAucunCoupLegal() {
+        assertThat(Game.legalDestinations(Fen.parse("k7/8/8/8/8/8/8/7K w - - 0 1"), Square.of("e4")))
+                .isEmpty();
+    }
 }
