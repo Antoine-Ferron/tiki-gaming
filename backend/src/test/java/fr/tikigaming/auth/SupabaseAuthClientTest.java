@@ -254,6 +254,36 @@ class SupabaseAuthClientTest {
     }
 
     @Nested
+    class DeleteUser {
+
+        @Test
+        void deletesTheAccountWithTheAdminApiAndTheServiceRoleKey() {
+            server.expect(requestTo(URL + "/auth/v1/admin/users/u-1"))
+                    .andExpect(method(HttpMethod.DELETE))
+                    .andExpect(header("apikey", SERVICE))
+                    .andExpect(header("Authorization", "Bearer " + SERVICE))
+                    .andRespond(withSuccess());
+
+            client.deleteUser("u-1");
+
+            server.verify();
+        }
+
+        @Test
+        void reportsTheRefusalOfSupabase() {
+            server.expect(requestTo(URL + "/auth/v1/admin/users/u-1"))
+                    .andRespond(withStatus(HttpStatus.NOT_FOUND)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body("""
+                                    {"code": 404, "error_code": "user_not_found", "msg": "User not found"}"""));
+
+            assertThatThrownBy(() -> client.deleteUser("u-1"))
+                    .isInstanceOfSatisfying(
+                            AuthException.class, e -> assertThat(e.status()).isEqualTo(404));
+        }
+    }
+
+    @Nested
     class FindOrCreateUser {
 
         private void expectLookup(String responseBody) {

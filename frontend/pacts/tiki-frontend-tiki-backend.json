@@ -1,0 +1,582 @@
+{
+  "consumer": {
+    "name": "tiki-frontend"
+  },
+  "interactions": [
+    {
+      "description": "la demande des cases accessibles du pion e2",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "from": "e2"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/echecs/destinations"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "destinations": [
+              "e3"
+            ]
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.destinations": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "la lecture de la session d’un joueur connecté",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "un joueur est connecté"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/auth/session"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "accessToken": "eyJhbGciOiJIUzI1NiJ9.e30.signature",
+            "expiresAt": 1793000000000,
+            "user": {
+              "email": "joueur@example.com",
+              "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+            }
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.accessToken": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.expiresAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.user.email": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.user.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "^[0-9a-f-]{36}$"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "la lecture de la session d’un visiteur",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/auth/session"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "user": null
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "la suppression du compte du joueur",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "un joueur est connecté"
+        }
+      ],
+      "request": {
+        "headers": {
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "DELETE",
+        "path": "/api/auth/account"
+      },
+      "response": {
+        "status": 204
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "le coup e2-e4 depuis la position de départ",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "from": "e2",
+            "to": "e4"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/echecs/moves"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.fen": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "le coup interdit e2-e5 depuis la position de départ",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            "from": "e2",
+            "to": "e5"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/echecs/moves"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "error": "Coup refusé : Case inaccessible pour la pièce en e2 : e5"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 422
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "l’envoi du score d’une partie terminée",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "un joueur est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "gameSlug": "clicker",
+            "metadata": {
+              "durationMs": 10000
+            },
+            "score": 120
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.gameSlug": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.metadata": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.score": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            }
+          },
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/scores"
+      },
+      "response": {
+        "status": 204
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "l’envoi d’un score au-dessus du maximum du jeu",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "un joueur est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "gameSlug": "clicker",
+            "metadata": {},
+            "score": 301
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/scores"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "error": "Score refusé : il dépasse le maximum de ce jeu."
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 400
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "l’envoi d’un score sans session",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "gameSlug": "clicker",
+            "metadata": {},
+            "score": 120
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/scores"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "error": "Connecte-toi pour enregistrer ton score."
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 401
+      },
+      "type": "Synchronous/HTTP"
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "17.1.4"
+    },
+    "pactRust": {
+      "ffi": "0.5.8",
+      "models": "1.3.16"
+    },
+    "pactSpecification": {
+      "version": "4.0"
+    }
+  },
+  "provider": {
+    "name": "tiki-backend"
+  }
+}

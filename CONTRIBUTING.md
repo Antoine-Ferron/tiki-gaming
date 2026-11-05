@@ -21,6 +21,32 @@
   fermer l'issue comme complétée** (*Close as completed*, ou `gh issue close 12 --reason completed`),
   après avoir coché les cases de sa checklist. *Close as not planned* est réservé aux issues abandonnées.
 
+### Anomalies
+
+Un bug suit le cycle de vie ISTQB, porté par le label `statut: …` de son issue (modèle **Anomalie**,
+`.github/ISSUE_TEMPLATE/anomalie.yml`) :
+
+```
+New → Assigned → Open → Fixed → Retest → Closed
+                   ↑                 │
+                   └──── Reopened ◄──┘ (le re-test échoue)
+```
+
+- **Titre canonique** : `[Module][Action] observé au lieu de attendu`, reproduction pas à pas, preuves (HAR, logs,
+  stacktrace, captures).
+- **Règle absolue** : une anomalie n'est jamais fermée sans **re-test** probant. Le correctif arrive avec le test qui
+  reproduisait le bug (rouge avant, vert après), et ce test reste dans la suite comme non-régression.
+- **Sévérité** (impact technique, fixée par qui constate) et **priorité** (urgence métier, fixée au tri) sont
+  indépendantes :
+
+  | | Priorité haute (P0-P1) | Priorité basse (P2-P3) |
+  |---|---|---|
+  | **Sévérité haute (S0-S1)** | correctif immédiat (hotfix) | planifié dans le sprint, contournement documenté |
+  | **Sévérité basse (S2-S3)** | correction rapide : fort impact visible (texte faux sur l'accueil) | backlog, à traiter avec une refonte |
+
+- Un cas de test `FAILED` ou `BLOCKED` de la [matrice RTM](specs/rtm-matrix.md) pointe toujours une anomalie ;
+  `npm run rtm:check` le vérifie.
+
 ### Nommage
 
 | Préfixe                    | Usage                                         | Exemple                         |
@@ -139,9 +165,19 @@ c'est le formatter qui tranche les questions de style.
 - **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
   écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
   le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+- **Propriétés et fuzzing** (`*.property.test.ts`, fast-check) : une règle vraie pour toute entrée générée
+  (« tout entier au-dessus du maximum est refusé »), et du fuzzing (« n'importe quelle saisie donne des données ou
+  des messages, jamais une exception »). En cas d'échec, fast-check réduit l'entrée au plus petit contre-exemple
+  et affiche sa graine (`seed`) pour le rejouer ; ce contre-exemple devient un test unitaire de non-régression.
+- **Contrat** (`tests/contract/*.pact.test.ts`, Pact) : le vrai code du front décrit ses appels au backend ; le
+  contrat généré (`pacts/`) est versionné et rejoué par le backend (`PactProviderTest`). Modifier un appel au
+  backend = relancer `npm run test:contract` et commiter le contrat (la CI vérifie qu'il est à jour).
 - **E2E** (`e2e/`) : peu de tests, réservés aux parcours vitaux (accueil → jeu → partie, panne, redirection)
   et à l'audit axe. Backend et Supabase sont simulés (`e2e/fixtures.ts`) ; le temps est contrôlé avec
-  `page.clock` (pas d'attente réelle de 10 s). Aucune violation WCAG sérieuse ou critique n'est tolérée.
+  `page.clock` (pas d'attente réelle de 10 s). Aucune violation WCAG sérieuse ou critique n'est tolérée. Chaque
+  test tourne sous Chromium, Firefox et WebKit.
+- **Traçabilité** : une nouvelle exigence du lobby entre dans [specs/rtm-matrix.md](specs/rtm-matrix.md) avec au
+  moins un cas nominal et un cas d'erreur ; `npm run rtm:check` vérifie que chaque preuve existe.
 - **Couverture minimale** : la CI échoue sous ces seuils (front : `vite.config.ts`,
   backend : règles JaCoCo de `pom.xml`, vérifiées par `mvn verify`).
 
@@ -149,7 +185,7 @@ c'est le formatter qui tranche les questions de style.
   |-----------|--------|----------|-----------|--------------|
   | Front, cœur du lobby (`games/domain`, `errors.ts`, `scoreQueue.ts`, `sdk.ts`, `lib/validation.ts`) | 95 % | 95 % | 95 % | 95 % |
   | Front, global | 78 % | 80 % | 75 % | 79 % |
-  | Backend, cœur (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`) | 95 % | 95 % | — | — |
+  | Backend, cœur (`UsernameValidator`, `SupabaseErrors`, `SupabaseTokenService`, `CircuitBreaker`) | 95 % | 95 % | — | — |
   | Backend, global | 52 % | 64 % | — | — |
 
   Le global est fixé juste sous la couverture actuelle : il empêche les régressions, y compris quand un jeu arrive
@@ -233,24 +269,30 @@ fr.tikigaming
 
 > Explication détaillée, étape par étape, avec les seuils et que faire en cas d'échec : [docs/ci.md](docs/ci.md).
 
-`.github/workflows/ci.yml` s'exécute sur chaque PR et chaque push vers `dev` et `main`. Un job ne tourne
-que si sa zone a changé ; sinon il apparaît « skipped », ce qui compte comme réussi pour la fusion :
+`.github/workflows/ci.yml` s'exécute sur chaque PR, chaque push vers `dev` et `main`, et chaque nuit (run complet).
+Les jobs sont rangés en **paliers** et la CI **s'arrête au premier échec** : un palier ne démarre que si aucun
+job des paliers précédents n'a échoué. Un job ne tourne que si sa zone a changé ; sinon il apparaît « skipped »,
+ce qui compte comme réussi pour la fusion :
 
-| Job                 | Tourne si                         | Étapes                                             |
-|---------------------|-----------------------------------|----------------------------------------------------|
-| `frontend`          | `frontend/**`                     | `npm ci` → `npm run format:check` → `npm run lint` → `npm run test:coverage` (seuils) → `npm run build` |
-| `backend`           | `backend/**`                      | `mvn -B verify` (linter, compilation, tests, format) |
-| `integration`       | `frontend/**` ou `supabase/**`    | `npm run test:integration` : Testcontainers, migrations et RLS sur PostgreSQL réel |
-| `mutation-frontend` | `frontend/**`                     | `npm run test:mutation` (Stryker, seuil 75 %), rapport en artefact |
-| `mutation-backend`  | `backend/**`                      | Pitest (seuil 75 %), rapport en artefact |
-| `e2e`               | `frontend/**`                     | `npm run test:e2e` : Playwright + audit WCAG 2.1 AA (axe), rapport en artefact en cas d'échec |
-| `performance`       | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 sur base éphémère + PostgREST + backend : P95 < 300 ms, < 1 % d'erreurs (voir [quality/](quality/README.md)) |
-| `dast`              | `frontend/**`, `backend/**` ou `quality/**` | Scan ZAP baseline du front buildé et du backend, échoue sur toute alerte non acceptée |
-| `sonar`             | `frontend/**` ou `backend/**`     | SonarQube Cloud et son Quality Gate, actif dès que le secret `SONAR_TOKEN` est configuré |
-| `security`          | toujours                          | `npm audit --audit-level=high` ; sur une PR, *dependency review* (nouvelle dépendance vulnérable refusée) |
+| Palier | Job | Tourne si | Étapes |
+|--------|-----|-----------|--------|
+| 1 | `frontend` | `frontend/**` | `npm ci` → `format:check` → `lint` → `typecheck` → `rtm:check` → `test:coverage` (seuils) → `test:contract` (contrat à jour) → `build` |
+| 1 | `backend` | `backend/**` ou `frontend/pacts/**` | `spotless:check` → `mvn -B verify` (Checkstyle, tests dont Pact provider et chaos Toxiproxy, JaCoCo) |
+| 1 | `security` | toujours | `npm audit --audit-level=high` ; sur une PR, *dependency review* |
+| 2 | `integration` | `frontend/**` ou `supabase/**` | Testcontainers : migrations, RLS et triggers sur PostgreSQL réel |
+| 3 | `mutation-frontend` | `frontend/**` | Stryker (seuil 75 %), rapport en artefact |
+| 3 | `mutation-backend` | `backend/**` | Pitest (seuil 75 %), rapport en artefact |
+| 3 | `e2e` | `frontend/**` | Playwright sous Chromium, Firefox et WebKit + audit WCAG 2.1 AA (axe) |
+| 3 | `performance` | `frontend/**`, `backend/**`, `supabase/**` ou `quality/**` | k6 profil `load` : P95 < 300 ms, P99 < 500 ms, < 1 % d'erreurs ([SLO](docs/slo.md)) |
+| 3 | `dast` | `frontend/**`, `backend/**` ou `quality/**` | ZAP baseline du front buildé et du backend |
+| 4 | `sonar` | `frontend/**` ou `backend/**` | SonarQube Cloud et son Quality Gate (secret `SONAR_TOKEN`), sur la couverture du palier 1 |
+| 5 | `verdict` | toujours | échoue si un seul job a échoué |
 
-Modifier `.github/workflows/ci.yml` relance tous les jobs. Si le job `changes` (détection des zones)
-échoue, tous les jobs tournent aussi.
+Modifier `.github/workflows/ci.yml` relance tous les jobs. Si la détection des zones échoue, ou pour le run de
+nuit, tous les jobs tournent.
+
+Une PR qui ne touche que les dossiers d'un ou plusieurs jeux ne rejoue que leurs tests unitaires, sans seuils de
+couverture ; tout est rejoué, seuils compris, au push sur `dev` ([détails](docs/ci.md#analyse-dimpact--seuls-les-tests-des-jeux-touchés)).
 
 ### Caches
 
@@ -258,7 +300,7 @@ Modifier `.github/workflows/ci.yml` relance tous les jobs. Si le job `changes` (
 |-------|-------|
 | npm, Maven | dépendances téléchargées une fois (`setup-node`, `setup-java`) |
 | Prettier, ESLint | seuls les fichiers dont le **contenu** a changé sont revérifiés (aussi en local : `node_modules/.cache`) |
-| Playwright | navigateurs réinstallés seulement quand la version change |
+| Playwright | navigateurs réinstallés seulement quand la version de Playwright change |
 | Stryker, Pitest | **sur une PR**, seuls les mutants concernés par le changement sont rejoués ; un push vers `dev` ou `main` refait un run **complet**, qui sert de référence aux PR suivantes |
 
 Les seuils et le résultat des checks ne changent pas : un test affaibli fait toujours apparaître ses

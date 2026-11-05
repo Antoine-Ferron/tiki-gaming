@@ -22,11 +22,15 @@
     <palantir-java-format.version>2.103.0</palantir-java-format.version>
     <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
     <checkstyle.version>14.4.0</checkstyle.version>
-    <jacoco.version>0.8.13</jacoco.version>
-    <pitest.version>1.19.1</pitest.version>
-    <pitest-junit5.version>1.2.2</pitest-junit5.version>
+    <jacoco.version>0.8.16</jacoco.version>
+    <pitest.version>1.30.1</pitest.version>
+    <pitest-junit5.version>1.2.3</pitest-junit5.version>
+    <pitest-history.version>0.0.1</pitest-history.version>
     <!-- Ligne 3.x = Spring Boot 4.x (la 2.x de springdoc cible Spring Boot 3). -->
     <springdoc.version>3.2.0</springdoc.version>
+    <pact.version>4.7.7</pact.version>
+    <!-- Ligne 8.x = moteur JUnit 6 (la 7.x cible JUnit 5). -->
+    <cucumber.version>8.0.4</cucumber.version>
   </properties>
 
   <dependencies>
@@ -68,6 +72,25 @@
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Contrat Pact : le backend rejoue le contrat écrit par le front (frontend/pacts, PactProviderTest). -->
+    <dependency>
+      <groupId>au.com.dius.pact.provider</groupId>
+      <artifactId>junit5</artifactId>
+      <version>${pact.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Chaos : Toxiproxy (latence, coupure réseau) entre le backend et un faux Supabase, dans Docker.
+         Versions gérées par Spring Boot (Testcontainers 2.x). -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-toxiproxy</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
     <!-- Depuis Spring Boot 4, @AutoConfigureMockMvc est dans son propre module de test. -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -75,15 +98,28 @@
       <scope>test</scope>
     </dependency>
     <!-- Tests d'intégration contre une vraie base et un vrai PostgREST (classes *IT : ignorées par `mvn test`,
-         lancées par le job CI « Integration (Testcontainers) »). Versions gérées par Spring Boot. -->
+         lancées par le job CI « Integration (Testcontainers) »). Version gérée par Spring Boot. -->
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- BDD : scénarios Gherkin (.feature) exécutés par JUnit, donc par mvn verify et la CI. -->
     <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <groupId>io.cucumber</groupId>
+      <artifactId>cucumber-java</artifactId>
+      <version>${cucumber.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.cucumber</groupId>
+      <artifactId>cucumber-junit-platform-engine</artifactId>
+      <version>${cucumber.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-suite</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -144,6 +180,7 @@
                     <include>fr.tikigaming.auth.UsernameValidator</include>
                     <include>fr.tikigaming.auth.SupabaseErrors</include>
                     <include>fr.tikigaming.auth.SupabaseTokenService</include>
+                    <include>fr.tikigaming.resilience.CircuitBreaker</include>
                   </includes>
                   <limits>
                     <limit>
@@ -236,6 +273,12 @@
                 <artifactId>pitest-junit5-plugin</artifactId>
                 <version>${pitest-junit5.version}</version>
               </dependency>
+              <!-- Depuis Pitest 1.23, l'analyse incrémentale (historyInputFile/historyOutputFile) est un plugin séparé. -->
+              <dependency>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-history-plugin</artifactId>
+                <version>${pitest-history.version}</version>
+              </dependency>
             </dependencies>
             <configuration>
               <targetClasses>
@@ -243,11 +286,15 @@
                 <param>fr.tikigaming.auth.SupabaseErrors</param>
                 <param>fr.tikigaming.auth.SupabaseTokenService</param>
                 <param>fr.tikigaming.games.dame.*</param>
+                <param>fr.tikigaming.games.rush_hour.*</param>
+                <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*</param>
               </targetClasses>
               <targetTests>
                 <param>fr.tikigaming.auth.*Test</param>
+                <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.dame.*Test</param>
+                <param>fr.tikigaming.games.rush_hour.*Test</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*Test</param>
               </targetTests>
               <mutators>

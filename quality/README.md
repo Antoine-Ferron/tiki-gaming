@@ -37,7 +37,9 @@ HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f quality/docker-compose.yml
 
 - `db` : même image que la production (`supabase/postgres` 17.11) ; `rest` : PostgREST, l'API REST de Supabase, avec la même RLS.
 - Le backend Java doit tourner sur la machine (port 8080) pour le scénario `session` ; `BACKEND_URL=` le désactive.
-- Scénarios (`k6/lobby.js`), à débit constant pendant `K6_DURATION` (30 s par défaut) :
+- Profils (`K6_PROFILE`, `load` par défaut) : `smoke`, `load`, `stress`, `spike`, `soak` ; objectifs, SLO et
+  résultats mesurés dans [docs/slo.md](../docs/slo.md). Exemple : `K6_PROFILE=spike docker compose … run --rm k6`.
+- Scénarios (`k6/lobby.js`), au débit nominal ci-dessous en profil `load`, pendant `K6_DURATION` (30 s par défaut) :
 
 | Scénario       | Débit     | Requête                                                             |
 |----------------|-----------|---------------------------------------------------------------------|
@@ -45,7 +47,8 @@ HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f quality/docker-compose.yml
 | `submit_score` | 20 req/s  | Insertion d'un score comme le backend (`service_role`, trigger `max_score`) |
 | `session`      | 50 req/s  | `GET /api/auth/session` du backend                                  |
 
-- **Seuils bloquants** : P95 < 300 ms pour chaque scénario, moins de 1 % d'erreurs, plus de 99 % de vérifications réussies.
+- **Seuils bloquants** (les SLO) : P95 < 300 ms et P99 < 500 ms pour chaque scénario, moins de 1 % d'erreurs, plus de
+  99 % de vérifications réussies. Résumé dans `reports/k6-summary.json` (`reports/k6-<profil>.json` pour les autres).
 
 ## ZAP : scan DAST
 
