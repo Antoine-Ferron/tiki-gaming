@@ -68,7 +68,24 @@ public final class Game {
         if (piece.type() == PieceType.KING) {
             candidates.addAll(castlingDestinations(position, from, piece.color()));
         }
+        if (piece.type() == PieceType.PAWN) {
+            enPassantCapture(position, from, piece.color()).ifPresent(candidates::add);
+        }
         return candidates;
+    }
+
+    /** Règle S4 : prendre en passant le pion qui vient d'avancer de deux cases, seulement au coup suivant. */
+    private static Optional<Square> enPassantCapture(Position position, Square from, Color color) {
+        int forward = color == Color.WHITE ? 1 : -1;
+        return position.enPassant()
+                .filter(target -> target.rank() == from.rank() + forward && Math.abs(target.file() - from.file()) == 1);
+    }
+
+    /** Un pion qui prend en diagonale une case vide prend en passant : le pion pris est à côté de lui. */
+    private static Optional<Square> capturedEnPassant(Map<Square, Piece> pieces, Piece moving, Square from, Square to) {
+        boolean diagonalToEmpty =
+                moving.type() == PieceType.PAWN && from.file() != to.file() && !pieces.containsKey(to);
+        return diagonalToEmpty ? Optional.of(new Square(to.file(), from.rank())) : Optional.empty();
     }
 
     /**
@@ -117,6 +134,7 @@ public final class Game {
     private static boolean leavesKingInCheck(Position position, Square from, Square to, Color color) {
         Map<Square, Piece> pieces = new HashMap<>(position.pieces());
         Piece moving = pieces.remove(from);
+        capturedEnPassant(pieces, moving, from, to).ifPresent(pieces::remove); // S5 : les deux pions quittent la rangée
         if (moving.type() == PieceType.PAWN && (to.rank() == 0 || to.rank() == 7)) {
             // simulation seulement : le type de la pièce promue ne change pas l'échec de son propre roi
             moving = new Piece(color, PieceType.QUEEN);
@@ -135,6 +153,8 @@ public final class Game {
         Piece moving = position.pieceAt(from).orElseThrow();
         Map<Square, Piece> pieces = new HashMap<>(position.pieces());
         pieces.remove(from);
+        Optional<Square> enPassant = capturedEnPassant(pieces, moving, from, to);
+        enPassant.ifPresent(pieces::remove);
         Piece captured = pieces.put(to, promoted.orElse(moving));
         if (moving.type() == PieceType.KING && Math.abs(to.file() - from.file()) == 2) {
             boolean kingside = to.file() == 6;
