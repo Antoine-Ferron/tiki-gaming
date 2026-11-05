@@ -21,6 +21,8 @@ export default {
     'src/games/scoreQueue.ts',
     'src/games/sdk.ts',
     'src/lib/validation.ts',
+    'src/games/bang/OnlineTable.tsx',
+    'src/games/bang/local.ts',
     '!src/**/*.test.ts',
   ],
   coverageAnalysis: 'perTest',

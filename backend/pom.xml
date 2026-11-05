@@ -339,6 +339,11 @@
                 <param>fr.tikigaming.games.mini_gta.world.Navigation</param>
                 <param>fr.tikigaming.games.mini_gta.world.MinHeap</param>
                 <param>fr.tikigaming.games.mini_gta.world.WorldConstants</param>
+                <param>fr.tikigaming.games.bang.engine.PrivateTableService*</param>
+                <param>fr.tikigaming.games.bang.engine.InitialDeal</param>
+                <param>fr.tikigaming.games.bang.engine.CardDraw</param>
+                <param>fr.tikigaming.games.bang.engine.PlayerDistance</param>
+                <param>fr.tikigaming.games.bang.engine.ShotRules*</param>
               </targetClasses>
               <targetTests>
                 <param>fr.tikigaming.auth.*Test</param>
@@ -351,7 +356,14 @@
                 <param>fr.tikigaming.games.mini_gta.core.*Test</param>
                 <param>fr.tikigaming.games.mini_gta.world.*Test</param>
                 <param>fr.tikigaming.games.mini_gta.api.*Test</param>
+                <param>fr.tikigaming.games.bang.engine.*Test</param>
               </targetTests>
+              <excludedTestClasses>
+                <!-- Les campagnes BANG! restent unitaires : Spring, Docker et Chromium ont leurs propres preuves. -->
+                <param>fr.tikigaming.games.bang.engine.*HttpTest</param>
+                <param>fr.tikigaming.games.bang.engine.BangBrowserIsolationTest</param>
+                <param>fr.tikigaming.games.bang.engine.*NetworkTest</param>
+              </excludedTestClasses>
               <mutators>
                 <mutator>STRONGER</mutator>
               </mutators>
