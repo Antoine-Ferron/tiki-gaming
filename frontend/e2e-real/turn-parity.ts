@@ -1,4 +1,4 @@
-import { expect, test, type Browser } from '@playwright/test'
+import { expect, test, type APIRequest } from '@playwright/test'
 import { deal, discard, draw, endTurn, viewOf, type Shuffle } from '../src/games/bang/local'
 
 /** Même mélange que BangBrowserApplication ; les contrats de cartes restent ceux des deux moteurs. */
@@ -8,19 +8,19 @@ const ordered: Shuffle = (items) => {
   return items
 }
 
-export async function compareLocalAndOnlineTurn(browser: Browser, baseURL: string) {
-  const sessions = await Promise.all([1, 2, 3, 4].map(() => browser.newContext({ baseURL })))
+export async function compareLocalAndOnlineTurn(request: APIRequest, baseURL: string) {
+  const sessions = await Promise.all([1, 2, 3, 4].map(() => request.newContext({ baseURL })))
   try {
     const post = async (seat: number, path: string, status: number) => {
-      const token = (await sessions[seat - 1].cookies()).find((cookie) => cookie.name === 'XSRF-TOKEN')!
-      const response = await sessions[seat - 1].request.post(path, {
+      const token = (await sessions[seat - 1].storageState()).cookies.find((cookie) => cookie.name === 'XSRF-TOKEN')!
+      const response = await sessions[seat - 1].post(path, {
         headers: { 'X-XSRF-TOKEN': decodeURIComponent(token.value) },
         data: {},
       })
       expect(response.status()).toBe(status)
       return response
     }
-    for (const session of sessions) expect((await session.request.get('/api/auth/session')).status()).toBe(200)
+    for (const session of sessions) expect((await session.get('/api/auth/session')).status()).toBe(200)
     const { code } = await (await post(1, '/api/games/bang/tables', 201)).json()
     const table = `/api/games/bang/tables/${code}`
     for (const seat of [2, 3, 4]) await post(seat, `${table}/join`, 200)
@@ -30,7 +30,7 @@ export async function compareLocalAndOnlineTurn(browser: Browser, baseURL: strin
     const compare = async (stage: string) => {
       for (const seat of [1, 2]) {
         const expected = viewOf(local, seat)
-        const response = await sessions[seat - 1].request.get(`${table}/state`)
+        const response = await sessions[seat - 1].get(`${table}/state`)
         expect(response.status()).toBe(200)
         const actual = await response.json()
         const snapshot = { currentSeat: actual.currentSeat, phase: actual.phase, hand: actual.hand }
@@ -65,6 +65,6 @@ export async function compareLocalAndOnlineTurn(browser: Browser, baseURL: strin
       .info()
       .attach('meme-tour-local-en-ligne', { body: JSON.stringify(observed, null, 2), contentType: 'application/json' })
   } finally {
-    await Promise.all(sessions.map((session) => session.close()))
+    await Promise.all(sessions.map((session) => session.dispose()))
   }
 }

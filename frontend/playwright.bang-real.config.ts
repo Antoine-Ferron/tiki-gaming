@@ -36,8 +36,11 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: 'npx vite --config vite.bang-e2e.config.ts --port 5198 --strictPort',
+      // La version compilée supprime le HMR et la compilation à la volée pendant la recette.
+      command:
+        'npx vite build --config vite.bang-e2e.config.ts && npx vite preview --config vite.bang-e2e.config.ts --port 5198 --strictPort',
       url: 'http://localhost:5198',
+      timeout: 120000,
       reuseExistingServer: false,
       env: {
         VITE_SUPABASE_URL: 'http://localhost:5198/api/test-supabase',

@@ -117,8 +117,8 @@ async function finishLocalTurn(page: Page) {
   }
 }
 
-test('sur un écran, le BANG! atteint un voisin à portée', async ({ page, browser, baseURL }) => {
-  await test.step('même tour local et en ligne', () => compareLocalAndOnlineTurn(browser, baseURL!))
+test('sur un écran, le BANG! atteint un voisin à portée', async ({ page, playwright, baseURL }) => {
+  await test.step('même tour local et en ligne', () => compareLocalAndOnlineTurn(playwright.request, baseURL!))
   await page.addInitScript(() => {
     Math.random = () => 0.85
   })
