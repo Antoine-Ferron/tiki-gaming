@@ -65,6 +65,7 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-LEM-04 | LemurTiki : la fossa accélère tous les 100 m jusqu'à 20 m/s et ne reste jamais à plus de 40 m sous l'écran | EF-5.2, EF-5.3 |
 | REQ-LEM-05 | LemurTiki : la partie se termine quand le maki tombe sous l'écran ou que la fossa l'attrape, puis plus rien ne bouge | EF-6.1 à EF-6.3 |
 | REQ-LEM-06 | LemurTiki : le score vaut les mètres entiers atteints + 10 par gousse de vanille, plafonné à 100 000 | EF-6.4, EF-6.5 |
+| REQ-LEM-07 | LemurTiki : le score d'une partie terminée part une seule fois au classement ; un invité est invité à se connecter ; une panne affiche un message sans empêcher de rejouer | EF-8.1, EF-8.3, EF-8.5 |
 
 ## Cas de test
 
@@ -230,6 +231,11 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-LEM-24 | REQ-LEM-06 | nominal | BDD | `frontend/src/games/lemur/features/score.feature` › Le score compte la hauteur maximale et la vanille | PASSED | — |
 | TC-LEM-25 | REQ-LEM-06 | nominal | BDD | `frontend/src/games/lemur/features/score.feature` › La hauteur maximale suit le maki sans jamais redescendre | PASSED | — |
 | TC-LEM-26 | REQ-LEM-06 | erreur | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › le score est un entier entre 0 et 100 000, qui ne baisse pas quand on monte plus haut (EF-6.4, EF-6.5) | PASSED | — |
+| TC-LEM-27 | REQ-LEM-07 | nominal | BDD | `frontend/src/games/lemur/features/plateforme.feature` › Le score d'une partie terminée est envoyé une fois | PASSED | — |
+| TC-LEM-28 | REQ-LEM-07 | nominal | unitaire (Spy) | `frontend/src/games/lemur/application/finish.test.ts` › envoie le score une seule fois, avec la hauteur, la vanille, la cause et la durée (EF-8.1) | PASSED | — |
+| TC-LEM-29 | REQ-LEM-07 | erreur | BDD | `frontend/src/games/lemur/features/plateforme.feature` › Un invité joue sans être classé | PASSED | — |
+| TC-LEM-30 | REQ-LEM-07 | erreur | BDD (panne simulée, Fake) | `frontend/src/games/lemur/features/plateforme.feature` › Une coupure réseau n'empêche pas de rejouer | PASSED | — |
+| TC-LEM-31 | REQ-LEM-07 | erreur | unitaire (Stub) | `frontend/src/games/lemur/application/finish.test.ts` › $cas : affiche le message au joueur sans rejeter, pour qu’il puisse rejouer (EF-8.5) | PASSED | — |
 
 ## Anomalies
 
