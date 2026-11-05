@@ -68,7 +68,7 @@ test.each([true, false])(
     render(<BangGame ctx={ctx} />)
     fireEvent.click(screen.getByRole('button', { name: 'Sur le même écran' }))
     fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
-    fireEvent.click(screen.getAllByRole('button', { name: 'BANG !', exact: true })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'BANG !' })[0])
     fireEvent.click(screen.getByRole('button', { name: 'Viser la place 2' }))
     for (const seat of [2, 1]) {
       fireEvent.click(screen.getByRole('button', { name: 'En ligne' }))

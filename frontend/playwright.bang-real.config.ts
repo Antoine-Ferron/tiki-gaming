@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: 'e2e-real',
-  testMatch: ['bang.spec.ts', 'review.probe.spec.ts'],
+  testMatch: ['bang.spec.ts', 'review.probe.spec.ts', 'controle-limites.spec.ts'],
   workers: 1,
   retries: 0,
   forbidOnly: true,

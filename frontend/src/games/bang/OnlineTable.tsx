@@ -22,7 +22,7 @@ export function OnlineTable({ accountId }: { accountId: string }) {
   const [view, setView] = useState<GameView | null>(null)
   const latestView = useRef<GameView | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // Après le POST, attend une lecture commencée au-delà de ce numéro ; "sending" garde le POST exclusif.
+  // Le POST reste exclusif ; son acquittement suffit si une vue postérieure à la commande est déjà appliquée.
   const acting = useRef<'sending' | number | null>(null)
   const sending = useRef({ command: '', afterRead: 0 })
   const queued = useRef<{ command: string; action: () => Promise<unknown>; view: GameView } | null>(null)

@@ -185,6 +185,11 @@ test('deux invités rejoignent, tirent et reprennent leurs sièges auprès de de
   const contexts = await Promise.all([1, 2, 3, 4].map(() => browser.newContext()))
   try {
     const [host, friend, ...guests] = await Promise.all(contexts.map((ctx) => ctx.newPage()))
+    const guestScorePosts: string[] = []
+    for (const guest of guests)
+      guest.on('request', (request) => {
+        if (request.method() === 'POST' && request.url().endsWith('/api/scores')) guestScorePosts.push(request.url())
+      })
     await Promise.all([login(host, 4), login(friend, 3), ...guests.map(openGuest)])
     for (const guest of guests) {
       await expect(guest.getByRole('button', { name: 'En ligne', exact: true })).toBeVisible()
@@ -280,7 +285,11 @@ test('deux invités rejoignent, tirent et reprennent leurs sièges auprès de de
     expect(dodged.phase).toBe('PLAY')
     for (const guest of guests) {
       expect(await (await guest.request.get('/api/auth/session')).json()).toEqual({ user: null })
+      expect(
+        await guest.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('tiki:pending-scores:'))),
+      ).toEqual([])
     }
+    expect(guestScorePosts).toEqual([])
     const finalViews = await Promise.all(pages.map((p) => state(p, code)))
     checkPrivateViews(finalViews)
     await test.info().attach('roles-et-sieges-mixtes', {
