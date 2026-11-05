@@ -24,10 +24,10 @@ function withPistol() {
 }
 
 describe('weapons', () => {
-  it('starts with fists and a loaded pistol', () => {
+  it('starts with fists only, as a new game (R2)', () => {
     const inv = createInventory()
     expect(inv.current).toBe('fists')
-    expect(slotOf(inv, 'pistol')).toEqual({ id: 'pistol', clip: 12, ammo: 48 })
+    expect(inv.weapons).toEqual([{ id: 'fists', clip: 0, ammo: 0 }])
   })
 
   it('consumes the magazine then refuses to fire', () => {
