@@ -1,44 +1,122 @@
 .tic-tac-toe {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
   text-align: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% -20%, color-mix(in srgb, var(--cat-duel) 18%, transparent), transparent 45%),
+    var(--surface);
+}
+
+.tic-tac-toe::before {
+  position: absolute;
+  z-index: -1;
+  inset: auto -15% -40% 25%;
+  height: 12rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  content: '';
+  filter: blur(2rem);
+}
+
+.tic-tac-toe-heading {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.tic-tac-toe-heading p {
+  margin: 0;
+}
+
+.tic-tac-toe-kicker {
+  color: var(--cat-duel);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tic-tac-toe-status {
+  min-height: 1.75rem;
+  color: var(--text);
+}
+
+.status-X strong,
+.mark-X {
+  color: var(--accent);
+}
+
+.status-O strong,
+.mark-O {
+  color: var(--cat-duel);
 }
 
 .tic-tac-toe-board {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   width: min(100%, 360px);
   aspect-ratio: 1;
-  border: 2px solid var(--muted);
-  border-radius: 8px;
+  padding: 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--cat-duel) 65%, var(--border));
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--bg) 72%, var(--surface));
+  box-shadow:
+    0 1rem 2rem rgb(0 0 0 / 20%),
+    inset 0 1px rgb(255 255 255 / 8%);
   overflow: hidden;
+  gap: 0.35rem;
 }
 
 .tic-tac-toe-board button {
   min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1;
   padding: 0;
   border: 0;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--surface) 92%, white), var(--surface));
   color: var(--text);
   font-size: clamp(2rem, 12vw, 4rem);
+  font-weight: 800;
   line-height: 1;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
 }
 
-.tic-tac-toe-board button:nth-child(3n) {
-  border-right: 0;
+.tic-tac-toe-board button:not(:disabled):hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  box-shadow: 0 0 1rem color-mix(in srgb, var(--accent) 20%, transparent);
+  transform: translateY(-2px);
 }
 
-.tic-tac-toe-board button:nth-child(n + 7) {
-  border-bottom: 0;
+.tic-tac-toe-board button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.tic-tac-toe-board button.mark-X,
+.tic-tac-toe-board button.mark-O {
+  text-shadow: 0 0 1rem currentColor;
 }
 
 .tic-tac-toe-board button:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: 3px;
   position: relative;
+}
+
+.tic-tac-toe > button {
+  min-width: 9rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, white);
+  box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 18%);
 }

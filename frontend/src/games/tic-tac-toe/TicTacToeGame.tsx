@@ -26,12 +26,19 @@ export default function TicTacToeGame({ ctx }: GameProps) {
 
   return (
     <div className="card tic-tac-toe">
-      <p className="muted">{ctx.isGuest ? 'Partie locale, sans classement.' : 'Partie locale.'}</p>
-      {status === 'IN_PROGRESS' ? (
-        <p role="status">Tour du joueur {game.currentPlayer()}</p>
-      ) : (
-        <p role="status">{statusMessage[status]}</p>
-      )}
+      <div className="tic-tac-toe-heading">
+        <p className="tic-tac-toe-kicker">Duel local</p>
+        <p className="muted">{ctx.isGuest ? 'Partie locale, sans classement.' : 'Partie locale.'}</p>
+        {status === 'IN_PROGRESS' ? (
+          <p className={`tic-tac-toe-status status-${game.currentPlayer()}`} role="status">
+            Tour du joueur <strong>{game.currentPlayer()}</strong>
+          </p>
+        ) : (
+          <p className="tic-tac-toe-status status-finished" role="status">
+            {statusMessage[status]}
+          </p>
+        )}
+      </div>
       <div className="tic-tac-toe-board" role="grid" aria-label="Grille de Tic-Tac-Toe">
         {Array.from({ length: 3 }, (_, row) =>
           Array.from({ length: 3 }, (_, column) => {
@@ -41,6 +48,7 @@ export default function TicTacToeGame({ ctx }: GameProps) {
                 key={`${row}-${column}`}
                 type="button"
                 role="gridcell"
+                className={mark ? `mark-${mark}` : undefined}
                 aria-label={`Ligne ${row + 1}, colonne ${column + 1}${mark ? `, ${mark}` : ', vide'}`}
                 disabled={mark !== undefined || status !== 'IN_PROGRESS'}
                 onClick={() => play(row, column)}
