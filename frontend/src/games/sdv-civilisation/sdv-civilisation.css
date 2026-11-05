@@ -825,6 +825,16 @@ button.sdv-civilisation-status-blocked:not([aria-pressed='true']) {
   opacity: 0.6;
 }
 
+/* Texte lu par les lecteurs d'écran seulement (nom complet d'une carte), hors de la mise en page. */
+.sdv-civilisation-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .sdv-civilisation-card-band {
   display: flex;
   align-items: center;
