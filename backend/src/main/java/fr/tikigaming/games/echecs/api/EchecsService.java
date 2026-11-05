@@ -2,9 +2,11 @@ package fr.tikigaming.games.echecs.api;
 
 import fr.tikigaming.games.echecs.engine.Fen;
 import fr.tikigaming.games.echecs.engine.Game;
+import fr.tikigaming.games.echecs.engine.PieceType;
 import fr.tikigaming.games.echecs.engine.Position;
 import fr.tikigaming.games.echecs.engine.Square;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
@@ -23,16 +25,35 @@ public class EchecsService {
                 .toList();
     }
 
-    /** Joue le coup {@code from} → {@code to} et renvoie la FEN de la position suivante. */
-    public String play(String fen, String from, String to) {
+    /**
+     * Joue le coup {@code from} → {@code to} (avec la promotion choisie : {@code q}, {@code r}, {@code b} ou
+     * {@code n}, sinon {@code null}) et renvoie la position suivante et l'état de la partie.
+     */
+    public MoveResult play(String fen, String from, String to, String promotion) {
         Position position = position(fen);
         Square fromSquare = square(from);
         Square toSquare = square(to);
+        Optional<PieceType> promoted = promotion(promotion);
+        Position after;
         try {
-            return Fen.toFen(Game.play(position, fromSquare, toSquare));
+            after = Game.play(position, fromSquare, toSquare, promoted);
         } catch (IllegalArgumentException e) {
             throw new EchecsRejectedException(e.getMessage());
         }
+        return new MoveResult(Fen.toFen(after), Game.status(after).name());
+    }
+
+    private static Optional<PieceType> promotion(String letter) {
+        if (letter == null) {
+            return Optional.empty();
+        }
+        return switch (letter) {
+            case "q" -> Optional.of(PieceType.QUEEN);
+            case "r" -> Optional.of(PieceType.ROOK);
+            case "b" -> Optional.of(PieceType.BISHOP);
+            case "n" -> Optional.of(PieceType.KNIGHT);
+            default -> throw new EchecsInvalidInputException("Promotion inconnue : " + letter + " (q, r, b ou n)");
+        };
     }
 
     private static Position position(String fen) {
