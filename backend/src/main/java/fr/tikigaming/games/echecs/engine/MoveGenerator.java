@@ -102,8 +102,11 @@ public final class MoveGenerator {
             return; // le pion ne prend pas tout droit et ne saute pas
         }
         destinations.add(oneStep);
+        if (from.rank() != startRank) {
+            return; // la case du double pas n'est calculée que depuis la rangée de départ (sinon : hors échiquier)
+        }
         Square twoSteps = new Square(from.file(), from.rank() + 2 * forward);
-        if (from.rank() == startRank && isEmpty(position, twoSteps)) {
+        if (isEmpty(position, twoSteps)) {
             destinations.add(twoSteps);
         }
     }
