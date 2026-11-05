@@ -35,11 +35,21 @@ export function LevelPicker({ progress: { best, generated }, onPick, onGenerate 
               type="button"
               className={`rush-hour-level${id in best ? ' rush-hour-level-done' : ''}`}
               disabled={!open}
-              aria-label={`Niveau ${id}, ${status}`}
               onClick={() => onPick(id)}
             >
-              <span className="rush-hour-level-number">{id}</span>
-              <span className="rush-hour-level-status">{open ? status : '🔒'}</span>
+              {/* Nom lu : « Niveau 1, à jouer ». Il contient le texte visible (WCAG 2.5.3, nom dans l'étiquette). */}
+              <span className="rush-hour-sr-only">Niveau</span> <span className="rush-hour-level-number">{id}</span>
+              <span className="rush-hour-sr-only">,</span>{' '}
+              <span className="rush-hour-level-status">
+                {open ? (
+                  status
+                ) : (
+                  <>
+                    <span aria-hidden="true">🔒</span>
+                    <span className="rush-hour-sr-only">{status}</span>
+                  </>
+                )}
+              </span>
             </button>
           )
         })}

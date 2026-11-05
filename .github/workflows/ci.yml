@@ -24,14 +24,15 @@ concurrency:
 #   1. Statique + unitaires : Frontend (format, lint, types, Vitest + couverture, contrat Pact, build), Backend
 #      (Spotless, Checkstyle, JUnit + JaCoCo, Pact provider, chaos Toxiproxy) ; Traçabilité et Security, toujours.
 #   2. Intégration : Testcontainers (PostgreSQL réel, migrations, RLS).
-#   3. Mutation (Stryker, Pitest) et E2E (Playwright + axe).
-#   4. Non fonctionnel et quality gate : k6, ZAP, SonarQube.
+#   3. Tests dynamiques : mutation (Stryker, Pitest), E2E (Playwright + axe), charge (k6), DAST (ZAP).
+#   4. Quality gate : SonarQube, sur la couverture produite au palier 1 (artefacts, sans rejouer les tests).
 #   5. Verdict : échoue si un job a échoué.
 #
 # Chaque job ne tourne que si sa zone a changé (job « changes »). Un job ignoré par son `if` est compté comme
 # réussi par la règle ; un workflow non déclenché, lui, laisserait les checks en attente : d'où des `if` au niveau
 # des jobs plutôt qu'un filtre `paths` sur le workflow. Si le filtre échoue (`continue-on-error`), « changes »
-# réussit avec des sorties vides et tous les jobs tournent (`!= 'false'`).
+# réussit avec des sorties vides et tous les jobs tournent (`!= 'false'`). Sur une PR qui ne touche que des jeux
+# (sortie `games`), Frontend et Backend ne rejouent que les tests de ces jeux (voir docs/ci.md, analyse d'impact).
 jobs:
   changes:
     name: Changes
@@ -44,9 +45,13 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       database: ${{ steps.filter.outputs.database }}
       quality: ${{ steps.filter.outputs.quality }}
+      games: ${{ steps.scope.outputs.games }}
     steps:
       - uses: actions/checkout@v7
         continue-on-error: true
+        with:
+          # Sur une PR, HEAD est le commit de fusion : son premier parent est la pointe de la branche cible.
+          fetch-depth: 2
       # Run de nuit ou manuel : pas de filtre, sorties vides, donc tous les jobs tournent.
       - id: filter
         if: github.event_name == 'pull_request' || github.event_name == 'push'
@@ -74,6 +79,35 @@ jobs:
             quality:
               - *ci
               - 'quality/**'
+      # Analyse d'impact : une PR qui ne touche que le code d'un ou plusieurs jeux ne rejoue que les tests de ces jeux
+      # (sortie `games`, slugs séparés par des virgules). Le moindre fichier hors des dossiers d'un jeu (socle,
+      # registre, dépendances, migrations, CI…) laisse la sortie vide : tous les tests tournent. Les push sur dev et
+      # main et le run de nuit rejouent toujours tout : c'est le filet de sécurité.
+      - id: scope
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          games=()
+          while IFS= read -r file; do
+            # Sous-dossiers partagés par tous les jeux : ce sont du socle.
+            if [[ $file =~ ^frontend/src/games/(adapters|domain|testing)/ ]]; then
+              echo "Hors d'un jeu : $file (tous les tests tournent)"
+              exit 0
+            elif [[ $file =~ ^frontend/src/games/([a-z0-9-]+)/ ]] \
+              || [[ $file =~ ^frontend/public/games/([a-z0-9-]+)/ ]] \
+              || [[ $file =~ ^backend/src/(main|test)/java/fr/tikigaming/games/([a-z0-9_]+)/ ]] \
+              || [[ $file =~ ^backend/src/test/resources/features/([a-z0-9_-]+)/ ]]; then
+              games+=("${BASH_REMATCH[-1]//_/-}")
+            elif [[ $file =~ ^docs/ ]]; then
+              continue
+            else
+              echo "Hors d'un jeu : $file (tous les tests tournent)"
+              exit 0
+            fi
+          done < <(git diff --name-only HEAD^1 HEAD)
+          list=$(printf '%s\n' "${games[@]}" | sed '/^$/d' | sort -u | paste -sd, -)
+          echo "Jeux touchés : ${list:-aucun}"
+          echo "games=$list" >> "$GITHUB_OUTPUT"
 
   frontend:
     name: Frontend (format + lint + build)
@@ -85,6 +119,8 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -103,7 +139,20 @@ jobs:
       # Erreur de type : arrêt avant de lancer les tests (le build refait tsc -b, incrémental donc instantané).
       - run: npm run typecheck
       # Tests + couverture : échoue sous les seuils de vite.config.ts (cœur du lobby ≥ 95 %, global sans régression).
-      - run: npm run test:coverage
+      - if: needs.changes.outputs.games == ''
+        run: npm run test:coverage
+      # PR limitée à des jeux : Vitest ne rejoue que les tests qui importent (même indirectement) un fichier modifié,
+      # registre et lobby compris. Couverture partielle, donc sans seuils : ils sont vérifiés au push sur dev.
+      - if: needs.changes.outputs.games != ''
+        run: npm run test:coverage -- --changed HEAD^1
+        env:
+          VITEST_PARTIAL: "1"
+      # Relue par SonarQube (palier 4) au lieu de relancer les tests.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: couverture-frontend
+          path: frontend/coverage/lcov.info
+          retention-days: 1
       # Contrat Pact (consumer) : le contrat régénéré doit être celui commité, que le backend rejoue.
       - run: npm run test:contract
       - name: Contrat Pact à jour
@@ -132,7 +181,26 @@ jobs:
       # Formatage vérifié d'abord : sinon Spotless (phase verify) ne tombe qu'après tous les tests.
       - run: mvn -B spotless:check
       # verify = Checkstyle (validate) + compilation + tests + couverture JaCoCo + Spotless (check)
-      - run: mvn -B verify
+      - if: needs.changes.outputs.games == ''
+        run: mvn -B verify
+      # PR limitée à des jeux : leurs tests, plus ceux du socle qui chargent tous les jeux (OpenAPI dans config,
+      # Pact provider dans contract). Couverture partielle, donc seuils JaCoCo non bloquants (vérifiés sur dev).
+      - if: needs.changes.outputs.games != ''
+        env:
+          GAMES: ${{ needs.changes.outputs.games }}
+        run: |
+          tests="fr/tikigaming/config/**/*,fr/tikigaming/contract/**/*"
+          for game in ${GAMES//,/ }; do tests="$tests,fr/tikigaming/games/${game//-/_}/**/*"; done
+          mvn -B verify -Dtest="$tests" -Dsurefire.failIfNoSpecifiedTests=false -Djacoco.haltOnFailure=false
+      # Relus par SonarQube (palier 4) : rapport JaCoCo et classes compilées (sonar.java.binaries).
+      - uses: actions/upload-artifact@v7
+        with:
+          name: couverture-backend
+          path: |
+            backend/target/site/jacoco/jacoco.xml
+            backend/target/classes/
+            backend/target/test-classes/
+          retention-days: 1
 
   # Toujours exécuté et sans dépendance : un test renommé côté front ou backend casse la matrice.
   traceability:
@@ -209,6 +277,7 @@ jobs:
           restore-keys: |
             stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-${{ github.head_ref || github.ref_name }}-
             stryker-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json', 'frontend/stryker.config.mjs') }}-
+            stryker-${{ runner.os }}-
       - if: github.event_name == 'pull_request'
         run: npm run test:mutation -- --incremental
       - if: github.event_name != 'pull_request'
@@ -293,13 +362,22 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      # Navigateurs Playwright mis en cache selon le lockfile (donc la version de Playwright) ; les dépendances
-      # système (apt) ne se mettent pas en cache et sont réinstallées à chaque run.
+      # Navigateurs Playwright mis en cache selon la seule version de Playwright, pas tout le lockfile : sinon chaque
+      # mise à jour de dépendance les retéléchargeait (~6 min). Les dépendances système (apt) ne se mettent pas en
+      # cache et sont réinstallées à chaque run.
+      # La version de l'image (ImageOS : ubuntu24, ubuntu26…) fait partie de la clé : Playwright télécharge des
+      # navigateurs compilés pour une version d'Ubuntu, et un WebKit d'Ubuntu 24 ne démarre pas sur Ubuntu 26
+      # (libicudata.so.74 introuvable) pendant la migration d'ubuntu-latest.
+      # ImageOS est une variable de la machine, lue ici par le shell (le contexte `env` des expressions ne la voit pas).
+      - id: image
+        run: |
+          echo "os=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
+          echo "playwright=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
       - id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.playwright }}
       - if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium firefox webkit
       - if: steps.playwright-cache.outputs.cache-hit == 'true'
@@ -314,14 +392,7 @@ jobs:
 
   performance:
     name: Performance (k6)
-    needs:
-      - changes
-      - frontend
-      - backend
-      - integration
-      - mutation-frontend
-      - mutation-backend
-      - e2e
+    needs: [changes, frontend, backend, integration]
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.database != 'false' || needs.changes.outputs.quality != 'false') }}
     runs-on: ubuntu-latest
     env:
@@ -332,6 +403,9 @@ jobs:
       SUPABASE_ANON_KEY: ci-anon-key
       SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
       SUPABASE_JWT_SECRET: ci-jwt-secret-with-at-least-32-characters
+      # k6 envoie toutes ses parties de Rush Hour depuis une seule adresse : on mesure la capacité du serveur, pas la
+      # limite par client (testée par ResultRateLimiterTest), qu'on relève donc pour ce job.
+      TIKI_RUSHHOUR_MAXRESULTSPERMINUTE: 1000000
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -365,14 +439,7 @@ jobs:
 
   dast:
     name: DAST (ZAP baseline)
-    needs:
-      - changes
-      - frontend
-      - backend
-      - integration
-      - mutation-frontend
-      - mutation-backend
-      - e2e
+    needs: [changes, frontend, backend, integration]
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.quality != 'false') }}
     runs-on: ubuntu-latest
     env:
@@ -427,6 +494,8 @@ jobs:
       - mutation-frontend
       - mutation-backend
       - e2e
+      - performance
+      - dast
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false') }}
     runs-on: ubuntu-latest
     # Actif dès que le secret SONAR_TOKEN est configuré (Settings → Secrets → Actions), voir quality/README.md.
@@ -449,11 +518,27 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
-      - name: Couverture (Vitest lcov + JaCoCo)
+      # Couverture produite au palier 1 (Frontend, Backend) plutôt que de rejouer les tests. Un job sauté pour sa zone
+      # n'a pas d'artefact : la couverture de cette zone est alors recalculée ici, pour une analyse complète.
+      - uses: actions/download-artifact@v7
+        if: env.SONAR_TOKEN != ''
+        continue-on-error: true
+        with:
+          name: couverture-frontend
+          path: frontend/coverage
+      - uses: actions/download-artifact@v7
+        if: env.SONAR_TOKEN != ''
+        continue-on-error: true
+        with:
+          name: couverture-backend
+          path: backend/target
+      - name: Couverture (Vitest lcov + JaCoCo) et dépendances (analyse TypeScript, sonar.java.libraries)
         if: env.SONAR_TOKEN != ''
         run: |
-          (cd frontend && npm ci && VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run test:coverage)
-          (cd backend && mvn -B verify)
+          cd frontend && npm ci
+          [ -f coverage/lcov.info ] || VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npm run test:coverage
+          cd ../backend
+          if [ -f target/site/jacoco/jacoco.xml ]; then mvn -B -q dependency:resolve; else mvn -B verify; fi
       - uses: SonarSource/sonarqube-scan-action@v8
         if: env.SONAR_TOKEN != ''
         with:
