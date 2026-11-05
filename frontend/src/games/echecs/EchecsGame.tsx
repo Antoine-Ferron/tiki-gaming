@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ApiError } from '@/lib/api'
 import type { GameProps } from '../types'
-import { destinations, type GameStatus, play } from './api'
+import { destinations, type GameStatus, play, type Promotion } from './api'
 import { FILES, isWhite, piecesFromFen, RANKS, squareLabel, START_FEN, SYMBOLS } from './board'
 import './echecs.css'
 
@@ -9,6 +9,13 @@ import './echecs.css'
 type Snapshot = { fen: string; status: GameStatus; lastMove: [string, string] | null }
 
 const START: Snapshot = { fen: START_FEN, status: 'ONGOING', lastMove: null }
+
+const PROMOTIONS: { letter: Promotion; name: string }[] = [
+  { letter: 'q', name: 'Dame' },
+  { letter: 'r', name: 'Tour' },
+  { letter: 'b', name: 'Fou' },
+  { letter: 'n', name: 'Cavalier' },
+]
 
 const DRAWS: Partial<Record<GameStatus, string>> = {
   STALEMATE: 'Pat : partie nulle (½-½)',
@@ -41,6 +48,7 @@ export default function EchecsGame(_props: GameProps) {
   const [selected, setSelected] = useState<string | null>(null)
   const [targets, setTargets] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [promotion, setPromotion] = useState<[string, string] | null>(null)
   const pieces = piecesFromFen(game.fen)
   const over = isOver(game.status)
   const whiteToMove = game.fen.split(' ')[1] === 'w'
@@ -68,10 +76,25 @@ export default function EchecsGame(_props: GameProps) {
     const from = selected as string
     setSelected(null)
     setTargets([])
+    const pawn = pieces[from]?.toLowerCase() === 'p'
+    if (pawn && (square.endsWith('8') || square.endsWith('1'))) {
+      setPromotion([from, square]) // P4 : le joueur choisit la pièce avant l'envoi
+      return
+    }
+    send(from, square)
+  }
+
+  function send(from: string, to: string, letter?: Promotion) {
     void call(async () => {
-      const result = await play(game.fen, from, square)
-      setGame({ ...result, lastMove: [from, square] })
+      const result = letter ? await play(game.fen, from, to, letter) : await play(game.fen, from, to)
+      setGame({ ...result, lastMove: [from, to] })
     })
+  }
+
+  function promote(letter: Promotion) {
+    const [from, to] = promotion as [string, string]
+    setPromotion(null)
+    send(from, to, letter)
   }
 
   function handleClick(square: string) {
@@ -91,6 +114,19 @@ export default function EchecsGame(_props: GameProps) {
           <p className="echecs-error" role="alert">
             {error}
           </p>
+        )}
+        {promotion && (
+          <div className="echecs-promotion" role="dialog" aria-modal="true" aria-label="Promotion">
+            <p>Promouvoir le pion en :</p>
+            {PROMOTIONS.map(({ letter, name }) => (
+              <button type="button" key={letter} onClick={() => promote(letter)}>
+                {name}
+              </button>
+            ))}
+            <button type="button" onClick={() => setPromotion(null)}>
+              Annuler
+            </button>
+          </div>
         )}
         <div className="echecs-board" role="group" aria-label="Échiquier">
           {RANKS.map((rank) =>
