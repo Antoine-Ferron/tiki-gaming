@@ -433,3 +433,70 @@ test('un clic sur Finir le tour part après la vue PLAY même si la première le
     expect.objectContaining({ method: 'POST' }),
   )
 })
+
+test('une ancienne lecture ne libère pas le POST suivant et ne remplace pas la vue du tour suivant', async () => {
+  const drawing: GameView = { ...fourPlayerView(), currentSeat: 1, phase: 'DRAW' }
+  const playing: GameView = { ...drawing, phase: 'PLAY' }
+  const nextTurn: GameView = { ...drawing, currentSeat: 2 }
+  let finishDrawRead!: (response: Response) => void
+  let finishEndRead!: (response: Response) => void
+  let finishEnd!: (response: Response) => void
+  const drawRead = new Promise<Response>((resolve) => {
+    finishDrawRead = resolve
+  })
+  const endRead = new Promise<Response>((resolve) => {
+    finishEndRead = resolve
+  })
+  const end = new Promise<Response>((resolve) => {
+    finishEnd = resolve
+  })
+  let reads = 0
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/state')) {
+      reads++
+      if (reads === 2) return drawRead
+      if (reads === 4) return endRead
+      return Response.json(reads === 1 ? drawing : reads === 3 ? playing : nextTurn)
+    }
+    if (url.endsWith('/turn/end')) return end
+    if (url.endsWith('/turn/draw')) return new Response(null, { status: 204 })
+    return Response.json({ code: drawing.code, seat: 1, playerCount: 4 })
+  })
+  vi.stubGlobal('fetch', fetch)
+  vi.useFakeTimers()
+  render(<OnlineTable accountId="compte-test" />)
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+  })
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2000)
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+  })
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2000)
+  })
+  expect(reads).toBe(4)
+  await act(async () => {
+    finishDrawRead(Response.json(playing))
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+  })
+  const sent = fetch.mock.calls.filter(([url]) => url.endsWith('/turn/end'))
+  await act(async () => {
+    finishEnd(new Response(null, { status: 204 }))
+  })
+  expect(screen.getByRole('status').textContent).toBe('Au tour de la place 2.')
+  await act(async () => {
+    finishEndRead(Response.json(playing))
+  })
+
+  expect(sent).toHaveLength(1)
+  expect(screen.getByRole('status').textContent).toBe('Au tour de la place 2.')
+  expect(screen.queryByRole('button', { name: 'Finir le tour' })).toBeNull()
+})

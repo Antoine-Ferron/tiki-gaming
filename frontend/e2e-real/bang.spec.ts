@@ -20,10 +20,17 @@ async function postAs(page: Page, path: string) {
   return page.request.post(path, { headers: { 'X-XSRF-TOKEN': decodeURIComponent(token) }, data: {} })
 }
 
+function sheriffSeats(view: GameView) {
+  const seats = view.players.filter((player) => player.role === 'SHERIFF').map((player) => player.seat)
+  if (view.role === 'SHERIFF') seats.push(view.seat)
+  return [...new Set(seats)]
+}
+
 function checkPrivacy(views: GameView[]) {
   expect(views.map((view) => view.seat)).toEqual([1, 2, 3, 4])
   expect(views.map((view) => view.role)).toEqual(['SHERIFF', 'OUTLAW', 'OUTLAW', 'RENEGADE'])
   for (const view of views) {
+    expect(sheriffSeats(view)).toEqual([1])
     const allowed = ['code', 'seat', 'currentSeat', 'phase', 'role', 'hand', 'players']
     if (view.pendingShot) allowed.push('pendingShot')
     expect(Object.keys(view).sort()).toEqual(allowed.sort())
@@ -46,7 +53,11 @@ async function checkMats(pages: Page[], views: GameView[]) {
   for (const [index, page] of pages.entries()) {
     expect(views[index].players).toEqual(views[0].players)
     await expect(page.getByRole('region', { name: /^Tapis de la place/ })).toHaveCount(4)
-    await expect(page.getByText('Shérif', { exact: true })).toBeVisible()
+    const sheriffMats = page.getByRole('region', { name: /^Tapis de la place/ }).filter({
+      has: page.getByText('Shérif', { exact: true }),
+    })
+    await expect(sheriffMats).toHaveCount(1)
+    await expect(sheriffMats).toHaveAttribute('aria-label', 'Tapis de la place 1')
     await expect(
       page.getByRole('region', { name: `Tapis de la place ${index + 1}` }).getByText('Rôle privé'),
     ).toBeVisible()
@@ -71,8 +82,12 @@ test('du catalogue au tour suivant à quatre : esquive, reconnexion, acceptation
   const pages = await Promise.all(contexts.map((context) => context.newPage()))
   const views: GameView[] = []
   const errors: string[] = []
+  const endRequests: number[] = []
   for (const [index, page] of pages.entries()) {
     page.on('pageerror', (err) => errors.push(err.message))
+    page.on('request', (request) => {
+      if (request.method() === 'POST' && request.url().endsWith('/turn/end')) endRequests.push(index + 1)
+    })
     page.on('response', async (response) => {
       if (/\/api\/games\/bang\/tables\/[^/]+\/state$/.test(response.url()) && response.status() === 200) {
         views[index] = (await response.json()) as GameView
@@ -191,7 +206,19 @@ test('du catalogue au tour suivant à quatre : esquive, reconnexion, acceptation
         await expect(page.getByRole('status')).toHaveText('Au tour de la place 2.')
       await checkMats(pages, views)
     })
+    expect(endRequests).toEqual([1])
     expect(errors).toEqual([])
+    await testInfo.attach('roles-par-siege', {
+      body: JSON.stringify(
+        {
+          roles: views.map(({ seat, role }) => ({ seat, role })),
+          sheriffSeatsPerView: views.map(sheriffSeats),
+        },
+        null,
+        2,
+      ),
+      contentType: 'application/json',
+    })
     for (const [index, page] of pages.entries()) {
       const screenshot = testInfo.outputPath(`place-${index + 1}.png`)
       await page.screenshot({ path: screenshot, fullPage: true })
