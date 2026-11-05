@@ -58,6 +58,17 @@ class TransactionsTest {
             assertThat(again.reward()).isZero();
             assertThat(again.progress()).isEqualTo(done);
         }
+        @ParameterizedTest(name = "{0} $ déjà gagnés + 2500 $ → score {1} $")
+        @CsvSource({"997499, 999999", "997500, 1000000", "997501, 1000000", "1000000, 1000000"})
+        void lesGainsCumulesSArretentAuPlafondDuScore(int earned, int score) {
+            Progress p = new Progress(1, 500, earned, 0, null, List.of(), new Progress.Stats(0, 0, 0));
+
+            MissionReward r = Transactions.completeMission(p, PORT);
+
+            assertThat(r.reward()).isEqualTo(2500);
+            assertThat(r.progress().money()).isEqualTo(3000);
+            assertThat(r.progress().totalEarned()).isEqualTo(score);
+        }
     }
 
     @Nested
