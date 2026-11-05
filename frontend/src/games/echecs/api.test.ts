@@ -35,12 +35,23 @@ describe('client API des échecs', () => {
 
   test('play : POST /api/games/echecs/moves avec le coup, renvoie la nouvelle FEN', async () => {
     const after = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
-    fetchMock.mockResolvedValue(json(200, { fen: after }))
+    fetchMock.mockResolvedValue(json(200, { fen: after, status: 'ONGOING' }))
 
-    await expect(play(START, 'e2', 'e4')).resolves.toBe(after)
+    await expect(play(START, 'e2', 'e4')).resolves.toEqual({ fen: after, status: 'ONGOING' })
 
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('/api/games/echecs/moves')
     expect(init).toMatchObject({ method: 'POST', body: JSON.stringify({ fen: START, from: 'e2', to: 'e4' }) })
+  })
+
+  test('play : la promotion choisie est envoyée avec le coup', async () => {
+    fetchMock.mockResolvedValue(json(200, { fen: 'k3Q3/8/8/8/8/8/8/7K b - - 0 1', status: 'ONGOING' }))
+
+    await play('k7/4P3/8/8/8/8/8/7K w - - 0 1', 'e7', 'e8', 'q')
+
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init?.body).toBe(
+      JSON.stringify({ fen: 'k7/4P3/8/8/8/8/8/7K w - - 0 1', from: 'e7', to: 'e8', promotion: 'q' }),
+    )
   })
 })

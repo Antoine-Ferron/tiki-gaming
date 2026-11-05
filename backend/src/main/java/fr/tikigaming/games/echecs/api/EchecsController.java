@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -57,14 +58,24 @@ public class EchecsController {
             @Schema(description = "Case d'arrivée", example = "e4")
             @NotBlank(message = "La case d'arrivée est obligatoire")
             @Size(max = 2, message = "Une case s'écrit en 2 caractères")
-            String to) {}
+            String to,
+
+            @Schema(description = "Promotion d'un pion en dernière rangée : q, r, b ou n (sinon absent)", example = "q")
+            @Pattern(regexp = "^[qrbn]$", message = "Promotion : q (dame), r (tour), b (fou) ou n (cavalier)")
+            String promotion) {}
 
     /** La position après le coup. */
     record MoveResponse(
             @Schema(
                     description = "Position après le coup (FEN)",
                     example = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")
-            String fen) {}
+            String fen,
+
+            @Schema(
+                    description = "État de la partie pour le camp au trait : ONGOING, CHECK, CHECKMATE, STALEMATE, "
+                            + "DRAW_INSUFFICIENT_MATERIAL, DRAW_FIFTY_MOVES",
+                    example = "ONGOING")
+            String status) {}
 
     private final EchecsService service;
 
@@ -75,8 +86,8 @@ public class EchecsController {
     @PostMapping("/destinations")
     @Operation(
             summary = "Cases accessibles d'une pièce",
-            description = "Les cases où peut aller la pièce posée sur la case de départ, triées. Ne vérifie pas "
-                    + "encore l'échec au roi (phase 3).")
+            description = "Les coups légaux de la pièce posée sur la case de départ (roque et prise en passant "
+                    + "compris, sans laisser son roi en échec), triés.")
     @ApiResponse(responseCode = "200", description = "Cases accessibles (liste vide si la case est libre)")
     @ApiResponse(
             responseCode = "400",
@@ -89,7 +100,8 @@ public class EchecsController {
     @PostMapping("/moves")
     @Operation(
             summary = "Jouer un coup",
-            description = "Le serveur vérifie le coup selon les règles et renvoie la position suivante en FEN.")
+            description = "Le serveur vérifie le coup selon les règles (échec, roque, prise en passant, promotion) et "
+                    + "renvoie la position suivante en FEN et l'état de la partie (échec, mat, pat, nulle).")
     @ApiResponse(responseCode = "200", description = "Coup joué : nouvelle position")
     @ApiResponse(
             responseCode = "400",
@@ -97,9 +109,11 @@ public class EchecsController {
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(
             responseCode = "422",
-            description = "Coup refusé par les règles : case vide, pas le trait, case inaccessible",
+            description =
+                    "Coup refusé : case vide, pas le trait, case inaccessible, roi laissé en échec, partie terminée",
             content = @Content(schema = @Schema(implementation = ApiError.class)))
     public MoveResponse play(@Valid @RequestBody MoveRequest request) {
-        return new MoveResponse(service.play(request.fen(), request.from(), request.to()));
+        MoveResult result = service.play(request.fen(), request.from(), request.to(), request.promotion());
+        return new MoveResponse(result.fen(), result.status());
     }
 }

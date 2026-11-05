@@ -10,6 +10,7 @@ import yams from './yams'
 import sdvCivilisation from './sdv-civilisation'
 import sudoku from './sudoku'
 import miniGta from './mini-gta'
+import ticTacToe from './tic-tac-toe'
 
 /**
  * Catalogue des jeux de la plateforme.
@@ -28,6 +29,7 @@ export const games: GameDefinition[] = [
   echecs,
   bang,
   dame,
+  ticTacToe,
 ]
 
 export function getGame(slug: string): GameDefinition | undefined {
