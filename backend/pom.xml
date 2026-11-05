@@ -286,6 +286,7 @@
                 <param>fr.tikigaming.auth.SupabaseErrors</param>
                 <param>fr.tikigaming.auth.SupabaseTokenService</param>
                 <param>fr.tikigaming.games.dame.*</param>
+                <param>fr.tikigaming.games.mastermind.MastermindGame</param>
                 <param>fr.tikigaming.games.rush_hour.*</param>
                 <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*</param>
@@ -294,6 +295,7 @@
                 <param>fr.tikigaming.auth.*Test</param>
                 <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.dame.*Test</param>
+                <param>fr.tikigaming.games.mastermind.MastermindGameTest</param>
                 <param>fr.tikigaming.games.rush_hour.*Test</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*Test</param>
               </targetTests>
