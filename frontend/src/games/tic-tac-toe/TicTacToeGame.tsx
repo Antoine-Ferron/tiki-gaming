@@ -49,7 +49,9 @@ export default function TicTacToeGame({ ctx }: GameProps) {
             </div>
             <div className="tic-tac-toe-victory" aria-hidden="true">
               <span>VICTOIRE !</span>
-              <small>{status === 'DRAW' ? 'Match nul' : `Joueur ${status[0]}`}</small>
+              <small className="tic-tac-toe-winner">
+                {status === 'DRAW' ? 'Match nul' : `Joueur ${status[0]} gagne`}
+              </small>
             </div>
           </>
         )}
