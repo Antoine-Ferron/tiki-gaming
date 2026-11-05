@@ -1,13 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { GameView } from '../src/games/bang/board/view'
 import { compareLocalAndOnlineTurn } from './turn-parity'
+import { loginAccount } from './session'
 
 async function login(page: Page, id: number) {
-  await page.goto('/login')
-  await page.getByLabel('Email', { exact: true }).fill('bang' + id + '@example.test')
-  await page.getByLabel('Mot de passe', { exact: true }).fill('bang-browser-test-only')
-  await page.getByRole('button', { name: 'Se connecter', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Salut bang_test_' + id + ' 👋' })).toBeVisible()
+  await loginAccount(page, id)
   await openFromCatalog(page)
   await expect(page.getByRole('button', { name: 'Créer une table' })).toBeVisible()
 }
