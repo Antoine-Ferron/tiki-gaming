@@ -1,8 +1,8 @@
 # language: fr
 Fonctionnalité: Nouvelle partie (R2)
-  Pour démarrer sur un pied d'égalité avec les autres joueurs
   En tant que joueur
   Je veux qu'une nouvelle partie commence toujours de la même façon, même si ma sauvegarde est abîmée
+  Afin de démarrer sur un pied d'égalité avec les autres joueurs
 
   Scénario: Une nouvelle partie commence avec 500 $, sans armure et les poings en main
     Quand un joueur commence une nouvelle partie
@@ -19,14 +19,14 @@ Fonctionnalité: Nouvelle partie (R2)
     Et la mission "express" est terminée
 
   Plan du scénario: Une sauvegarde corrompue ou d'une autre version donne une nouvelle partie
-    Étant donné une sauvegarde dont le champ "<champ>" vaut <valeur>
+    Étant donné une sauvegarde <défaut>
     Quand le jeu charge la sauvegarde
     Alors il a 500 $
     Et il n'a encore rien gagné
 
     Exemples:
-      | champ       | valeur |
-      | version     | 2      |
-      | money       | -1     |
-      | totalEarned | 12.5   |
-      | armor       | 101    |
+      | défaut                       |
+      | d'une autre version du jeu   |
+      | avec un solde négatif        |
+      | avec des gains non entiers   |
+      | avec une armure au-delà de 100 |

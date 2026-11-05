@@ -47,8 +47,8 @@ beforeEach(() => {
   game.missions.fail('remise à zéro')
   // Nettoyage immédiat des entités de mission (sinon 20 s loin du joueur), pour isoler les scénarios.
   ;(game.missions as unknown as { cleanup(force: boolean): void }).cleanup(true)
-  game.police.clear()
-  if (game.player.vehicle) game.player.exitVehicle(true)
+  // Joueur à pied au point de départ, sans police : la cible de « La fuite » apparaît sur une rue autour de lui.
+  t.reset()
   useGameStore.getState().load(newSave())
   notes = []
 })

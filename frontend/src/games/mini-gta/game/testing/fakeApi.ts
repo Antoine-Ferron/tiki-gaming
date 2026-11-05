@@ -69,10 +69,11 @@ export const api = {
     serve('purchase', [progress, item, weapon], () => {
       const d = weapon ? defs[weapon] : undefined
       const price = item === 'armor' ? 250 : item === 'weapon' ? d!.price : d!.ammoPrice
-      const rounds = item === 'armor' ? 0 : d!.ammoPack
+      // Comme Transactions.purchase : une arme donne deux chargeurs (un lot si elle se lance), des munitions un lot.
+      const rounds = item === 'armor' ? 0 : item === 'weapon' && !d!.thrown ? d!.magazine * 2 : d!.ammoPack
       if (progress.money < price) return { ok: false, price, rounds: 0, progress }
-      const next = spend(progress, price)
-      return { ok: true, price, rounds, progress: item === 'armor' ? { ...next, armor: 100 } : next }
+      // Le serveur ne fait que débiter le gilet : c'est le jeu qui équipe le personnage.
+      return { ok: true, price, rounds, progress: spend(progress, price) }
     }),
   respawn: (progress: Progress, reason: 'dead' | 'busted') =>
     serve('respawn', [progress, reason], () => {

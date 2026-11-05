@@ -59,6 +59,17 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-TTT-03 | Tic-Tac-Toe : une ligne, colonne ou diagonale complète termine la partie avec le bon gagnant | Règles du jeu |
 | REQ-TTT-04 | Tic-Tac-Toe : une grille pleine sans ligne gagnante affiche un match nul | Règles du jeu |
 | REQ-TTT-05 | Tic-Tac-Toe : le score de session compte les victoires X, les victoires O et les matchs nuls, et survit à Rejouer | Expérience joueur |
+| REQ-GTA-01 | MiniGTA : la ville est la même pour tous (graine fixe) et le GPS mène exactement à la destination | Règle R1 (docs/games/mini-gta/regles.md) |
+| REQ-GTA-02 | MiniGTA : une nouvelle partie commence avec 500 $, sans armure ; une sauvegarde corrompue ou d'une autre version donne une nouvelle partie | Règle R2, Sauvegarde |
+| REQ-GTA-03 | MiniGTA : chaque mission paie sa récompense une seule fois (800, 1 500, 2 500, 3 000 $) | Règle R3 |
+| REQ-GTA-04 | MiniGTA : les billets ramassés s'ajoutent à l'argent et au score, une seule fois | Règle R4 |
+| REQ-GTA-05 | MiniGTA : l'armurerie vend au prix affiché ; un achat sans les fonds est refusé, sans débit | Règle R5 |
+| REQ-GTA-06 | MiniGTA : les crimes vus font monter le niveau de recherche (1 à 5 étoiles), qui retombe hors de vue | Règle R6 |
+| REQ-GTA-07 | MiniGTA : frais d'hôpital (10 %, 100 $ min.) ou caution (15 %, 200 $ min.) sans solde négatif ; l'arrestation coûte les armes | Règle R7 |
+| REQ-GTA-08 | MiniGTA : le score est tout l'argent gagné, jamais diminué par les dépenses, plafonné à 1 000 000 et envoyé s'il bat le précédent | Règle R8 |
+| REQ-GTA-09 | MiniGTA : des tremplins de chaque matière, hors des routes du trafic, des bâtiments et de l'eau | Règle R9 |
+| REQ-GTA-10 | MiniGTA : environ un bâtiment ordinaire sur cinq a un rez-de-chaussée accessible, porte côté rue | Règle R10 |
+| REQ-GTA-11 | MiniGTA : l'accueil propose de jouer ou de continuer en invité, et explique qu'il faut un ordinateur sur un écran trop étroit | Plateforme (regles.md § 3) |
 
 ## Cas de test
 
@@ -198,6 +209,50 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-51 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/rush-hour.spec.ts` › aucune violation d’accessibilité pendant une partie, ni sur l’écran de victoire | PASSED | — |
 | TC-RH-52 | REQ-ERR-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › serveur en panne : un message lisible, et les niveaux restent jouables | PASSED | — |
 | TC-A11Y-03 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/accessibilite.spec.ts` › ['Rush Hour', '/games/rush-hour', 'Rush Hour'] | PASSED | BUG-05 |
+| TC-GTA-01 | REQ-GTA-01 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Deux joueurs reçoivent la même ville | PASSED | — |
+| TC-GTA-02 | REQ-GTA-01 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Le GPS mène exactement à la destination | PASSED | — |
+| TC-GTA-03 | REQ-GTA-01 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Le GPS refuse une destination illisible | PASSED | — |
+| TC-GTA-04 | REQ-GTA-02 | nominal | BDD front | `frontend/src/games/mini-gta/features/nouvelle-partie.feature` › Une nouvelle partie commence avec 500 $, sans armure et les poings en main | PASSED | — |
+| TC-GTA-05 | REQ-GTA-02 | erreur | BDD front (plan, 4 défauts) | `frontend/src/games/mini-gta/features/nouvelle-partie.feature` › Une sauvegarde corrompue ou d'une autre version donne une nouvelle partie | PASSED | — |
+| TC-GTA-06 | REQ-GTA-02 | erreur | propriété (fuzzing) | `frontend/src/games/mini-gta/domain/save.property.test.ts` › fuzzing : n’importe quelle donnée stockée est acceptée ou refusée, jamais une exception | PASSED | — |
+| TC-GTA-07 | REQ-GTA-02 | nominal | E2E (3 navigateurs) | `frontend/e2e/mini-gta.spec.ts` › une sauvegarde invitée est reprise : argent, gains, missions et « Continuer » | PASSED | — |
+| TC-GTA-08 | REQ-GTA-02 | erreur | E2E (3 navigateurs) | `frontend/e2e/mini-gta.spec.ts` › une sauvegarde corrompue donne une nouvelle partie au lieu d’une erreur | PASSED | — |
+| TC-GTA-09 | REQ-GTA-03 | nominal | BDD back (plan, 4 missions) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/missions.feature` › Chaque mission paie sa récompense | PASSED | — |
+| TC-GTA-10 | REQ-GTA-03 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/missions.feature` › Une mission déjà terminée ne paie plus rien | PASSED | — |
+| TC-GTA-11 | REQ-GTA-03 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/missions.feature` › Une mission qui n'existe pas n'est jamais payée | PASSED | — |
+| TC-GTA-12 | REQ-GTA-03 | nominal | propriété (fuzzing déterministe) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsPropertyTest.java` › uneMissionPaieUneSeuleFoisEtLeScoreMonteDeSaRecompense | PASSED | — |
+| TC-GTA-13 | REQ-GTA-04 | nominal | BDD front | `frontend/src/games/mini-gta/features/billets.feature` › Les billets ramassés s'ajoutent à l'argent et au score | PASSED | — |
+| TC-GTA-14 | REQ-GTA-04 | erreur | simulation (harnais) | `frontend/src/games/mini-gta/systems/Pickups.test.ts` › des billets ne se ramassent qu’une fois | PASSED | — |
+| TC-GTA-15 | REQ-GTA-05 | nominal | BDD back (plan, 6 armes) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/armurerie.feature` › Chaque arme a son prix | PASSED | — |
+| TC-GTA-16 | REQ-GTA-05 | nominal | BDD back (plan, 5 lots) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/armurerie.feature` › Les munitions se vendent par lots | PASSED | — |
+| TC-GTA-17 | REQ-GTA-05 | erreur | BDD back (BVA 0/299/300/301) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/armurerie.feature` › Un achat sans les fonds est refusé, sans débit | PASSED | — |
+| TC-GTA-18 | REQ-GTA-05 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/armurerie.feature` › L'armurerie ne vend ni les poings ni de munitions pour une arme blanche | PASSED | — |
+| TC-GTA-19 | REQ-GTA-05 | nominal | propriété (fuzzing déterministe) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsPropertyTest.java` › unAchatNePasseQueSiLeSoldeCouvreLePrixEtNeToucheJamaisAuScore | PASSED | — |
+| TC-GTA-20 | REQ-GTA-05 | nominal | unitaire (doublure Fake) | `frontend/src/games/mini-gta/game/testing/fakeApi.test.ts` › le gilet est débité sans que le serveur ne touche à l’armure | PASSED | BUG-08 |
+| TC-GTA-21 | REQ-GTA-06 | nominal | BDD front (plan, 8 cas) | `frontend/src/games/mini-gta/features/recherche.feature` › Les crimes vus par un témoin font monter le niveau de recherche | PASSED | — |
+| TC-GTA-22 | REQ-GTA-06 | erreur | BDD front | `frontend/src/games/mini-gta/features/recherche.feature` › Un crime sans témoin ne compte pas | PASSED | — |
+| TC-GTA-23 | REQ-GTA-06 | nominal | BDD front (BVA 17/18 s, 23/24 s) | `frontend/src/games/mini-gta/features/recherche.feature` › Hors de vue de la police, le niveau finit par retomber | PASSED | — |
+| TC-GTA-24 | REQ-GTA-06 | erreur | propriété (fast-check) | `frontend/src/games/mini-gta/systems/Wanted.property.test.ts` › quels que soient les crimes, le niveau reste entre 0 et 5 étoiles et ne baisse jamais sur un crime | PASSED | — |
+| TC-GTA-25 | REQ-GTA-07 | nominal | BDD back (BVA 994/995/1004/1005) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/reapparition.feature` › Les frais d'hôpital sont de 10 % de l'argent, 100 $ minimum | PASSED | — |
+| TC-GTA-26 | REQ-GTA-07 | nominal | BDD back (BVA 1336/1337) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/reapparition.feature` › La caution est de 15 % de l'argent, 200 $ minimum | PASSED | — |
+| TC-GTA-27 | REQ-GTA-07 | erreur | propriété (fuzzing déterministe) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsPropertyTest.java` › uneReapparitionCouteAuMoinsLeMinimumSansJamaisLaisserDeDette | PASSED | — |
+| TC-GTA-28 | REQ-GTA-07 | nominal | BDD front (harnais) | `frontend/src/games/mini-gta/features/arrestation.feature` › Arrêté, il perd ses armes sauf les poings et sort du commissariat | PASSED | — |
+| TC-GTA-29 | REQ-GTA-08 | nominal | BDD front (plan, 7 cas) | `frontend/src/games/mini-gta/features/score.feature` › Le score envoyé est l'argent gagné, seulement s'il bat le dernier envoyé | PASSED | — |
+| TC-GTA-30 | REQ-GTA-08 | erreur | BDD front | `frontend/src/games/mini-gta/features/score.feature` › Un invité garde sa sauvegarde mais n'envoie aucun score | PASSED | — |
+| TC-GTA-31 | REQ-GTA-08 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/score.feature` › Les dépenses ne font pas baisser le score | PASSED | — |
+| TC-GTA-32 | REQ-GTA-08 | erreur | intégration (Testcontainers) | `frontend/tests/integration/mini-gta.test.ts` › refuse 1 000 001 $ gagnés (> plafond), même pour le backend | PASSED | — |
+| TC-GTA-33 | REQ-GTA-08 | nominal | intégration (Testcontainers) | `frontend/tests/integration/mini-gta.test.ts` › le classement garde la meilleure partie de chaque joueur | PASSED | — |
+| TC-GTA-34 | REQ-GTA-09 | nominal | BDD back (ville générée) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/tremplins-et-batiments.feature` › La ville a des tremplins de chaque matière | PASSED | — |
+| TC-GTA-35 | REQ-GTA-09 | erreur | BDD back (ville générée) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/tremplins-et-batiments.feature` › Les tremplins restent hors du trafic | PASSED | — |
+| TC-GTA-36 | REQ-GTA-10 | nominal | BDD back (ville générée) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/tremplins-et-batiments.feature` › Environ un bâtiment ordinaire sur cinq est ouvert | PASSED | — |
+| TC-GTA-37 | REQ-GTA-10 | erreur | BDD back (ville générée) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/tremplins-et-batiments.feature` › Seul le rez-de-chaussée d'un bâtiment ouvert est accessible | PASSED | — |
+| TC-GTA-38 | REQ-GTA-11 | nominal | E2E (3 navigateurs) | `frontend/e2e/mini-gta.spec.ts` › un invité sans sauvegarde peut lancer une nouvelle partie et est invité à se connecter | PASSED | — |
+| TC-GTA-39 | REQ-GTA-11 | erreur | E2E (3 navigateurs, 340 px) | `frontend/e2e/mini-gta.spec.ts` › sous 360 px, le jeu explique qu’il se joue sur ordinateur au lieu de proposer « Jouer » | PASSED | — |
+| TC-GTA-40 | REQ-ERR-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/mini-gta.spec.ts` › classement indisponible : un message lisible, et la partie reste jouable | PASSED | — |
+| TC-GTA-41 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/mini-gta.spec.ts` › aucune violation d’accessibilité sérieuse sur l’accueil | PASSED | — |
+| TC-GTA-42 | REQ-API-01 | nominal | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une mission réussie est payée et renvoie la progression à sauvegarder | PASSED | — |
+| TC-GTA-43 | REQ-API-01 | erreur | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une progression invalide est refusée (400) | PASSED | — |
+| TC-GTA-44 | REQ-SEC-01 | erreur | système (@SpringBootTest) | `backend/src/test/java/fr/tikigaming/games/mini_gta/api/MiniGtaJourneyTest.java` › unPostSansJetonCsrfEstRefuse | PASSED | — |
 
 ## Anomalies
 
@@ -212,3 +267,8 @@ P0 immédiate → P3 basse (matrice dans [CONTRIBUTING.md](../CONTRIBUTING.md#an
 | BUG-04 | [Rush Hour][Glisser-déposer] une demi-case vers la gauche ou le haut laisse le véhicule en place au lieu de le déplacer d'une case comme vers la droite ou le bas | S3 | P2 | Closed | 97f4fc24, trouvé par le test rouge de dropDelta (415d7f95) |
 | BUG-05 | [Rush Hour][Choix du niveau] le nom lu des boutons de niveau (« Niveau 1, à jouer ») ne contient pas leur texte visible au lieu de le contenir (WCAG 2.5.3) | S2 | P2 | Closed | 87ad47ab, trouvé par l'audit axe (d8c9b25c) |
 | BUG-06 | [Rush Hour][Vérification d'une partie] à 200 vérifications par seconde du niveau 20, P95 de 2,7 s et 2 059 itérations abandonnées au lieu de P95 < 300 ms (solveur relancé à chaque requête, même pour une partie truquée) | S2 | P2 | Closed | 214b828f et 54bc0adc, test 959b77ef, trouvé par k6 (profil stress) |
+| BUG-07 | [MiniGTA][Refus de l'API] le joueur lit « Requête invalide. » au lieu du message du contrôleur (« Mission inconnue. », « Coordonnées invalides. », « Cet article n'est pas vendu. ») | S3 | P3 | New | — (ApiExceptionHandler, plateforme ; trouvé par les scénarios BDD) |
+| BUG-08 | [MiniGTA][Fake du serveur] l'achat d'une arme donne un lot de munitions (36 au pistolet) au lieu de deux chargeurs (24), et le gilet remet l'armure à 100 au lieu de seulement débiter | S2 | P2 | Closed | 658e855b, test rouge acfabdb2 |
+| BUG-09 | [MiniGTA][Nouvelle partie] le joueur démarre avec un pistolet (12 + 48 balles) au lieu des seuls poings (R2) | S3 | P2 | New | — (règle ou code à trancher par le métier ; trouvé en écrivant les scénarios BDD) |
+| BUG-10 | [MiniGTA][Tests de simulation] 17 tests échouent dès que l'ordre d'exécution est mélangé au lieu de passer dans tout ordre (état partagé entre tests) | S2 | P1 | Closed | 1abf9b0f, trouvé par `vitest --sequence.shuffle` |
+| BUG-11 | [MiniGTA][Trafic en pente] une voiture du trafic sur une route en pente part en position NaN au lieu de suivre la route (copie d'un Quaternion par décomposition) | S1 | P1 | Closed | 981e04d1, test rouge 25444da6, trouvé en isolant les tests de simulation |

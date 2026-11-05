@@ -1,8 +1,8 @@
 # language: fr
 Fonctionnalité: Billets lâchés en ville (R4)
-  Pour être récompensé quand je ramasse de l'argent
   En tant que joueur
   Je veux que les billets s'ajoutent à mon argent et à mon score
+  Afin d'être récompensé quand je ramasse de l'argent
 
   Scénario: Les billets ramassés s'ajoutent à l'argent et au score
     Étant donné un joueur qui a 500 $ et qui a gagné 0 $

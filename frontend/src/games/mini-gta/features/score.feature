@@ -1,8 +1,8 @@
 # language: fr
 Fonctionnalité: Score envoyé au classement (R8)
-  Pour que le classement reflète ma meilleure partie
   En tant que joueur connecté
   Je veux que l'argent gagné soit envoyé comme score, plafonné, seulement quand il bat le précédent
+  Afin que le classement reflète ma meilleure partie
 
   Plan du scénario: Le score envoyé est l'argent gagné, seulement s'il bat le dernier envoyé
     Étant donné un joueur connecté dont le dernier score envoyé est de <dernier> $
