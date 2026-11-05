@@ -45,11 +45,17 @@ export default function TicTacToeGame({ ctx }: GameProps) {
         aria-label="Grille de Tic-Tac-Toe"
       >
         {status !== 'IN_PROGRESS' && (
-          <div className="tic-tac-toe-celebration" aria-hidden="true">
-            {Array.from({ length: 18 }, (_, index) => (
-              <span key={index} />
-            ))}
-          </div>
+          <>
+            <div className="tic-tac-toe-celebration" aria-hidden="true">
+              {Array.from({ length: 18 }, (_, index) => (
+                <span key={index} />
+              ))}
+            </div>
+            <div className="tic-tac-toe-victory" aria-hidden="true">
+              <span>VICTOIRE !</span>
+              <small>{status === 'DRAW' ? 'Match nul' : `Joueur ${status[0]}`}</small>
+            </div>
+          </>
         )}
         {Array.from({ length: 3 }, (_, row) =>
           Array.from({ length: 3 }, (_, column) => {

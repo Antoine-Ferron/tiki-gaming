@@ -129,6 +129,40 @@
   pointer-events: none;
 }
 
+.tic-tac-toe-victory {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  gap: 0.1rem;
+  justify-items: center;
+  color: var(--success);
+  pointer-events: none;
+  text-shadow:
+    0 0 0.5rem var(--success),
+    0 0 1.5rem color-mix(in srgb, var(--success) 75%, transparent),
+    0 0 3rem color-mix(in srgb, var(--accent) 50%, transparent);
+  transform: translate(-50%, -50%) rotate(-5deg);
+  animation: victory-title 1100ms cubic-bezier(0.15, 0.9, 0.25, 1.2) both;
+}
+
+.tic-tac-toe-victory span {
+  font-size: clamp(2.2rem, 11vw, 4.5rem);
+  font-weight: 1000;
+  letter-spacing: 0.04em;
+  line-height: 0.95;
+  white-space: nowrap;
+}
+
+.tic-tac-toe-victory small {
+  color: var(--text);
+  font-size: clamp(0.8rem, 3vw, 1rem);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
 .tic-tac-toe-celebration span {
   --drift: 0px;
   --fall: 130px;
@@ -352,6 +386,24 @@
   }
 }
 
+@keyframes victory-title {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2) rotate(-18deg);
+  }
+  45% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.2) rotate(4deg);
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(0.92) rotate(-3deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(-5deg);
+  }
+}
+
 @keyframes confetti {
   0% {
     opacity: 0;
@@ -374,7 +426,8 @@
   .tic-tac-toe-board button.mark-X,
   .tic-tac-toe-board button.mark-O,
   .tic-tac-toe-board.game-finished::after,
-  .tic-tac-toe-celebration span {
+  .tic-tac-toe-celebration span,
+  .tic-tac-toe-victory {
     animation: none;
   }
 }
