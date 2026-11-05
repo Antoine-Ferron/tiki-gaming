@@ -10,6 +10,7 @@ import { destinations, play } from '@/games/echecs/api'
 import { serverVerifier } from '@/games/rush-hour/services/levelVerifier'
 import { ApiError, apiDelete } from '@/lib/api'
 import { clearSession, fetchSession } from '@/lib/session'
+import { accept, dodge, fire, getView, joinTable } from '@/games/bang/api'
 
 const { like, eachLike, integer, regex } = MatchersV3
 
@@ -43,6 +44,79 @@ afterEach(() => {
 })
 
 describe('contrat front → backend', () => {
+  describe('invité BANG! sans compte', () => {
+    test('rejoindre avec le CSRF renvoie la place attribuée par la session', async () => {
+      await pact
+        .addInteraction()
+        .given('une table BANG! est ouverte aux invités')
+        .uponReceiving('la jonction BANG! d’un invité sans compte')
+        .withRequest('POST', '/api/games/bang/tables/ABC123/join', (req) =>
+          req.headers({ 'Content-Type': 'application/json', ...csrfHeader }).jsonBody({}),
+        )
+        .willRespondWith(200, (res) =>
+          res.jsonBody({ code: like('ABC123'), seat: integer(3), playerCount: integer(3) }),
+        )
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          await expect(joinTable('ABC123')).resolves.toEqual({ code: 'ABC123', seat: 3, playerCount: 3 })
+        })
+    })
+
+    test('la session invitée lit sa main et son rôle privés sans compte', async () => {
+      const view = {
+        code: 'ABC123',
+        seat: 3,
+        currentSeat: 1,
+        phase: 'PLAY',
+        role: 'OUTLAW',
+        hand: [{ id: 'MISSED-7', type: 'MISSED' }],
+        players: ['WILLY_THE_KID', 'BART_CASSIDY', 'CALAMITY_JANET', 'PAUL_REGRET'].map((character, index) => ({
+          seat: index + 1,
+          character,
+          health: index === 0 ? 5 : index === 3 ? 3 : 4,
+          maxHealth: index === 0 ? 5 : index === 3 ? 3 : 4,
+          playedCards: [],
+          handCount: index === 2 ? 1 : 4,
+          ...(index === 0 ? { role: 'SHERIFF' } : {}),
+        })),
+      }
+      await pact
+        .addInteraction()
+        .given('un invité est assis à la table BANG!')
+        .uponReceiving('la lecture privée BANG! d’un invité sans compte')
+        .withRequest('GET', '/api/games/bang/tables/ABC123/state')
+        .willRespondWith(200, (res) => res.jsonBody(like(view)))
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          await expect(getView('ABC123')).resolves.toEqual(view)
+        })
+    })
+  })
+
+  describe('actions de tir BANG!', () => {
+    test.each([
+      { action: 'tirer', path: '/shots/BANG-1/targets/2', send: () => fire('ABC123', 'BANG-1', 2) },
+      {
+        action: 'esquiver',
+        path: '/shots/tir-courant/dodge/MISSED-1',
+        send: () => dodge('ABC123', 'tir-courant', 'MISSED-1'),
+      },
+      { action: 'accepter', path: '/shots/tir-courant/accept', send: () => accept('ABC123', 'tir-courant') },
+    ])('$action utilise la route serveur et le CSRF du dépôt', async ({ action, path: route, send }) => {
+      await pact
+        .addInteraction()
+        .given('un joueur est connecté')
+        .uponReceiving(`l’action BANG! ${action}`)
+        .withRequest('POST', `/api/games/bang/tables/ABC123${route}`, (req) =>
+          req.headers({ 'Content-Type': 'application/json', ...csrfHeader }).jsonBody({}),
+        )
+        .willRespondWith(204)
+        .executeTest(async (server) => {
+          routeApiTo(server.url)
+          await expect(send()).resolves.toBeUndefined()
+        })
+    })
+  })
   describe('POST /api/scores', () => {
     test('un joueur connecté enregistre le score de sa partie', async () => {
       await pact
@@ -240,13 +314,17 @@ describe('contrat front → backend', () => {
             .jsonBody({ fen: START, from: 'e2', to: 'e4' }),
         )
         .willRespondWith(200, (res) =>
-          res.jsonBody({ fen: like('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1') }),
+          res.jsonBody({
+            fen: like('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'),
+            status: like('ONGOING'),
+          }),
         )
         .executeTest(async (server) => {
           routeApiTo(server.url)
-          await expect(play(START, 'e2', 'e4')).resolves.toBe(
-            'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
-          )
+          await expect(play(START, 'e2', 'e4')).resolves.toEqual({
+            fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+            status: 'ONGOING',
+          })
         })
     })
 

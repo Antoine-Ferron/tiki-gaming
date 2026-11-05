@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.fail;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,12 +37,9 @@ class GamePropertyTest {
                 }
                 Square[] move = candidates.get(random.nextInt(candidates.size()));
                 moves.add(move[0] + "-" + move[1]);
-                if (isKnownLimitation(position, move)) {
-                    break; // limite connue du moteur (voir isKnownLimitation) : on arrête cette partie
-                }
                 Position next;
                 try {
-                    next = Game.play(position, move[0], move[1]);
+                    next = Game.play(position, move[0], move[1], promotionIfNeeded(position, move, random));
                 } catch (RuntimeException e) {
                     fail(
                             "Partie " + game + ", coup refusé alors que proposé : " + moves + " depuis "
@@ -63,33 +61,26 @@ class GamePropertyTest {
         }
     }
 
+    private static final PieceType[] PROMOTIONS = {PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT};
+
     /**
-     * Limites connues, trouvées par ce test et tracées comme anomalies (docs/etapes/22) : elles seront levées par les
-     * phases suivantes, et cette méthode devra alors rétrécir.
-     *
-     * <ul>
-     *   <li>ANO-ECH-01 : prendre le roi. Le moteur ne gère pas encore l'échec (phase 3) : aux vrais échecs, ce coup ne
-     *       peut jamais arriver, car on n'a pas le droit de laisser son roi attaqué.
-     *   <li>ANO-ECH-02 : un pion qui atteint la dernière rangée. La promotion n'est pas encore gérée (phase 4).
-     * </ul>
+     * Les anomalies trouvées par ce test sont levées : ANO-ECH-01 (prise du roi) par les coups légaux (L2), ANO-ECH-02
+     * (pion bloqué en dernière rangée) par la promotion (S6), choisie ici au hasard.
      */
-    private static boolean isKnownLimitation(Position position, Square[] move) {
-        boolean capturesKing = position.pieceAt(move[1])
-                .map(piece -> piece.type() == PieceType.KING)
-                .orElse(false);
+    private static Optional<PieceType> promotionIfNeeded(Position position, Square[] move, Random random) {
         boolean promotes = position.pieceAt(move[0])
                         .map(piece -> piece.type() == PieceType.PAWN)
                         .orElse(false)
                 && (move[1].rank() == 0 || move[1].rank() == 7);
-        return capturesKing || promotes;
+        return promotes ? Optional.of(PROMOTIONS[random.nextInt(PROMOTIONS.length)]) : Optional.empty();
     }
 
-    /** Tous les coups (départ, arrivée) que le moteur propose au camp qui a le trait. */
+    /** Tous les coups légaux (départ, arrivée) que le moteur propose au camp qui a le trait. */
     private static List<Square[]> candidateMoves(Position position) {
         List<Square[]> moves = new ArrayList<>();
         for (Map.Entry<Square, Piece> entry : position.pieces().entrySet()) {
             if (entry.getValue().color() == position.turn()) {
-                for (Square to : MoveGenerator.destinations(position, entry.getKey())) {
+                for (Square to : Game.legalDestinations(position, entry.getKey())) {
                     moves.add(new Square[] {entry.getKey(), to});
                 }
             }
