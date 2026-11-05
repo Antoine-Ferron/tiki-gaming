@@ -110,3 +110,50 @@ test('le trait est annoncé : aux Blancs au départ, aux Noirs après un coup bl
   // Assert
   expect(await screen.findByText('Aux Noirs de jouer')).toHaveRole('status')
 })
+
+test('chaque type de pièce a son nom accessible (cavalier, fou, tour)', () => {
+  render(<EchecsGame />)
+
+  expect(screen.getByRole('button', { name: 'b1, cavalier blanc' })).toHaveTextContent('♘')
+  expect(screen.getByRole('button', { name: 'c8, fou noir' })).toHaveTextContent('♝')
+  expect(screen.getByRole('button', { name: 'h1, tour blanche' })).toHaveTextContent('♖')
+})
+
+test('cliquer une case vide sans pièce choisie ne sollicite pas le serveur', async () => {
+  render(<EchecsGame />)
+
+  await userEvent.click(screen.getByRole('button', { name: 'e4, case vide' }))
+
+  expect(destinations).not.toHaveBeenCalled()
+  expect(play).not.toHaveBeenCalled()
+})
+
+test("une case vide qui n'est pas accessible ne joue aucun coup", async () => {
+  // Arrange : e2 choisi, ses cases sont e3 et e4
+  vi.mocked(destinations).mockResolvedValue(['e3', 'e4'])
+  render(<EchecsGame />)
+  await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
+  await screen.findByRole('button', { name: 'e4, case vide' })
+
+  // Act : clic sur e5, hors des cases accessibles
+  await userEvent.click(screen.getByRole('button', { name: 'e5, case vide' }))
+
+  // Assert
+  expect(play).not.toHaveBeenCalled()
+})
+
+test('le message d’erreur disparaît dès que le joueur réessaie', async () => {
+  // Arrange : un premier coup refusé
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockRejectedValueOnce(new ApiError(422, 'Coup refusé : essai'))
+  render(<EchecsGame />)
+  await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'e4, case vide' }))
+  expect(await screen.findByRole('alert')).toBeInTheDocument()
+
+  // Act : le joueur choisit à nouveau une pièce
+  await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
+
+  // Assert
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
