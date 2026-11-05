@@ -368,3 +368,60 @@ test('« Nulle par accord » termine la partie sur une nulle (F7)', async () => 
 
   expect(screen.getByRole('status')).toHaveTextContent('Nulle par accord (½-½)')
 })
+
+test('chaque coup est sauvegardé avec l’historique de la partie (SV1)', async () => {
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockResolvedValue({ fen: AFTER_E4, status: 'ONGOING' })
+  const ctx = renderGame()
+
+  await playMove('e2', /^e4,/)
+
+  await vi.waitFor(() => expect(ctx.save).toHaveBeenCalled())
+  const saved = vi.mocked(ctx.save).mock.lastCall?.[0] as { history: { fen: string; move: string | null }[] }
+  expect(saved.history.map((s) => s.move)).toEqual([null, 'e2-e4'])
+  expect(saved.history.at(-1)?.fen).toBe(AFTER_E4)
+})
+
+test('une partie sauvegardée propose de reprendre ou de recommencer (SV2)', async () => {
+  // Arrange : une sauvegarde après 1. e4
+  const ctx = createContext()
+  vi.mocked(ctx.loadSave).mockResolvedValue({
+    history: [
+      { fen: START_FEN, status: 'ONGOING', lastMove: null, move: null, ended: null },
+      { fen: AFTER_E4, status: 'ONGOING', lastMove: ['e2', 'e4'], move: 'e2-e4', ended: null },
+    ],
+  })
+  renderGame(ctx)
+  const prompt = await screen.findByRole('dialog', { name: 'Partie sauvegardée' })
+
+  // Act
+  await userEvent.click(within(prompt).getByRole('button', { name: 'Reprendre' }))
+
+  // Assert
+  expect(screen.getByRole('button', { name: 'e4, pion blanc' })).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('Aux Noirs de jouer')
+})
+
+test('une sauvegarde illisible est ignorée grâce au schéma (SV3)', async () => {
+  const ctx = renderGame()
+  await vi.waitFor(() => expect(ctx.loadSave).toHaveBeenCalled())
+
+  const schema = vi.mocked(ctx.loadSave).mock.calls[0][0] as { safeParse(d: unknown): { success: boolean } }
+  expect(schema.safeParse({ history: 'cassée' }).success).toBe(false)
+  expect(schema.safeParse({ history: [] }).success).toBe(false)
+  expect(schema.safeParse(null).success).toBe(false)
+  expect(
+    schema.safeParse({ history: [{ fen: START_FEN, status: 'ONGOING', lastMove: null, move: null, ended: null }] })
+      .success,
+  ).toBe(true)
+})
+
+test('la sauvegarde est effacée en fin de partie et pour une nouvelle partie (SV4)', async () => {
+  const ctx = renderGame()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Abandonner' }))
+  await vi.waitFor(() => expect(ctx.clearSave).toHaveBeenCalledTimes(1))
+  await userEvent.click(screen.getByRole('button', { name: 'Nouvelle partie' }))
+
+  await vi.waitFor(() => expect(ctx.clearSave).toHaveBeenCalledTimes(2))
+})
