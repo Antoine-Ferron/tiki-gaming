@@ -37,9 +37,10 @@ const feature = await loadFeature('src/games/bang/features/partie.feature', { la
 
 function open() {
   cleanup()
+  sessionStorage.clear()
   server.started = false
   server.sent = []
-  render(createElement(OnlineTable))
+  render(createElement(OnlineTable, { accountId: 'compte-test' }))
 }
 
 describeFeature(feature, ({ Scenario }) => {

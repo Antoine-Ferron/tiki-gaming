@@ -1,6 +1,7 @@
 package fr.tikigaming.games.sdv_civilisation;
 
 import static fr.tikigaming.games.sdv_civilisation.Tables.IA_1;
+import static fr.tikigaming.games.sdv_civilisation.Tables.coins;
 import static fr.tikigaming.games.sdv_civilisation.Tables.hand;
 import static fr.tikigaming.games.sdv_civilisation.Tables.player;
 import static fr.tikigaming.games.sdv_civilisation.Tables.stages;
@@ -66,5 +67,29 @@ class AiTest {
         assertThat(game.over()).isTrue();
         assertThat(game.players()).allSatisfy(p -> assertThat(p.tokens()).hasSize(6));
         assertThat(Scoring.ranking(game)).hasSize(3);
+    }
+
+    @Test
+    void prefersAGuildToASimpleResource() {
+        // Étant donné "IA 1", riche, qui peut payer la "Guilde des bâtisseurs" (pierres achetées à alice) ou le
+        // "Chantier"
+        GameState game = player(
+                player(hand(start("Citadelle d’Orkan"), IA_1, "Chantier", "Guilde des bâtisseurs"), IA_1, coins(10)),
+                Tables.ALICE,
+                Tables.built("Cavité"));
+
+        // Quand elle choisit son action
+        // Alors elle construit la guilde (3 points espérés) plutôt que le Chantier (1 ressource)
+        assertThat(Ai.choose(game, IA_1, trade)).isEqualTo(new Action(ActionType.BUILD, "Guilde des bâtisseurs"));
+    }
+
+    @Test
+    void valuesTheCoinsOfAYellowCard() {
+        // Étant donné "IA 1" avec le "Chantier" (1 ressource) et la "Taverne" (+5 pièces), toutes deux gratuites
+        GameState game = hand(start("Citadelle d’Orkan"), IA_1, "Chantier", "Taverne");
+
+        // Quand elle choisit son action
+        // Alors elle construit la Taverne : 5 pièces valent plus qu'une ressource
+        assertThat(Ai.choose(game, IA_1, trade)).isEqualTo(new Action(ActionType.BUILD, "Taverne"));
     }
 }

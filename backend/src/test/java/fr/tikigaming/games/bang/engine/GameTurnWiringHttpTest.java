@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.tikigaming.auth.AuthSession;
 import fr.tikigaming.auth.AuthUser;
+import fr.tikigaming.games.bang.cards.BangCharacter;
+import fr.tikigaming.games.bang.cards.CardType;
 import fr.tikigaming.games.bang.cards.Role;
 import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
@@ -67,6 +69,113 @@ class GameTurnWiringHttpTest {
         InitialDeal repeatableDeal(GameCatalog catalog) {
             return new InitialDeal(catalog, list -> Collections.shuffle(list, new Random(57)));
         }
+    }
+
+    @Test
+    void productionComponentsKeepEveryCardAcrossAShotAndItsResponse() throws Exception {
+        String body = postAs(TABLES, 1)
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String code = json.readTree(body).path("code").asString();
+        for (int seat = 2; seat <= 4; seat++) {
+            postAs(TABLES + "/" + code + "/join", seat).andExpect(status().isOk());
+        }
+        postAs(TABLES + "/" + code + "/start", 1).andExpect(status().isOk());
+        int shooterSeat = tables.game(code).currentSeat();
+        postAs(TABLES + "/" + code + "/turn/draw", shooterSeat).andExpect(status().isNoContent());
+        GameState before = tables.game(code);
+        GameState.Player shooter = before.players().get(shooterSeat - 1);
+        CardInstance bang = shooter.hand().stream()
+                .filter(card -> shooter.character().canUseAs(card.type(), CardType.BANG))
+                .findFirst()
+                .orElseThrow();
+        GameState.Player target = before.players().stream()
+                .filter(player -> player.seat() != shooterSeat)
+                .filter(player -> player.character() != BangCharacter.PAUL_REGRET)
+                .filter(player -> PlayerDistance.between(before, shooterSeat, player.seat()) == 1)
+                .findFirst()
+                .orElseThrow();
+
+        postAs(TABLES + "/" + code + "/shots/" + bang.id() + "/targets/" + target.seat(), shooterSeat)
+                .andExpect(status().isNoContent());
+        String shot = tables.state(code, target.accountId()).pendingShot().id();
+        postAs(TABLES + "/" + code + "/shots/" + shot + "/accept", target.seat())
+                .andExpect(status().isNoContent());
+
+        GameState after = tables.game(code);
+        assertThat(after.currentSeat()).isEqualTo(shooterSeat);
+        assertThat(after.phase()).isEqualTo(GameState.Phase.PLAY);
+        assertThat(after.players().get(target.seat() - 1).health()).isEqualTo(target.health() - 1);
+        assertThat(after.discardPile()).containsExactly(bang);
+        assertThat(after.drawPile()).isEqualTo(before.drawPile());
+        assertThat(tables.state(code, target.accountId()).pendingShot()).isNull();
+        List<CardInstance> allCards = new ArrayList<>(after.drawPile());
+        allCards.addAll(after.discardPile());
+        after.players().forEach(player -> allCards.addAll(player.hand()));
+        assertThat(allCards).extracting(CardInstance::id).doesNotHaveDuplicates();
+        assertThat(allCards).containsExactlyInAnyOrderElementsOf(catalog.cards());
+    }
+
+    @Test
+    void productionComponentsApplyBartsBonusAndPreserveThePhysicalDeck() throws Exception {
+        String body = postAs(TABLES, 1)
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String code = json.readTree(body).path("code").asString();
+        for (int seat = 2; seat <= 4; seat++) {
+            postAs(TABLES + "/" + code + "/join", seat).andExpect(status().isOk());
+        }
+        postAs(TABLES + "/" + code + "/start", 1).andExpect(status().isOk());
+        int sheriffSeat = tables.game(code).currentSeat();
+        assertThat(tables.game(code).players().get(sheriffSeat - 1).character()).isEqualTo(BangCharacter.BART_CASSIDY);
+        postAs(TABLES + "/" + code + "/turn/draw", sheriffSeat).andExpect(status().isNoContent());
+        postAs(TABLES + "/" + code + "/turn/end", sheriffSeat).andExpect(status().isNoContent());
+        List<CardInstance> excess =
+                tables.game(code).players().get(sheriffSeat - 1).hand().subList(0, 2);
+        for (CardInstance card : excess) {
+            postAs(TABLES + "/" + code + "/turn/discard/" + card.id(), sheriffSeat)
+                    .andExpect(status().isNoContent());
+        }
+        postAs(TABLES + "/" + code + "/turn/end", sheriffSeat).andExpect(status().isNoContent());
+        int shooterSeat = tables.game(code).currentSeat();
+        postAs(TABLES + "/" + code + "/turn/draw", shooterSeat).andExpect(status().isNoContent());
+        GameState before = tables.game(code);
+        GameState.Player shooter = before.players().get(shooterSeat - 1);
+        GameState.Player bart = before.players().get(sheriffSeat - 1);
+        CardInstance bang = shooter.hand().stream()
+                .filter(card -> shooter.character().canUseAs(card.type(), CardType.BANG))
+                .findFirst()
+                .orElseThrow();
+        CardInstance bonus = before.drawPile().getFirst();
+
+        postAs(TABLES + "/" + code + "/shots/" + bang.id() + "/targets/" + bart.seat(), shooterSeat)
+                .andExpect(status().isNoContent());
+        String shot = tables.state(code, bart.accountId()).pendingShot().id();
+        postAs(TABLES + "/" + code + "/shots/" + shot + "/accept", bart.seat()).andExpect(status().isNoContent());
+
+        GameState after = tables.game(code);
+        List<CardInstance> expectedHand = new ArrayList<>(bart.hand());
+        expectedHand.add(bonus);
+        assertThat(after.players().get(bart.seat() - 1).hand()).containsExactlyElementsOf(expectedHand);
+        assertThat(after.players().get(bart.seat() - 1).health()).isEqualTo(bart.health() - 1);
+        assertThat(after.drawPile())
+                .containsExactlyElementsOf(
+                        before.drawPile().subList(1, before.drawPile().size()));
+        List<CardInstance> expectedDiscard = new ArrayList<>(before.discardPile());
+        expectedDiscard.add(bang);
+        assertThat(after.discardPile()).containsExactlyElementsOf(expectedDiscard);
+        assertThat(after.currentSeat()).isEqualTo(shooterSeat);
+        assertThat(after.phase()).isEqualTo(GameState.Phase.PLAY);
+        assertThat(tables.state(code, bart.accountId()).pendingShot()).isNull();
+        List<CardInstance> allCards = new ArrayList<>(after.drawPile());
+        allCards.addAll(after.discardPile());
+        after.players().forEach(player -> allCards.addAll(player.hand()));
+        assertThat(allCards).extracting(CardInstance::id).doesNotHaveDuplicates();
+        assertThat(allCards).containsExactlyInAnyOrderElementsOf(catalog.cards());
     }
 
     @Test

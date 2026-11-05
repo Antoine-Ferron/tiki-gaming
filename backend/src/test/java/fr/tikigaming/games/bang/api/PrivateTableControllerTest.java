@@ -14,6 +14,7 @@ import fr.tikigaming.games.bang.engine.PrivateTableService;
 import fr.tikigaming.games.bang.model.GameStarted;
 import fr.tikigaming.games.bang.model.TableSeat;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -22,6 +23,39 @@ class PrivateTableControllerTest {
 
     private final PrivateTableService tables = mock(PrivateTableService.class);
     private final PrivateTableController controller = new PrivateTableController(tables);
+
+    @Test
+    void acceptingPassesTheSessionActorAndTheShotIdWithoutADodgeCard() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser("target", "joueur@example.com"));
+
+        assertThat(controller.accept("CODE", "shot", request).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        verify(tables).respond("CODE", "target", "shot", null);
+    }
+
+    @Test
+    void dodgingPassesTheSessionActorAndTheShotIdToTheTables() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser("target", "joueur@example.com"));
+
+        assertThat(controller.dodge("CODE", "shot", "missed", request).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        verify(tables).respond("CODE", "target", "shot", "missed");
+    }
+
+    @Test
+    void firingPassesOnlyTheSessionActorAndTheChosenCardAndTarget() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        AuthSession.signIn(request, new AuthUser("shooter", "joueur@example.com"));
+        request.addParameter("accountId", "someone-else");
+
+        assertThat(controller.fire("CODE", "bang-1", "2", request).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        verify(tables).fire("CODE", "shooter", "bang-1", 2);
+    }
 
     @Test
     void creationPassesTheConnectedAccountIdToTheTables() {
@@ -89,18 +123,29 @@ class PrivateTableControllerTest {
     }
 
     @Test
-    void anAnonymousCreationNeverReachesTheTables() {
-        assertThatThrownBy(() -> controller.create(new MockHttpServletRequest()))
-                .isInstanceOfSatisfying(
-                        AuthException.class, error -> assertThat(error.status()).isEqualTo(401));
-        verifyNoInteractions(tables);
+    void aGuestCreatesWithAServerIdentityAndReusesItWithoutBecomingAnAccount() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        String oldSession = request.getSession().getId();
+        controller.create(request);
+        ArgumentCaptor<String> identity = ArgumentCaptor.forClass(String.class);
+        verify(tables).create(identity.capture());
+        assertThat(identity.getValue()).startsWith("guest:");
+        assertThat(request.getSession().getId()).isNotEqualTo(oldSession);
+        assertThat(AuthSession.currentUser(request)).isNull();
+
+        MockHttpServletRequest resumed = new MockHttpServletRequest();
+        resumed.setSession(request.getSession());
+        resumed.addParameter("accountId", "someone-else");
+        controller.join("CODE", resumed);
+        verify(tables).join("CODE", identity.getValue());
     }
 
     @Test
-    void anAnonymousJoinNeverReachesTheTables() {
-        assertThatThrownBy(() -> controller.join("UNKNOWN", new MockHttpServletRequest()))
-                .isInstanceOfSatisfying(
-                        AuthException.class, error -> assertThat(error.status()).isEqualTo(401));
-        verifyNoInteractions(tables);
+    void signingInAfterAGuestUsesTheAccountIdentity() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        controller.join("CODE", request);
+        AuthSession.signIn(request, new AuthUser("account", "bang@example.test"));
+        controller.join("CODE", request);
+        verify(tables).join("CODE", "account");
     }
 }

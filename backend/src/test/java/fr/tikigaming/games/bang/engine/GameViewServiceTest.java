@@ -52,7 +52,8 @@ class GameViewServiceTest {
                                         1, BangCharacter.BART_CASSIDY, 3, 5, List.of(), 1, Role.SHERIFF),
                                 new PlayerGameView.Player(2, BangCharacter.CALAMITY_JANET, 2, 4, List.of(), 1, null),
                                 new PlayerGameView.Player(3, BangCharacter.PAUL_REGRET, 1, 3, List.of(), 1, null),
-                                new PlayerGameView.Player(4, BangCharacter.WILLY_THE_KID, 4, 4, List.of(), 1, null))));
+                                new PlayerGameView.Player(4, BangCharacter.WILLY_THE_KID, 4, 4, List.of(), 1, null)),
+                        null));
         assertThat(tables.game(code)).isSameAs(game);
         verify(deal).deal(accounts);
         verifyNoMoreInteractions(deal);

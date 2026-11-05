@@ -6,6 +6,8 @@ import { mockPlatform } from './fixtures'
 for (const [page_, path, ready] of [
   ['accueil', '/', 'Bienvenue sur Tiki Gaming'],
   ['page de jeu', '/games/clicker', 'Clicker 10s'],
+  ['Rush Hour', '/games/rush-hour', 'Rush Hour'],
+  ['Échecs', '/games/echecs', 'Échecs'],
   ['connexion', '/login', 'Connexion'],
   ['inscription', '/signup', 'Inscription'],
 ] as const) {

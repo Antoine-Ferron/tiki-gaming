@@ -22,7 +22,11 @@ public record PlayerGameView(
         @Schema(description = "Cartes en main du compte connecté uniquement")
         List<Card> hand,
 
-        List<Player> players) {
+        List<Player> players,
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @Schema(description = "Tir à résoudre ; absent quand aucune réponse n'est attendue")
+        PendingShot pendingShot) {
     @Schema(name = "BangCard")
     public record Card(String id, CardType type) {}
 

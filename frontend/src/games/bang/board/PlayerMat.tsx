@@ -11,14 +11,17 @@ export function PlayerMat({
   player,
   view,
   onTarget,
+  hidePrivate = false,
 }: {
   player: ViewPlayer
   view: GameView
   /** Présent seulement quand ce joueur peut être visé. */
   onTarget?: () => void
+  hidePrivate?: boolean
 }) {
   const isMe = player.seat === view.seat
-  const role = isMe ? view.role : player.role
+  const privateRole = isMe && !hidePrivate
+  const role = privateRole ? view.role : player.role
 
   return (
     <section className="bang-mat" aria-label={`Tapis de la place ${player.seat}`}>
@@ -41,7 +44,7 @@ export function PlayerMat({
       <div className="bang-mat-cards">
         {role ? (
           <div>
-            <p className="bang-label">{isMe ? 'Rôle privé' : 'Rôle public'}</p>
+            <p className="bang-label">{privateRole ? 'Rôle privé' : 'Rôle public'}</p>
             <RoleCard role={slug<Role>(role)} faceUp />
           </div>
         ) : (

@@ -41,10 +41,17 @@ class PrivateTablesCsrfHttpTest {
             strings = {
                 "/api/games/bang/tables",
                 "/api/games/bang/tables/{code}/join",
-                "/api/games/bang/tables/{code}/start"
+                "/api/games/bang/tables/{code}/start",
+                "/api/games/bang/tables/{code}/shots/{cardId}/targets/{targetSeat}",
+                "/api/games/bang/tables/{code}/shots/{shotId}/accept",
+                "/api/games/bang/tables/{code}/shots/{shotId}/dodge/{cardId}"
             })
     void swaggerMatchesTheJsonCsrfResponseFromTheEmbeddedServer(String documentedPath) throws Exception {
-        String path = documentedPath.replace("{code}", "UNKNOWN");
+        String path = documentedPath
+                .replace("{code}", "UNKNOWN")
+                .replace("{cardId}", "card")
+                .replace("{targetSeat}", "2")
+                .replace("{shotId}", "shot");
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpResponse<String> response = client.send(
                     request(path).POST(HttpRequest.BodyPublishers.noBody()).build(),

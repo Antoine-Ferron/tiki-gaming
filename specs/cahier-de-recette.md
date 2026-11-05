@@ -107,13 +107,65 @@ date et ses initiales.
 | Résultat obtenu | |
 | Statut | À EXÉCUTER |
 
+### TC-UAT-07 · Rush Hour : niveau 1 terminé au minimum de coups, à la souris
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-RH-01, REQ-RH-02, REQ-RH-04, REQ-RH-05 |
+| Profil | Joueur connecté, navigateur de bureau, souris |
+| Préconditions | Compte de test qui n'a jamais joué à Rush Hour |
+| Jeu de données | Compte `recette_b` ; solution du niveau 1 : camion A de 3 cases vers le bas, voiture H d'1 case vers le haut, voiture rouge de 3 cases vers la droite |
+| Étapes | 1. Ouvrir Rush Hour · 2. Essayer d'ouvrir le niveau 2 · 3. Ouvrir le niveau 1 · 4. Glisser la voiture rouge vers la droite, au-delà du camion A · 5. Cliquer « Recommencer » · 6. Jouer la solution à la souris · 7. Revenir aux niveaux et relire le classement |
+| Résultat attendu | Étape 2 : niveau 2 fermé (cadenas) · Étape 4 : la voiture s'arrête contre le camion, « Coups : 1 (min. 3) » · Étape 6 : « Bravo ! 1000 points en 3 coups », véhicules bloqués · Étape 7 : niveau 2 « à jouer », « Score total : 1000 points », `recette_b` classé à 1000 |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-08 · Rush Hour : indice payant et record conservé
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-RH-03, REQ-RH-05, REQ-RH-07 |
+| Profil | Joueur connecté |
+| Préconditions | TC-UAT-07 exécutée : record de 1000 points au niveau 1 |
+| Jeu de données | Compte `recette_b` |
+| Étapes | 1. Rejouer le niveau 1 · 2. Cliquer « Indice (−200 points) » · 3. Suivre l'indice puis finir au minimum de coups · 4. Revenir aux niveaux |
+| Résultat attendu | Étape 2 : « Indice : Camion A, vertical de 3 cases vers le bas », le camion est mis en avant · Étape 3 : « Bravo ! 800 points en 3 coups » · Étape 4 : le niveau 1 affiche toujours 1000 points, score total inchangé (un record ne baisse jamais) |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-09 · Rush Hour : plateau généré en Difficile, hors classement
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-RH-06 |
+| Profil | Joueur connecté |
+| Préconditions | Score total connu au classement (par exemple 1000 après TC-UAT-07) |
+| Jeu de données | Compte `recette_b` |
+| Étapes | 1. Dans « Génération », cliquer « Difficile » · 2. Noter le minimum affiché · 3. Résoudre le plateau (les indices sont autorisés) · 4. Cliquer « Nouveau plateau » · 5. Revenir à l'écran de choix et relire le classement |
+| Résultat attendu | Étape 1 : un plateau s'affiche en moins de 2 secondes · Étape 2 : minimum d'au moins 17 coups · Étape 4 : un autre plateau Difficile · Étape 5 : « Difficile : 1 plateau réussi », score total et classement inchangés |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
+### TC-UAT-10 · Rush Hour : jouer au doigt sur smartphone et au clavier seul
+
+| Rubrique | Contenu |
+|----------|---------|
+| Exigence liée | REQ-RH-08, REQ-A11Y-01 |
+| Profil | Invité, smartphone (écran tactile) puis navigateur de bureau au clavier seul |
+| Préconditions | — |
+| Jeu de données | Niveau 1 |
+| Étapes | 1. Sur smartphone, ouvrir le niveau 1 et glisser des véhicules au doigt, d'à peine plus d'une demi-case, dans les deux sens · 2. Sur ordinateur, sans souris : Tab jusqu'à la voiture rouge, flèche haut, puis flèche droite · 3. Finir le niveau au clavier |
+| Résultat attendu | Étape 1 : le plateau tient dans l'écran ; le véhicule suit le doigt et se cale sur la case la plus proche, de la même façon vers la gauche que vers la droite · Étape 2 : focus visible ; flèche haut sans effet sur une voiture horizontale, flèche droite la déplace d'une case · Étape 3 : écran de victoire, et le jeu invite l'invité à se connecter pour être classé |
+| Résultat obtenu | |
+| Statut | À EXÉCUTER |
+
 ## Procès-verbal de recette
 
 | Rubrique | Contenu |
 |----------|---------|
 | Version recettée | (commit ou tag) |
 | Période | du … au … |
-| Fiches exécutées | … / 6 |
+| Fiches exécutées | … / 10 |
 | Anomalies ouvertes | S0 : … · S1 : … · S2 : … · S3 : … |
 | Décision | ☐ Acceptée · ☐ Acceptée avec réserves (lister) · ☐ Refusée |
 | Recetteur | nom, date, signature |

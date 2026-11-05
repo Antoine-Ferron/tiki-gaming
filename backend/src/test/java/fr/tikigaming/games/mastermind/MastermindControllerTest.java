@@ -61,7 +61,7 @@ class MastermindControllerTest {
 
     @Test
     void getsGameWith200AndDoesNotExposeSecretInProgress() throws Exception {
-        when(service.get(ID)).thenReturn(SNAPSHOT);
+        when(service.get(eq(ID), any())).thenReturn(SNAPSHOT);
 
         mvc.perform(get("/api/games/mastermind/{id}", ID))
                 .andExpect(status().isOk())
@@ -85,7 +85,7 @@ class MastermindControllerTest {
                         new MastermindFeedback(4, 0))),
                 null,
                 0);
-        when(service.guess(eq(ID), any())).thenReturn(afterGuess);
+        when(service.guess(eq(ID), any(), any())).thenReturn(afterGuess);
 
         mvc.perform(post("/api/games/mastermind/{id}/guesses", ID)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,8 +109,19 @@ class MastermindControllerTest {
     }
 
     @Test
+    void returns400ForUnknownColor() throws Exception {
+        mvc.perform(post("/api/games/mastermind/{id}/guesses", ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {"colors":["red","blue","green","cyan"]}
+                    """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Couleur inconnue")));
+    }
+
+    @Test
     void returns404ForUnknownGame() throws Exception {
-        when(service.get(ID)).thenThrow(new MastermindNotFoundException("Partie introuvable."));
+        when(service.get(eq(ID), any())).thenThrow(new MastermindNotFoundException("Partie introuvable."));
 
         mvc.perform(get("/api/games/mastermind/{id}", ID))
                 .andExpect(status().isNotFound())
@@ -119,7 +130,8 @@ class MastermindControllerTest {
 
     @Test
     void returns409WhenGuessingFinishedGame() throws Exception {
-        when(service.guess(eq(ID), any())).thenThrow(new MastermindFinishedException("La partie est déjà terminée."));
+        when(service.guess(eq(ID), any(), any()))
+                .thenThrow(new MastermindFinishedException("La partie est déjà terminée."));
 
         mvc.perform(post("/api/games/mastermind/{id}/guesses", ID)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -132,7 +144,7 @@ class MastermindControllerTest {
 
     @Test
     void restartsExistingGame() throws Exception {
-        when(service.restart(ID)).thenReturn(SNAPSHOT);
+        when(service.restart(eq(ID), any())).thenReturn(SNAPSHOT);
 
         mvc.perform(post("/api/games/mastermind/{id}/restart", ID))
                 .andExpect(status().isOk())
@@ -150,7 +162,7 @@ class MastermindControllerTest {
                 List.of(),
                 List.of(MastermindColor.RED, MastermindColor.BLUE, MastermindColor.GREEN, MastermindColor.YELLOW),
                 10);
-        when(service.get(ID)).thenReturn(won);
+        when(service.get(eq(ID), any())).thenReturn(won);
 
         mvc.perform(get("/api/games/mastermind/{id}", ID))
                 .andExpect(status().isOk())

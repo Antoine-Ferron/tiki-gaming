@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { BangBoard } from './board/BangBoard'
 import { turnHint, type GameView } from './board/view'
 
@@ -8,26 +7,32 @@ export function GameScreen({
   onDraw,
   onEnd,
   onDiscard,
+  onShoot,
+  onDodge,
+  onAccept,
 }: {
   view: GameView
   onDraw: () => void
   onEnd: () => void
   onDiscard: (cardId: string) => void
+  onShoot?: (cardId: string, targetSeat: number) => void
+  onDodge?: (cardId: string) => void
+  onAccept?: () => void
 }) {
-  // Pas de route de tir côté serveur pour l'instant : on le dit au lieu de ne rien faire.
-  const [shotNotice, setShotNotice] = useState(false)
-
   return (
     <>
       <p className="bang-turn" role="status">
         {turnHint(view)}
       </p>
-      {shotNotice && (
-        <p className="muted" role="note">
-          Le tir n'est pas encore disponible.
-        </p>
-      )}
-      <BangBoard view={view} onShoot={() => setShotNotice(true)} onDiscard={onDiscard} onDraw={onDraw} onEnd={onEnd} />
+      <BangBoard
+        view={view}
+        onShoot={onShoot}
+        onDiscard={onDiscard}
+        onDraw={onDraw}
+        onEnd={onEnd}
+        onDodge={onDodge}
+        onAccept={onAccept}
+      />
     </>
   )
 }

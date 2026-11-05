@@ -1,5 +1,7 @@
 reports
 .stryker-tmp
 test-results
+test-results-revue
+test-results-controle
 playwright-report
 coverage

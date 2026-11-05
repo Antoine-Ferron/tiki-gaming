@@ -17,6 +17,9 @@ interface Props {
 /**
  * Carte de la main, verticale (5:7) : bandeau de catégorie (couleur + symbole), effet en grand au centre, chaîne,
  * coût sur fond sombre, puis ce que la construction coûterait au joueur.
+ *
+ * Son nom accessible vient de son propre texte, complété de passages lus seulement par les lecteurs d'écran
+ * (catégorie, coût en toutes lettres) : il contient donc toujours ce qui est affiché (WCAG 2.5.3).
  */
 export function CardFace({ card, status, selected, onSelect, motion, style, disabled }: Props) {
   const category = CATEGORIES[card.color]
@@ -28,18 +31,23 @@ export function CardFace({ card, status, selected, onSelect, motion, style, disa
       style={style}
       disabled={disabled}
       aria-pressed={selected}
-      aria-label={`${card.name} (${category.label}) : ${effectText(card)}, coût ${costText(card.cost)}.${chain} ${status.label}`}
       onClick={onSelect}
     >
+      {/* Les espaces entre éléments séparent les mots du nom lu ; en flex, ils ne s'affichent pas. */}
       <span className="sdv-civilisation-card-band">
         <GameIcon k={category.icon} size={14} />
-        <span className="sdv-civilisation-card-name">{card.name}</span>
-        <span className="sdv-civilisation-card-age">{AGES[card.age - 1]}</span>
-      </span>
+        <span className="sdv-civilisation-card-name">{card.name}</span>{' '}
+        <span className="sdv-civilisation-sr">({category.label}), âge</span>{' '}
+        <span className="sdv-civilisation-card-age">{AGES[card.age - 1]}</span>{' '}
+        <span className="sdv-civilisation-sr">:</span>
+      </span>{' '}
       <span className="sdv-civilisation-card-body">
         <IconRow items={effectIcons(card)} size={26} />
         <span className="sdv-civilisation-card-effect">{effectText(card)}</span>
-      </span>
+        <span className="sdv-civilisation-sr">
+          , coût {costText(card.cost)}.{chain}
+        </span>
+      </span>{' '}
       {card.chainFrom && (
         <span className="sdv-civilisation-card-chain" aria-hidden="true">
           <GameIcon k="chain" size={12} /> si {card.chainFrom}

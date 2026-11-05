@@ -249,6 +249,18 @@ describe('GameSession : indices (P5)', () => {
     expect(hint).toEqual({ id: 'X', delta: 4 })
   })
 
+  test('plateau sans solution : pas d’indice, et rien n’est compté', () => {
+    // Arrange : un camion horizontal sur la ligne de la sortie, la voiture rouge ne passera jamais
+    const session = new GameSession(['......', '......', 'XX.AAA', '......', '......', '......'], new ManualClock())
+
+    // Act
+    const hint = session.hint()
+
+    // Assert
+    expect(hint).toBeNull()
+    expect(session.hintsUsed).toBe(0)
+  })
+
   test('après la victoire, plus d’indice et rien n’est compté', () => {
     // Arrange
     const session = new GameSession(MAP, new ManualClock())

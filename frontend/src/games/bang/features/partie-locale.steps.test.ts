@@ -16,6 +16,43 @@ const active = (game: LocalGame) => game.players.find((p) => p.seat === game.cur
 const slugOf = (label: string) => (Object.keys(CHARACTERS) as Character[]).find((c) => CHARACTERS[c].label === label)
 
 describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
+  Scenario('Le onzième tour recycle la défausse entre les deux cartes', ({ Given, And, When, Then }) => {
+    let game: LocalGame
+    let expected: string[]
+    let last: string
+    let recycled: string
+
+    Given('une partie locale ayant terminé dix tours sans mélange', () => {
+      game = fresh()
+      expected = [...game.drawPile, ...game.players.flatMap((p) => p.hand)].map((c) => c.id).sort()
+      for (let turn = 0; turn < 10; turn++) {
+        game = endTurn(draw(game))
+        while (active(game).hand.length > active(game).health) game = discard(game, active(game).hand[0].id)
+        game = endTurn(game)
+      }
+    })
+    And('il reste une carte en pioche et vingt en défausse', () => {
+      expect([game.drawPile.length, game.discardPile.length]).toEqual([1, 20])
+      last = game.drawPile[0].id
+      recycled = game.discardPile[0].id
+    })
+    When('le joueur actif pioche au onzième tour', () => {
+      game = draw(game, (items) => items)
+    })
+    Then('il reçoit la dernière carte puis la première carte recyclée', () => {
+      expect(
+        active(game)
+          .hand.slice(-2)
+          .map((c) => c.id),
+      ).toEqual([last, recycled])
+      expect([game.phase, game.drawPile.length, game.discardPile.length]).toEqual(['PLAY', 19, 0])
+    })
+    And('les trente-sept cartes sont toutes conservées une seule fois', () => {
+      const cards = [...game.drawPile, ...game.discardPile, ...game.players.flatMap((p) => p.hand)]
+      expect(cards.map((c) => c.id).sort()).toEqual(expected)
+      expect(new Set(cards.map((c) => c.id)).size).toBe(37)
+    })
+  })
   ScenarioOutline('Une partie locale distribue un rôle et un personnage à chacun', ({ When, Then }, variables) => {
     let game: LocalGame
 

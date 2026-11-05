@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { parseBoard } from './board'
+import { type Board, parseBoard } from './board'
 import { getLevel } from './levels'
 import { isSolved, moveRange, moveVehicle } from './moves'
 
@@ -79,16 +79,17 @@ describe('moveRange : jusqu’où un véhicule peut glisser (R4, R5)', () => {
 })
 
 describe('moveVehicle : un coup = un glissement dans son sens (R4 à R6)', () => {
-  // La voiture rouge peut avancer de 0 à 2 cases avant le camion A
-  const board = parseBoard([E, '....A.', 'XX..A.', E, E, E])
-  const colOf = (b: typeof board, id: string) => b.vehicles.find((v) => v.id === id)?.col
+  // La voiture rouge peut avancer de 0 à 2 cases avant le camion A. Lu dans chaque test (et non au chargement du
+  // fichier) : sinon Stryker voit le parseur comme du code « statique » et relance toute la suite par mutant.
+  const start = () => parseBoard([E, '....A.', 'XX..A.', E, E, E])
+  const colOf = (b: Board, id: string) => b.vehicles.find((v) => v.id === id)?.col
 
   test.each([
     { delta: 2, col: 2 }, // jusqu'à l'obstacle (N)
     { delta: 1, col: 1 },
   ])('avance la voiture rouge de $delta case(s)', ({ delta, col }) => {
     // Act
-    const next = moveVehicle(board, 'X', delta)
+    const next = moveVehicle(start(), 'X', delta)
 
     // Assert
     expect(colOf(next, 'X')).toBe(col)
@@ -101,13 +102,16 @@ describe('moveVehicle : un coup = un glissement dans son sens (R4 à R6)', () =>
     { delta: 0, error: 'Déplacement nul' },
   ])('refuse un glissement de $delta', ({ delta, error }) => {
     // Act
-    const move = () => moveVehicle(board, 'X', delta)
+    const move = () => moveVehicle(start(), 'X', delta)
 
     // Assert
     expect(move).toThrow(error)
   })
 
   test('laisse le plateau de départ et les autres véhicules inchangés', () => {
+    // Arrange
+    const board = start()
+
     // Act
     const next = moveVehicle(board, 'X', 2)
 
@@ -118,7 +122,7 @@ describe('moveVehicle : un coup = un glissement dans son sens (R4 à R6)', () =>
 
   test('un véhicule vertical change de ligne, pas de colonne', () => {
     // Act : le camion A descend d'une case
-    const next = moveVehicle(board, 'A', 1)
+    const next = moveVehicle(start(), 'A', 1)
 
     // Assert
     expect(next.vehicles.find((v) => v.id === 'A')).toMatchObject({ row: 2, col: 4 })

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,13 @@ import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import fr.tikigaming.auth.AuthUser;
 import fr.tikigaming.auth.SupabaseAuthClient;
 import fr.tikigaming.config.ApiException;
+import fr.tikigaming.games.bang.cards.BangCharacter;
+import fr.tikigaming.games.bang.cards.CardType;
+import fr.tikigaming.games.bang.cards.Role;
+import fr.tikigaming.games.bang.engine.PrivateTableService;
+import fr.tikigaming.games.bang.model.GameState;
+import fr.tikigaming.games.bang.model.PlayerGameView;
+import fr.tikigaming.games.bang.model.TableSeat;
 import fr.tikigaming.scores.SupabaseScoresClient;
 import java.io.IOException;
 import java.net.URI;
@@ -23,6 +31,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.hc.core5.http.ClassicHttpRequest;
@@ -37,7 +46,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 /**
  * Vérification fournisseur du contrat Pact écrit par le front (frontend/pacts, tests/contract). Chaque interaction
  * est rejouée en HTTP contre l'application Spring complète (sécurité, CSRF, validation, sérialisation) ; seuls les
- * appels à Supabase sont simulés. Un champ renommé ou un statut changé côté backend fait échouer ce test.
+ * appels à Supabase et la frontière du service BANG! sont simulés. Le moteur BANG! réel est vérifié par ses
+ * tests HTTP. Un champ renommé ou un statut changé côté backend fait échouer ce test.
  */
 @Provider("tiki-backend")
 @PactFolder("../frontend/pacts")
@@ -64,6 +74,9 @@ class PactProviderTest {
 
     @MockitoBean
     private SupabaseScoresClient supabaseScores;
+
+    @MockitoBean
+    private PrivateTableService bangTables;
 
     /** Cookies de la session ouverte par l'état du contrat, et jeton CSRF qui va avec. */
     private final Map<String, String> cookies = new LinkedHashMap<>();
@@ -106,6 +119,37 @@ class PactProviderTest {
                 .POST(HttpRequest.BodyPublishers.ofString("""
                         {"email": "joueur@example.com", "password": "motdepasse-de-test"}""")));
         assertThat(login.statusCode()).as("connexion de l'état du contrat").isEqualTo(204);
+    }
+
+    @State("une table BANG! est ouverte aux invités")
+    void anOpenGuestTable() throws Exception {
+        aGuest();
+        when(bangTables.join(eq("ABC123"), startsWith("guest:"))).thenReturn(new TableSeat("ABC123", 3, 3));
+    }
+
+    @State("un invité est assis à la table BANG!")
+    void aSeatedGuest() throws Exception {
+        anOpenGuestTable();
+        HttpResponse<String> joining = send(HttpRequest.newBuilder(url("/api/games/bang/tables/ABC123/join"))
+                .header("Content-Type", "application/json")
+                .header("X-XSRF-TOKEN", cookies.get("XSRF-TOKEN"))
+                .POST(HttpRequest.BodyPublishers.ofString("{}")));
+        assertThat(joining.statusCode()).as("jonction de l’invité de contrat").isEqualTo(200);
+        List<PlayerGameView.Player> players = List.of(
+                new PlayerGameView.Player(1, BangCharacter.WILLY_THE_KID, 5, 5, List.of(), 4, Role.SHERIFF),
+                new PlayerGameView.Player(2, BangCharacter.BART_CASSIDY, 4, 4, List.of(), 4, null),
+                new PlayerGameView.Player(3, BangCharacter.CALAMITY_JANET, 4, 4, List.of(), 1, null),
+                new PlayerGameView.Player(4, BangCharacter.PAUL_REGRET, 3, 3, List.of(), 4, null));
+        when(bangTables.state(eq("ABC123"), startsWith("guest:")))
+                .thenReturn(new PlayerGameView(
+                        "ABC123",
+                        3,
+                        1,
+                        GameState.Phase.PLAY,
+                        Role.OUTLAW,
+                        List.of(new PlayerGameView.Card("MISSED-7", CardType.MISSED)),
+                        players,
+                        null));
     }
 
     private URI url(String path) {

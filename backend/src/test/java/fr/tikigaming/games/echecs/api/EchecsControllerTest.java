@@ -1,0 +1,153 @@
+package fr.tikigaming.games.echecs.api;
+
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+
+/**
+ * Tests HTTP du contrôleur, isolé du moteur : le service est remplacé par une doublure Mockito (cours J1_PM, école de
+ * Londres). On vérifie seulement ce qui appartient au contrôleur : routes, JSON, codes HTTP, validation, appels.
+ */
+@WebMvcTest(
+        value = EchecsController.class,
+        properties =
+                "spring.autoconfigure.exclude="
+                        + "org.springframework.boot.security.oauth2.client.autoconfigure.servlet.OAuth2ClientWebSecurityAutoConfiguration")
+@AutoConfigureMockMvc(addFilters = false)
+class EchecsControllerTest {
+
+    private static final String START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    @Autowired
+    private MockMvc mvc;
+
+    @MockitoBean
+    private EchecsService service;
+
+    private ResultActions send(String route, String body) throws Exception {
+        return mvc.perform(post("/api/games/echecs/" + route)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+    }
+
+    @Test
+    @DisplayName("POST /destinations renvoie 200 et les cases données par le service")
+    void destinationsRenvoieLesCasesDuService() throws Exception {
+        // Arrange : le stub répond, quel que soit le moteur
+        when(service.destinations(START, "e2")).thenReturn(List.of("e3", "e4"));
+
+        // Act + Assert
+        send("destinations", "{\"fen\":\"" + START + "\",\"from\":\"e2\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.destinations[0]").value("e3"))
+                .andExpect(jsonPath("$.destinations[1]").value("e4"));
+    }
+
+    @Test
+    @DisplayName("POST /moves renvoie 200 et la FEN calculée par le service")
+    void movesRenvoieLaNouvelleFen() throws Exception {
+        // Arrange
+        String after = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+        when(service.play(START, "e2", "e4", null)).thenReturn(new MoveResult(after, "ONGOING"));
+
+        // Act + Assert
+        send("moves", "{\"fen\":\"" + START + "\",\"from\":\"e2\",\"to\":\"e4\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fen").value(after))
+                .andExpect(jsonPath("$.status").value("ONGOING"));
+    }
+
+    @Test
+    @DisplayName(
+            "le contrôleur transmet la FEN et les cases au service, et rien d'autre (mock : vérification des appels)")
+    void leControleurTransmetLaRequeteAuService() throws Exception {
+        // Arrange
+        when(service.play(START, "g1", "f3", null)).thenReturn(new MoveResult("fen-suivante", "ONGOING"));
+
+        // Act
+        send("moves", "{\"fen\":\"" + START + "\",\"from\":\"g1\",\"to\":\"f3\"}");
+
+        // Assert : un seul appel, avec exactement ces arguments
+        verify(service).play(START, "g1", "f3", null);
+        verifyNoMoreInteractions(service);
+    }
+
+    @Test
+    @DisplayName("un coup refusé par le service donne 422 et le message pour le joueur")
+    void unCoupRefuseDonne422() throws Exception {
+        // Arrange : le stub simule un refus des règles
+        when(service.play(START, "e2", "e5", null))
+                .thenThrow(new EchecsRejectedException("Case inaccessible pour la pièce en e2 : e5"));
+
+        // Act + Assert
+        send("moves", "{\"fen\":\"" + START + "\",\"from\":\"e2\",\"to\":\"e5\"}")
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.error").value("Coup refusé : Case inaccessible pour la pièce en e2 : e5"));
+    }
+
+    @Test
+    @DisplayName("une entrée invalide signalée par le service donne 400")
+    void uneEntreeInvalideDonne400() throws Exception {
+        // Arrange
+        when(service.destinations("abc", "e2")).thenThrow(new EchecsInvalidInputException("Une FEN a 6 champs : abc"));
+
+        // Act + Assert
+        send("destinations", "{\"fen\":\"abc\",\"from\":\"e2\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Entrée invalide : Une FEN a 6 champs : abc"));
+    }
+
+    static Stream<String> corpsInvalides() {
+        String fen = "k7/8/8/8/8/8/8/7K w - - 0 1";
+        return Stream.of(
+                "{}", // tout manque
+                "{\"from\":\"e2\",\"to\":\"e4\"}", // FEN absente
+                "{\"fen\":\"\",\"from\":\"e2\",\"to\":\"e4\"}", // FEN vide
+                "{\"fen\":\"" + fen + "\",\"to\":\"e4\"}", // case de départ absente
+                "{\"fen\":\"" + fen + "\",\"from\":\"e2\",\"to\":\"  \"}", // case d'arrivée blanche
+                "{\"fen\":\"" + fen + "\",\"from\":\"e2e2e2\",\"to\":\"e4\"}", // case trop longue
+                "{\"fen\":\"" + "x".repeat(101) + "\",\"from\":\"e2\",\"to\":\"e4\"}"); // FEN géante
+    }
+
+    @ParameterizedTest(name = "[{index}] corps invalide")
+    @MethodSource("corpsInvalides")
+    @DisplayName("un corps incomplet ou démesuré donne 400 sans même appeler le service")
+    void unCorpsIncompletDonne400SansAppelerLeService(String body) throws Exception {
+        // Act + Assert
+        send("moves", body).andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("la promotion choisie est transmise au service, et une lettre inconnue est refusée (400)")
+    void laPromotionEstTransmiseEtValidee() throws Exception {
+        String fen = "k7/4P3/8/8/8/8/8/7K w - - 0 1";
+        when(service.play(fen, "e7", "e8", "q")).thenReturn(new MoveResult("fen-promue", "ONGOING"));
+
+        send("moves", "{\"fen\":\"" + fen + "\",\"from\":\"e7\",\"to\":\"e8\",\"promotion\":\"q\"}")
+                .andExpect(status().isOk());
+        send("moves", "{\"fen\":\"" + fen + "\",\"from\":\"e7\",\"to\":\"e8\",\"promotion\":\"k\"}")
+                .andExpect(status().isBadRequest());
+
+        verify(service).play(fen, "e7", "e8", "q");
+        verifyNoMoreInteractions(service);
+    }
+}
