@@ -67,6 +67,17 @@ describe('LemurTiki (propriétés)', () => {
     )
   })
 
+  // Tue le mutant `if (true) return state` : dans les .feature, l'étape qui appelle advance (Quand) et celle
+  // qui vérifie (Alors) sont deux tests distincts, que Stryker ne relie pas au mutant (coverageAnalysis perTest).
+  test('une partie en cours avance toujours : la gravité ou un rebond change la vitesse du maki (EF-1)', () => {
+    fc.assert(
+      fc.property(maki, input, draw, (start, i, d) => {
+        const running = aGame({ maki: start, peakY: start.y, fossaY: -1000 })
+        expect(advance(running, i, () => d).maki.vy).not.toBe(running.maki.vy)
+      }),
+    )
+  })
+
   test('les branches restent à portée de saut et dans la largeur de l’écran, pour tout tirage (EF-3.2)', () => {
     fc.assert(
       fc.property(fc.array(draw, { minLength: 1 }), fc.integer({ min: 0, max: 30_000 }), (draws, bottom) => {
