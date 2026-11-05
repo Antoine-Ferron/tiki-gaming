@@ -1,7 +1,7 @@
 # Rush Hour : sécurité de l'endpoint de vérification
 
 > **Statut : fait.** Ce document garde la trace de l'analyse de sécurité de `POST /api/games/rush-hour/levels/{level}/results` : les risques OWASP examinés, la limite par client ajoutée en TDD, et le scan dynamique ZAP (cours J4_PM).
-> Suite de #102 (PR #114) · Branche : `game/rush-hour/stryker-fast-check-pact`
+> Suite de #102 (PR #114) · Branche : `game/rush-hour/tests-qualite-soutenance`
 
 ---
 

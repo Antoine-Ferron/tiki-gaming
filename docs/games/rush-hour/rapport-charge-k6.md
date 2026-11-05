@@ -1,7 +1,7 @@
 # Rush Hour : test de charge de la vérification des parties (k6)
 
 > **Statut : fait, anomalie corrigée.** Ce document garde la trace du test de charge de l'endpoint de vérification des parties : ce qu'on a mesuré, l'anomalie trouvée (BUG-06), sa correction en TDD et le gain mesuré (cours J4_AM, SRE et k6).
-> Suite de #102 (PR #114) · Branche : `game/rush-hour/stryker-fast-check-pact`
+> Suite de #102 (PR #114) · Branche : `game/rush-hour/tests-qualite-soutenance`
 
 ---
 

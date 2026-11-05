@@ -1,7 +1,7 @@
 # Rush Hour : contrat d'API avec Pact
 
 > **Statut : fait.** Ce document garde la trace du contrat Pact ajouté entre le jeu (front) et l'endpoint de vérification des parties (backend) : pourquoi, comment, et la preuve qu'il protège quelque chose (cours J3_AM, tests de contrat).
-> Suite de #102 (PR #114) · Branche : `game/rush-hour/stryker-fast-check-pact`
+> Suite de #102 (PR #114) · Branche : `game/rush-hour/tests-qualite-soutenance`
 
 ---
 

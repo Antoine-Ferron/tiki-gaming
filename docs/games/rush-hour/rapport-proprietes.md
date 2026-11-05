@@ -1,7 +1,7 @@
 # Rush Hour : tests de propriété et fuzzing (fast-check)
 
 > **Statut : fait.** Ce document garde la trace des tests de propriété ajoutés au domaine de Rush Hour : ce qu'on a voulu vérifier, les pièges rencontrés, et comment on s'est assuré que ces tests attrapent de vrais bugs (cours J3_AM, fuzzing).
-> Suite de #102 (PR #114) · Branche : `game/rush-hour/stryker-fast-check-pact` · Fait suite au [rapport de mutation](rapport-mutation.md)
+> Suite de #102 (PR #114) · Branche : `game/rush-hour/tests-qualite-soutenance` · Fait suite au [rapport de mutation](rapport-mutation.md)
 
 ---
 

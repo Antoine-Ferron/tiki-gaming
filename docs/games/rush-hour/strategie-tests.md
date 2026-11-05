@@ -1,7 +1,7 @@
 # Rush Hour : stratégie de tests
 
 > **Livrable MSPR 4.1, « stratégie et matrice des tests »** (cours J1_AM). Ce document justifie, chiffres à l'appui, ce qui est testé à chaque étage et pourquoi, en partant des risques du jeu. Chiffres au 4 novembre 2026.
-> Branche : `game/rush-hour/stryker-fast-check-pact`
+> Branche : `game/rush-hour/tests-qualite-soutenance`
 
 ---
 
