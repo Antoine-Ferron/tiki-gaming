@@ -78,4 +78,24 @@ class TransactionsPropertyTest {
             assertThat(again.progress()).isEqualTo(first.progress());
         }
     }
+
+    /**
+     * L'API accepte tout solde et tous gains positifs ou nuls ({@code @PositiveOrZero}) : jusqu'à
+     * {@link Integer#MAX_VALUE}. Une récompense ne doit jamais faire déborder l'un ou l'autre en négatif.
+     */
+    @Test
+    void uneRecompenseNeFaitJamaisBaisserNiLeSoldeNiLeScoreMemeAuxBornesDesEntiers() {
+        Random random = new Random(0x5EED);
+        for (int i = 0; i < RUNS; i++) {
+            int money = i % 2 == 0 ? Integer.MAX_VALUE - random.nextInt(5_000) : random.nextInt(Integer.MAX_VALUE);
+            int earned = i % 3 == 0 ? Integer.MAX_VALUE - random.nextInt(5_000) : random.nextInt(Integer.MAX_VALUE);
+            Progress before = new Progress(1, money, earned, 0, null, List.of(), new Progress.Stats(0, 0, 0));
+            MissionDef mission = new MissionDef("m", "", "", 1 + random.nextInt(5_000), new Pos(0, 0), List.of());
+
+            Progress after = Transactions.completeMission(before, mission).progress();
+
+            assertThat(after.money()).isGreaterThanOrEqualTo(before.money());
+            assertThat(after.totalEarned()).isGreaterThanOrEqualTo(before.totalEarned());
+        }
+    }
 }

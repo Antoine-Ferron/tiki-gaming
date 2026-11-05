@@ -33,3 +33,18 @@ describe('fakeApi : mêmes règles d’armurerie que le serveur', () => {
     expect(r.progress.armor).toBe(rich.armor)
   })
 })
+
+describe('fakeApi : mêmes règles de mission que le serveur', () => {
+  test.each([
+    [996_999, 999_999],
+    [997_000, 1_000_000],
+    [997_001, 1_000_000],
+    [1_000_000, 1_000_000],
+  ])('%i $ déjà gagnés + 3000 $ de mission → score %i $ (plafond de Progress.earn)', async (earned, score) => {
+    const r = await api.completeMission({ ...newSave(), totalEarned: earned }, 'special')
+
+    expect(r).toMatchObject({ rewarded: true, reward: 3000 })
+    expect(r.progress.money).toBe(3500)
+    expect(r.progress.totalEarned).toBe(score)
+  })
+})

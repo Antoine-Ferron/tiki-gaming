@@ -10,6 +10,7 @@ Fonctionnalité: Nouvelle partie (R2)
     Et il n'a encore rien gagné
     Et il n'a pas d'armure
     Et il a les poings en main
+    Et il ne possède aucune autre arme
     Et aucune mission n'est terminée
 
   Scénario: Une sauvegarde valide est reprise
