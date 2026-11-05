@@ -141,12 +141,38 @@ reprend le sous-ensemble de l'API Rapier utilisé par le jeu, au-dessus de **can
 | BDD, back | `backend/src/test/resources/.../mini_gta/features/*.feature` (Cucumber JVM, `MiniGtaFeaturesTest`) | R1, R3, R5, R7 (frais), R8 (gains), R9, R10 et GPS, en HTTP sur l'application réelle démarrée par la suite |
 | BDD, front | `features/*.feature` (vitest-cucumber, `*.steps.test.ts`) | R2 et sauvegarde corrompue, R4, R6, R7 (armes perdues à l'arrestation), R8 (score envoyé, invité) |
 
-Les scénarios Gherkin, en français, reprennent les règles de la section 2 avec leurs valeurs limites. Les
+Les scénarios Gherkin, en français, reprennent les règles de la section 2 avec leurs valeurs limites. Ils
+n'emploient que le vocabulaire du joueur (noms des missions et des armes, « solde », « caution ») : la traduction
+vers les identifiants de l'API se fait dans les étapes. Le rapport `backend/target/cucumber/mini-gta.html` (artefact
+CI des rapports BDD) en est la documentation vivante. Les
 messages d'erreur du contrôleur (« Mission inconnue. »…) sont remplacés par « Requête invalide. » par le
 gestionnaire d'erreurs de la plateforme : les scénarios de refus vérifient donc le code HTTP.
 
 `game/fixtures/world-spawn.json` est extrait de `GET /world` dans un rayon de 350 m autour du départ, terrain
 retiré. Il faut le régénérer si le format du monde change.
+
+### Lexique
+
+Le code est en anglais. Chaque terme des règles et des scénarios correspond à un seul identifiant :
+
+| Terme métier | Front | Back |
+|--------------|-------|------|
+| nouvelle partie | `newSave()` | `Progress.initial()` |
+| solde | `money` | `Progress.money` |
+| score, argent gagné | `totalEarned`, `scoreToSubmit()` | `Progress.totalEarned` |
+| récompense de mission | `completeMission()` | `Transactions.completeMission()`, `MissionReward` |
+| armurerie, achat | `purchase()` | `Transactions.purchase()`, `Purchase` |
+| gilet | `armor` | `Purchase.Item.ARMOR` |
+| lot de munitions | `ammoPack`, `ammoPrice` | `WeaponDef.ammoPack()`, `WeaponDef.ammoPrice()` |
+| frais d'hôpital, caution | `respawn('dead' \| 'busted')` | `Transactions.respawn()`, `Respawn.Reason` |
+| billets | `addMoney()` | — |
+| niveau de recherche, étoiles | `WantedLevel`, `stars` | — |
+| témoin | `witnessed` | — |
+| zone de recherche | `searchRadius` | — |
+| graine | — | `MiniGtaWorld.SEED` |
+| donneur de missions | `missionGivers` | `Locations.missionGivers()` |
+| tremplin | `ramps` | `Ramp`, `RampKind` |
+| bâtiment ouvert | `hollow` | `Building.doorSide`, `Building.floorHeight` |
 
 ## 7. Hors périmètre
 
