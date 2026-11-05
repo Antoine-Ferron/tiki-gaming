@@ -295,3 +295,76 @@ test('fermer la fenêtre de promotion annule le coup (P4)', async () => {
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'e7, pion blanc' })).toBeInTheDocument()
 })
+
+const AFTER_E5 = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2'
+
+test('l’historique affiche les coups joués, numérotés (P5)', async () => {
+  vi.mocked(destinations).mockResolvedValueOnce(['e4']).mockResolvedValueOnce(['e5'])
+  vi.mocked(play)
+    .mockResolvedValueOnce({ fen: AFTER_E4, status: 'ONGOING' })
+    .mockResolvedValueOnce({ fen: AFTER_E5, status: 'ONGOING' })
+  renderGame()
+
+  await playMove('e2', /^e4,/)
+  await playMove('e7', /^e5,/)
+
+  expect(await screen.findByRole('listitem')).toHaveTextContent('1. e2-e4 e7-e5')
+  expect(screen.getByRole('list', { name: 'Coups joués' })).toBeInTheDocument()
+})
+
+test('« Annuler le coup » revient à la position précédente (P6)', async () => {
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockResolvedValue({ fen: AFTER_E4, status: 'ONGOING' })
+  renderGame()
+  expect(screen.getByRole('button', { name: 'Annuler le coup' })).toBeDisabled()
+  await playMove('e2', /^e4,/)
+  await screen.findByRole('button', { name: 'e4, pion blanc' })
+
+  await userEvent.click(screen.getByRole('button', { name: 'Annuler le coup' }))
+
+  expect(screen.getByRole('button', { name: 'e2, pion blanc' })).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('Aux Blancs de jouer')
+  expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
+})
+
+test('« Nouvelle partie » remet la position de départ (P6)', async () => {
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockResolvedValue({ fen: AFTER_E4, status: 'ONGOING' })
+  renderGame()
+  await playMove('e2', /^e4,/)
+  await screen.findByRole('button', { name: 'e4, pion blanc' })
+
+  await userEvent.click(screen.getByRole('button', { name: 'Nouvelle partie' }))
+
+  expect(screen.getByRole('button', { name: 'e2, pion blanc' })).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('Aux Blancs de jouer')
+})
+
+test('« Retourner l’échiquier » met les Noirs en bas (P6)', async () => {
+  renderGame()
+  const firstSquare = () => within(screen.getByRole('group', { name: 'Échiquier' })).getAllByRole('button')[0]
+  expect(firstSquare()).toHaveAccessibleName('a8, tour noire')
+
+  await userEvent.click(screen.getByRole('button', { name: 'Retourner l’échiquier' }))
+
+  expect(firstSquare()).toHaveAccessibleName('h1, tour blanche')
+})
+
+test('« Abandonner » termine la partie au profit de l’adversaire (F6)', async () => {
+  renderGame()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Abandonner' }))
+
+  expect(screen.getByRole('status')).toHaveTextContent('Les Blancs abandonnent : les Noirs gagnent (0-1)')
+  expect(screen.getByRole('button', { name: 'Abandonner' })).toBeDisabled()
+  await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
+  expect(destinations).not.toHaveBeenCalled()
+})
+
+test('« Nulle par accord » termine la partie sur une nulle (F7)', async () => {
+  renderGame()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Nulle par accord' }))
+
+  expect(screen.getByRole('status')).toHaveTextContent('Nulle par accord (½-½)')
+})
