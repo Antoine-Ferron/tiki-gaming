@@ -29,7 +29,7 @@ class GameStatusTest {
         "'k7/8/8/8/8/8/5P2/7K w - - 0 1', ONGOING, un pion peut encore être promu"
     })
     void leStatutDeLaPartieSuitLesRegles(String fen, GameStatus expected, String why) {
-        assertThat(Game.status(Fen.parse(fen))).isEqualTo(expected);
+        assertThat(Game.status(Fen.parse(fen))).as(why).isEqualTo(expected);
     }
 
     @Test
