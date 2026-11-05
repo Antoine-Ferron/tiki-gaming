@@ -95,3 +95,18 @@ test('un coup refusé par le serveur affiche son message et laisse la position i
   expect(await screen.findByRole('alert')).toHaveTextContent('Coup refusé : Case inaccessible pour la pièce en e2 : e4')
   expect(screen.getByRole('button', { name: 'e2, pion blanc' })).toBeInTheDocument()
 })
+
+test('le trait est annoncé : aux Blancs au départ, aux Noirs après un coup blanc', async () => {
+  // Arrange
+  vi.mocked(destinations).mockResolvedValue(['e4'])
+  vi.mocked(play).mockResolvedValue('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1')
+  render(<EchecsGame />)
+  expect(screen.getByRole('status')).toHaveTextContent('Aux Blancs de jouer')
+
+  // Act
+  await userEvent.click(screen.getByRole('button', { name: 'e2, pion blanc' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'e4, case vide' }))
+
+  // Assert
+  expect(await screen.findByText('Aux Noirs de jouer')).toHaveRole('status')
+})
