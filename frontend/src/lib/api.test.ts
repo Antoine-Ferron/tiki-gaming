@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { ApiError, apiGet, apiPost, toFormErrors } from './api'
+import { ApiError, apiDelete, apiGet, apiPost, toFormErrors } from './api'
 
 vi.mock('./logger', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }))
 
@@ -90,6 +90,27 @@ describe('apiPost', () => {
       status: 0,
       message: 'Le serveur est injoignable. Vérifie ta connexion et réessaie.',
     })
+  })
+})
+
+describe('apiDelete', () => {
+  test('envoie un DELETE sans corps, avec le jeton CSRF lu dans le cookie', async () => {
+    document.cookie = 'XSRF-TOKEN=abc'
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+
+    await expect(apiDelete('/auth/account')).resolves.toBeUndefined()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/account', {
+      credentials: 'same-origin',
+      method: 'DELETE',
+      headers: { 'X-XSRF-TOKEN': 'abc' },
+    })
+  })
+
+  test('une erreur du backend garde son statut et son message', async () => {
+    fetchMock.mockResolvedValue(json(502, { error: 'Service indisponible.' }))
+
+    await expect(apiDelete('/auth/account')).rejects.toMatchObject({ status: 502, message: 'Service indisponible.' })
   })
 })
 

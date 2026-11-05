@@ -92,9 +92,10 @@ accepté), sinon un compte est créé.
 | `POST /api/auth/password/reset`   | Nouveau mot de passe via le jeton du lien                      |
 | `POST /api/auth/password`         | Changement de mot de passe (connecté)                          |
 | `POST /api/auth/logout`           | Déconnexion                                                    |
+| `DELETE /api/auth/account`        | Suppression définitive du compte (RGPD) : profil, scores et sauvegardes suivent par cascade |
 | `POST /api/scores`                | Enregistre le score du joueur connecté (seul chemin d'écriture) |
 
-Les `POST` exigent l'en-tête `X-XSRF-TOKEN` (copie du cookie `XSRF-TOKEN`), ajouté par
+Les `POST` et `DELETE` exigent l'en-tête `X-XSRF-TOKEN` (copie du cookie `XSRF-TOKEN`), ajouté par
 `frontend/src/lib/api.ts`. Les erreurs sont renvoyées sous la forme `{ "error": "message" }`.
 
 ### Swagger (OpenAPI)
@@ -237,7 +238,13 @@ backend/src/main/java/fr/tikigaming/
 ```
 
 Un jeu n'a un package serveur que s'il en a besoin (validation de score, multijoueur…) ; les règles
-sont dans [CONTRIBUTING.md](../CONTRIBUTING.md#packages). Formatter (Spotless), linter (Checkstyle) et
+sont dans [CONTRIBUTING.md](../CONTRIBUTING.md#packages).
+
+Exemple : **SDV Civilisation** est arbitré par le serveur (`games/sdv_civilisation/`). Le domaine (règles,
+IA, minuteur, score) est du Java pur, sans Spring ; le sous-package `api` l'expose sous
+`/api/games/sdv-civilisation/*`, garde la partie d'un invité dans sa session HTTP et celle d'un compte dans
+`game_saves` (scellée, voir [modele-donnees.md](modele-donnees.md#game_saves)), et enregistre le score final
+dans `scores` avec la clé service. Le front n'affiche que la vue renvoyée par le serveur. Formatter (Spotless), linter (Checkstyle) et
 tests passent par `mvn verify`, relancé par la CI.
 
 La configuration est lue depuis `backend/.env` (non versionné, modèle : `backend/.env.example`).

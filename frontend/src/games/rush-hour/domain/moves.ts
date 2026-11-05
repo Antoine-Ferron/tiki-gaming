@@ -11,7 +11,8 @@ export function moveRange(board: Board, id: string): MoveRange {
   const vehicle = board.vehicles.find((v) => v.id === id)
   if (!vehicle) throw new Error(`Véhicule inconnu : ${id}`)
 
-  const occupied = new Set(board.vehicles.filter((v) => v !== vehicle).flatMap(cellsOf))
+  // On ne regarde que les cases devant et derrière le véhicule : ses propres cases ne sont jamais testées.
+  const occupied = new Set(board.vehicles.flatMap(cellsOf))
   const isFree = (offset: number) => {
     const { row, col } = cellAt(vehicle, offset)
     return row >= 0 && row < SIZE && col >= 0 && col < SIZE && !occupied.has(key(row, col))

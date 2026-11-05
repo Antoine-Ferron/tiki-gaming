@@ -4,4 +4,6 @@ package fr.tikigaming.games.sdv_civilisation;
 public interface AuditNotifier {
 
     void treasuryThresholdCrossed(TreasuryAlert alert);
+
+    void inactivityDetected(InactivityReport report);
 }

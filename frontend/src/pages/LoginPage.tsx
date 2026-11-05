@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
 import { CursorSwarm } from '@/components/CursorSwarm'
 import { Field } from '@/components/Field'
+import { GoogleButton } from '@/components/GoogleButton'
 import { apiPost, toFormErrors } from '@/lib/api'
 import { loginSchema, validate, type FieldErrors } from '@/lib/validation'
 
@@ -43,20 +44,12 @@ export default function LoginPage() {
     }
   }
 
-  function handleGoogleLogin() {
-    setBusy(true)
-    window.location.assign(`/api/auth/google?redirect=${encodeURIComponent(from)}`)
-  }
-
   return (
     <div className="auth-page">
       <CursorSwarm />
       <form className="card form" onSubmit={handleSubmit} noValidate>
         <h1>Connexion</h1>
-        <button type="button" className="secondary" onClick={handleGoogleLogin} disabled={busy}>
-          Se connecter avec Google
-        </button>
-        <p className="divider">ou</p>
+        <GoogleButton label="Se connecter avec Google" redirect={from} disabled={busy} onStart={() => setBusy(true)} />
         <Field
           label="Email"
           type="email"
