@@ -87,9 +87,14 @@ public record Progress(
 
     /** Ajoute un gain : il compte dans le solde et dans les gains cumulés, plafonnés à {@link #MAX_EARNED}. */
     Progress earn(int amount) {
-        int balance = (int) Math.min(Integer.MAX_VALUE, (long) money + amount);
-        int earned = (int) Math.max(totalEarned, Math.min(MAX_EARNED, (long) totalEarned + amount));
+        int balance = addUpTo(money, amount, Integer.MAX_VALUE);
+        int earned = Math.max(totalEarned, addUpTo(totalEarned, amount, MAX_EARNED));
         return new Progress(version, balance, earned, armor, inventory, completedMissions, stats);
+    }
+
+    /** {@code value + amount}, calculé sans débordement et arrêté à {@code max}. */
+    private static int addUpTo(int value, int amount, int max) {
+        return (int) Math.min(max, (long) value + amount);
     }
 
     /** Débite une dépense ; le solde ne descend jamais sous 0 et les gains cumulés ne bougent pas. */
