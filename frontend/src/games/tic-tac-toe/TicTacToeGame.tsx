@@ -39,11 +39,7 @@ export default function TicTacToeGame({ ctx }: GameProps) {
           </p>
         )}
       </div>
-      <div
-        className={`tic-tac-toe-board${status === 'IN_PROGRESS' ? '' : ' game-finished'}`}
-        role="grid"
-        aria-label="Grille de Tic-Tac-Toe"
-      >
+      <div className={`tic-tac-toe-stage${status === 'IN_PROGRESS' ? '' : ' game-finished'}`}>
         {status !== 'IN_PROGRESS' && (
           <>
             <div className="tic-tac-toe-celebration" aria-hidden="true">
@@ -57,24 +53,26 @@ export default function TicTacToeGame({ ctx }: GameProps) {
             </div>
           </>
         )}
-        {Array.from({ length: 3 }, (_, row) =>
-          Array.from({ length: 3 }, (_, column) => {
-            const mark = game.cell(row, column)
-            return (
-              <button
-                key={`${row}-${column}`}
-                type="button"
-                role="gridcell"
-                className={mark ? `mark-${mark}` : undefined}
-                aria-label={`Ligne ${row + 1}, colonne ${column + 1}${mark ? `, ${mark}` : ', vide'}`}
-                disabled={mark !== undefined || status !== 'IN_PROGRESS'}
-                onClick={() => play(row, column)}
-              >
-                {mark ?? ''}
-              </button>
-            )
-          }),
-        )}
+        <div className="tic-tac-toe-board" role="grid" aria-label="Grille de Tic-Tac-Toe">
+          {Array.from({ length: 3 }, (_, row) =>
+            Array.from({ length: 3 }, (_, column) => {
+              const mark = game.cell(row, column)
+              return (
+                <button
+                  key={`${row}-${column}`}
+                  type="button"
+                  role="gridcell"
+                  className={mark ? `mark-${mark}` : undefined}
+                  aria-label={`Ligne ${row + 1}, colonne ${column + 1}${mark ? `, ${mark}` : ', vide'}`}
+                  disabled={mark !== undefined || status !== 'IN_PROGRESS'}
+                  onClick={() => play(row, column)}
+                >
+                  {mark ?? ''}
+                </button>
+              )
+            }),
+          )}
+        </div>
       </div>
       <button type="button" onClick={restart}>
         Rejouer

@@ -103,13 +103,21 @@
   animation: mark-pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
 
-.tic-tac-toe-board.game-finished {
+.tic-tac-toe-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 620px);
+  padding: 1.5rem 5rem;
+}
+
+.tic-tac-toe-stage.game-finished {
   animation: board-win 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.tic-tac-toe-board.game-finished::after {
+.tic-tac-toe-stage.game-finished::after {
   position: absolute;
-  inset: -20%;
+  inset: -10%;
   z-index: -1;
   border-radius: 50%;
   background: color-mix(in srgb, var(--success) 22%, transparent);
@@ -125,7 +133,7 @@
 .tic-tac-toe-celebration {
   position: absolute;
   z-index: 3;
-  inset: 0;
+  inset: -4rem;
   pointer-events: none;
 }
 
@@ -282,8 +290,8 @@
   --spin: -660deg;
 }
 
-.tic-tac-toe-board.game-finished button.mark-X,
-.tic-tac-toe-board.game-finished button.mark-O {
+.tic-tac-toe-stage.game-finished .tic-tac-toe-board button.mark-X,
+.tic-tac-toe-stage.game-finished .tic-tac-toe-board button.mark-O {
   animation:
     mark-pop 260ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both,
     winning-mark 900ms ease-out 180ms both;
@@ -420,14 +428,20 @@
 
 @media (prefers-reduced-motion: reduce) {
   .status-finished,
-  .tic-tac-toe-board.game-finished,
-  .tic-tac-toe-board.game-finished button.mark-X,
-  .tic-tac-toe-board.game-finished button.mark-O,
+  .tic-tac-toe-stage.game-finished,
+  .tic-tac-toe-stage.game-finished button.mark-X,
+  .tic-tac-toe-stage.game-finished button.mark-O,
   .tic-tac-toe-board button.mark-X,
   .tic-tac-toe-board button.mark-O,
-  .tic-tac-toe-board.game-finished::after,
+  .tic-tac-toe-stage.game-finished::after,
   .tic-tac-toe-celebration span,
   .tic-tac-toe-victory {
     animation: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .tic-tac-toe-stage {
+    padding-inline: 1.5rem;
   }
 }
