@@ -629,3 +629,67 @@ test.each([1, 2])(
     expect(screen.getByRole('status').textContent).toBe("Tu as trop de cartes : défausse-en jusqu'à 5.")
   },
 )
+
+test.each(['tour suivant', 'défausse', 'tir en attente', 'session perdue'])(
+  'la fin de tour retenue avant le 204 est abandonnée après %s',
+  async (change) => {
+    const drawing: GameView = { ...fourPlayerView(), currentSeat: 1, phase: 'DRAW' }
+    const playing: GameView = { ...drawing, phase: 'PLAY' }
+    const changed: GameView =
+      change === 'tour suivant'
+        ? { ...drawing, currentSeat: 2 }
+        : change === 'défausse'
+          ? { ...playing, phase: 'DISCARD' }
+          : { ...playing, pendingShot: { id: 'nouveau-tir', shooterSeat: 1, targetSeat: 2 } }
+    let view = drawing
+    let sessionLost = false
+    let acknowledge!: (response: Response) => void
+    const drawResponse = new Promise<Response>((resolve) => {
+      acknowledge = resolve
+    })
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/state'))
+        return sessionLost ? Response.json({ error: 'Session perdue' }, { status: 401 }) : Response.json(view)
+      if (url.endsWith('/turn/draw')) {
+        view = playing
+        return drawResponse
+      }
+      if (url.endsWith('/turn/end')) return new Response(null, { status: 204 })
+      return Response.json({ code: drawing.code, seat: 1, playerCount: 4 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    vi.useFakeTimers()
+    render(<OnlineTable accountId="compte-test" />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Créer une table' }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Piocher' }))
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+    })
+    view = changed
+    sessionLost = change === 'session perdue'
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    await act(async () => {
+      acknowledge(new Response(null, { status: 204 }))
+    })
+
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/turn/end'))).toHaveLength(0)
+    if (sessionLost) expect(screen.getByRole('button', { name: 'Créer une table' })).toBeTruthy()
+    else
+      expect(screen.getByRole('status').textContent).toBe(
+        change === 'tour suivant'
+          ? 'Au tour de la place 2.'
+          : change === 'défausse'
+            ? 'Tu as défaussé assez de cartes : finis ton tour.'
+            : 'Tir de la place 1 vers la place 2 : en attente de sa réponse.',
+      )
+  },
+)

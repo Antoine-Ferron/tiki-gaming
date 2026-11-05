@@ -20,11 +20,12 @@ export function OnlineTable({ accountId }: { accountId: string }) {
   })
   const [joinCode, setJoinCode] = useState('')
   const [view, setView] = useState<GameView | null>(null)
+  const latestView = useRef<GameView | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Après le POST, attend une lecture commencée au-delà de ce numéro ; "sending" garde le POST exclusif.
   const acting = useRef<'sending' | number | null>(null)
   const sending = useRef({ command: '', afterRead: 0 })
-  const queued = useRef<{ command: string; action: () => Promise<unknown> } | null>(null)
+  const queued = useRef<{ command: string; action: () => Promise<unknown>; view: GameView } | null>(null)
   const latestRead = useRef(0)
   const appliedRead = useRef(0)
 
@@ -37,6 +38,7 @@ export function OnlineTable({ accountId }: { accountId: string }) {
           (next) => {
             if (read > appliedRead.current) {
               appliedRead.current = read
+              latestView.current = next
               setView(next)
             }
           },
@@ -47,6 +49,7 @@ export function OnlineTable({ accountId }: { accountId: string }) {
             if (err instanceof ApiError && err.status === 409) return
             setError(messageOf(err))
             if (err instanceof ApiError && [401, 403, 404].includes(err.status)) {
+              latestView.current = null
               setView(null)
               setCode(null)
               try {
@@ -77,9 +80,10 @@ export function OnlineTable({ accountId }: { accountId: string }) {
       if (
         acting.current === 'sending' &&
         command !== sending.current.command &&
-        appliedRead.current > sending.current.afterRead
+        appliedRead.current > sending.current.afterRead &&
+        latestView.current
       ) {
-        queued.current ??= { command, action }
+        queued.current ??= { command, action, view: latestView.current }
       }
       return
     }
@@ -93,7 +97,17 @@ export function OnlineTable({ accountId }: { accountId: string }) {
     } finally {
       const next = queued.current
       queued.current = null
-      if (next) {
+      const current = latestView.current
+      // Le clic retenu appartient au tour, à la phase et au tir affichés à cet instant.
+      if (
+        next &&
+        current &&
+        current.code === next.view.code &&
+        current.seat === next.view.seat &&
+        current.currentSeat === next.view.currentSeat &&
+        current.phase === next.view.phase &&
+        current.pendingShot?.id === next.view.pendingShot?.id
+      ) {
         acting.current = null
         await run(next.command, next.action)
       } else if (code) {
