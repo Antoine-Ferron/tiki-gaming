@@ -4,10 +4,11 @@ Validation initiale locale du 5 novembre 2026 ; la revue corrective est consign�
 dans la dernière section. Les issues GitHub #60 et #61 restent ouvertes
 pour validation ; les changements sont enregistrés dans des commits locaux.
 
-État courant après la revue de `428e0cbf` : le premier clic valide après la pioche
-reste envoyé, et un vrai double clic n'envoie qu'une fin de tour même si une
-ancienne lecture PLAY arrive entre les deux clics. Après défausse, la fin suivante
-reste possible. La suite habituelle comprend huit scénarios avec le vrai serveur.
+État courant après la revue de `c7a55ac2` : le premier clic de défausse retire
+la carte choisie même si la relecture de fin de tour attend. Le premier clic
+valide après la pioche et la fin unique au double clic restent couverts. Deux
+défausses ramènent la main de sept à cinq, puis la fin passe au siège 2.
+La suite habituelle comprend neuf scénarios avec le vrai serveur.
 Le bilan détaillé figure en fin de document. Les sections précédentes conservent
 leurs résultats historiques.
 
@@ -935,3 +936,177 @@ Les références restent `ece3ce79` et `22a11fc1`. Le SHA testé est
 l'intégration du huitième scénario. Seul le présent bilan documentaire est ajouté
 ensuite. Les commits restent locaux sur `game/bang/61-demo-quatre` : aucun push,
 aucune PR, aucun merge vers la branche commune, `dev` ou `main`.
+
+## Revue de `c7a55ac2` — premier clic de défausse (5 novembre 2026)
+
+### Base et rouges réellement observés
+
+La tête initiale est `c7a55ac202a3f0d58e8305b4bc41059fa30dcec9`, sur la branche
+existante `game/bang/61-demo-quatre`, sans changement local. Après le fetch,
+`origin/dev` (`ece3ce79`) et `origin/game/bang/implementation` (`22a11fc1`)
+sont déjà des ancêtres ; aucune intégration supplémentaire n'est nécessaire.
+
+Le scénario fourni dans
+`revue-61-c7a55ac2-86ptz833/frontend/e2e-real/controle-premiere-defausse.spec.ts`
+est copié dans `frontend/e2e-real/` et ajouté à la configuration habituelle.
+Avant toute modification du code de production :
+
+```powershell
+npm run test:e2e:bang -- --grep "le premier clic sur une carte"
+```
+
+Rouge métier observé avec le vrai serveur : Spring accepte la fin, une lecture
+affiche DISCARD et les cartes deviennent sélectionnables. Le navigateur reçoit
+ensuite le 204 de fin ; la lecture déclenchée par cet acquittement est retenue.
+Un seul clic sur la première carte, puis la libération de cette lecture donnent
+**zéro POST de défausse**, **sept cartes**, la carte choisie toujours en main,
+siège 1 en **DISCARD**, sans alerte. La panne n'est pas un défaut de serveur.
+
+Le test intérieur reproduit ensuite cet ordre dans le vrai `OnlineTable`, avec
+le plateau et le client API réels. Seuls fetch et l'horloge sont contrôlés.
+Deux choix de carte (indices 0 et 3) exposent le même rouge : **zéro commande au
+lieu d'une**, avant de modifier `OnlineTable.tsx` :
+
+```powershell
+npm test -- src/games/bang/OnlineTable.test.tsx -t "le premier clic défausse"
+```
+
+### Correctif et verts
+
+Le commit `fb8de8a2` conserve la borne d'acquittement qui protège d'une ancienne
+vue PLAY après une fin déjà acceptée. Il ne déplace cette borne de commande que
+si le joueur actif et la phase affichés sont restés les mêmes. Si une lecture
+a déjà appliqué DISCARD pendant le POST de fin, son acquittement peut libérer
+le verrou pour la défausse autorisée. Les lectures en vol à l'acquittement
+restent invalidées afin de ne pas faire reculer la vue.
+
+Le nouveau clic n'est pas différé : le client envoie directement l'identifiant
+reçu du bouton de carte. Les deux variantes intérieures vérifient l'URL choisie,
+le POST unique, la main à six, l'absence de la carte choisie, DISCARD et aucune
+alerte. L'ancienne réponse de lecture retenue, livrée en dernier, ne rétablit
+pas les sept cartes. **Les 36 tests du composant passent**, dont les clics simples autour de
+la pioche, les doubles clics et l'abandon des intentions devenues invalides.
+
+Le premier rejeu navigateur après ce correctif constate déjà un POST et six
+cartes, mais expose une course dans l'observation du test : la lecture serveur
+peut précéder la collecte du 204 par le listener. Le test attend désormais
+la réponse exacte du POST de la carte choisie avant d'asserter ses codes.
+Aucun délai, second clic ou changement de l'ordre imposé n'est ajouté.
+Le même parcours passe alors au vert.
+
+Le commit `44017b4` intègre ce scénario à la suite habituelle, avec le créateur
+distinct **bang7** (puis les comptes 1, 2, 4). La fixture de connexion propose
+sept créateurs pour les sept tables indépendantes ; elle reste sous `src/test`
+et le profil `bang-browser`, avec AuthController, sessions et CSRF réels.
+Le moteur, la donne, les cartes et les personnages de Colleen sont conservés.
+Le seul fichier de production modifié par cette revue est `OnlineTable.tsx`.
+
+Le parcours est prolongé jusqu'au tour suivant :
+
+- Premier clic : **1 POST `/turn/discard/BANG-21`**, **204**, main **7 → 6**,
+  BANG-21 absente, siège 1 en DISCARD, aucune alerte.
+- Deuxième clic : **1 POST `/turn/discard/BANG-22`**, **204**, main **6 → 5**,
+  BANG-22 absente aussi, toujours DISCARD.
+- Nouvelle fin valide : **204**, siège **2**, phase **DRAW**, cinq cartes
+  conservées par le premier joueur. Deux fins distinctes ont été envoyées
+  sur l'ensemble de ce parcours, une avant et une après les défausses.
+
+### Neuf parcours ensemble sur le code corrigé
+
+SHA testé : **`44017b473dc517c4c7518bfe59eddef190f7bf9b`**.
+`npm run test:e2e:bang` réussit avec **9 scénarios ensemble, zéro retry, 1,7 min**,
+Chromium et vrai Spring, dans un terminal persistant (PTY).
+
+Racine des artefacts du dépôt : `frontend/test-results/`. Chaque dossier du
+tableau contient son `trace.zip`. Une copie durable des **neuf traces et vingt
+captures** est également conservée sous `neuf-parcours/` dans :
+
+```text
+C:\Users\antoi\.codex\visualizations\2026\11\04\01a1a8ce-2f13-7760-87ef-6ae22e0c83f0\bang-61-premiere-defausse-44017b4\
+```
+
+| Scénario vert | Dossier de trace |
+| --- | --- |
+| Quatre comptes : catalogue, tir, esquive, reconnexion, acceptation, Bart et tour suivant | `bang-du-catalogue-au-tour--4da0a-acceptation-et-vues-privées-chromium` |
+| Deux comptes et deux invités : sièges distincts, tirs, confidentialité et reprises | `review.probe-deux-invités--df334-èges-auprès-de-deux-comptes-chromium` |
+| Quatre joueurs sur un écran : tirs et réponses avec passages privés | `review.probe-sur-un-écran-le-BANG-atteint-un-voisin-à-portée-chromium` |
+| Partie locale conservée après changement de mode, y compris pendant un passage d'écran | `controle-limites-un-détour-a85ee-la-partie-sur-le-même-écran-chromium` |
+| Premier clic de fin pendant la réponse du POST de pioche | `review.probe-un-seul-clic--88735-nse-du-POST-de-pioche-tarde-chromium` |
+| Premier clic de fin après le 204, PLAY déjà affiché | `controle-limites-le-clic-e-42f94-lle-lecture-termine-le-tour-chromium` |
+| Premier clic de fin quand la première vue PLAY arrive après le 204 | `revue-lectures-un-clic-res-b922a-4-affiche-PLAY-après-le-204-chromium` |
+| Vrai double clic, ancienne vue PLAY entre les clics, puis fin après défausses | `revue-geste-un-double-clic-b2cb2-imée-arrive-entre-les-clics-chromium` |
+| Premier clic de défausse pendant la relecture de fin, puis 7 → 6 → 5 et siège 2 | `controle-premiere-defausse-20051-cture-de-fin-de-tour-attend-chromium` |
+
+L'attachment `premiere-defausse` contient l'identifiant choisi, le chemin exact,
+un POST, `[204]`, six cartes, DISCARD et aucune alerte. `suite-apres-defausse`
+confirme les deux défausses, `[204, 204]`, puis le siège 2 en DRAW.
+Les rapports JSON sont aussi extraits dans `preuves/` dans l'archive ci-dessus.
+
+Le vrai double clic conserve les événements `[1, 2]`, avec la lecture PLAY
+périmée entre les deux clics : **un seul POST**, **[204]**, DISCARD, aucune
+alerte (intervalle mesuré 372 ms). La fin suivante après défausse reste possible.
+Les trois ordres de réponse autour de la pioche restent verts, sans second clic.
+
+Les quatre vues en ligne désignent **le même et unique siège Shérif : 1**.
+Le contrôle porte sur les sièges distincts, y compris quand le tapis local est
+réorienté. Les rôles privés sont Shérif, Hors-la-loi, Hors-la-loi, Renégat.
+Les assertions de confidentialité du JSON et de l'écran restent vertes pour
+les comptes et invités ; seuls la propre main et le propre rôle privé sont reçus.
+Le tir, Raté !, l'acceptation, le bonus de Bart, les reprises des invités et les
+passages privés locaux sont rejoués. Aucun score invité ou local n'est envoyé
+ou mis en attente pendant ces parcours.
+
+Le rouge initial et sa trace sont conservés dans
+`frontend/node_modules/.cache/bang-61-defausse-acceptance-red.log` et
+`bang-61-defausse-acceptance-red/trace.zip`, avec une copie dans `rouge/`
+de l'archive. Les logs intérieurs sont `bang-61-defausse-component-red.log`
+et `bang-61-defausse-component-green.log`. Le rejeu collectif et son SHA sont
+dans `bang-61-defausse-e2e-final.log` et `bang-61-defausse-tested-sha.txt`.
+
+### Contrôles exécutés sur cette revue
+
+| Commande | Résultat |
+| --- | --- |
+| `npm run test:e2e:bang -- --grep "le premier clic sur une carte"`, avant le code de production | Rouge métier : zéro défausse, sept cartes et carte choisie conservée en DISCARD. |
+| `npm test -- src/games/bang/OnlineTable.test.tsx -t "le premier clic défausse"`, avant le code de production | Deux rouges : zéro POST au lieu d'un pour les cartes d'indices 0 et 3. |
+| `npm test -- src/games/bang/OnlineTable.test.tsx`, après le correctif | **36 réussites**, dont les deux nouvelles variantes et tous les garde-fous précédents. |
+| Même commande navigateur après le correctif, puis avec la continuation | Vert : un POST de la carte choisie, 204, six cartes ; ensuite cinq cartes et siège 2 en DRAW. |
+| `npm test -- src/games/bang` | **221 réussites**, 11 fichiers. |
+| `npm run test:e2e:bang` sur `44017b4` | **9 réussites ensemble**, Chromium, vrai Spring, aucun retry ; 1,7 min avec les serveurs. |
+| `npm run format`, `npm run format:check`, `npm run lint`, `npm run typecheck` | Succès. |
+| `npm run test:coverage` | **1 525 réussites**, 125 fichiers ; lignes 93,86 %, branches 87,78 %, fonctions 91,86 %, instructions 92,67 %. Seuils respectés. |
+| `npm run test:contract` | **11 réussites** ; Pact régénéré sans différence de contenu. |
+| `npm run build` | Succès ; avertissement existant sur la taille des chunks. |
+| `npm run rtm:check`, `npm run db:check` | Traçabilité complète : 24 exigences, 85 cas (84 PASSED), 5 anomalies ; 17 migrations uniques. |
+| `mvn -B -ntp spotless:apply '-Dtest=BangBrowserIsolationTest' test` | Succès ; fixture de démo absente du contexte normal. |
+| `mvn -B -ntp clean verify` dans `backend/` | **BUILD SUCCESS**, 1 min 32 s : **6 588 réussites**, un scénario Échecs ignoré par le filtre existant `@en-cours`, zéro échec/erreur. Aucun BANG ! ignoré. Contrats fournisseur, Docker, Checkstyle, Spotless et seuils JaCoCo verts. |
+
+JaCoCo : lignes **99,03 %**, branches **94,88 %**. Le JAR produit ne contient
+aucune classe `BangBrowser`. Les sorties sont dans
+`frontend/node_modules/.cache/bang-61-defausse-*.log`, notamment `front-targeted`,
+`format`, `format-check`, `lint`, `typecheck`, `test-coverage`, `test-contract`,
+`build`, `fixture`, `clean-verify` et `ancestry`. Le XML JaCoCo est conservé dans
+`bang-61-defausse-jacoco.xml`. Une copie des contrôles, du SHA et de ce XML figure
+dans `controles/` dans l'archive de la revue.
+
+### Limites et remise pour revue
+
+Le correctif ne modifie ni les cartes, ni les personnages, ni les règles du
+moteur. La partie locale reste conservée en mémoire pendant la navigation,
+sans persistance après redémarrage. L'absence d'envoi/file de score invité ou
+local pendant ces tours est vérifiée ; la fin de partie, le barème et la
+publication d'un résultat BANG ! final validé restent à raccorder. Ces parcours
+ne constituent donc pas une preuve de score de fin de partie.
+
+Après le dernier `git fetch origin`, les contrôles portent sur le **SHA testé** :
+
+```powershell
+git merge-base --is-ancestor origin/dev 44017b473dc517c4c7518bfe59eddef190f7bf9b
+git merge-base --is-ancestor origin/game/bang/implementation 44017b473dc517c4c7518bfe59eddef190f7bf9b
+```
+
+Les deux réussissent. `origin/dev` reste à `ece3ce79`, et
+`origin/game/bang/implementation` à `22a11fc1`. Le code et les tests validés sont
+dans `fb8de8a2`, puis `44017b4`. Seul ce bilan documentaire est ajouté ensuite.
+Les commits restent locaux sur `game/bang/61-demo-quatre` ; aucun push, aucune
+PR, aucun merge vers la branche commune, `dev` ou `main`.
