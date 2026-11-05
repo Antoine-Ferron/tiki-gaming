@@ -2,7 +2,9 @@ package fr.tikigaming.games.sdv_civilisation.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import fr.tikigaming.games.sdv_civilisation.ActionType;
@@ -11,8 +13,11 @@ import fr.tikigaming.games.sdv_civilisation.Engine;
 import fr.tikigaming.games.sdv_civilisation.FakeClock;
 import fr.tikigaming.games.sdv_civilisation.FixedShuffler;
 import fr.tikigaming.games.sdv_civilisation.GameRuleException;
+import fr.tikigaming.games.sdv_civilisation.GameState;
 import fr.tikigaming.games.sdv_civilisation.InactivityReport;
+import fr.tikigaming.games.sdv_civilisation.Refusal;
 import fr.tikigaming.games.sdv_civilisation.StandardTrade;
+import fr.tikigaming.games.sdv_civilisation.Tables;
 import fr.tikigaming.games.sdv_civilisation.TurnTimer;
 import org.junit.jupiter.api.Test;
 
@@ -217,5 +222,54 @@ class SdvCivilisationServiceTest {
                 .isInstanceOf(NoGameException.class);
         // Et une merveille inconnue ne permet pas de commencer
         assertThatThrownBy(() -> service.start(store, "Tour de Babel")).isInstanceOf(GameRuleException.class);
+    }
+
+    @Test
+    void theTimerOfAFinishedGameNeverExpires() {
+        // Étant donné une partie terminée
+        GameView end = playToTheEnd(service, USER);
+
+        // Quand le joueur revient bien après l'heure limite du dernier tour (fake : l'horloge avance à la main)
+        clock.advance(10 * TurnTimer.DURATION_MILLIS);
+
+        // Alors il retrouve la partie terminée, inchangée, sans carte défaussée à sa place
+        GameView again = service.current(store, USER).orElseThrow();
+        assertThat(again.version()).isEqualTo(end.version());
+        assertThat(again.over()).isTrue();
+        verify(audit, never()).inactivityDetected(any());
+    }
+
+    @Test
+    void aCardAlreadyBuiltInTheHandShowsNoResourceToBuy() {
+        // Étant donné un joueur qui construit l'"Atelier" au tour 1 (verre acheté à "IA 2")
+        GameView started = service.start(store, CITADEL);
+        GameView next = service.play(store, USER, 6, ActionType.BUILD, started.version());
+
+        // Quand il reçoit au tour 2 une main qui contient un autre "Atelier"
+        GameView.HandCard atelier = next.hand().stream()
+                .filter(c -> c.card().name().equals("Atelier"))
+                .findFirst()
+                .orElseThrow();
+
+        // Alors la carte est refusée (déjà construite), sans ressource à acheter affichée
+        assertThat(atelier.build().refusal()).isEqualTo(Refusal.BUILT);
+        assertThat(atelier.needs()).isEmpty();
+    }
+
+    @Test
+    void aCardFreeByChainShowsNoResourceToBuy() {
+        // Étant donné "alice" qui a construit les "Bains" et qui a l'"Aqueduc" (chaîné depuis les Bains) en main
+        GameState state = Tables.hand(
+                Tables.player(Tables.start("Citadelle d’Orkan"), Engine.PLAYER, Tables.built("Bains")),
+                Engine.PLAYER,
+                "Aqueduc");
+
+        // Quand le serveur prépare la vue de sa main
+        GameView view = GameView.of(new SavedGame(1, 61_000, state), 1_000, new StandardTrade());
+
+        // Alors l'Aqueduc est gratuit par chaîne, sans ressource à acheter affichée
+        GameView.HandCard aqueduct = view.hand().getFirst();
+        assertThat(aqueduct.build().chain()).isTrue();
+        assertThat(aqueduct.needs()).isEmpty();
     }
 }
