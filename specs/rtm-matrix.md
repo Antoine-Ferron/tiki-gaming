@@ -59,6 +59,12 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-TTT-03 | Tic-Tac-Toe : une ligne, colonne ou diagonale complète termine la partie avec le bon gagnant | Règles du jeu |
 | REQ-TTT-04 | Tic-Tac-Toe : une grille pleine sans ligne gagnante affiche un match nul | Règles du jeu |
 | REQ-TTT-05 | Tic-Tac-Toe : le score de session compte les victoires X, les victoires O et les matchs nuls, et survit à Rejouer | Expérience joueur |
+| REQ-LEM-01 | LemurTiki : le maki rebondit sur une branche touchée en descendant (selon sa largeur), la traverse en montant, et les bords de l'écran sont reliés | EF-1.2 à EF-1.6 (docs/games/lemur/specification.md) |
+| REQ-LEM-02 | LemurTiki : la caméra suit le maki qui dépasse le milieu de l'écran et ne redescend jamais | EF-2 |
+| REQ-LEM-03 | LemurTiki : une branche est toujours à portée de saut et dans l'écran ; les branches passées sous l'écran disparaissent | EF-3.1, EF-3.2 |
+| REQ-LEM-04 | LemurTiki : la fossa accélère tous les 100 m jusqu'à 20 m/s et ne reste jamais à plus de 40 m sous l'écran | EF-5.2, EF-5.3 |
+| REQ-LEM-05 | LemurTiki : la partie se termine quand le maki tombe sous l'écran ou que la fossa l'attrape, puis plus rien ne bouge | EF-6.1 à EF-6.3 |
+| REQ-LEM-06 | LemurTiki : le score vaut les mètres entiers atteints + 10 par gousse de vanille, plafonné à 100 000 | EF-6.4, EF-6.5 |
 
 ## Cas de test
 
@@ -198,6 +204,32 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-51 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/rush-hour.spec.ts` › aucune violation d’accessibilité pendant une partie, ni sur l’écran de victoire | PASSED | — |
 | TC-RH-52 | REQ-ERR-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › serveur en panne : un message lisible, et les niveaux restent jouables | PASSED | — |
 | TC-A11Y-03 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/accessibilite.spec.ts` › ['Rush Hour', '/games/rush-hour', 'Rush Hour'] | PASSED | BUG-05 |
+| TC-LEM-01 | REQ-LEM-01 | nominal | BDD | `frontend/src/games/lemur/features/deplacement.feature` › Le maki rebondit sur une branche touchée en descendant | PASSED | — |
+| TC-LEM-02 | REQ-LEM-01 | erreur | BDD | `frontend/src/games/lemur/features/deplacement.feature` › Le maki traverse une branche en montant | PASSED | — |
+| TC-LEM-03 | REQ-LEM-01 | nominal | BDD | `frontend/src/games/lemur/features/deplacement.feature` › Le joueur dirige le maki, et les bords sont reliés | PASSED | — |
+| TC-LEM-04 | REQ-LEM-01 | erreur | unitaire (BVA) | `frontend/src/games/lemur/domain/game.test.ts` › $cas (x = $x) → rebond : $attendu | PASSED | — |
+| TC-LEM-05 | REQ-LEM-01 | erreur | unitaire (BVA) | `frontend/src/games/lemur/domain/game.test.ts` › bord relié — $cas (x = $x) → rebond : $attendu | PASSED | — |
+| TC-LEM-06 | REQ-LEM-01 | nominal | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › le maki reste toujours dans la largeur de l'écran, quelle que soit la direction (EF-1.5) | PASSED | — |
+| TC-LEM-07 | REQ-LEM-02 | nominal | BDD | `frontend/src/games/lemur/features/camera.feature` › La caméra suit le maki qui dépasse le milieu de l'écran | PASSED | — |
+| TC-LEM-08 | REQ-LEM-02 | erreur | BDD | `frontend/src/games/lemur/features/camera.feature` › La caméra ne redescend jamais | PASSED | — |
+| TC-LEM-09 | REQ-LEM-02 | erreur | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › la caméra et la hauteur maximale ne redescendent jamais (EF-2, EF-6.4) | PASSED | — |
+| TC-LEM-10 | REQ-LEM-03 | nominal | BDD | `frontend/src/games/lemur/features/branches.feature` › Des branches attendent toujours au-dessus de l'écran | PASSED | — |
+| TC-LEM-11 | REQ-LEM-03 | erreur | BDD | `frontend/src/games/lemur/features/branches.feature` › Les branches passées sous l'écran disparaissent | PASSED | — |
+| TC-LEM-12 | REQ-LEM-03 | nominal | BDD | `frontend/src/games/lemur/features/branches.feature` › Une branche est toujours à portée de saut | PASSED | — |
+| TC-LEM-13 | REQ-LEM-03 | nominal | unitaire (BVA) | `frontend/src/games/lemur/domain/branches.test.ts` › à $hauteur m avec le tirage $tirage → $ecart m | PASSED | — |
+| TC-LEM-14 | REQ-LEM-03 | erreur | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › les branches restent à portée de saut et dans la largeur de l’écran, pour tout tirage (EF-3.2) | PASSED | — |
+| TC-LEM-15 | REQ-LEM-04 | nominal | BDD | `frontend/src/games/lemur/features/fossa.feature` › La fossa accélère avec la hauteur, jusqu'à un maximum | PASSED | — |
+| TC-LEM-16 | REQ-LEM-04 | erreur | BDD | `frontend/src/games/lemur/features/fossa.feature` › La fossa ne reste jamais à plus de 40 m sous l'écran | PASSED | — |
+| TC-LEM-17 | REQ-LEM-04 | nominal | unitaire (BVA) | `frontend/src/games/lemur/domain/fossa.test.ts` › maki monté à $hauteur m → $vitesse m/s | PASSED | — |
+| TC-LEM-18 | REQ-LEM-04 | erreur | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › la fossa ne ralentit jamais en montant, et reste entre 4 et 20 m/s (EF-5.2) | PASSED | — |
+| TC-LEM-19 | REQ-LEM-05 | erreur | BDD | `frontend/src/games/lemur/features/fin.feature` › Le maki tombe sous l'écran | PASSED | — |
+| TC-LEM-20 | REQ-LEM-05 | erreur | BDD | `frontend/src/games/lemur/features/fin.feature` › La fossa rattrape le maki | PASSED | — |
+| TC-LEM-21 | REQ-LEM-05 | nominal | BDD | `frontend/src/games/lemur/features/fin.feature` › Après la fin, plus rien ne bouge | PASSED | — |
+| TC-LEM-22 | REQ-LEM-05 | nominal | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › une partie terminée ne change plus, quoi que fasse le joueur (EF-6.3) | PASSED | — |
+| TC-LEM-23 | REQ-LEM-05 | nominal | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › une partie en cours avance toujours : la gravité ou un rebond change la vitesse du maki (EF-1) | PASSED | — |
+| TC-LEM-24 | REQ-LEM-06 | nominal | BDD | `frontend/src/games/lemur/features/score.feature` › Le score compte la hauteur maximale et la vanille | PASSED | — |
+| TC-LEM-25 | REQ-LEM-06 | nominal | BDD | `frontend/src/games/lemur/features/score.feature` › La hauteur maximale suit le maki sans jamais redescendre | PASSED | — |
+| TC-LEM-26 | REQ-LEM-06 | erreur | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › le score est un entier entre 0 et 100 000, qui ne baisse pas quand on monte plus haut (EF-6.4, EF-6.5) | PASSED | — |
 
 ## Anomalies
 
