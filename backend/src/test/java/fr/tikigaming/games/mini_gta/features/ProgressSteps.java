@@ -56,6 +56,12 @@ public class ProgressSteps {
         progress.put("money", money);
     }
 
+    @Etantdonné("un joueur qui a déjà gagné {montant}")
+    public void unJoueurQuiADejaGagne(int earned) {
+        uneNouvellePartie();
+        progress.put("totalEarned", earned);
+    }
+
     /** Envoie la progression courante ; la garde à jour si la requête réussit. */
     private void transaction(String path, Map<String, Object> fields) {
         Map<String, Object> payload = new LinkedHashMap<>();
