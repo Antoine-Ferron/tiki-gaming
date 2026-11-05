@@ -253,6 +253,11 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-GTA-42 | REQ-API-01 | nominal | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une mission réussie est payée et renvoie la progression à sauvegarder | PASSED | — |
 | TC-GTA-43 | REQ-API-01 | erreur | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une progression invalide est refusée (400) | PASSED | — |
 | TC-GTA-44 | REQ-SEC-01 | erreur | système (@SpringBootTest) | `backend/src/test/java/fr/tikigaming/games/mini_gta/api/MiniGtaJourneyTest.java` › unPostSansJetonCsrfEstRefuse | PASSED | — |
+| TC-GTA-45 | REQ-GTA-08 | erreur | BDD back (plan, BVA 996 999 / 997 000 / 997 001 / 1 000 000) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/score.feature` › Le score s'arrête à 1 000 000, l'argent gagné reste au joueur | PASSED | BUG-12 |
+| TC-GTA-46 | REQ-GTA-08 | erreur | unitaire (BVA) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsTest.java` › lesGainsCumulesSArretentAuPlafondDuScore | PASSED | BUG-12 |
+| TC-GTA-47 | REQ-GTA-07 | erreur | propriété (fuzzing déterministe, jusqu'à Integer.MAX_VALUE) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsPropertyTest.java` › uneRecompenseNeFaitJamaisBaisserNiLeSoldeNiLeScoreMemeAuxBornesDesEntiers | PASSED | BUG-13 |
+| TC-GTA-48 | REQ-GTA-08 | erreur | unitaire (doublure Fake) | `frontend/src/games/mini-gta/game/testing/fakeApi.test.ts` › fakeApi : mêmes règles de mission que le serveur | PASSED | BUG-12 |
+| TC-GTA-49 | REQ-GTA-02 | nominal | unitaire | `frontend/src/games/mini-gta/systems/weapons.test.ts` › starts with fists only, as a new game (R2) | PASSED | BUG-09 |
 
 ## Anomalies
 
@@ -269,6 +274,8 @@ P0 immédiate → P3 basse (matrice dans [CONTRIBUTING.md](../CONTRIBUTING.md#an
 | BUG-06 | [Rush Hour][Vérification d'une partie] à 200 vérifications par seconde du niveau 20, P95 de 2,7 s et 2 059 itérations abandonnées au lieu de P95 < 300 ms (solveur relancé à chaque requête, même pour une partie truquée) | S2 | P2 | Closed | 214b828f et 54bc0adc, test 959b77ef, trouvé par k6 (profil stress) |
 | BUG-07 | [MiniGTA][Refus de l'API] le joueur lit « Requête invalide. » au lieu du message du contrôleur (« Mission inconnue. », « Coordonnées invalides. », « Cet article n'est pas vendu. ») | S3 | P3 | New | — (ApiExceptionHandler, plateforme ; trouvé par les scénarios BDD) |
 | BUG-08 | [MiniGTA][Fake du serveur] l'achat d'une arme donne un lot de munitions (36 au pistolet) au lieu de deux chargeurs (24), et le gilet remet l'armure à 100 au lieu de seulement débiter | S2 | P2 | Closed | 658e855b, test rouge acfabdb2 |
-| BUG-09 | [MiniGTA][Nouvelle partie] le joueur démarre avec un pistolet (12 + 48 balles) au lieu des seuls poings (R2) | S3 | P2 | New | — (règle ou code à trancher par le métier ; trouvé en écrivant les scénarios BDD) |
+| BUG-09 | [MiniGTA][Nouvelle partie] le joueur démarre avec un pistolet (12 + 48 balles) au lieu des seuls poings (R2) | S3 | P2 | Closed | 736be2f5, tests rouges 4e090112 (BDD) et 2bce07b7 (unitaire) ; la règle R2 écrite fait foi |
 | BUG-10 | [MiniGTA][Tests de simulation] 17 tests échouent dès que l'ordre d'exécution est mélangé au lieu de passer dans tout ordre (état partagé entre tests) | S2 | P1 | Closed | 1abf9b0f, trouvé par `vitest --sequence.shuffle` |
 | BUG-11 | [MiniGTA][Trafic en pente] une voiture du trafic sur une route en pente part en position NaN au lieu de suivre la route (copie d'un Quaternion par décomposition) | S1 | P1 | Closed | 981e04d1, test rouge 25444da6, trouvé en isolant les tests de simulation |
+| BUG-12 | [MiniGTA][Mission réussie] le serveur renvoie plus de 1 000 000 $ de gains cumulés au lieu de s'arrêter au plafond du score (R8) | S2 | P2 | Closed | 1ceeb6a6, tests rouges ecca4a81 (BDD) et 526470f6 (unitaire) |
+| BUG-13 | [MiniGTA][Mission réussie] un solde proche de Integer.MAX_VALUE déborde en négatif au lieu de rester positif (R7) | S2 | P2 | Closed | 58819f54, test rouge a0c2470f (propriété) |
