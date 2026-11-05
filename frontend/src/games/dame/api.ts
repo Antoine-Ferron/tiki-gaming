@@ -1,13 +1,16 @@
+import { apiGet, apiPost } from '@/lib/api'
 import type { DameView, Move, Names } from './types'
 
-export function startMatch(_names: Names): Promise<DameView> {
-  return Promise.reject(new Error('Création à implémenter'))
+const ROOT = '/games/dame/matches'
+
+export function startMatch(names: Names): Promise<DameView> {
+  return apiPost<DameView>(ROOT, names)
 }
 
-export function readMatch(_id: string): Promise<DameView> {
-  return Promise.reject(new Error('Lecture à implémenter'))
+export function readMatch(id: string): Promise<DameView> {
+  return apiGet<DameView>(`${ROOT}/${encodeURIComponent(id)}`)
 }
 
-export function playMove(_id: string, _version: number, _move: Move): Promise<DameView> {
-  return Promise.reject(new Error('Coup à implémenter'))
+export function playMove(id: string, version: number, move: Move): Promise<DameView> {
+  return apiPost<DameView>(`${ROOT}/${encodeURIComponent(id)}/moves`, { version, ...move })
 }

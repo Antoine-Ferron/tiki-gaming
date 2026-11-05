@@ -2,6 +2,7 @@ import type { GameDefinition } from './types'
 import bang from './bang'
 import clicker from './clicker'
 import echecs from './echecs'
+import dame from './dame'
 import mastermind from './mastermind'
 import rushHour from './rush-hour'
 import yams from './yams'
@@ -24,6 +25,7 @@ export const games: GameDefinition[] = [
   yams,
   echecs,
   bang,
+  dame,
 ]
 
 export function getGame(slug: string): GameDefinition | undefined {

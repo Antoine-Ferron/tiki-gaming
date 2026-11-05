@@ -18,3 +18,23 @@ Les réponses réduites des tests ne prétendent pas calculer les règles du mot
 Les ajouts partagés annoncés sont l'inscription au registre et la migration
 du catalogue. Les clients et configurations communs sont réutilisés sans
 modification. Les tests de contrat Dames restent dans leurs propres fichiers.
+
+## Interface GREEN
+
+Les mêmes **18 cas passent**. Le damier reprend la présentation préparée sur
+`game/dame/implementation`, adaptée à l'API à session : aucune route ne reçoit
+de plateau, de propriétaire ou de résultat choisi par le client.
+
+- Noms de 1 à 50 caractères après nettoyage, validation Zod et messages liés aux champs.
+- Sélection d'un parcours parmi les coups du serveur ; une rafle complète produit un seul POST.
+- Pas de mise à jour optimiste du résultat. Après une erreur de coup, le plateau
+  reste visible mais bloqué jusqu'à une relecture GET explicite, sans répétition du POST.
+- Un UUID est conservé dans l'onglet. Si la session ne le possède plus, le serveur
+  renvoie 404 et le formulaire revient ; aucune nouvelle rencontre n'est créée automatiquement.
+- Flèches, Home/End, Entrée et Espace ; une seule case dans l'ordre de tabulation.
+  Les dames portent la lettre D et les coups proposés ont des libellés accessibles.
+
+Validation : **1 324 tests frontend verts**, formatage, lint et build réussis.
+Couverture globale : **93,76 % des lignes**, **87,41 % des branches** ; seuils
+conservés. Les **62 tests PostgreSQL collectifs** passent avec la nouvelle
+migration de catalogue, sans modification de leur code.
