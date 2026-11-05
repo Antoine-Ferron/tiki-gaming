@@ -107,4 +107,17 @@ class EchecsServiceTest {
         assertThatThrownBy(() -> service.play("k7/4P3/8/8/8/8/8/7K w - - 0 1", "e7", "e8", "x"))
                 .isInstanceOf(EchecsInvalidInputException.class);
     }
+
+    @ParameterizedTest(name = "promotion « {0} » → {1}")
+    @CsvSource({
+        "q, 'k3Q3/8/8/8/8/8/8/7K b - - 0 1'",
+        "r, 'k3R3/8/8/8/8/8/8/7K b - - 0 1'",
+        "b, 'k3B3/8/8/8/8/8/8/7K b - - 0 1'"
+    })
+    @DisplayName("chaque lettre de promotion donne la bonne pièce (dame, tour, fou)")
+    void chaqueLettreDePromotionDonneLaBonnePiece(String letter, String expected) {
+        assertThat(service.play("k7/4P3/8/8/8/8/8/7K w - - 0 1", "e7", "e8", letter)
+                        .fen())
+                .isEqualTo(expected);
+    }
 }
