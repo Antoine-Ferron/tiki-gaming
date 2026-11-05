@@ -1,6 +1,7 @@
 package fr.tikigaming.games.bang.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -12,6 +13,7 @@ import fr.tikigaming.games.bang.model.CardInstance;
 import fr.tikigaming.games.bang.model.GameState;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 class GameShotServiceTest {
     private final InitialDeal deal = mock(InitialDeal.class);
@@ -19,6 +21,33 @@ class GameShotServiceTest {
     private final CardInstance bang = new CardInstance("bang", CardType.BANG);
     private final CardInstance missed = new CardInstance("missed", CardType.MISSED);
     private final CardInstance old = new CardInstance("old", CardType.MISSED);
+
+    @Test
+    void aShotOutsideTheTableRangeIsRefusedWithoutChangingAnyPlayersView() {
+        List<String> accounts = List.of("one", "two", "three", "four");
+        String code = tables.create("one").code();
+        accounts.subList(1, 4).forEach(account -> tables.join(code, account));
+        when(deal.deal(accounts))
+                .thenReturn(new GameState(
+                        List.of(
+                                player("one", 1, bang), player("two", 2, missed),
+                                player("three", 3), player("four", 4)),
+                        List.of(),
+                        List.of(),
+                        1,
+                        GameState.Phase.PLAY));
+        tables.start(code, "one");
+        var before =
+                accounts.stream().map(account -> tables.state(code, account)).toList();
+
+        assertThatThrownBy(() -> tables.fire(code, "one", "bang", 3))
+                .isInstanceOfSatisfying(
+                        PrivateTableException.class,
+                        refusal -> assertThat(refusal.status()).isEqualTo(HttpStatus.CONFLICT));
+
+        assertThat(accounts.stream().map(account -> tables.state(code, account)).toList())
+                .isEqualTo(before);
+    }
 
     @Test
     void firingAppliesTheRulesStateAndAppendsItsDiscardedCards() {
