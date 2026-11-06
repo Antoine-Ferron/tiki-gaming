@@ -81,6 +81,22 @@ dernier bloque exprès les hôtes inconnus, ce qui fausserait le scan). Résulta
 **0 FAIL, 3 WARN mineurs** (en-têtes `Cross-Origin-Embedder-Policy` absents, cache sur quelques assets),
 65 règles passées.
 
+## 9. Accessibilité (WCAG)
+
+Les cases de la grille ont un `aria-label` explicite (`"Case {ligne}, {colonne}"`,
+[DemineurGame.tsx](DemineurGame.tsx)) : un lecteur d'écran peut identifier chaque case sans dépendre
+d'un repère purement visuel. Un audit automatique (axe-core via Playwright) vérifie la conformité
+WCAG 2.1 niveaux A et AA sur la page du jeu, aucune violation sérieuse ou critique tolérée :
+[`e2e/accessibilite.spec.ts`](../../../e2e/accessibilite.spec.ts) — _page de jeu (démineur) : conforme
+WCAG 2.1 AA_.
+
+## 10. Smoke testing
+
+En complément de la suite E2E complète (régression), un test de fumée unique et minimal valide que le
+parcours critique fonctionne après un déploiement — s'il échoue, l'application n'est pas utilisable,
+pas besoin d'investiguer plus loin : [`e2e/smoke.spec.ts`](../../../e2e/smoke.spec.ts), accueil →
+ouverture du jeu → une case cliquable, en moins de 2 secondes.
+
 ## Bilan
 
 | Niveau                                   | Résultat                                |
@@ -92,6 +108,9 @@ dernier bloque exprès les hôtes inconnus, ce qui fausserait le scan). Résulta
 | Tests E2E (`demineur.spec.ts`)           | 5 tests, Chromium                       |
 | SonarQube                                | Quality Gate passé, 0 bug/vulnérabilité |
 | DAST (ZAP)                               | 0 FAIL, 3 WARN mineurs                  |
+| Accessibilité (WCAG 2.1 AA)              | 0 violation sérieuse/critique           |
+| Smoke test                               | 1 test, < 2s                            |
 
-Voir aussi le [cahier de recette](../../../../quality/cahier-de-recette-demineur.md) pour la validation
-fonctionnelle manuelle (UAT).
+Voir aussi le [cahier de recette](../../../../quality/cahier-de-recette-demineur.md) (UAT manuel) et la
+[matrice de traçabilité](../../../../quality/rtm-demineur.md) (chaque règle de [REGLES.md](REGLES.md)
+liée à son/ses test(s)).
