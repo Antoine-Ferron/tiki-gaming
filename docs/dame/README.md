@@ -4,6 +4,11 @@
 [`659d4fb937c3004f94e37265064b1b1a0caa952b`](https://github.com/EAnathos/tiki-gaming/commit/659d4fb937c3004f94e37265064b1b1a0caa952b).
 Issue : [#18](https://github.com/EAnathos/tiki-gaming/issues/18), ouverte.
 
+## Parcourir le dossier
+
+- [Matrice exigences/tests](rtm-matrix.md) : cas de référence et origine des résultats.
+- [Cahier de recette](recette.md) : six parcours manuels, encore à exécuter.
+
 ## Fonctionnalité disponible
 
 Deux participants jouent sur le même ordinateur, sans compte obligatoire.
