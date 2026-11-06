@@ -358,8 +358,7 @@ export default function DameGame() {
               Une dame se reconnaît à la lettre D.
             </p>
             <p className="muted dame-local-note">
-              Le plateau reste dans ta session. Le rechargement reprend la rencontre si la session est encore
-              disponible.
+              Chaque coup est sauvegardé. Retrouve ta partie dans ce navigateur, même après l’avoir fermé.
             </p>
           </section>
         </aside>
