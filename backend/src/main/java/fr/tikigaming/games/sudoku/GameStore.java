@@ -20,9 +20,14 @@ public class GameStore {
     static final int TTL_SECONDS = 2 * 60 * 60;
     static final int MAX_GAMES = 10_000;
     static final int MAX_PER_OWNER = 5;
+    /** Erreurs permises : la partie est perdue à la suivante (la 4e). */
+    public static final int MAX_MISTAKES = 3;
 
-    /** Résultat d'une saisie : `correct` si la valeur est celle de la solution ; `mistakes` cumule les erreurs. */
-    public record MoveResult(boolean correct, int mistakes, boolean complete) {}
+    /**
+     * Résultat d'une saisie : `correct` si la valeur est celle de la solution ; `mistakes` cumule les erreurs ;
+     * `lost` si cette saisie a dépassé {@link #MAX_MISTAKES}.
+     */
+    public record MoveResult(boolean correct, int mistakes, boolean complete, boolean lost) {}
 
     /**
      * Partie en cours : grille de départ, solution (jamais exposée), grille du joueur, erreurs comptées et chrono
@@ -67,8 +72,12 @@ public class GameStore {
         /**
          * @throws SudokuBadRequestException si la case n'existe pas, est un indice de départ, ou si le chiffre
          *     n'est pas de 1 à 9
+         * @throws SudokuGameOverException si la partie est déjà perdue
          */
         public synchronized MoveResult play(int cell, int value) {
+            if (isLost()) {
+                throw new SudokuGameOverException();
+            }
             if (cell < 0 || cell >= SudokuSolver.CELLS) {
                 throw new SudokuBadRequestException("Case inconnue : " + cell);
             }
@@ -84,7 +93,7 @@ public class GameStore {
             } else {
                 mistakes++;
             }
-            return new MoveResult(correct, mistakes, isComplete());
+            return new MoveResult(correct, mistakes, isComplete(), isLost());
         }
 
         /** Grille du joueur : indices de départ et saisies correctes. */
@@ -94,6 +103,11 @@ public class GameStore {
 
         public synchronized int mistakes() {
             return mistakes;
+        }
+
+        /** Perdue dès que les erreurs dépassent {@link #MAX_MISTAKES}. */
+        public synchronized boolean isLost() {
+            return mistakes > MAX_MISTAKES;
         }
 
         private boolean isComplete() {

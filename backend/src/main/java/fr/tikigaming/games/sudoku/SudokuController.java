@@ -44,7 +44,15 @@ public class SudokuController {
     }
 
     /** État d'une partie en cours, sans la solution. */
-    record GameState(String gameId, String difficulty, int[] puzzle, int[] values, int mistakes, int seconds) {
+    record GameState(
+            String gameId,
+            String difficulty,
+            int[] puzzle,
+            int[] values,
+            int mistakes,
+            int maxMistakes,
+            boolean lost,
+            int seconds) {
 
         @Override
         public boolean equals(Object other) {
@@ -54,19 +62,29 @@ public class SudokuController {
                     && Arrays.equals(puzzle, that.puzzle)
                     && Arrays.equals(values, that.values)
                     && mistakes == that.mistakes
+                    && maxMistakes == that.maxMistakes
+                    && lost == that.lost
                     && seconds == that.seconds;
         }
 
         @Override
         public int hashCode() {
             return Objects.hash(
-                    gameId, difficulty, Arrays.hashCode(puzzle), Arrays.hashCode(values), mistakes, seconds);
+                    gameId,
+                    difficulty,
+                    Arrays.hashCode(puzzle),
+                    Arrays.hashCode(values),
+                    mistakes,
+                    maxMistakes,
+                    lost,
+                    seconds);
         }
 
         @Override
         public String toString() {
             return "GameState[gameId=" + gameId + ", difficulty=" + difficulty + ", puzzle=" + Arrays.toString(puzzle)
-                    + ", values=" + Arrays.toString(values) + ", mistakes=" + mistakes + ", seconds=" + seconds + "]";
+                    + ", values=" + Arrays.toString(values) + ", mistakes=" + mistakes + ", maxMistakes="
+                    + maxMistakes + ", lost=" + lost + ", seconds=" + seconds + "]";
         }
     }
 
@@ -108,8 +126,8 @@ public class SudokuController {
     @GetMapping("/{gameId}")
     @Operation(
             summary = "Reprendre une partie",
-            description = "État d'une partie en cours : grille de départ, grille du joueur, erreurs et temps écoulé."
-                    + " La solution n'est jamais renvoyée.")
+            description = "État d'une partie en cours : grille de départ, grille du joueur, erreurs (et leur plafond),"
+                    + " partie perdue ou non, temps écoulé. La solution n'est jamais renvoyée.")
     @ApiResponse(responseCode = "200", description = "État de la partie")
     @ApiResponse(responseCode = "400", description = "Partie inconnue, expirée ou déjà résolue")
     GameState state(@PathVariable String gameId) {
@@ -120,6 +138,8 @@ public class SudokuController {
                 game.puzzle(),
                 game.values(),
                 game.mistakes(),
+                GameStore.MAX_MISTAKES,
+                game.isLost(),
                 game.elapsedSeconds());
     }
 
@@ -127,9 +147,13 @@ public class SudokuController {
     @Operation(
             summary = "Saisir un chiffre",
             description = "Le serveur compare la saisie à la solution : une saisie fausse coûte une erreur et n'entre"
-                    + " pas dans la grille. Les erreurs du score viennent d'ici, jamais du client.")
-    @ApiResponse(responseCode = "200", description = "Saisie correcte ou non, erreurs cumulées, grille complète")
+                    + " pas dans la grille. Les erreurs du score viennent d'ici, jamais du client. Au-delà de 3 erreurs,"
+                    + " la partie est perdue : la saisie fautive répond `lost`, les suivantes sont refusées.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Saisie correcte ou non, erreurs cumulées, grille complète, partie perdue")
     @ApiResponse(responseCode = "400", description = "Partie inconnue ou expirée, case ou chiffre invalide")
+    @ApiResponse(responseCode = "409", description = "Partie perdue (plus de 3 erreurs)")
     GameStore.MoveResult move(@PathVariable String gameId, @RequestBody MoveRequest body) {
         return games.find(gameId).play(body.cell(), body.value());
     }
@@ -143,8 +167,12 @@ public class SudokuController {
                             + " est close.")
     @ApiResponse(responseCode = "200", description = "Résultat de la vérification")
     @ApiResponse(responseCode = "400", description = "Partie inconnue, expirée ou déjà résolue")
+    @ApiResponse(responseCode = "409", description = "Partie perdue (plus de 3 erreurs) : aucun score")
     SudokuService.CheckResult check(@RequestBody CheckRequest body) {
         GameStore.Game game = games.find(body.gameId());
+        if (game.isLost()) {
+            throw new SudokuGameOverException();
+        }
         SudokuService.CheckResult result =
                 service.check(game.puzzle(), game.values(), game.difficulty(), game.elapsedSeconds(), game.mistakes());
         if (result.solved()) games.finish(game.id());
