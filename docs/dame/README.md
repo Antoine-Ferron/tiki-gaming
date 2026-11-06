@@ -3,10 +3,11 @@
 État documentaire au **6 novembre 2026**, sur la base `dev` :
 [`659d4fb937c3004f94e37265064b1b1a0caa952b`](https://github.com/EAnathos/tiki-gaming/commit/659d4fb937c3004f94e37265064b1b1a0caa952b).
 Issue : [#18](https://github.com/EAnathos/tiki-gaming/issues/18).
-Les extensions du 6 novembre sont conservées sur `game/dame/bilan-qualite`, sans nouvelle PR ; elles ne sont pas annoncées comme fusionnées dans `dev`.
+Les extensions du 6 novembre sont conservées sur `game/dame/diallo-mamadou-cherif-bilan-qualite`, sans nouvelle PR ; elles ne sont pas annoncées comme fusionnées dans `dev`.
 
 ## Parcourir le dossier
 
+- [Présentation de soutenance — DIALLO Mamadou Cherif](Soutenance_Jeu_Dames_Tests_Qualite_v8_QA.pptx) : PowerPoint fourni, 8 diapositives.
 - [Nulles et reprise durable](nulles-et-reprise.md) : règles FMJD et sauvegarde du plateau.
 - [Performance et résilience](performance-resilience.md) : k6 et pannes Toxiproxy réelles.
 - [Bilan de qualité](qualite.md) : mesures datées, rapports CI et commandes de reproduction.

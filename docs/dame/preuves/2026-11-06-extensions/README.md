@@ -1,6 +1,6 @@
 # Preuves des extensions Dames — 6 novembre 2026
 
-Résultats **locaux**, sur `game/dame/bilan-qualite`, sans nouvelle PR ni nouvelle validation humaine. Le backend fonctionnel est celui de `378b7ea0`, le texte d'aide du frontend de `3656fb2f`, et le renforcement des tests de mutation de `4cc52b5a`. Les migrations ne touchent que les tables et fonctions Dames ; aucun workflow ni seuil partagé n'est modifié.
+Résultats **locaux**, sur `game/dame/diallo-mamadou-cherif-bilan-qualite`, sans nouvelle PR ni nouvelle validation humaine. Le backend fonctionnel est celui de `378b7ea0`, le texte d'aide du frontend de `3656fb2f`, et le renforcement des tests de mutation de `4cc52b5a`. Les migrations ne touchent que les tables et fonctions Dames ; aucun workflow ni seuil partagé n'est modifié.
 
 ## Vérifications exécutées
 
