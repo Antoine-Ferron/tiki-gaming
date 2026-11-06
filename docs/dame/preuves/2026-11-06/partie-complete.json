@@ -1,0 +1,5188 @@
+{
+  "date": "2026-11-06T12:33:08.747Z",
+  "commit": "ea9cf0c71439213a697dc7d1fdf6f6607598de93",
+  "operator": "Agent Codex via Playwright ; validation humaine non prononcée",
+  "environment": "Démo dédiée fraîchement compilée, Vite :5176, DameLocalDemo :8086, PostgreSQL/PostgREST réels jetables",
+  "mockedResponses": false,
+  "injectedBoard": false,
+  "cases": {
+    "03": {
+      "status": "PASSED_AGENT",
+      "minorityObserved": true
+    },
+    "04": {
+      "status": "PASSED_AGENT",
+      "finishedId": "fc7ce126-f115-4d48-94a2-67925944f547",
+      "winner": "BLACK",
+      "moves": 94,
+      "finishedAt": "2026-11-06T12:33:19.441Z",
+      "remainingOpponentPieces": 0,
+      "noPostAfterVictory": true,
+      "replayId": "6e4d8181-7eb4-4fee-ac2e-d6e97730b6dc",
+      "replayPieces": 40,
+      "screenshots": ["04-victoire.png", "04-revanche.png"]
+    }
+  },
+  "games": [],
+  "browser": "156.0.8078.4",
+  "initial": {
+    "id": "fc7ce126-f115-4d48-94a2-67925944f547",
+    "whiteName": "Cherif",
+    "blackName": "Amadou",
+    "version": 0,
+    "board": {
+      "rows": 10,
+      "columns": 10,
+      "pieces": [
+        {
+          "row": 0,
+          "column": 1,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 0,
+          "column": 3,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 0,
+          "column": 5,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 0,
+          "column": 7,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 0,
+          "column": 9,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 1,
+          "column": 0,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 1,
+          "column": 2,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 1,
+          "column": 4,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 1,
+          "column": 6,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 1,
+          "column": 8,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 2,
+          "column": 1,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 2,
+          "column": 3,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 2,
+          "column": 5,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 2,
+          "column": 7,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 2,
+          "column": 9,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 3,
+          "column": 0,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 3,
+          "column": 2,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 3,
+          "column": 4,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 3,
+          "column": 6,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 3,
+          "column": 8,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 6,
+          "column": 1,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 6,
+          "column": 3,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 6,
+          "column": 5,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 6,
+          "column": 7,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 6,
+          "column": 9,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 7,
+          "column": 0,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 7,
+          "column": 2,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 7,
+          "column": 4,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 7,
+          "column": 6,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 7,
+          "column": 8,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 8,
+          "column": 1,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 8,
+          "column": 3,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 8,
+          "column": 5,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 8,
+          "column": 7,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 8,
+          "column": 9,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 9,
+          "column": 0,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 9,
+          "column": 2,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 9,
+          "column": 4,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 9,
+          "column": 6,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 9,
+          "column": 8,
+          "owner": "WHITE",
+          "king": false
+        }
+      ]
+    },
+    "currentPlayer": "WHITE",
+    "status": "IN_PROGRESS",
+    "winner": null,
+    "legalMoves": [
+      {
+        "from": {
+          "row": 6,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 8
+          }
+        ]
+      },
+      {
+        "from": {
+          "row": 6,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      },
+      {
+        "from": {
+          "row": 6,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 8
+          }
+        ]
+      },
+      {
+        "from": {
+          "row": 6,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      },
+      {
+        "from": {
+          "row": 6,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      },
+      {
+        "from": {
+          "row": 6,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          }
+        ]
+      },
+      {
+        "from": {
+          "row": 6,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      },
+      {
+        "from": {
+          "row": 6,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 0
+          }
+        ]
+      },
+      {
+        "from": {
+          "row": 6,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          }
+        ]
+      }
+    ],
+    "startedAt": "2026-11-06T12:33:09.951Z",
+    "finishedAt": null
+  },
+  "moves": [
+    {
+      "version": 0,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "H4 → G5",
+      "captured": [],
+      "remaining": 40,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 1,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 9
+          }
+        ]
+      },
+      "notation": "I7 → J6",
+      "captured": [],
+      "remaining": 40,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 2,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          }
+        ]
+      },
+      "notation": "I3 → H4",
+      "captured": [],
+      "remaining": 40,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 3,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      },
+      "notation": "A7 → B6",
+      "captured": [],
+      "remaining": 40,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 4,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      },
+      "notation": "D4 → E5",
+      "captured": [],
+      "remaining": 40,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 5,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 8
+          }
+        ]
+      },
+      "notation": "J8 → I7",
+      "captured": [],
+      "remaining": 40,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 6,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 8
+          }
+        ]
+      },
+      "notation": "H4 → I5",
+      "captured": [],
+      "remaining": 40,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 7,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 4,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          },
+          {
+            "row": 4,
+            "column": 5
+          },
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "J6 → H4 → F6 → D4",
+      "captured": ["I5", "G5", "E5"],
+      "remaining": 37,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 8,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          },
+          {
+            "row": 3,
+            "column": 0
+          }
+        ]
+      },
+      "notation": "E3 → C5 → A7",
+      "captured": ["D4", "B6"],
+      "remaining": 35,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 9,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      },
+      "notation": "C7 → B6",
+      "captured": [],
+      "remaining": 35,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 10,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          }
+        ]
+      },
+      "notation": "A7 → C5",
+      "captured": ["B6"],
+      "remaining": 34,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 11,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "E7 → F6",
+      "captured": [],
+      "remaining": 34,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 12,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      },
+      "notation": "C5 → B6",
+      "captured": [],
+      "remaining": 34,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 13,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 9
+          }
+        ]
+      },
+      "notation": "I7 → J6",
+      "captured": [],
+      "remaining": 34,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 14,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 8
+          }
+        ]
+      },
+      "notation": "J2 → I3",
+      "captured": [],
+      "remaining": 34,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 15,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 7
+          }
+        ]
+      },
+      "notation": "G7 → H6",
+      "captured": [],
+      "remaining": 34,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 16,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 0
+          }
+        ]
+      },
+      "notation": "B4 → A5",
+      "captured": [],
+      "remaining": 34,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 17,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 4,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "H6 → G5",
+      "captured": [],
+      "remaining": 34,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 18,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 7
+          }
+        ]
+      },
+      "notation": "F4 → H6",
+      "captured": ["G5"],
+      "remaining": 33,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 19,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 4
+          }
+        ]
+      },
+      "notation": "D8 → E7",
+      "captured": [],
+      "remaining": 33,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 20,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 4,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 0
+          }
+        ]
+      },
+      "notation": "B6 → A7",
+      "captured": [],
+      "remaining": 33,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 21,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 1,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 9
+          }
+        ]
+      },
+      "notation": "I9 → J8",
+      "captured": [],
+      "remaining": 33,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 22,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 8
+          }
+        ]
+      },
+      "notation": "J4 → I5",
+      "captured": [],
+      "remaining": 33,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 23,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 4,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          },
+          {
+            "row": 8,
+            "column": 9
+          }
+        ]
+      },
+      "notation": "J6 → H4 → J2",
+      "captured": ["I5", "I3"],
+      "remaining": 31,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 24,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 4
+          }
+        ]
+      },
+      "notation": "F2 → E3",
+      "captured": [],
+      "remaining": 31,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 25,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 4,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      },
+      "notation": "F6 → E5",
+      "captured": [],
+      "remaining": 31,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 26,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "C3 → D4",
+      "captured": [],
+      "remaining": 31,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 27,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 2
+          }
+        ]
+      },
+      "notation": "E5 → C3",
+      "captured": ["D4"],
+      "remaining": 30,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 28,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 1
+          }
+        ]
+      },
+      "notation": "D2 → B4",
+      "captured": ["C3"],
+      "remaining": 29,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 29,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "E7 → D6",
+      "captured": [],
+      "remaining": 29,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 30,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 4,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "H6 → G7",
+      "captured": [],
+      "remaining": 29,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 31,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "H8 → F6",
+      "captured": ["G7"],
+      "remaining": 28,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 32,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 9,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "E1 → F2",
+      "captured": [],
+      "remaining": 28,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 33,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 8
+          }
+        ]
+      },
+      "notation": "J8 → I7",
+      "captured": [],
+      "remaining": 28,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 34,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 8
+          }
+        ]
+      },
+      "notation": "H2 → I3",
+      "captured": [],
+      "remaining": 28,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 35,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          }
+        ]
+      },
+      "notation": "J2 → H4",
+      "captured": ["I3"],
+      "remaining": 27,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 36,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 8
+          }
+        ]
+      },
+      "notation": "G3 → I5",
+      "captured": ["H4"],
+      "remaining": 26,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 37,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 0,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 8
+          }
+        ]
+      },
+      "notation": "J10 → I9",
+      "captured": [],
+      "remaining": 26,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 38,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 9,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 7
+          }
+        ]
+      },
+      "notation": "I1 → H2",
+      "captured": [],
+      "remaining": 26,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 39,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 1,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "C9 → D8",
+      "captured": [],
+      "remaining": 26,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 40,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 2
+          },
+          {
+            "row": 3,
+            "column": 4
+          },
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "A7 → C9 → E7 → G5",
+      "captured": ["B8", "D8", "F6"],
+      "remaining": 23,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 41,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 1,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 7
+          }
+        ]
+      },
+      "notation": "G9 → H8",
+      "captured": [],
+      "remaining": 23,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 42,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "G5 → F6",
+      "captured": [],
+      "remaining": 23,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 43,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 4,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      },
+      "notation": "D6 → E5",
+      "captured": [],
+      "remaining": 23,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 44,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 4,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "F6 → D4",
+      "captured": ["E5"],
+      "remaining": 22,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 45,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 0,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "F10 → G9",
+      "captured": [],
+      "remaining": 22,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 46,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 9,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "C1 → D2",
+      "captured": [],
+      "remaining": 22,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 47,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 1,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 9
+          }
+        ]
+      },
+      "notation": "I9 → J8",
+      "captured": [],
+      "remaining": 22,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 48,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 7
+          }
+        ]
+      },
+      "notation": "I5 → H6",
+      "captured": [],
+      "remaining": 22,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 49,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "I7 → G5",
+      "captured": ["H6"],
+      "remaining": 21,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 50,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      },
+      "notation": "A5 → B6",
+      "captured": [],
+      "remaining": 21,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 51,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "H8 → G7",
+      "captured": [],
+      "remaining": 21,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 52,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          }
+        ]
+      },
+      "notation": "D4 → C5",
+      "captured": [],
+      "remaining": 21,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 53,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "G5 → F4",
+      "captured": [],
+      "remaining": 21,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 54,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "E3 → G5",
+      "captured": ["F4"],
+      "remaining": 20,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 55,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 1,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 1
+          }
+        ]
+      },
+      "notation": "A9 → B8",
+      "captured": [],
+      "remaining": 20,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 56,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "G5 → F6",
+      "captured": [],
+      "remaining": 20,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 57,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      },
+      "notation": "G7 → E5",
+      "captured": ["F6"],
+      "remaining": 19,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 58,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 2
+          }
+        ]
+      },
+      "notation": "D2 → C3",
+      "captured": [],
+      "remaining": 19,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 59,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 4
+          }
+        ]
+      },
+      "notation": "F8 → E7",
+      "captured": [],
+      "remaining": 19,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 60,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "C3 → D4",
+      "captured": [],
+      "remaining": 19,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 61,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 2
+          },
+          {
+            "row": 5,
+            "column": 0
+          },
+          {
+            "row": 3,
+            "column": 2
+          }
+        ]
+      },
+      "notation": "E5 → C3 → A5 → C7",
+      "captured": ["D4", "B4", "B6"],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 62,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 4
+          }
+        ]
+      },
+      "notation": "F2 → E3",
+      "captured": [],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 63,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 1,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "G9 → F8",
+      "captured": [],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 64,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "H2 → G3",
+      "captured": [],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 65,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 0,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 2
+          }
+        ]
+      },
+      "notation": "D10 → C9",
+      "captured": [],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 66,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          }
+        ]
+      },
+      "notation": "G3 → H4",
+      "captured": [],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 67,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 0,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 0
+          }
+        ]
+      },
+      "notation": "B10 → A9",
+      "captured": [],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 68,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "H4 → G5",
+      "captured": [],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 69,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "F8 → G7",
+      "captured": [],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 70,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "C5 → D6",
+      "captured": [],
+      "remaining": 16,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 71,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      },
+      "notation": "C7 → E5",
+      "captured": ["D6"],
+      "remaining": 15,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 72,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "E3 → D4",
+      "captured": [],
+      "remaining": 15,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 73,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 2
+          }
+        ]
+      },
+      "notation": "E5 → C3",
+      "captured": ["D4"],
+      "remaining": 14,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 74,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "B2 → D4",
+      "captured": ["C3"],
+      "remaining": 13,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 75,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 8
+          }
+        ]
+      },
+      "notation": "J8 → I7",
+      "captured": [],
+      "remaining": 13,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 76,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 9,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "G1 → F2",
+      "captured": [],
+      "remaining": 13,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 77,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 1,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "E9 → F8",
+      "captured": [],
+      "remaining": 13,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 78,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 8,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "F2 → G3",
+      "captured": [],
+      "remaining": 13,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 79,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 1,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "C9 → D8",
+      "captured": [],
+      "remaining": 13,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 80,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "G5 → F6",
+      "captured": [],
+      "remaining": 13,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 81,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          },
+          {
+            "row": 7,
+            "column": 2
+          }
+        ]
+      },
+      "notation": "G7 → E5 → C3",
+      "captured": ["F6", "D4"],
+      "remaining": 11,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 82,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "G3 → F4",
+      "captured": [],
+      "remaining": 11,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 83,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 3,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "E7 → D6",
+      "captured": [],
+      "remaining": 11,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 84,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      },
+      "notation": "F4 → G5",
+      "captured": [],
+      "remaining": 11,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 85,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 0
+          }
+        ]
+      },
+      "notation": "B8 → A7",
+      "captured": [],
+      "remaining": 11,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 86,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 9,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 1
+          }
+        ]
+      },
+      "notation": "A1 → B2",
+      "captured": [],
+      "remaining": 11,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 87,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 9,
+            "column": 0
+          }
+        ]
+      },
+      "notation": "C3 → A1",
+      "captured": ["B2"],
+      "remaining": 10,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 88,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      },
+      "notation": "G5 → F6",
+      "captured": [],
+      "remaining": 10,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 89,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 9,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 7
+          }
+        ]
+      },
+      "notation": "A1 → H8",
+      "captured": ["F6"],
+      "remaining": 9,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 90,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 7,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 1
+          }
+        ]
+      },
+      "notation": "A3 → B4",
+      "captured": [],
+      "remaining": 9,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 91,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 2,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      },
+      "notation": "H8 → D4",
+      "captured": [],
+      "remaining": 9,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 92,
+      "player": "WHITE",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          }
+        ]
+      },
+      "notation": "B4 → C5",
+      "captured": [],
+      "remaining": 9,
+      "status": "IN_PROGRESS"
+    },
+    {
+      "version": 93,
+      "player": "BLACK",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      },
+      "notation": "D4 → B6",
+      "captured": ["C5"],
+      "remaining": 8,
+      "status": "BLACK_WON"
+    }
+  ],
+  "observations": {
+    "mandatory": {
+      "version": 7,
+      "alternative": {
+        "from": {
+          "row": 1,
+          "column": 8
+        },
+        "to": {
+          "row": 2,
+          "column": 9
+        }
+      },
+      "noPost": true,
+      "state": {
+        "id": "fc7ce126-f115-4d48-94a2-67925944f547",
+        "whiteName": "Cherif",
+        "blackName": "Amadou",
+        "version": 7,
+        "board": {
+          "rows": 10,
+          "columns": 10,
+          "pieces": [
+            {
+              "row": 0,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 5,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 7,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 9,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 0,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 2,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 4,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 6,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 8,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 5,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 7,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 2,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 4,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 6,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 8,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 4,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 4,
+              "column": 9,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 5,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 5,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 5,
+              "column": 8,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 1,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 5,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 9,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 0,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 2,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 1,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 3,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 5,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 7,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 9,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 0,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 2,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 8,
+              "owner": "WHITE",
+              "king": false
+            }
+          ]
+        },
+        "currentPlayer": "BLACK",
+        "status": "IN_PROGRESS",
+        "winner": null,
+        "legalMoves": [
+          {
+            "from": {
+              "row": 4,
+              "column": 9
+            },
+            "landings": [
+              {
+                "row": 6,
+                "column": 7
+              },
+              {
+                "row": 4,
+                "column": 5
+              },
+              {
+                "row": 6,
+                "column": 3
+              }
+            ]
+          }
+        ],
+        "startedAt": "2026-11-06T12:33:09.951Z",
+        "finishedAt": null
+      }
+    },
+    "chain": {
+      "versionBefore": 7,
+      "move": {
+        "from": {
+          "row": 4,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          },
+          {
+            "row": 4,
+            "column": 5
+          },
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      },
+      "victims": [
+        {
+          "row": 5,
+          "column": 8,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 5,
+          "column": 6,
+          "owner": "WHITE",
+          "king": false
+        },
+        {
+          "row": 5,
+          "column": 4,
+          "owner": "WHITE",
+          "king": false
+        }
+      ],
+      "versionAfter": 8,
+      "noPostBeforeLastLanding": true,
+      "postCount": 1,
+      "before": {
+        "id": "fc7ce126-f115-4d48-94a2-67925944f547",
+        "whiteName": "Cherif",
+        "blackName": "Amadou",
+        "version": 7,
+        "board": {
+          "rows": 10,
+          "columns": 10,
+          "pieces": [
+            {
+              "row": 0,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 5,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 7,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 9,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 0,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 2,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 4,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 6,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 8,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 5,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 7,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 2,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 4,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 6,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 8,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 4,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 4,
+              "column": 9,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 5,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 5,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 5,
+              "column": 8,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 1,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 5,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 9,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 0,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 2,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 1,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 3,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 5,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 7,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 9,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 0,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 2,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 8,
+              "owner": "WHITE",
+              "king": false
+            }
+          ]
+        },
+        "currentPlayer": "BLACK",
+        "status": "IN_PROGRESS",
+        "winner": null,
+        "legalMoves": [
+          {
+            "from": {
+              "row": 4,
+              "column": 9
+            },
+            "landings": [
+              {
+                "row": 6,
+                "column": 7
+              },
+              {
+                "row": 4,
+                "column": 5
+              },
+              {
+                "row": 6,
+                "column": 3
+              }
+            ]
+          }
+        ],
+        "startedAt": "2026-11-06T12:33:09.951Z",
+        "finishedAt": null
+      },
+      "after": {
+        "id": "fc7ce126-f115-4d48-94a2-67925944f547",
+        "whiteName": "Cherif",
+        "blackName": "Amadou",
+        "version": 8,
+        "board": {
+          "rows": 10,
+          "columns": 10,
+          "pieces": [
+            {
+              "row": 0,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 5,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 7,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 9,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 0,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 2,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 4,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 6,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 8,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 5,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 7,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 2,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 4,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 6,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 8,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 4,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 1,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 5,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 9,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 0,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 2,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 1,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 3,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 5,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 7,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 9,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 0,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 2,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 8,
+              "owner": "WHITE",
+              "king": false
+            }
+          ]
+        },
+        "currentPlayer": "WHITE",
+        "status": "IN_PROGRESS",
+        "winner": null,
+        "legalMoves": [
+          {
+            "from": {
+              "row": 7,
+              "column": 4
+            },
+            "landings": [
+              {
+                "row": 5,
+                "column": 2
+              },
+              {
+                "row": 3,
+                "column": 0
+              }
+            ]
+          }
+        ],
+        "startedAt": "2026-11-06T12:33:09.951Z",
+        "finishedAt": null
+      },
+      "screenshots": ["03-rafle-intermediaire.png"]
+    },
+    "minority": {
+      "version": 8,
+      "alternative": {
+        "from": {
+          "row": 7,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ],
+        "victim": {
+          "row": 6,
+          "column": 3
+        }
+      },
+      "mandatoryCaptureCount": 2,
+      "noPost": true,
+      "state": {
+        "id": "fc7ce126-f115-4d48-94a2-67925944f547",
+        "whiteName": "Cherif",
+        "blackName": "Amadou",
+        "version": 8,
+        "board": {
+          "rows": 10,
+          "columns": 10,
+          "pieces": [
+            {
+              "row": 0,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 5,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 7,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 0,
+              "column": 9,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 0,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 2,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 4,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 6,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 1,
+              "column": 8,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 5,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 2,
+              "column": 7,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 2,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 4,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 6,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 3,
+              "column": 8,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 4,
+              "column": 1,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 1,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 3,
+              "owner": "BLACK",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 5,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 6,
+              "column": 9,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 0,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 2,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 7,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 1,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 3,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 5,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 7,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 8,
+              "column": 9,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 0,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 2,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 4,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 6,
+              "owner": "WHITE",
+              "king": false
+            },
+            {
+              "row": 9,
+              "column": 8,
+              "owner": "WHITE",
+              "king": false
+            }
+          ]
+        },
+        "currentPlayer": "WHITE",
+        "status": "IN_PROGRESS",
+        "winner": null,
+        "legalMoves": [
+          {
+            "from": {
+              "row": 7,
+              "column": 4
+            },
+            "landings": [
+              {
+                "row": 5,
+                "column": 2
+              },
+              {
+                "row": 3,
+                "column": 0
+              }
+            ]
+          }
+        ],
+        "startedAt": "2026-11-06T12:33:09.951Z",
+        "finishedAt": null
+      },
+      "screenshot": "03-prise-minoritaire.png"
+    }
+  },
+  "final": {
+    "id": "fc7ce126-f115-4d48-94a2-67925944f547",
+    "whiteName": "Cherif",
+    "blackName": "Amadou",
+    "version": 94,
+    "board": {
+      "rows": 10,
+      "columns": 10,
+      "pieces": [
+        {
+          "row": 0,
+          "column": 7,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 1,
+          "column": 0,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 2,
+          "column": 3,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 2,
+          "column": 5,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 3,
+          "column": 0,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 3,
+          "column": 8,
+          "owner": "BLACK",
+          "king": false
+        },
+        {
+          "row": 4,
+          "column": 1,
+          "owner": "BLACK",
+          "king": true
+        },
+        {
+          "row": 4,
+          "column": 3,
+          "owner": "BLACK",
+          "king": false
+        }
+      ]
+    },
+    "currentPlayer": "WHITE",
+    "status": "BLACK_WON",
+    "winner": "BLACK",
+    "legalMoves": [],
+    "startedAt": "2026-11-06T12:33:09.951Z",
+    "finishedAt": "2026-11-06T12:33:19.441Z"
+  },
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches",
+      "body": {
+        "whiteName": "Cherif",
+        "blackName": "Amadou"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 0,
+        "from": {
+          "row": 6,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 1,
+        "from": {
+          "row": 3,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 9
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 2,
+        "from": {
+          "row": 7,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 3,
+        "from": {
+          "row": 3,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 4,
+        "from": {
+          "row": 6,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 5,
+        "from": {
+          "row": 2,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 8
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 6,
+        "from": {
+          "row": 6,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 8
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 7,
+        "from": {
+          "row": 4,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          },
+          {
+            "row": 4,
+            "column": 5
+          },
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 8,
+        "from": {
+          "row": 7,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          },
+          {
+            "row": 3,
+            "column": 0
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 9,
+        "from": {
+          "row": 3,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 10,
+        "from": {
+          "row": 3,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 11,
+        "from": {
+          "row": 3,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 12,
+        "from": {
+          "row": 5,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 13,
+        "from": {
+          "row": 3,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 9
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 14,
+        "from": {
+          "row": 8,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 8
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 15,
+        "from": {
+          "row": 3,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 7
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 16,
+        "from": {
+          "row": 6,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 0
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 17,
+        "from": {
+          "row": 4,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 18,
+        "from": {
+          "row": 6,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 7
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 19,
+        "from": {
+          "row": 2,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 4
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 20,
+        "from": {
+          "row": 4,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 0
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 21,
+        "from": {
+          "row": 1,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 9
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 22,
+        "from": {
+          "row": 6,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 8
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 23,
+        "from": {
+          "row": 4,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          },
+          {
+            "row": 8,
+            "column": 9
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 24,
+        "from": {
+          "row": 8,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 4
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 25,
+        "from": {
+          "row": 4,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 26,
+        "from": {
+          "row": 7,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 27,
+        "from": {
+          "row": 5,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 28,
+        "from": {
+          "row": 8,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 1
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 29,
+        "from": {
+          "row": 3,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 30,
+        "from": {
+          "row": 4,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 31,
+        "from": {
+          "row": 2,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 32,
+        "from": {
+          "row": 9,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 33,
+        "from": {
+          "row": 2,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 8
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 34,
+        "from": {
+          "row": 8,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 8
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 35,
+        "from": {
+          "row": 8,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 36,
+        "from": {
+          "row": 7,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 8
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 37,
+        "from": {
+          "row": 0,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 8
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 38,
+        "from": {
+          "row": 9,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 7
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 39,
+        "from": {
+          "row": 1,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 40,
+        "from": {
+          "row": 3,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 2
+          },
+          {
+            "row": 3,
+            "column": 4
+          },
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 41,
+        "from": {
+          "row": 1,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 7
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 42,
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 43,
+        "from": {
+          "row": 4,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 44,
+        "from": {
+          "row": 4,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 45,
+        "from": {
+          "row": 0,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 46,
+        "from": {
+          "row": 9,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 47,
+        "from": {
+          "row": 1,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 9
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 48,
+        "from": {
+          "row": 5,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 7
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 49,
+        "from": {
+          "row": 3,
+          "column": 8
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 50,
+        "from": {
+          "row": 5,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 51,
+        "from": {
+          "row": 2,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 52,
+        "from": {
+          "row": 6,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 53,
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 54,
+        "from": {
+          "row": 7,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 55,
+        "from": {
+          "row": 1,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 1
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 56,
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 57,
+        "from": {
+          "row": 3,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 58,
+        "from": {
+          "row": 8,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 59,
+        "from": {
+          "row": 2,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 4
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 60,
+        "from": {
+          "row": 7,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 61,
+        "from": {
+          "row": 5,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 2
+          },
+          {
+            "row": 5,
+            "column": 0
+          },
+          {
+            "row": 3,
+            "column": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 62,
+        "from": {
+          "row": 8,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 4
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 63,
+        "from": {
+          "row": 1,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 64,
+        "from": {
+          "row": 8,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 65,
+        "from": {
+          "row": 0,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 66,
+        "from": {
+          "row": 7,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 7
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 67,
+        "from": {
+          "row": 0,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 1,
+            "column": 0
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 68,
+        "from": {
+          "row": 6,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 69,
+        "from": {
+          "row": 2,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 70,
+        "from": {
+          "row": 5,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 71,
+        "from": {
+          "row": 3,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 72,
+        "from": {
+          "row": 7,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 73,
+        "from": {
+          "row": 5,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 74,
+        "from": {
+          "row": 8,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 75,
+        "from": {
+          "row": 2,
+          "column": 9
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 8
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 76,
+        "from": {
+          "row": 9,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 77,
+        "from": {
+          "row": 1,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 78,
+        "from": {
+          "row": 8,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 7,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 79,
+        "from": {
+          "row": 1,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 80,
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 81,
+        "from": {
+          "row": 3,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 4
+          },
+          {
+            "row": 7,
+            "column": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 82,
+        "from": {
+          "row": 7,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 83,
+        "from": {
+          "row": 3,
+          "column": 4
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 84,
+        "from": {
+          "row": 6,
+          "column": 5
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 6
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 85,
+        "from": {
+          "row": 2,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 3,
+            "column": 0
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 86,
+        "from": {
+          "row": 9,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 8,
+            "column": 1
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 87,
+        "from": {
+          "row": 7,
+          "column": 2
+        },
+        "landings": [
+          {
+            "row": 9,
+            "column": 0
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 88,
+        "from": {
+          "row": 5,
+          "column": 6
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 5
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 89,
+        "from": {
+          "row": 9,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 2,
+            "column": 7
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 90,
+        "from": {
+          "row": 7,
+          "column": 0
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 1
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 91,
+        "from": {
+          "row": 2,
+          "column": 7
+        },
+        "landings": [
+          {
+            "row": 6,
+            "column": 3
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 92,
+        "from": {
+          "row": 6,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches/fc7ce126-f115-4d48-94a2-67925944f547/moves",
+      "body": {
+        "version": 93,
+        "from": {
+          "row": 6,
+          "column": 3
+        },
+        "landings": [
+          {
+            "row": 4,
+            "column": 1
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/games/dame/matches",
+      "body": {
+        "whiteName": "Cherif",
+        "blackName": "Amadou"
+      }
+    }
+  ]
+}

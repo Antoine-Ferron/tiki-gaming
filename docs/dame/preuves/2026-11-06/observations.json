@@ -1,0 +1,199 @@
+{
+  "date": "2026-11-06T12:33:01.336Z",
+  "commit": "ea9cf0c71439213a697dc7d1fdf6f6607598de93",
+  "operator": "Agent Codex via Playwright ; validation humaine non prononcée",
+  "environment": "Démo dédiée fraîchement compilée, Vite :5176, DameLocalDemo :8086, PostgreSQL/PostgREST réels jetables",
+  "mockedResponses": false,
+  "injectedBoard": false,
+  "cases": {
+    "01": {
+      "invalidNames": [0, 51],
+      "noPostForInvalidNames": true,
+      "acceptedNames": [
+        "A",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      ],
+      "ids": [
+        "bc96c3ff-0ece-434a-9f09-6806bb1e7d36",
+        "a3305d79-0a35-4ba4-baf2-3b0c90d3c0ee"
+      ],
+      "pieces": {
+        "white": 20,
+        "black": 20
+      },
+      "screenshots": ["01-nom-invalide.png"],
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/games/dame/matches",
+          "body": {
+            "whiteName": "A",
+            "blackName": "Amadou"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/games/dame/matches",
+          "body": {
+            "whiteName": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "blackName": "Amadou"
+          }
+        }
+      ],
+      "status": "PASSED_AGENT"
+    },
+    "02": {
+      "id": "d307a5da-0a75-4f91-a29e-2a77b6a987ed",
+      "move": {
+        "from": {
+          "row": 6,
+          "column": 1
+        },
+        "landings": [
+          {
+            "row": 5,
+            "column": 0
+          }
+        ]
+      },
+      "version": 1,
+      "currentPlayer": "BLACK",
+      "wrongCampIgnored": true,
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/games/dame/matches",
+          "body": {
+            "whiteName": "Cherif",
+            "blackName": "Amadou"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/games/dame/matches/d307a5da-0a75-4f91-a29e-2a77b6a987ed/moves",
+          "body": {
+            "version": 0,
+            "from": {
+              "row": 6,
+              "column": 1
+            },
+            "landings": [
+              {
+                "row": 5,
+                "column": 0
+              }
+            ]
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/games/dame/matches/d307a5da-0a75-4f91-a29e-2a77b6a987ed"
+        }
+      ],
+      "screenshots": ["02-reprise.png"],
+      "status": "PASSED_AGENT"
+    },
+    "05": {
+      "id": "712fbd08-341b-46e6-8490-3c7575980532",
+      "offlineError": "Le serveur est injoignable.",
+      "boardBlocked": true,
+      "refreshMethod": "GET",
+      "versionAfterRefresh": 0,
+      "versionAfterExplicitReplay": 1,
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/games/dame/matches",
+          "body": {
+            "whiteName": "Cherif",
+            "blackName": "Amadou"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/games/dame/matches/712fbd08-341b-46e6-8490-3c7575980532/moves",
+          "body": {
+            "version": 0,
+            "from": {
+              "row": 6,
+              "column": 1
+            },
+            "landings": [
+              {
+                "row": 5,
+                "column": 0
+              }
+            ]
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/api/games/dame/matches/712fbd08-341b-46e6-8490-3c7575980532"
+        },
+        {
+          "method": "POST",
+          "path": "/api/games/dame/matches/712fbd08-341b-46e6-8490-3c7575980532/moves",
+          "body": {
+            "version": 0,
+            "from": {
+              "row": 6,
+              "column": 1
+            },
+            "landings": [
+              {
+                "row": 5,
+                "column": 0
+              }
+            ]
+          }
+        }
+      ],
+      "screenshots": ["05-hors-ligne.png"],
+      "status": "PASSED_AGENT"
+    },
+    "06": {
+      "id": "3b16e89c-132f-471d-b57d-724ef2e17097",
+      "keyboardOnly": true,
+      "oneTabStop": true,
+      "dimensions": {
+        "viewport": 360,
+        "document": 360
+      },
+      "focus": {
+        "outline": "rgb(255, 138, 61) solid 2px",
+        "boxShadow": "rgb(22, 21, 33) 0px 0px 0px 5px inset"
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/games/dame/matches",
+          "body": {
+            "whiteName": "Cherif",
+            "blackName": "Amadou"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/api/games/dame/matches/3b16e89c-132f-471d-b57d-724ef2e17097/moves",
+          "body": {
+            "version": 0,
+            "from": {
+              "row": 6,
+              "column": 1
+            },
+            "landings": [
+              {
+                "row": 5,
+                "column": 0
+              }
+            ]
+          }
+        }
+      ],
+      "screenshots": ["06-focus-mobile.png"],
+      "status": "PASSED_AGENT"
+    }
+  },
+  "games": [],
+  "browser": "156.0.8078.4"
+}

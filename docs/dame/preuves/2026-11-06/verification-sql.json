@@ -1,0 +1,18 @@
+[
+  {
+    "id": "fc7ce126-f115-4d48-94a2-67925944f547",
+    "white_name": "Cherif",
+    "black_name": "Amadou",
+    "status": "BLACK_WON",
+    "started_at": "2026-11-06T12:33:09.951+00:00",
+    "finished_at": "2026-11-06T12:33:19.441+00:00"
+  },
+  {
+    "id": "6e4d8181-7eb4-4fee-ac2e-d6e97730b6dc",
+    "white_name": "Cherif",
+    "black_name": "Amadou",
+    "status": "IN_PROGRESS",
+    "started_at": "2026-11-06T12:33:19.643+00:00",
+    "finished_at": null
+  }
+]
