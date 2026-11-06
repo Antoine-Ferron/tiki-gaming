@@ -68,6 +68,8 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-PRIS-06 | Prismine : un joueur a une seule expédition en cours, qu'il reprend après un rechargement ; une requête illisible ou visant l'expédition d'un autre est refusée | Expérience joueur, sécurité |
 | REQ-PRIS-07 | Prismine : un étage validé en moins de 5 s est signalé une seule fois à l'audit, et une expédition inactive depuis plus de 24 h est purgée | Anti-triche, exploitation |
 | REQ-PRIS-08 | Prismine : le score d'un joueur est classé une seule fois avec sa durée, jamais pour un invité, et une panne de stockage est signalée | Règles du classement |
+| REQ-PRIS-09 | Prismine : quand Supabase tombe, les appels lents sont abandonnés, le disjoncteur répond 503 sans attendre et se referme au retour du service | Résilience (docs/slo.md) |
+| REQ-PRIS-10 | Prismine : le front et le serveur arbitre respectent le même contrat d'API, sans la carte cachée | Contrat Pact |
 | REQ-LEM-01 | LemurTiki : le maki rebondit sur une branche touchée en descendant (selon sa largeur), la traverse en montant, et les bords de l'écran sont reliés | EF-1.2 à EF-1.6 (docs/games/lemur/specification.md) |
 | REQ-LEM-02 | LemurTiki : la caméra suit le maki qui dépasse le milieu de l'écran et ne redescend jamais | EF-2 |
 | REQ-LEM-03 | LemurTiki : une branche est toujours à portée de saut et dans l'écran ; les branches passées sous l'écran disparaissent | EF-3.1, EF-3.2 |
@@ -258,6 +260,19 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-PRIS-28 | REQ-PRIS-08 | erreur | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/SupabaseAdaptersTest.java` › storesRunsAndScoresInSupabaseAndReportsItsFailures | PASSED | — |
 | TC-PRIS-29 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/prismine.spec.ts` › l’écran de jeu est conforme WCAG 2.1 AA | PASSED | — |
 | TC-PRIS-30 | REQ-ERR-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/prismine.spec.ts` › un refus du serveur est expliqué au joueur, qui peut continuer | PASSED | — |
+| TC-PRIS-31 | REQ-PRIS-01 | erreur | unitaire (BVA) | `backend/src/test/java/fr/tikigaming/games/prismine/ExpeditionTest.java` › refusesAnEntryOutsideTheGalleryAtBothBoundaries | PASSED | — |
+| TC-PRIS-32 | REQ-PRIS-06 | erreur | intégration (MockMvc, BOLA) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineControllerTest.java` › anotherPlayerCanNeitherReadNorPlayNorEndARun | PASSED | — |
+| TC-PRIS-33 | REQ-PRIS-06 | erreur | unitaire (horloge injectée) | `backend/src/test/java/fr/tikigaming/games/prismine/StartLimiterTest.java` › theConfiguredLimitIsAppliedPerAddress | PASSED | — |
+| TC-PRIS-34 | REQ-PRIS-09 | nominal | unitaire (horloge injectée) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineSupabaseBreakerTest.java` › theCircuitClosesAfterTheDelayOnceSupabaseIsBack | PASSED | — |
+| TC-PRIS-35 | REQ-PRIS-09 | erreur | unitaire (horloge injectée) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineSupabaseBreakerTest.java` › consecutiveOutagesOpenTheCircuitWhichAnswers503WithoutCallingSupabase | PASSED | — |
+| TC-PRIS-36 | REQ-PRIS-09 | erreur | unitaire (horloge injectée) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineSupabaseBreakerTest.java` › aBusinessRefusalProvesSupabaseAnswersAndNeverOpensTheCircuit | PASSED | — |
+| TC-PRIS-37 | REQ-PRIS-09 | erreur | chaos (Toxiproxy) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineSupabaseChaosTest.java` › aSlowSupabaseIsAbandonedAtTheTimeoutThenTheCircuitAnswersAtOnce | PASSED | — |
+| TC-PRIS-38 | REQ-PRIS-09 | nominal | chaos (Toxiproxy) | `backend/src/test/java/fr/tikigaming/games/prismine/PrismineSupabaseChaosTest.java` › aCutConnectionOpensTheCircuitAndItClosesWhenSupabaseIsBack | PASSED | — |
+| TC-PRIS-39 | REQ-PRIS-10 | nominal | contrat (Pact, consommateur) | `frontend/tests/contract/prismine.pact.test.ts` › commencer une expédition | PASSED | — |
+| TC-PRIS-40 | REQ-PRIS-10 | nominal | contrat (Pact, consommateur) | `frontend/tests/contract/prismine.pact.test.ts` › envoyer un faisceau ajoute un tir au journal | PASSED | — |
+| TC-PRIS-41 | REQ-PRIS-10 | erreur | contrat (Pact, consommateur) | `frontend/tests/contract/prismine.pact.test.ts` › un tir hors de la galerie répond 400 avec un message | PASSED | — |
+| TC-PRIS-42 | REQ-PRIS-10 | erreur | contrat (Pact, consommateur) | `frontend/tests/contract/prismine.pact.test.ts` › une carte illisible répond 400 sur le champ guess | PASSED | — |
+| TC-PRIS-43 | REQ-PRIS-10 | nominal | contrat (Pact, fournisseur) | `backend/src/test/java/fr/tikigaming/games/prismine/PrisminePactProviderTest.java` › verifiesThePrismineFrontendContract | PASSED | — |
 | TC-LEM-01 | REQ-LEM-01 | nominal | BDD | `frontend/src/games/lemur/features/deplacement.feature` › Le maki rebondit sur une branche touchée en descendant | PASSED | — |
 | TC-LEM-02 | REQ-LEM-01 | erreur | BDD | `frontend/src/games/lemur/features/deplacement.feature` › Le maki traverse une branche en montant | PASSED | — |
 | TC-LEM-03 | REQ-LEM-01 | nominal | BDD | `frontend/src/games/lemur/features/deplacement.feature` › Le joueur dirige le maki, et les bords sont reliés | PASSED | — |
