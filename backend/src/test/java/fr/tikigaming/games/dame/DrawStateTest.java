@@ -35,7 +35,10 @@ class DrawStateTest {
     @Test
     void movementOfAManResetsTheTwentyFiveMoveCounterAndRepetitions() {
         Board position = board(at(6, 1, man(Player.WHITE)), at(0, 7, king(Player.BLACK)));
-        Game game = new Game(position, Player.WHITE, new DrawState(Map.of(), 49, -1, -1));
+        Game game = new Game(
+                position,
+                Player.WHITE,
+                new DrawState(DrawState.initial(position, Player.WHITE).repetitions(), 49, -1, -1));
         game.play(move(6, 1, 5, 0));
         assertThat(game.status()).isEqualTo(GameStatus.IN_PROGRESS);
         assertThat(game.drawState().quietPlies()).isZero();
@@ -105,5 +108,53 @@ class DrawStateTest {
         DrawState state = DrawState.initial(Board.initial(), Player.WHITE);
         assertThat(state.fiveRemaining()).isEqualTo(-1);
         assertThat(state.sixteenRemaining()).isEqualTo(-1);
+    }
+
+    @Test
+    void repetitionDistinguishesOwnershipPromotionAndEveryOccupiedSquare() {
+        Board original = board(at(6, 1, king(Player.WHITE)), at(0, 7, king(Player.BLACK)));
+        Board otherSquare = board(at(7, 0, king(Player.WHITE)), at(0, 7, king(Player.BLACK)));
+        Board unpromoted = board(at(6, 1, man(Player.WHITE)), at(0, 7, king(Player.BLACK)));
+        Board swapped = board(at(6, 1, king(Player.BLACK)), at(0, 7, king(Player.WHITE)));
+        var originalKey =
+                DrawState.initial(original, Player.WHITE).repetitions().keySet();
+        for (Board different : java.util.List.of(otherSquare, unpromoted, swapped)) {
+            assertThat(DrawState.initial(different, Player.WHITE).repetitions().keySet())
+                    .isNotEqualTo(originalKey);
+        }
+    }
+
+    @Test
+    void aLoneOpposingManDoesNotStartAKingEndgameDeadline() {
+        Board position = board(
+                at(0, 7, man(Player.BLACK)),
+                at(8, 1, king(Player.WHITE)),
+                at(8, 3, king(Player.WHITE)),
+                at(8, 5, king(Player.WHITE)));
+        DrawState state = DrawState.initial(position, Player.WHITE);
+        assertThat(state.sixteenRemaining()).isEqualTo(-1);
+        assertThat(state.fiveRemaining()).isEqualTo(-1);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"-1,-1,-1", "51,-1,-1", "0,-2,-1", "0,33,-1", "0,-1,-2", "0,-1,11"})
+    void rejectsCorruptedPersistedCounters(int quiet, int sixteen, int five) {
+        assertThatThrownBy(() -> new DrawState(Map.of(), quiet, sixteen, five))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsCorruptedPositionsAndOccurrencesInPersistedHistory() {
+        String key = DrawState.initial(kings, Player.WHITE)
+                .repetitions()
+                .keySet()
+                .iterator()
+                .next();
+        assertThatThrownBy(() -> new DrawState(Map.of("damaged", 1), 0, -1, -1))
+                .isInstanceOf(IllegalArgumentException.class);
+        for (int count : new int[] {0, 4}) {
+            assertThatThrownBy(() -> new DrawState(Map.of(key, count), 0, -1, -1))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 }
