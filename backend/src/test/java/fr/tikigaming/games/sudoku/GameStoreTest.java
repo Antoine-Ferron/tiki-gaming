@@ -120,4 +120,55 @@ class GameStoreTest {
         assertThat(store.find(live.id())).isSameAs(live);
         assertThatThrownBy(() -> store.find(old.id())).isInstanceOf(SudokuBadRequestException.class);
     }
+
+    @Test
+    void aGameIsLostOnlyOnceMistakesExceedTheLimit() {
+        GameStore.Game game = store.start("owner", Difficulty.EASY, grids);
+        int cell = emptyCell();
+        int wrong = grids.solution()[cell] % 9 + 1;
+
+        for (int i = 1; i <= GameStore.MAX_MISTAKES; i++) {
+            assertThat(game.play(cell, wrong).lost()).as("erreur %d", i).isFalse();
+            assertThat(game.isLost()).isFalse();
+        }
+        GameStore.MoveResult fatal = game.play(cell, wrong);
+
+        assertThat(fatal.lost()).isTrue();
+        assertThat(game.isLost()).isTrue();
+        assertThat(fatal.mistakes()).isEqualTo(GameStore.MAX_MISTAKES + 1);
+    }
+
+    @Test
+    void aCorrectMoveNeverCountsTowardTheLimit() {
+        GameStore.Game game = store.start("owner", Difficulty.EASY, grids);
+        int cell = emptyCell();
+
+        GameStore.MoveResult result = game.play(cell, grids.solution()[cell]);
+
+        assertThat(result.correct()).isTrue();
+        assertThat(result.lost()).isFalse();
+        assertThat(game.mistakes()).isZero();
+    }
+
+    @Test
+    void aLostGameRefusesAnyMoveAndKeepsItsGrid() {
+        GameStore.Game game = store.start("owner", Difficulty.EASY, grids);
+        int cell = emptyCell();
+        for (int i = 0; i <= GameStore.MAX_MISTAKES; i++) {
+            game.play(cell, grids.solution()[cell] % 9 + 1);
+        }
+
+        assertThatThrownBy(() -> game.play(cell, grids.solution()[cell])).isInstanceOf(SudokuGameOverException.class);
+        assertThat(game.values()[cell]).isZero();
+        assertThat(game.mistakes()).isEqualTo(GameStore.MAX_MISTAKES + 1);
+    }
+
+    private int emptyCell() {
+        for (int i = 0; i < SudokuSolver.CELLS; i++) {
+            if (grids.puzzle()[i] == 0) {
+                return i;
+            }
+        }
+        throw new IllegalStateException("grille pleine");
+    }
 }

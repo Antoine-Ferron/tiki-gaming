@@ -4,7 +4,9 @@ import clicker from './clicker'
 import batailleNavale from './bataille-navale'
 import echecs from './echecs'
 import dame from './dame'
+import prismine from './prismine'
 import mastermind from './mastermind'
+import lemur from './lemur'
 import rushHour from './rush-hour'
 import yams from './yams'
 import sdvCivilisation from './sdv-civilisation'
@@ -31,6 +33,8 @@ export const games: GameDefinition[] = [
   bang,
   dame,
   ticTacToe,
+  prismine,
+  lemur,
   game2048,
 ]
 
