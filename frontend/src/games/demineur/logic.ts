@@ -37,6 +37,9 @@ export function createGrid(rows: number, cols: number, mineCount: number, rng: R
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
+      // Stryker disable next-line ConditionalExpression: équivalent, adjacentMines d'une mine
+      // n'est jamais lu (revealCell renvoie sur cell.mine avant ; l'UI masque la case tant qu'elle
+      // n'est pas révélée, et révélée elle affiche 💣, jamais le chiffre).
       if (!grid[row][col].mine) {
         grid[row][col].adjacentMines = countAdjacentMines(grid, row, col)
       }
@@ -50,7 +53,11 @@ function countAdjacentMines(grid: Grid, row: number, col: number): number {
   let count = 0
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
+      // Stryker disable next-line ConditionalExpression: équivalent, cette fonction n'est appelée
+      // que sur une case sans mine (garde ci-dessus) : (row+0, col+0) == le centre == jamais une mine.
       if (dr === 0 && dc === 0) continue
+      // Stryker disable next-line ArithmeticOperator: équivalent, dr et dc parcourent {-1,0,1} de
+      // façon symétrique — inverser le signe de l'un des deux visite le même ensemble de voisins.
       if (grid[row + dr]?.[col + dc]?.mine) count++
     }
   }

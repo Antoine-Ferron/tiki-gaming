@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createGrid, toggleFlag, type Rng } from './logic'
+import { calculateScore, createGrid, toggleFlag, type Rng } from './logic'
 
 describe('demineur: génération de grille', () => {
   it('crée une grille aux dimensions demandées', () => {
@@ -41,6 +41,15 @@ describe('demineur: génération de grille', () => {
     expect(grid[0][0].mine).toBe(true)
     const placedMines = grid.flat().filter((cell) => cell.mine).length
     expect(placedMines).toBe(1)
+  })
+})
+
+describe('demineur: calcul du score', () => {
+  it('pondère le score par 100 points par mine, pas par centième', () => {
+    // Arrange / Act / Assert : valeur exacte, pour distinguer `mineCount * 100` de `mineCount / 100`
+    // (même formule testée en BDD via score.feature, mais en test direct pour garantir ici une
+    // attribution de couverture sans ambiguïté pour Stryker).
+    expect(calculateScore(10, 10)).toBe(990)
   })
 })
 
