@@ -44,7 +44,7 @@ public record Match(
 
     public Optional<Player> winner() {
         return switch (status) {
-            case IN_PROGRESS -> Optional.empty();
+            case IN_PROGRESS, DRAW -> Optional.empty();
             case WHITE_WON -> Optional.of(Player.WHITE);
             case BLACK_WON -> Optional.of(Player.BLACK);
         };

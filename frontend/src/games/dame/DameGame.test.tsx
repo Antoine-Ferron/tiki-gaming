@@ -160,3 +160,14 @@ test('une victoire vient du serveur et rejouer redemande les noms', async () => 
   fireEvent.click(screen.getByRole('button', { name: 'Revenir à la partie' }))
   expect(screen.getByText('Chérif remporte la partie !')).toBeVisible()
 })
+
+test('une nulle ne désigne aucun vainqueur et permet de rejouer', async () => {
+  play.mockResolvedValue({ ...NEXT, status: 'DRAW', winner: null, legalMoves: [], finishedAt: NEXT.startedAt })
+  await create()
+  fireEvent.click(cell('B4'))
+  fireEvent.click(cell('A5'))
+  expect(await screen.findByText('Partie nulle : aucun gagnant.')).toBeVisible()
+  expect(screen.queryByText(/remporte la partie/)).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Rejouer' }))
+  expect(screen.getByLabelText('Joueur blanc')).toHaveValue('Chérif')
+})

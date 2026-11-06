@@ -11,7 +11,7 @@ export type DameView = Names & {
   version: number
   board: { rows: number; columns: number; pieces: Piece[] }
   currentPlayer: Player
-  status: 'IN_PROGRESS' | 'WHITE_WON' | 'BLACK_WON'
+  status: 'IN_PROGRESS' | 'WHITE_WON' | 'BLACK_WON' | 'DRAW'
   winner: Player | null
   legalMoves: Move[]
   startedAt: string

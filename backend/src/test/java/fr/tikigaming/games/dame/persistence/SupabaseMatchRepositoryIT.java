@@ -41,6 +41,18 @@ import tools.jackson.databind.json.JsonMapper;
 /** Intégration réelle de l'adaptateur HTTP, des migrations et des droits ; aucun mock ni fake. */
 class SupabaseMatchRepositoryIT {
 
+    @Test
+    void persistsADrawWithoutAWinnerAndRefusesASecondClosure() {
+        Match initial = Match.start(ID, "Cherif", "Amadou", START);
+        repository.save(initial);
+        Match draw = initial.finish(GameStatus.DRAW, END);
+        repository.save(draw);
+        assertThat(repository.findById(ID)).contains(draw);
+        assertThat(repository.findById(ID).orElseThrow().winner()).isEmpty();
+        assertThatThrownBy(() -> repository.save(initial.finish(GameStatus.WHITE_WON, END)))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
     private static final UUID ID = UUID.fromString("00000000-0000-0000-0000-000000000018");
     private static final Instant START = Instant.parse("2026-11-04T12:00:00.123456Z");
     private static final Instant END = START.plusSeconds(600);

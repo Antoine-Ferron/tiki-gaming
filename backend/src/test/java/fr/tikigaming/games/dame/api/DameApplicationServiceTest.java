@@ -53,6 +53,29 @@ class DameApplicationServiceTest {
     }
 
     @Test
+    void recordsADrawAndRestoresItsHistoryWithoutAWinner() {
+        DameGameView initial = start();
+        Game game = new Game(
+                new Board(Map.of(
+                        new Position(0, 1), new Piece(Player.WHITE, true),
+                        new Position(0, 7), new Piece(Player.BLACK, true))),
+                Player.WHITE,
+                new fr.tikigaming.games.dame.DrawState(Map.of(), 0, -1, 1));
+        session.setAttribute(
+                DameApplicationService.ATTRIBUTE,
+                JSON.writeValueAsString(DameGameView.of(repository.rows.get(initial.id()), game, 9)));
+        session.setAttribute(DameApplicationService.HISTORY, JSON.writeValueAsString(game.drawState()));
+        DameGameView result =
+                service.play(session, initial.id(), 9, new Move(new Position(0, 1), List.of(new Position(1, 0))));
+        assertThat(result.status()).isEqualTo(GameStatus.DRAW);
+        assertThat(result.winner()).isNull();
+        assertThat(result.legalMoves()).isEmpty();
+        assertThat(result.finishedAt()).isNotNull();
+        assertThat(repository.rows.get(initial.id()).status()).isEqualTo(GameStatus.DRAW);
+        assertThat(service.read(session, initial.id())).isEqualTo(result);
+    }
+
+    @Test
     void createsAndReadsAnOwnedMatchWithFortyPiecesAndNoWinner() {
         DameGameView view = start();
 

@@ -1,8 +1,9 @@
 package fr.tikigaming.games.dame;
 
-/** Périmètre victoire de US-11 ; les règles de nulle restent une décision à valider. */
+/** Résultat calculé par le moteur, y compris les nulles automatiques. */
 public enum GameStatus {
     IN_PROGRESS,
     WHITE_WON,
-    BLACK_WON
+    BLACK_WON,
+    DRAW
 }

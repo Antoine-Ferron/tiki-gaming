@@ -1,6 +1,7 @@
 package fr.tikigaming.games.dame.api;
 
 import fr.tikigaming.games.dame.Board;
+import fr.tikigaming.games.dame.DrawState;
 import fr.tikigaming.games.dame.Game;
 import fr.tikigaming.games.dame.GameRules;
 import fr.tikigaming.games.dame.GameStatus;
@@ -87,6 +88,10 @@ public record DameGameView(
     }
 
     Game game() {
+        return game(null);
+    }
+
+    Game game(DrawState history) {
         Map<Position, Piece> pieces = new LinkedHashMap<>();
         for (PieceView piece : board.pieces()) {
             Position position = new Position(piece.row(), piece.column());
@@ -94,6 +99,7 @@ public record DameGameView(
                 throw new IllegalArgumentException("Position de session invalide.");
             }
         }
-        return new Game(new Board(pieces), currentPlayer);
+        Board restored = new Board(pieces);
+        return history == null ? new Game(restored, currentPlayer) : new Game(restored, currentPlayer, history);
     }
 }

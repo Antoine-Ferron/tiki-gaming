@@ -163,7 +163,9 @@ export default function DameGame() {
   const finished = view.status !== 'IN_PROGRESS'
   const winnerName = view.status === 'WHITE_WON' ? view.whiteName : view.blackName
   const title = finished
-    ? `${winnerName} remporte la partie !`
+    ? view.status === 'DRAW'
+      ? 'Partie nulle : aucun gagnant.'
+      : `${winnerName} remporte la partie !`
     : `${view.currentPlayer === 'WHITE' ? view.whiteName : view.blackName} · ${PLAYER_NAMES[view.currentPlayer]} à jouer`
   const instruction = busy
     ? 'Coup en cours…'

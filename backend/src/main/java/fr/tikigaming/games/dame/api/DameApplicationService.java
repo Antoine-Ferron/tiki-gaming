@@ -1,6 +1,7 @@
 package fr.tikigaming.games.dame.api;
 
 import fr.tikigaming.config.ApiException;
+import fr.tikigaming.games.dame.DrawState;
 import fr.tikigaming.games.dame.Game;
 import fr.tikigaming.games.dame.GameStatus;
 import fr.tikigaming.games.dame.Move;
@@ -21,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 public final class DameApplicationService {
 
     static final String ATTRIBUTE = "dame.current";
+    static final String HISTORY = "dame.history";
     private final MatchService matches;
     private final ObjectMapper mapper;
 
@@ -37,8 +39,9 @@ public final class DameApplicationService {
             } catch (IllegalArgumentException error) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, error.getMessage());
             }
-            DameGameView view = DameGameView.of(match, new Game(), 0);
-            commit(session, view);
+            Game game = new Game();
+            DameGameView view = DameGameView.of(match, game, 0);
+            commit(session, view, game.drawState());
             return view;
         }
     }
@@ -64,7 +67,7 @@ public final class DameApplicationService {
                 throw conflict();
             }
             // Le jeu reconstruit est une copie : un refus ou une panne ne modifie pas la session.
-            Game next = before.game();
+            Game next = before.game(history(session));
             try {
                 next.play(move);
             } catch (IllegalArgumentException error) {
@@ -72,7 +75,7 @@ public final class DameApplicationService {
             }
             Match match = next.status() == GameStatus.IN_PROGRESS ? metadata(before) : recordResult(before.id(), next);
             DameGameView after = DameGameView.of(match, next, nextVersion);
-            commit(session, after);
+            commit(session, after, next.drawState());
             return after;
         }
     }
@@ -106,7 +109,7 @@ public final class DameApplicationService {
             if (view == null
                     || !id.equals(view.id())
                     || view.version() < 0
-                    || view.status() != view.game().status()) {
+                    || view.status() != view.game(history(session)).status()) {
                 throw notFound();
             }
             return view;
@@ -115,8 +118,14 @@ public final class DameApplicationService {
         }
     }
 
-    private void commit(HttpSession session, DameGameView view) {
+    private DrawState history(HttpSession session) {
+        Object stored = session.getAttribute(HISTORY);
+        return stored instanceof String json ? mapper.readValue(json, DrawState.class) : null;
+    }
+
+    private void commit(HttpSession session, DameGameView view, DrawState history) {
         session.setAttribute(ATTRIBUTE, mapper.writeValueAsString(view));
+        session.setAttribute(HISTORY, mapper.writeValueAsString(history));
     }
 
     private static Match metadata(DameGameView view) {
