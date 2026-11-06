@@ -8,6 +8,9 @@ const demineur: GameDefinition = {
   category: 'solo',
   theme: 'reflexion',
   mode: 'solo',
+  // Plafond théorique : score = mineCount × 100 − elapsedSeconds (jamais négatif), donc maximal
+  // à Expert (99 mines) en 0 s. Aligné avec la migration qui pose games.max_score.
+  scoreLimits: { max: 9900 },
   component: lazy(() => import('./DemineurGame')),
 }
 

@@ -71,6 +71,17 @@ describeDb('scores (RLS et contraintes)', () => {
     await expect(as(db, alice, () => insertScore(301))).rejects.toMatchObject({ code: '42501' })
   })
 
+  // Valeurs limites hautes autour de games.max_score (9900 pour le Démineur) : 9899, 9900, 9901
+  test.each([9899, 9900])('accepte %d pour le démineur (≤ max_score)', async (score) => {
+    await as(db, alice, () => insertScore(score, 'demineur'))
+
+    expect(await scoresOf(alice)).toEqual([score])
+  })
+
+  test('refuse 9901 pour le démineur (> max_score)', async () => {
+    await expect(as(db, alice, () => insertScore(9901, 'demineur'))).rejects.toMatchObject({ code: '42501' })
+  })
+
   test('sans max_score, un grand score est accepté', async () => {
     await db.query(`update public.games set max_score = null where slug = 'clicker'`)
 
