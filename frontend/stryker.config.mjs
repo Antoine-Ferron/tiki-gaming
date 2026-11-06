@@ -25,6 +25,9 @@ export default {
     'src/lib/validation.ts',
     'src/games/lemur/domain/**/*.ts',
     'src/games/lemur/application/**/*.ts',
+    // Sudoku : règles pures (la limite d'erreurs et le format du temps), sous le même seuil de 75 %.
+    'src/games/sudoku/logic.ts',
+    'src/games/sudoku/mistakes.ts',
     '!src/**/*.test.ts',
   ],
   coverageAnalysis: 'perTest',

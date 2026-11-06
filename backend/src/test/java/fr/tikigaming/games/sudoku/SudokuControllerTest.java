@@ -180,10 +180,13 @@ class SudokuControllerTest {
 
         assertThat(SudokuController.GameState.class.getRecordComponents())
                 .extracting(c -> c.getName())
-                .containsExactly("gameId", "difficulty", "puzzle", "values", "mistakes", "seconds");
+                .containsExactly(
+                        "gameId", "difficulty", "puzzle", "values", "mistakes", "maxMistakes", "lost", "seconds");
         assertThat(state.puzzle()).isEqualTo(game.puzzle());
         assertThat(state.values()[cell]).isEqualTo(solution);
         assertThat(state.mistakes()).isEqualTo(1);
+        assertThat(state.maxMistakes()).isEqualTo(3);
+        assertThat(state.lost()).isFalse();
         assertThat(state.seconds()).isEqualTo(42);
         assertThat(state.difficulty()).isEqualTo("easy");
     }
@@ -195,19 +198,38 @@ class SudokuControllerTest {
 
     @Test
     void gameStateComparesGridContentNotArrayIdentity() {
-        SudokuController.GameState a = new SudokuController.GameState("g", "easy", new int[] {1}, new int[] {2}, 1, 5);
+        SudokuController.GameState a = state("g", "easy", new int[] {1}, new int[] {2}, 1, 3, false, 5);
 
         assertThat(a)
-                .isEqualTo(new SudokuController.GameState("g", "easy", new int[] {1}, new int[] {2}, 1, 5))
-                .hasSameHashCodeAs(new SudokuController.GameState("g", "easy", new int[] {1}, new int[] {2}, 1, 5));
+                .isEqualTo(state("g", "easy", new int[] {1}, new int[] {2}, 1, 3, false, 5))
+                .hasSameHashCodeAs(state("g", "easy", new int[] {1}, new int[] {2}, 1, 3, false, 5));
         assertThat(a)
-                .isNotEqualTo(new SudokuController.GameState("h", "easy", new int[] {1}, new int[] {2}, 1, 5))
-                .isNotEqualTo(new SudokuController.GameState("g", "hard", new int[] {1}, new int[] {2}, 1, 5))
-                .isNotEqualTo(new SudokuController.GameState("g", "easy", new int[] {9}, new int[] {2}, 1, 5))
-                .isNotEqualTo(new SudokuController.GameState("g", "easy", new int[] {1}, new int[] {9}, 1, 5))
-                .isNotEqualTo(new SudokuController.GameState("g", "easy", new int[] {1}, new int[] {2}, 2, 5))
-                .isNotEqualTo(new SudokuController.GameState("g", "easy", new int[] {1}, new int[] {2}, 1, 6));
-        assertThat(a.toString()).contains("g").contains("easy").contains("[1]").contains("[2]");
+                .isNotEqualTo(state("h", "easy", new int[] {1}, new int[] {2}, 1, 3, false, 5))
+                .isNotEqualTo(state("g", "hard", new int[] {1}, new int[] {2}, 1, 3, false, 5))
+                .isNotEqualTo(state("g", "easy", new int[] {9}, new int[] {2}, 1, 3, false, 5))
+                .isNotEqualTo(state("g", "easy", new int[] {1}, new int[] {9}, 1, 3, false, 5))
+                .isNotEqualTo(state("g", "easy", new int[] {1}, new int[] {2}, 2, 3, false, 5))
+                .isNotEqualTo(state("g", "easy", new int[] {1}, new int[] {2}, 1, 4, false, 5))
+                .isNotEqualTo(state("g", "easy", new int[] {1}, new int[] {2}, 1, 3, true, 5))
+                .isNotEqualTo(state("g", "easy", new int[] {1}, new int[] {2}, 1, 3, false, 6));
+        assertThat(a.toString())
+                .contains("g")
+                .contains("easy")
+                .contains("[1]")
+                .contains("[2]")
+                .contains("lost=false");
+    }
+
+    private static SudokuController.GameState state(
+            String id,
+            String difficulty,
+            int[] puzzle,
+            int[] values,
+            int mistakes,
+            int max,
+            boolean lost,
+            int seconds) {
+        return new SudokuController.GameState(id, difficulty, puzzle, values, mistakes, max, lost, seconds);
     }
 
     @Test
@@ -221,6 +243,65 @@ class SudokuControllerTest {
                 .isNotEqualTo(new SudokuController.PuzzleResponse("g", "hard", new int[] {1, 2, 3}))
                 .isNotEqualTo(new SudokuController.PuzzleResponse("h", "easy", new int[] {1, 2, 3}));
         assertThat(a.toString()).contains("g").contains("easy").contains("[1, 2, 3]");
+    }
+
+    @Test
+    void threeMistakesAreAllowedAndTheFourthLosesTheGame() {
+        SudokuController.PuzzleResponse game = puzzle("easy");
+        int cell = firstEmptyCell(game);
+        int wrong = solve(game.puzzle())[cell] % 9 + 1;
+
+        GameStore.MoveResult third = null;
+        for (int i = 0; i < GameStore.MAX_MISTAKES; i++) {
+            third = controller.move(game.gameId(), new SudokuController.MoveRequest(cell, wrong));
+        }
+        GameStore.MoveResult fourth = controller.move(game.gameId(), new SudokuController.MoveRequest(cell, wrong));
+
+        assertThat(third.mistakes()).isEqualTo(3);
+        assertThat(third.lost()).isFalse();
+        assertThat(fourth.mistakes()).isEqualTo(4);
+        assertThat(fourth.lost()).isTrue();
+    }
+
+    @Test
+    void aLostGameRefusesFurtherMovesEvenCorrectOnes() {
+        SudokuController.PuzzleResponse game = puzzle("easy");
+        int cell = firstEmptyCell(game);
+        int solution = solve(game.puzzle())[cell];
+        loseTheGame(game, cell, solution % 9 + 1);
+
+        assertThatThrownBy(() -> controller.move(game.gameId(), new SudokuController.MoveRequest(cell, solution)))
+                .isInstanceOfSatisfying(
+                        SudokuGameOverException.class,
+                        e -> assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void aLostGameCannotBeCheckedNorScored() {
+        SudokuController.PuzzleResponse game = puzzle("easy");
+        loseTheGame(game, firstEmptyCell(game), solve(game.puzzle())[firstEmptyCell(game)] % 9 + 1);
+
+        assertThatThrownBy(() -> controller.check(new SudokuController.CheckRequest(game.gameId())))
+                .isInstanceOfSatisfying(
+                        SudokuGameOverException.class,
+                        e -> assertThat(e.status()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void stateReportsALostGameSoThePlayerCanResumeOnTheEndScreen() {
+        SudokuController.PuzzleResponse game = puzzle("easy");
+        loseTheGame(game, firstEmptyCell(game), solve(game.puzzle())[firstEmptyCell(game)] % 9 + 1);
+
+        SudokuController.GameState state = controller.state(game.gameId());
+
+        assertThat(state.lost()).isTrue();
+        assertThat(state.mistakes()).isEqualTo(GameStore.MAX_MISTAKES + 1);
+    }
+
+    private void loseTheGame(SudokuController.PuzzleResponse game, int cell, int wrong) {
+        for (int i = 0; i <= GameStore.MAX_MISTAKES; i++) {
+            controller.move(game.gameId(), new SudokuController.MoveRequest(cell, wrong));
+        }
     }
 
     private SudokuController.PuzzleResponse puzzle(String difficulty) {
