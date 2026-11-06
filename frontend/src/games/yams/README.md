@@ -206,6 +206,37 @@ Après les premiers tests TDD, un atelier **Trois Amigos** (métier, développem
 - le joueur 1 lance, garde un dé, relance puis choisit une case : la main passe au joueur 2 ;
 - annonce le gagnant et rappelle à l'invité qu'il n'est pas classé.
 
+#### Pourquoi ces tests ne font pas doublon avec l'E2E
+
+Le premier test de composant et le test E2E portent **le même titre** et jouent **le même scénario**. Ils ne vérifient pourtant pas la même chose :
+
+|                 | Composant                                | E2E                                      |
+| --------------- | ---------------------------------------- | ---------------------------------------- |
+| Ce qui tourne   | jsdom, un DOM simulé en Node             | Chromium, Firefox et WebKit, de vrais moteurs |
+| Ce qu'on monte  | le seul composant `<YamsGame>`           | toute l'application, via la route `/games/yams` |
+| Le reste        | remplacé par `fakeDeps()`                | l'application réelle, réseau intercepté  |
+| Durée           | quelques millisecondes                   | quelques secondes, multipliées par 3 navigateurs |
+| Quand il casse  | le câblage entre l'écran et les règles   | n'importe quoi dans la chaîne            |
+
+La différence tient en une ligne de code. En composant, les dés entrent par une prop :
+
+```tsx
+render(<YamsGame ctx={ctx} rollDie={() => faces[next++]} />)
+```
+
+En E2E, cette porte n'existe plus : il faut détourner le hasard depuis le navigateur.
+
+```ts
+await page.addInitScript(() => { Math.random = () => 0.5 })
+await page.goto('/games/yams')
+```
+
+**Ce que seul l'E2E attrape** : une route cassée, un bug de build, du CSS qui recouvre un bouton, une API absente de WebKit. jsdom n'a pas de moteur de rendu : un bouton invisible passerait le test de composant.
+
+**Ce que seul le composant permet** : la vitesse, un diagnostic qui pointe un composant plutôt qu'un parcours, et les états difficiles à atteindre. Le second test part d'une partie presque finie, construite à la main ; en E2E il faudrait jouer 26 tours.
+
+D'où le rapport 2 pour 1 : le composant répond à « **où** est-ce cassé ? », l'E2E à « **est-ce que** c'est cassé pour de vrai ? ».
+
 ### BDD : `features/` (4 scénarios)
 
 Voir le tableau de la [section 4](#bdd--les-trois-amigos).
@@ -241,7 +272,7 @@ Deux frontières du Yams sont testées **des deux côtés** :
 Les combinaisons ont aussi leurs frontières : paire ≠ brelan, 3 identiques ≠ carré, deux paires ≠ full, Yams ≠ full, 4 identiques ≠ Yams, série trouée ≠ petite suite.
 
 ---
-
+x&
 ## 7. Qualité mesurée
 
 | Mesure                                     | Résultat                                                                                         |
