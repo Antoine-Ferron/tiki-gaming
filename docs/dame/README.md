@@ -6,6 +6,7 @@ Issue : [#18](https://github.com/EAnathos/tiki-gaming/issues/18), ouverte.
 
 ## Parcourir le dossier
 
+- [Bilan de qualité](qualite.md) : mesures datées, rapports CI et commandes de reproduction.
 - [Matrice exigences/tests](rtm-matrix.md) : cas de référence et origine des résultats.
 - [Cahier de recette](recette.md) : six parcours manuels, encore à exécuter.
 
@@ -79,11 +80,11 @@ Voir [les détails et limites de la démo](interface-e2e.md).
 
 ## Livraisons et contribution
 
-| Livraison | Contenu | Référence fusionnée |
-|---|---|---|
-| Moteur | Domaine Java, tests unitaires, analyse PIT | [PR #93](https://github.com/EAnathos/tiki-gaming/pull/93), 4 novembre 2026 |
-| Parcours complet | Rencontres, stockage, API, React, BDD, Pact, IT et parcours navigateur | [PR #116](https://github.com/EAnathos/tiki-gaming/pull/116), 5 novembre 2026 |
-| Correction de revue | Attente de disponibilité PostgreSQL et nettoyage de dépendance | [PR #131](https://github.com/EAnathos/tiki-gaming/pull/131), contribution du reviewer |
+| Livraison           | Contenu                                                                | Référence fusionnée                                                                   |
+| ------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Moteur              | Domaine Java, tests unitaires, analyse PIT                             | [PR #93](https://github.com/EAnathos/tiki-gaming/pull/93), 4 novembre 2026            |
+| Parcours complet    | Rencontres, stockage, API, React, BDD, Pact, IT et parcours navigateur | [PR #116](https://github.com/EAnathos/tiki-gaming/pull/116), 5 novembre 2026          |
+| Correction de revue | Attente de disponibilité PostgreSQL et nettoyage de dépendance         | [PR #131](https://github.com/EAnathos/tiki-gaming/pull/131), contribution du reviewer |
 
 Les contributions Dames de Mamadou Cherif sont rattachées à l'identité Git
 `DIALLO MAMADOU CHERIF <143650565+CherifDalein@users.noreply.github.com>`.
@@ -117,4 +118,3 @@ Les documents historiques conservent leurs mesures et leurs étapes futures
 telles qu'elles avaient été annoncées. Ce bilan indique ce qui a depuis été
 livré. Les conventions de branche, de revue et de CI restent celles de
 [CONTRIBUTING](../../CONTRIBUTING.md).
-
