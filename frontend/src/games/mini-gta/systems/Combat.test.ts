@@ -194,11 +194,15 @@ describe('tir instantané (hitscan)', () => {
   })
 
   test('une bouche d’incendie ou une poubelle touchée est renversée', () => {
+    // Les colliders des props ne sont chargés qu'autour du joueur : on part du couloir de tir connu et on vise
+    // la bouche d'incendie (ou poubelle) la plus proche, dont le collider est forcément chargé.
+    resetPlayer()
     const p = game.player.position
     game.world.update(0, p, p, 0)
-    const prop = game.city.props.find(
-      (q) => (q.kind === 'hydrant' || q.kind === 'bin') && !q.destroyed && Math.hypot(q.x - p.x, q.z - p.z) < 250,
-    )!
+    const dist = (q: { x: number; z: number }) => Math.hypot(q.x - p.x, q.z - p.z)
+    const prop = game.city.props
+      .filter((q) => (q.kind === 'hydrant' || q.kind === 'bin') && !q.destroyed)
+      .sort((a, b) => dist(a) - dist(b))[0]
     const origin = new Vector3(prop.x, prop.y + 6, prop.z)
 
     game.combat.hitscan(origin, new Vector3(0, -1, 0), pistol(), null, origin)

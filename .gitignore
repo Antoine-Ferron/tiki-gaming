@@ -10,3 +10,5 @@ target
 supabase/.temp
 supabase/.branches
 .scannerwork
+quality/reports/bang/
+frontend/reports/mutation/

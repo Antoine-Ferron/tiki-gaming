@@ -14,6 +14,99 @@ afterEach(() => {
   sessionStorage.clear()
 })
 
+test('une lecture PLAY pendant un POST lent ne met pas une deuxième fin de tour en attente', async () => {
+  let view: GameView = { ...fourPlayerView(), currentSeat: 1, phase: 'PLAY' }
+  let acknowledge!: (response: Response) => void
+  const pending = new Promise<Response>((resolve) => {
+    acknowledge = resolve
+  })
+  let ends = 0
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/state')) return Response.json(view)
+    if (url.endsWith('/turn/end')) {
+      ends++
+      return ends === 1 ? pending : Response.json({ error: 'Ce n’est plus ton tour.' }, { status: 403 })
+    }
+    throw new Error(`Appel inattendu : ${url}`)
+  })
+  vi.stubGlobal('fetch', fetch)
+  vi.useFakeTimers()
+  sessionStorage.setItem('tiki:bang:table:compte-test', view.code)
+  await act(async () => {
+    render(<OnlineTable accountId="compte-test" />)
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+  })
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2000)
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Finir le tour' }))
+  })
+  view = { ...view, currentSeat: 2, phase: 'DRAW' }
+  await act(async () => {
+    acknowledge(new Response(null, { status: 204 }))
+  })
+
+  expect(ends).toBe(1)
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(screen.getByRole('status').textContent).toBe('Au tour de la place 2.')
+})
+
+test('un deuxième clic de défausse valide attend le POST lent de la première carte', async () => {
+  const cards = Array.from({ length: 7 }, (_, index) => ({ id: `carte-${index}`, type: 'BANG' }))
+  let view: GameView = {
+    ...fourPlayerView(),
+    currentSeat: 1,
+    phase: 'DISCARD',
+    hand: cards,
+    players: fourPlayerView().players.map((p) => (p.seat === 1 ? { ...p, health: 5, maxHealth: 5, handCount: 7 } : p)),
+  }
+  let acknowledge!: (response: Response) => void
+  const pending = new Promise<Response>((resolve) => {
+    acknowledge = resolve
+  })
+  const discarded: string[] = []
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith('/state')) return Response.json(view)
+    if (url.includes('/turn/discard/')) {
+      const cardId = url.slice(url.lastIndexOf('/') + 1)
+      discarded.push(cardId)
+      view = { ...view, hand: view.hand.filter((card) => card.id !== cardId) }
+      return discarded.length === 1 ? pending : new Response(null, { status: 204 })
+    }
+    throw new Error(`Appel inattendu : ${url}`)
+  })
+  vi.stubGlobal('fetch', fetch)
+  vi.useFakeTimers()
+  sessionStorage.setItem('tiki:bang:table:compte-test', view.code)
+  await act(async () => {
+    render(<OnlineTable accountId="compte-test" />)
+  })
+  const discardFirstVisible = () =>
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Ta main' })).getAllByRole('button', { name: 'BANG !' })[0],
+    )
+  await act(async () => {
+    discardFirstVisible()
+  })
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2000)
+  })
+  await act(async () => {
+    discardFirstVisible()
+  })
+  expect(discarded).toEqual(['carte-0'])
+  await act(async () => {
+    acknowledge(new Response(null, { status: 204 }))
+  })
+
+  expect(discarded).toEqual(['carte-0', 'carte-1'])
+  expect(within(screen.getByRole('region', { name: 'Ta main' })).getAllByRole('listitem')).toHaveLength(5)
+  expect(screen.queryByRole('alert')).toBeNull()
+})
+
 test('seule la cible esquive avec sa carte et l’identifiant courant, puis relit les quatre tapis', async () => {
   let view: GameView = {
     ...fourPlayerView(),

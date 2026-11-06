@@ -82,6 +82,8 @@ jobs:
               - 'backend/pom.xml'
               - 'backend/src/main/java/fr/tikigaming/games/sdv_civilisation/**'
               - 'backend/src/test/java/fr/tikigaming/games/sdv_civilisation/**'
+              - 'backend/src/main/java/fr/tikigaming/games/dame/**'
+              - 'backend/src/test/java/fr/tikigaming/games/dame/**'
               - 'quality/db-init/**'
             quality:
               - *ci
@@ -210,6 +212,11 @@ jobs:
             backend/target/classes/
             backend/target/test-classes/
           retention-days: 1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-bdd-dame
+          path: backend/target/cucumber/
 
   # Toujours exécuté et sans dépendance : un test renommé côté front ou backend casse la matrice.
   traceability:
@@ -264,6 +271,14 @@ jobs:
       - name: Stockage des parties SDV Civilisation (Testcontainers + PostgREST)
         working-directory: backend
         run: mvn -B test -Dtest=SdvCivilisationTestcontainersIT -Dsurefire.failIfNoSpecifiedTests=false
+      - name: Persistance Java Dames (PostgreSQL et PostgREST réels)
+        working-directory: backend
+        run: mvn -B -Pintegration '-Dit.test=fr/tikigaming/games/dame/**/*IT' test-compile failsafe:integration-test failsafe:verify
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-integration-backend
+          path: backend/target/failsafe-reports/
 
   # Mutation : incrémental sur les PR et les push vers dev ou main (seuls les mutants touchés par le changement sont
   # rejoués ; le push alimente le cache lu par les PR suivantes), complet au run de nuit et à la demande, qui servent
@@ -400,6 +415,34 @@ jobs:
           name: rapport-e2e-${{ matrix.browser }}
           path: frontend/playwright-report/
 
+  # Un job possède son propre checkout : Stryker ne peut pas déclencher le HMR de ce Vite.
+  e2e-bang:
+    name: E2E BANG! (Chromium + Spring)
+    needs: [changes, frontend, backend, integration]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft != true && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false' || needs.changes.outputs.quality != 'false') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/node-modules
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - run: npx playwright install --with-deps chromium
+      # Les neuf parcours ensemble, un seul worker et aucun retry (config BANG!).
+      - run: npm run test:e2e:bang
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-e2e-bang
+          path: frontend/reports/bang-e2e/
+          if-no-files-found: error
+
   performance:
     name: Performance (k6)
     needs: [changes, frontend, backend, integration]
@@ -442,6 +485,17 @@ jobs:
           for i in $(seq 1 90); do curl -sf http://localhost:8080/api/auth/session && curl -sf -o /dev/null http://localhost:54330/ && break; sleep 2; done
       # Seuils bloquants (quality/k6/lobby.js) : P95 < 300 ms par scénario, moins de 1 % d'erreurs.
       - run: mkdir -p quality/reports && HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f quality/docker-compose.yml run --rm k6
+      - name: Contrats des sessions et commandes BANG!
+        run: node --test quality/k6/bang-session.test.mjs
+      - name: Charge BANG! (dix tables)
+        run: |
+          mkdir -p quality/reports/bang
+          HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f quality/docker-compose.yml run --rm --no-deps -e PROFILE=load k6 run /quality/k6/bang.js
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rapport-k6-bang
+          path: quality/reports/bang/k6-*.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -516,6 +570,7 @@ jobs:
       - mutation-frontend
       - mutation-backend
       - e2e
+      - e2e-bang
       - performance
       - dast
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && github.event.pull_request.draft != true && (needs.changes.outputs.frontend != 'false' || needs.changes.outputs.backend != 'false') }}
@@ -589,6 +644,7 @@ jobs:
       - mutation-frontend
       - mutation-backend
       - e2e
+      - e2e-bang
       - performance
       - dast
       - sonar

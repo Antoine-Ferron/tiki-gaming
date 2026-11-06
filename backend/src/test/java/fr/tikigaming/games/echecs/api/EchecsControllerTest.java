@@ -66,12 +66,13 @@ class EchecsControllerTest {
     void movesRenvoieLaNouvelleFen() throws Exception {
         // Arrange
         String after = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
-        when(service.play(START, "e2", "e4")).thenReturn(after);
+        when(service.play(START, "e2", "e4", null)).thenReturn(new MoveResult(after, "ONGOING"));
 
         // Act + Assert
         send("moves", "{\"fen\":\"" + START + "\",\"from\":\"e2\",\"to\":\"e4\"}")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fen").value(after));
+                .andExpect(jsonPath("$.fen").value(after))
+                .andExpect(jsonPath("$.status").value("ONGOING"));
     }
 
     @Test
@@ -79,13 +80,13 @@ class EchecsControllerTest {
             "le contrôleur transmet la FEN et les cases au service, et rien d'autre (mock : vérification des appels)")
     void leControleurTransmetLaRequeteAuService() throws Exception {
         // Arrange
-        when(service.play(START, "g1", "f3")).thenReturn("fen-suivante");
+        when(service.play(START, "g1", "f3", null)).thenReturn(new MoveResult("fen-suivante", "ONGOING"));
 
         // Act
         send("moves", "{\"fen\":\"" + START + "\",\"from\":\"g1\",\"to\":\"f3\"}");
 
         // Assert : un seul appel, avec exactement ces arguments
-        verify(service).play(START, "g1", "f3");
+        verify(service).play(START, "g1", "f3", null);
         verifyNoMoreInteractions(service);
     }
 
@@ -93,7 +94,7 @@ class EchecsControllerTest {
     @DisplayName("un coup refusé par le service donne 422 et le message pour le joueur")
     void unCoupRefuseDonne422() throws Exception {
         // Arrange : le stub simule un refus des règles
-        when(service.play(START, "e2", "e5"))
+        when(service.play(START, "e2", "e5", null))
                 .thenThrow(new EchecsRejectedException("Case inaccessible pour la pièce en e2 : e5"));
 
         // Act + Assert
@@ -133,5 +134,20 @@ class EchecsControllerTest {
         // Act + Assert
         send("moves", body).andExpect(status().isBadRequest());
         verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("la promotion choisie est transmise au service, et une lettre inconnue est refusée (400)")
+    void laPromotionEstTransmiseEtValidee() throws Exception {
+        String fen = "k7/4P3/8/8/8/8/8/7K w - - 0 1";
+        when(service.play(fen, "e7", "e8", "q")).thenReturn(new MoveResult("fen-promue", "ONGOING"));
+
+        send("moves", "{\"fen\":\"" + fen + "\",\"from\":\"e7\",\"to\":\"e8\",\"promotion\":\"q\"}")
+                .andExpect(status().isOk());
+        send("moves", "{\"fen\":\"" + fen + "\",\"from\":\"e7\",\"to\":\"e8\",\"promotion\":\"k\"}")
+                .andExpect(status().isBadRequest());
+
+        verify(service).play(fen, "e7", "e8", "q");
+        verifyNoMoreInteractions(service);
     }
 }

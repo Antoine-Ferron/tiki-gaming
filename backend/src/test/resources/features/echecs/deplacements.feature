@@ -33,8 +33,7 @@ Fonctionnalité: Déplacements des pièces
     Quand je regarde les cases accessibles depuis "e2"
     Alors aucune case n'est accessible
 
-  # Écrit d'avance (phase 3 : un coup ne doit pas laisser son roi en échec) : exclu de mvn verify tant qu'il est rouge.
-  @en-cours
+  # Écrit d'avance mardi (tag @en-cours), activé jeudi quand la règle L2 (coups légaux) a été codée : double boucle BDD.
   Scénario: Une pièce clouée devant son roi ne peut pas quitter la ligne
     Étant donné la position "4k3/8/8/8/4r3/8/4B3/4K3 w - - 0 1"
     Quand je regarde les cases accessibles depuis "e2"

@@ -31,15 +31,15 @@ describe('HomePage', () => {
     renderPage(<HomePage />)
 
     fireEvent.click(chip('Thème', 'Réflexion'))
-    expect(titles()).toEqual(['Rush Hour', 'Mastermind', 'Sudoku'])
+    expect(titles()).toEqual(['Rush Hour', 'Mastermind', 'Sudoku', 'Prismine', '2048'])
 
     fireEvent.click(chip('Thème', 'Tous'))
     expect(titles()).toHaveLength(games.length)
   })
 
   test('aucun jeu ne correspond : le dit plutôt que d’afficher une grille vide', () => {
-    // Aucun jeu de duel n'est classé « action » (les échecs, premier jeu de duel, sont en « stratégie »).
-    renderPage(<HomePage />, { url: '/?categorie=duel&theme=action', route: '/' })
+    // Aucun jeu de duel n'est classé « réflexion » (bataille navale est en « action », les échecs en « stratégie »).
+    renderPage(<HomePage />, { url: '/?categorie=duel&theme=reflexion', route: '/' })
 
     expect(titles()).toEqual([])
     expect(screen.getByRole('status').textContent).toBe('Aucun jeu ne correspond à ces filtres.')

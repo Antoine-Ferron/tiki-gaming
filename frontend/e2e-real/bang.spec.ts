@@ -1,13 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { GameView } from '../src/games/bang/board/view'
-
-async function login(page: Page, seat: number) {
-  await page.goto('/login')
-  await page.getByLabel('Email', { exact: true }).fill(`bang${seat}@example.test`)
-  await page.getByLabel('Mot de passe', { exact: true }).fill('bang-browser-test-only')
-  await page.getByRole('button', { name: 'Se connecter', exact: true }).click()
-  await expect(page.getByRole('heading', { name: `Salut bang_test_${seat} 👋` })).toBeVisible()
-}
+import { loginAccount as login } from './session'
 
 async function openFromCatalog(page: Page) {
   await page.goto('/?categorie=multi')

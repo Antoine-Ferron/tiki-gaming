@@ -122,6 +122,13 @@
       <artifactId>junit-platform-suite</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Tests réels de persistance Dames : accès JDBC de contrôle (Testcontainers est déclaré plus haut).
+         Version gérée par le BOM Spring Boot ; aucune dépendance ajoutée au serveur livré. -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -129,6 +136,17 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <properties>
+            <configurationParameters>
+              cucumber.junit-platform.discovery.as-root-engine=false
+            </configurationParameters>
+          </properties>
+        </configuration>
       </plugin>
 
       <!-- Couverture des tests (JaCoCo) : target/site/jacoco/jacoco.xml après `mvn verify`, lu par SonarQube. -->
@@ -257,6 +275,32 @@
   </build>
 
   <profiles>
+    <!-- Les *IT sont séparés des unitaires et de PIT. Docker obligatoire, jamais de skip automatique. -->
+    <profile>
+      <id>integration</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <configuration>
+              <failIfNoTests>true</failIfNoTests>
+              <systemPropertyVariables>
+                <dame.repositoryRoot>${project.basedir}/..</dame.repositoryRoot>
+              </systemPropertyVariables>
+            </configuration>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>integration-test</goal>
+                  <goal>verify</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <!-- Mutation testing : `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage`
          (rapport dans target/pit-reports). Échoue sous 75 % de mutants tués sur le cœur métier. -->
     <profile>
@@ -288,8 +332,22 @@
                 <param>fr.tikigaming.games.dame.*</param>
                 <param>fr.tikigaming.games.mastermind.MastermindGame</param>
                 <param>fr.tikigaming.games.rush_hour.*</param>
+                <param>fr.tikigaming.games.prismine.Engine*</param>
+                <param>fr.tikigaming.games.prismine.Expedition*</param>
+                <param>fr.tikigaming.games.prismine.Floors*</param>
+                <param>fr.tikigaming.games.prismine.PrismineScoreValidator</param>
                 <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*</param>
+                <param>fr.tikigaming.games.mini_gta.progress.*</param>
+                <param>fr.tikigaming.games.mini_gta.core.*</param>
+                <param>fr.tikigaming.games.mini_gta.world.Navigation</param>
+                <param>fr.tikigaming.games.mini_gta.world.MinHeap</param>
+                <param>fr.tikigaming.games.mini_gta.world.WorldConstants</param>
+                <param>fr.tikigaming.games.bang.engine.PrivateTableService*</param>
+                <param>fr.tikigaming.games.bang.engine.InitialDeal</param>
+                <param>fr.tikigaming.games.bang.engine.CardDraw</param>
+                <param>fr.tikigaming.games.bang.engine.PlayerDistance</param>
+                <param>fr.tikigaming.games.bang.engine.ShotRules*</param>
               </targetClasses>
               <targetTests>
                 <param>fr.tikigaming.auth.*Test</param>
@@ -297,8 +355,20 @@
                 <param>fr.tikigaming.games.dame.*Test</param>
                 <param>fr.tikigaming.games.mastermind.MastermindGameTest</param>
                 <param>fr.tikigaming.games.rush_hour.*Test</param>
+                <param>fr.tikigaming.games.prismine.*Test</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*Test</param>
+                <param>fr.tikigaming.games.mini_gta.progress.*Test</param>
+                <param>fr.tikigaming.games.mini_gta.core.*Test</param>
+                <param>fr.tikigaming.games.mini_gta.world.*Test</param>
+                <param>fr.tikigaming.games.mini_gta.api.*Test</param>
+                <param>fr.tikigaming.games.bang.engine.*Test</param>
               </targetTests>
+              <excludedTestClasses>
+                <!-- Les campagnes BANG! restent unitaires : Spring, Docker et Chromium ont leurs propres preuves. -->
+                <param>fr.tikigaming.games.bang.engine.*HttpTest</param>
+                <param>fr.tikigaming.games.bang.engine.BangBrowserIsolationTest</param>
+                <param>fr.tikigaming.games.bang.engine.*NetworkTest</param>
+              </excludedTestClasses>
               <mutators>
                 <mutator>STRONGER</mutator>
               </mutators>

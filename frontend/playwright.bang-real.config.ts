@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
@@ -14,9 +15,15 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   forbidOnly: true,
-  timeout: 60000,
+  timeout: 120000,
   expect: { timeout: 10000 },
-  reporter: 'list',
+  outputDir: 'reports/bang-e2e/results',
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'reports/bang-e2e/html', open: 'never' }],
+    ['json', { outputFile: 'reports/bang-e2e/results.json' }],
+  ],
+  metadata: { testedSha: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() },
   use: { baseURL: 'http://localhost:5198', trace: 'on', locale: 'fr-FR' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
@@ -29,8 +36,11 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: 'npx vite --config vite.bang-e2e.config.ts --port 5198 --strictPort',
+      // La version compilée supprime le HMR et la compilation à la volée pendant la recette.
+      command:
+        'npx vite build --config vite.bang-e2e.config.ts && npx vite preview --config vite.bang-e2e.config.ts --port 5198 --strictPort',
       url: 'http://localhost:5198',
+      timeout: 120000,
       reuseExistingServer: false,
       env: {
         VITE_SUPABASE_URL: 'http://localhost:5198/api/test-supabase',

@@ -260,6 +260,96 @@
       "type": "Synchronous/HTTP"
     },
     {
+      "description": "la lecture du catalogue des missions de MiniGTA",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/api/games/mini-gta/missions"
+      },
+      "response": {
+        "body": {
+          "content": [
+            {
+              "giver": {
+                "x": 39,
+                "z": 268
+              },
+              "id": "express",
+              "reward": 800,
+              "title": "Colis express"
+            }
+          ],
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$[*].giver.x": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].giver.z": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[*].reward": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$[*].title": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
       "description": "la lecture privée BANG! d’un invité sans compte",
       "pending": false,
       "providerStates": [
@@ -336,6 +426,242 @@
               "matchers": [
                 {
                   "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "la réapparition après une mort avec 500 $",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "progress": {
+              "armor": 0,
+              "completedMissions": [],
+              "inventory": null,
+              "money": 500,
+              "stats": {
+                "kills": 0,
+                "playTime": 0,
+                "wantedMax": 0
+              },
+              "totalEarned": 0,
+              "version": 1
+            },
+            "reason": "dead"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/mini-gta/respawn"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "fee": 100,
+            "progress": {
+              "armor": 0,
+              "completedMissions": [],
+              "inventory": null,
+              "money": 400,
+              "stats": {
+                "kills": 0,
+                "playTime": 0,
+                "wantedMax": 0
+              },
+              "totalEarned": 0,
+              "version": 1
+            }
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.fee": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.progress": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.progress.money": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.progress.totalEarned": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "la réussite de la mission « Colis express » sur une nouvelle partie",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "progress": {
+              "armor": 0,
+              "completedMissions": [],
+              "inventory": null,
+              "money": 500,
+              "stats": {
+                "kills": 0,
+                "playTime": 0,
+                "wantedMax": 0
+              },
+              "totalEarned": 0,
+              "version": 1
+            }
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/mini-gta/missions/express/complete"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "progress": {
+              "armor": 0,
+              "completedMissions": [],
+              "inventory": null,
+              "money": 1300,
+              "stats": {
+                "kills": 0,
+                "playTime": 0,
+                "wantedMax": 0
+              },
+              "totalEarned": 800,
+              "version": 1
+            },
+            "reward": 800,
+            "rewarded": true
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.progress": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.progress.money": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.progress.totalEarned": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.reward": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
                 }
               ]
             }
@@ -597,7 +923,8 @@
       "response": {
         "body": {
           "content": {
-            "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+            "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+            "status": "ONGOING"
           },
           "contentType": "application/json",
           "encoded": false
@@ -610,6 +937,14 @@
         "matchingRules": {
           "body": {
             "$.fen": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.status": {
               "combine": "AND",
               "matchers": [
                 {
@@ -690,6 +1025,135 @@
           }
         },
         "status": 422
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "l’achat d’un pistolet avec 500 $",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "item": "weapon",
+            "progress": {
+              "armor": 0,
+              "completedMissions": [],
+              "inventory": null,
+              "money": 500,
+              "stats": {
+                "kills": 0,
+                "playTime": 0,
+                "wantedMax": 0
+              },
+              "totalEarned": 0,
+              "version": 1
+            },
+            "weapon": "pistol"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/mini-gta/shop/purchase"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "ok": true,
+            "price": 300,
+            "progress": {
+              "armor": 0,
+              "completedMissions": [],
+              "inventory": null,
+              "money": 200,
+              "stats": {
+                "kills": 0,
+                "playTime": 0,
+                "wantedMax": 0
+              },
+              "totalEarned": 0,
+              "version": 1
+            },
+            "rounds": 24
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.price": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.progress": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.progress.money": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.progress.totalEarned": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.rounds": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
       },
       "type": "Synchronous/HTTP"
     },
@@ -1030,6 +1494,87 @@
           }
         },
         "status": 401
+      },
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "description": "une réapparition avec un solde négatif",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "aucun joueur n’est connecté"
+        }
+      ],
+      "request": {
+        "body": {
+          "content": {
+            "progress": {
+              "armor": 0,
+              "completedMissions": [],
+              "inventory": null,
+              "money": -1,
+              "stats": {
+                "kills": 0,
+                "playTime": 0,
+                "wantedMax": 0
+              },
+              "totalEarned": 0,
+              "version": 1
+            },
+            "reason": "dead"
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ],
+          "X-XSRF-TOKEN": [
+            "jeton-csrf-de-test"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-XSRF-TOKEN": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "method": "POST",
+        "path": "/api/games/mini-gta/respawn"
+      },
+      "response": {
+        "body": {
+          "content": {
+            "error": "Le solde ne peut pas être négatif."
+          },
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 400
       },
       "type": "Synchronous/HTTP"
     }

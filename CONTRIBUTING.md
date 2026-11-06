@@ -166,6 +166,14 @@ c'est le formatter qui tranche les questions de style.
 - **BDD** (`src/games/features/*.feature`, en français) : les règles métier du lobby (classement, scores)
   écrites en Gherkin et exécutées par `npm test` (vitest-cucumber). Les étapes (`*.steps.test.ts`) appellent
   le domaine et le SDK avec ses fakes, **jamais l'interface** : un scénario ne casse pas quand l'UI change.
+  Côté backend, les `.feature` vont dans `src/test/resources/<paquet du jeu>/features/` et sont exécutés par
+  `mvn test` (Cucumber JVM) : une classe `@Suite` par jeu. Pas de `cucumber-spring`, qui imposerait une
+  configuration Spring à toutes les suites : une suite qui a besoin de l'API démarre l'application elle-même
+  (`@BeforeAll`, port libre), comme `MiniGtaApi`.
+- **BDD Java Dames** (`backend/src/test/resources/features/dame`) : `DameBddTest` appelle le domaine et son fake
+  via Cucumber/JUnit Platform, sans Spring ni Docker. Depuis la racine :
+  `mvn -f backend/pom.xml -Dtest=DameBddTest test`. Rapport : `backend/target/cucumber/dame.html`, artefact CI
+  `rapport-bdd-dame` ; voir [la documentation Dames](docs/dame/bdd.md).
 - **Propriétés et fuzzing** (`*.property.test.ts`, fast-check) : une règle vraie pour toute entrée générée
   (« tout entier au-dessus du maximum est refusé »), et du fuzzing (« n'importe quelle saisie donne des données ou
   des messages, jamais une exception »). En cas d'échec, fast-check réduit l'entrée au plus petit contre-exemple
@@ -210,8 +218,9 @@ Java 21 · Spring Boot · Maven, dans `backend/`. Voir [docs/architecture.md](do
 |--------------------------|--------------------------------------------------------------------------|
 | `mvn spotless:apply`     | **Formatter** : reformate le code (palantir-java-format, 4 espaces, 120 colonnes) |
 | `mvn checkstyle:check`   | **Linter** : imports inutiles, nommage, accolades, erreurs probables (`checkstyle.xml`) |
-| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc)                            |
+| `mvn test`               | Tests unitaires (JUnit 5 + AssertJ + MockMvc) et scénarios BDD (Cucumber) |
 | `mvn verify`             | Tout à la fois : linter, compilation, tests, couverture minimale (JaCoCo), et échec si le code n'est pas formaté |
+| `mvn -Pintegration verify` | Ajoute les tests Java `*IT` PostgreSQL/PostgREST via Testcontainers ; Docker obligatoire |
 | `mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage` | **Mutation testing** (Pitest) ; échoue sous 75 % (rapport : `target/pit-reports/`) |
 | `mvn spring-boot:run`    | Lance le serveur sur http://localhost:8080 (lit `backend/.env`)          |
 
@@ -280,7 +289,7 @@ ce qui compte comme réussi pour la fusion :
 | 1 | `frontend` | `frontend/**` | `npm ci` → `format:check` → `lint` → `typecheck` → `rtm:check` → `test:coverage` (seuils) → `test:contract` (contrat à jour) → `build` |
 | 1 | `backend` | `backend/**` ou `frontend/pacts/**` | `spotless:check` → `mvn -B verify` (Checkstyle, tests dont Pact provider et chaos Toxiproxy, JaCoCo) |
 | 1 | `security` | toujours | `npm audit --audit-level=high` ; sur une PR, *dependency review* |
-| 2 | `integration` | `frontend/**` ou `supabase/**` | Testcontainers : migrations, RLS et triggers sur PostgreSQL réel |
+| 2 | `integration` | `frontend/**`, `supabase/**`, `quality/db-init/**`, `backend/pom.xml` ou paquets Java Dames/SDV Civilisation | Tests collectifs PostgreSQL, IT SDV, puis IT Dames PostgreSQL/PostgREST via Failsafe |
 | 3 | `mutation-frontend` | `frontend/**` | Stryker (seuil 75 %), rapport en artefact |
 | 3 | `mutation-backend` | `backend/**` | Pitest (seuil 75 %), rapport en artefact |
 | 3 | `e2e` | `frontend/**` | Playwright sous Chromium, Firefox et WebKit + audit WCAG 2.1 AA (axe) |

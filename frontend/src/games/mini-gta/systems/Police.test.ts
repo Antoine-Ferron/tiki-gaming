@@ -22,12 +22,24 @@ const notes: string[] = []
 const policeCars = () => [...game.vehicles].filter((v) => v.tags.has('police') && !v.destroyed)
 const officers = () => [...game.police.actors()]
 
-/** Repart du point de départ, à pied, sans recherche ni unités, avec 1 000 $. */
+/**
+ * Repart du point de départ, à pied, sans recherche ni unités, avec 1 000 $. Les minuteries et le tirage
+ * internes de la police (champs privés) reprennent leurs valeurs de début de partie : où apparaissent les
+ * renforts et quand tire l'hélicoptère ne dépendent pas des scénarios joués avant.
+ */
 function reset() {
-  game.police.clear()
+  Object.assign(game.police as unknown as Record<string, unknown>, {
+    rng: new Rng(1717),
+    heliAngle: 0,
+    heliFire: 3,
+    dispatchTimer: 2,
+    roadblockTimer: 20,
+    bustTimer: 0,
+    seenTimer: 0,
+    seen: false,
+  })
+  t.reset()
   game.player.godMode = true
-  const s = game.city.locations.spawn
-  game.player.respawnAt(s.x, s.y, s.z)
   useGameStore.getState().load({ ...newSave(), money: 1000 })
   notes.length = 0
 }
@@ -273,6 +285,10 @@ describe('intervention', () => {
 
 describe('fin de la poursuite', () => {
   test('hors de vue assez longtemps, le joueur sème la police', () => {
+    // Loin de toute route : aucune voiture de police ne peut venir le chercher, il reste hors de vue.
+    const hideout = { x: -800, z: -1200 }
+    t.reset(hideout)
+    expect(game.nav.edgesInRing(hideout.x, hideout.z, 0, 200)).toHaveLength(0)
     game.police.wanted.setMinimum(1, FAR.x, FAR.z)
 
     const lost = until(() => game.police.wanted.stars === 0, 120)

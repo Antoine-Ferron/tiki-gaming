@@ -39,6 +39,38 @@ test('avec une seule carte disponible au total, refuse avant de mélanger et con
 
 const unchanged = <T>(items: T[]) => items
 
+test('défausser une carte retire exactement son identifiant et conserve les autres mains', () => {
+  const game = endTurn(draw(deal(unchanged), unchanged))
+  const before = structuredClone(game)
+  const card = game.players[0].hand[2]
+  const result = discard(game, card.id)
+
+  expect(result.players[0].hand).toEqual(before.players[0].hand.filter((candidate) => candidate.id !== card.id))
+  expect(result.players.slice(1)).toEqual(before.players.slice(1))
+  expect(result.discardPile).toEqual([...before.discardPile, card])
+  expect(result.phase).toBe('DISCARD')
+  expect(result.currentSeat).toBe(1)
+  expect(game).toEqual(before)
+})
+
+test.each([
+  { from: 2, to: 4, allowed: false },
+  { from: 4, to: 1, allowed: true },
+])('la portée de $from vers $to suit le plus court trajet autour de la table', ({ from, to, allowed }) => {
+  const game = draw(deal(unchanged), unchanged)
+  game.currentSeat = from
+  const before = structuredClone(game)
+  const cardId = game.players[from - 1].hand[0].id
+  if (allowed) {
+    const shot = fire(game, cardId, to)
+    expect(shot.pendingShot).toMatchObject({ shooterSeat: from, targetSeat: to })
+    expect(shot.players[from - 1].hand).toEqual(before.players[from - 1].hand.filter((card) => card.id !== cardId))
+  } else {
+    expect(() => fire(game, cardId, to)).toThrow('La cible est hors de portée.')
+  }
+  expect(game).toEqual(before)
+})
+
 function expectAllCards(game: LocalGame) {
   const cards = [...game.players.flatMap((p) => p.hand), ...game.drawPile, ...game.discardPile]
   expect(cards).toHaveLength(37)
