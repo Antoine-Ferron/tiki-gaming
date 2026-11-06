@@ -8,6 +8,8 @@ dans l'esprit de Doodle Jump ou Panda Jump.
 - Spécification complète (exigences EF / ENF, critères d'acceptation, paramètres) :
   [docs/games/lemur/specification.md](../../../../docs/games/lemur/specification.md)
 - Traçabilité exigences ↔ tests : lignes `REQ-LEM-*` et `TC-LEM-*` de [specs/rtm-matrix.md](../../../../specs/rtm-matrix.md)
+- Liste de tous les tests par niveau, technique et boîte :
+  [docs/games/lemur/inventaire-tests.md](../../../../docs/games/lemur/inventaire-tests.md)
 
 ## Jouer
 
