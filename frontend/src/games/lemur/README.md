@@ -1,6 +1,7 @@
 # LemurTiki
 - Maintainer Aaron Tiavinjanahary - aaron.tiavinjanahary@supdevinci-edu.fr
-Jeu solo de la plateforme Tiki Gaming (issue #19, slug `lemur`). Un maki grimpe un baobab de Madagascar en
+
+- Jeu solo de la plateforme Tiki Gaming (issue #19, slug `lemur`). Un maki grimpe un baobab de Madagascar en
 rebondissant de branche en branche, pendant qu'une fossa le poursuit par en dessous et accélère sans cesse. Le joueur
 ne dirige que la gauche et la droite et doit monter le plus haut possible en une seule vie. Genre : runner vertical,
 dans l'esprit de Doodle Jump ou Panda Jump.
