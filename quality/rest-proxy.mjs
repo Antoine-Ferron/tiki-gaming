@@ -11,7 +11,13 @@ http
   .createServer((req, res) => {
     const path = req.url.startsWith(PREFIX) ? req.url.slice(PREFIX.length) || '/' : req.url
     const upstream = http.request(
-      { host: '127.0.0.1', port: TARGET_PORT, method: req.method, path, headers: req.headers },
+      {
+        host: '127.0.0.1',
+        port: TARGET_PORT,
+        method: req.method,
+        path,
+        headers: req.headers,
+      },
       (answer) => {
         res.writeHead(answer.statusCode, answer.headers)
         answer.pipe(res)

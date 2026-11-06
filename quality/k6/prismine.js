@@ -13,7 +13,12 @@ const DURATION = __ENV.DURATION || '30s'
 const arrival = { timeUnit: '1s', preAllocatedVUs: 20, maxVUs: 200 }
 const PROFILES = {
   smoke: { executor: 'shared-iterations', vus: 1, iterations: 5 },
-  load: { executor: 'constant-arrival-rate', rate: RATE, duration: DURATION, ...arrival },
+  load: {
+    executor: 'constant-arrival-rate',
+    rate: RATE,
+    duration: DURATION,
+    ...arrival,
+  },
   stress: {
     executor: 'ramping-arrival-rate',
     startRate: RATE,
@@ -52,7 +57,10 @@ const accepted = http.expectedStatuses(200, 201, 409)
 
 function csrfHeaders() {
   const cookie = http.cookieJar().cookiesForURL(BASE_URL)['XSRF-TOKEN']
-  return { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': cookie ? cookie[0] : '' }
+  return {
+    'Content-Type': 'application/json',
+    'X-XSRF-TOKEN': cookie ? cookie[0] : '',
+  }
 }
 
 function send(path, body, name) {
@@ -65,28 +73,40 @@ function send(path, body, name) {
 
 export default function () {
   // Pose les cookies de session et CSRF, comme à l'ouverture de la page.
-  http.get(`${BASE_URL}/api/auth/session`, { tags: { name: 'GET /auth/session' } })
+  http.get(`${BASE_URL}/api/auth/session`, {
+    tags: { name: 'GET /auth/session' },
+  })
 
   const started = send('', {}, 'POST /runs')
-  check(started, { 'démarrage : 201, sans carte cachée': (r) => r.status === 201 && r.json('grid') === undefined })
+  check(started, {
+    'démarrage : 201, sans carte cachée': (r) => r.status === 201 && r.json('grid') === undefined,
+  })
   if (started.status !== 201) return
   const { id, size } = started.json()
 
-  const resumed = http.get(`${RUNS}/${id}`, { tags: { name: 'GET /runs/:id' } })
+  const resumed = http.get(`${RUNS}/${id}`, {
+    tags: { name: 'GET /runs/:id' },
+  })
   check(resumed, { 'reprise : 200': (r) => r.status === 200 })
 
   for (const entry of [0, 1, 2]) {
     const probe = send(`/${id}/probes`, { entry }, 'POST /runs/:id/probes')
-    check(probe, { 'tir : 200 ou bord déjà exploré': (r) => r.status === 200 || r.status === 409 })
+    check(probe, {
+      'tir : 200 ou bord déjà exploré': (r) => r.status === 200 || r.status === 409,
+    })
   }
 
   const verdict = send(`/${id}/validation`, { guess: '.'.repeat(size * size) }, 'POST /runs/:id/validation')
   check(verdict, { 'validation : 200': (r) => r.status === 200 })
 
   const ended = send(`/${id}/end`, {}, 'POST /runs/:id/end')
-  check(ended, { 'fin : 200 et pas de score pour un invité': (r) => r.status === 200 && r.json('recorded') === false })
+  check(ended, {
+    'fin : 200 et pas de score pour un invité': (r) => r.status === 200 && r.json('recorded') === false,
+  })
 }
 
 export function handleSummary(data) {
-  return { [`/quality/reports/k6-prismine-${PROFILE}.json`]: JSON.stringify(data, null, 2) }
+  return {
+    [`/quality/reports/k6-prismine-${PROFILE}.json`]: JSON.stringify(data, null, 2),
+  }
 }

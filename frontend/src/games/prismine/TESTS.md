@@ -4,7 +4,7 @@ Prismine est arbitré par le serveur Java : la carte cachée, les règles et le 
 `backend/src/main/java/fr/tikigaming/games/prismine/`. Le front React envoie les tirs et la carte du joueur, et
 ne reçoit la vraie carte d'un étage qu'une fois celui-ci terminé.
 
-**48 tests : 15 unitaires, 13 d'intégration (dont 7 sur un vrai Postgres), 15 scénarios BDD et 5 parcours E2E.** Les
+**63 tests : 20 unitaires, 14 d'intégration (dont 7 sur un vrai Postgres), 7 de contrat Pact, 2 de chaos, 15 scénarios BDD et 5 parcours E2E.** Les
 unitaires suivent l'[approche TDD](../../../../CONTRIBUTING.md#approche-tdd) ; les scénarios BDD et E2E ont été écrits
 après le code, pour figer son comportement.
 
@@ -85,13 +85,36 @@ autres E2E du dépôt, le serveur arbitre et Supabase sont simulés par intercep
 
 ## Mutation : Pitest sur le domaine Java
 
-**82,1 % de mutants tués (206 sur 251, seuil de la CI : 75 %)** sur `Engine`, `Expedition`, `Floors` et
-`PrismineScoreValidator`.
+**81,8 % de mutants tués (233 sur 285, seuil de la CI : 75 %)** sur `Engine` (90,6 %), `Expedition` (80 %), `Floors` (70,1 %) et
+`PrismineScoreValidator`, mesuré en local le 6 novembre 2026. La mesure précédente (206 sur 251) venait d'une autre version de
+Pitest : les deux scores ne se comparent pas directement.
 
 ```bash
 # Dans backend/ : rapport HTML dans target/pit-reports/index.html
 mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
 ```
+
+## Mutation : Stryker sur le front
+
+**76,99 % de mutants tués (271 sur 352, seuil de la CI : 75 %)** sur `engine.ts` (72 %), `expedition.ts` (76,6 %) et
+`labels.ts` (90,9 %), mesuré en local le 6 novembre 2026. `engine.ts` reste sous 75 % pris seul.
+
+```bash
+# Dans frontend/
+npx stryker run --mutate src/games/prismine/engine.ts,src/games/prismine/expedition.ts,src/games/prismine/labels.ts
+```
+
+## Contrat et chaos
+
+- **Contrat Pact** : `frontend/tests/contract/prismine.pact.test.ts` écrit 7 échanges, rejoués sur le vrai serveur par
+  `PrisminePactProviderTest`.
+- **Chaos** : `PrismineSupabaseChaosTest` place Toxiproxy devant un faux PostgREST. Docker requis, ignoré sans lui.
+
+## Charge, sécurité et exploitation
+
+- [Test de charge k6](../../../../docs/games/prismine/rapport-charge-k6.md)
+- [Sécurité](../../../../docs/games/prismine/rapport-securite.md)
+- [Runbook et décision Go / No-Go](../../../../docs/games/prismine/runbook.md)
 
 ## Non couvert
 
@@ -100,5 +123,5 @@ mvn -B -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
 - `createSaver` (ordre des sauvegardes concurrentes) n'a plus de test dédié : seul son cas simple passe par les TI.
 - Le vrai Supabase : les adaptateurs sont testés contre un serveur PostgREST simulé.
 - Le navigateur relié au vrai serveur Java : les E2E simulent le serveur et les TI du backend n'ont pas de navigateur.
-- La mutation côté front : Stryker ne porte pas sur le code de Prismine, seul le domaine Java passe par Pitest.
-- 45 mutants non tués sur 251 (voir ci-dessous), dont 26 dans `Floors`.
+- 52 mutants Pitest non tués sur 285, dont 26 dans `Floors`, et 81 mutants Stryker sur 352.
+- Le scan ZAP sur Prismine, le retour arrière chronométré et la recette par un joueur.
