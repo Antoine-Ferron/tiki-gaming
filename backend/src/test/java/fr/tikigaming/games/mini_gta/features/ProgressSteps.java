@@ -7,7 +7,6 @@ import io.cucumber.java.fr.Alors;
 import io.cucumber.java.fr.Et;
 import io.cucumber.java.fr.Etantdonné;
 import io.cucumber.java.fr.Quand;
-import io.cucumber.java.fr.Soit;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import tools.jackson.databind.JsonNode;
@@ -15,21 +14,52 @@ import tools.jackson.databind.node.ObjectNode;
 
 /**
  * Étapes des règles d'argent (missions, armurerie, réapparition, score). Comme le front, chaque étape envoie la
- * progression reçue à la réponse précédente : le serveur ne garde rien entre deux requêtes.
+ * progression reçue à la réponse précédente : le serveur ne garde rien entre deux requêtes. Les noms du joueur
+ * (« Colis express », « fusil à pompe ») ne sont traduits en identifiants de l'API qu'ici.
  */
 public class ProgressSteps {
 
-    private ObjectNode progress = (ObjectNode) MiniGtaApi.JSON.valueToTree(Progress.initial());
+    /** Missions, par le nom affiché au joueur (docs/games/mini-gta/regles.md, R3). */
+    private static final Map<String, String> MISSIONS = Map.of(
+            "Colis express", "express",
+            "La fuite", "chase",
+            "Contrat au port", "port",
+            "Commande spéciale", "special",
+            "Braquage de banque", "braquage");
+
+    /** Armes, par le nom affiché à l'armurerie. */
+    private static final Map<String, String> WEAPONS = Map.of(
+            "poings", "fists",
+            "batte", "bat",
+            "pistolet", "pistol",
+            "grenades", "grenade",
+            "fusil à pompe", "shotgun",
+            "fusil d'assaut", "rifle",
+            "sniper", "sniper");
+
+    private ObjectNode progress;
     private JsonNode result;
 
-    @Soit("une nouvelle partie")
+    private static String id(Map<String, String> names, String name) {
+        assertThat(names).as("nom inconnu des scénarios").containsKey(name);
+        return names.get(name);
+    }
+
+    @Etantdonné("une nouvelle partie")
     public void uneNouvellePartie() {
         progress = (ObjectNode) MiniGtaApi.JSON.valueToTree(Progress.initial());
     }
 
     @Etantdonné("un joueur qui a {montant}")
     public void unJoueurQuiA(int money) {
+        uneNouvellePartie();
         progress.put("money", money);
+    }
+
+    @Etantdonné("un joueur qui a déjà gagné {montant}")
+    public void unJoueurQuiADejaGagne(int earned) {
+        uneNouvellePartie();
+        progress.put("totalEarned", earned);
     }
 
     /** Envoie la progression courante ; la garde à jour si la requête réussit. */
@@ -44,17 +74,24 @@ public class ProgressSteps {
     @Quand("il réussit la mission {string}")
     @Etantdonné("il a réussi la mission {string}")
     public void ilReussitLaMission(String mission) {
-        transaction("/missions/" + mission + "/complete", Map.of());
+        transaction("/missions/" + id(MISSIONS, mission) + "/complete", Map.of());
+    }
+
+    @Etantdonné("il a réussi les missions {string} et {string}")
+    public void ilAReussiLesMissions(String first, String second) {
+        ilReussitLaMission(first);
+        ilReussitLaMission(second);
     }
 
     @Quand("il achète l'arme {string}")
+    @Et("il a acheté l'arme {string}")
     public void ilAcheteLArme(String weapon) {
-        transaction("/shop/purchase", Map.of("item", "weapon", "weapon", weapon));
+        transaction("/shop/purchase", Map.of("item", "weapon", "weapon", id(WEAPONS, weapon)));
     }
 
     @Quand("il achète des munitions pour l'arme {string}")
     public void ilAcheteDesMunitions(String weapon) {
-        transaction("/shop/purchase", Map.of("item", "ammo", "weapon", weapon));
+        transaction("/shop/purchase", Map.of("item", "ammo", "weapon", id(WEAPONS, weapon)));
     }
 
     @Quand("il achète le gilet")
@@ -62,9 +99,15 @@ public class ProgressSteps {
         transaction("/shop/purchase", Map.of("item", "armor"));
     }
 
-    @Quand("il demande l'article {string} pour l'arme {string}")
-    public void ilDemandeLArticle(String item, String weapon) {
-        transaction("/shop/purchase", Map.of("item", item, "weapon", weapon));
+    @Quand("il demande l'arme {string}")
+    public void ilDemandeLArme(String weapon) {
+        ilAcheteLArme(weapon);
+    }
+
+    @Quand("il demande des munitions pour les {string}")
+    @Et("il demande des munitions pour la {string}")
+    public void ilDemandeDesMunitions(String weapon) {
+        ilAcheteDesMunitions(weapon);
     }
 
     @Quand("il meurt")
@@ -89,10 +132,15 @@ public class ProgressSteps {
         assertThat(result.get("reward").asInt()).isZero();
     }
 
+    @Alors("la mission est introuvable")
+    public void laMissionEstIntrouvable() {
+        MiniGtaApi.assertRefused(404);
+    }
+
     @Et("la mission {string} est terminée")
     public void laMissionEstTerminee(String mission) {
         assertThat(progress.get("completedMissions").valueStream().map(JsonNode::asString))
-                .containsOnlyOnce(mission);
+                .containsOnlyOnce(id(MISSIONS, mission));
     }
 
     @Alors("l'achat est accepté au prix de {montant}")
@@ -105,6 +153,11 @@ public class ProgressSteps {
     public void lAchatEst(String outcome) {
         assertThat(outcome).isIn("accepté", "refusé");
         assertThat(result.get("ok").asBoolean()).isEqualTo(outcome.equals("accepté"));
+    }
+
+    @Alors("l'armurerie répond que l'article n'est pas vendu")
+    public void lArticleNEstPasVendu() {
+        MiniGtaApi.assertRefused(400);
     }
 
     @Et("il reçoit {int} munitions")

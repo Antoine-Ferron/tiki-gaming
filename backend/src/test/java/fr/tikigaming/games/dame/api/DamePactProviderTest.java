@@ -90,7 +90,7 @@ class DamePactProviderTest {
         HttpResponse<String> response =
                 send("/api/games/dame/matches", "{\"whiteName\":\"Chérif\",\"blackName\":\"Amadou\"}");
         assertThat(response.statusCode()).isEqualTo(201);
-        return Map.of("matchId", json.readTree(response.body()).path("id").asText());
+        return Map.of("matchId", json.readTree(response.body()).path("id").asString());
     }
 
     @State("une rencontre de dames a déjà avancé")

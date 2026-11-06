@@ -16,7 +16,6 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
 
   function commit(times: number, label: string, witnessed: boolean) {
     expect(CRIMES).toHaveProperty([label])
-    wanted = new WantedLevel()
     for (let i = 0; i < times; i++) wanted.commit(CRIMES[label], 0, 0, witnessed)
   }
 
@@ -31,16 +30,25 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
     wanted.update(seconds, false, away, 0)
   }
 
-  ScenarioOutline('Les crimes vus par un témoin font monter le niveau de recherche', ({ When, Then }, variables) => {
-    When('il commet <fois> fois le crime "<crime>" devant un témoin', () =>
-      commit(Number(variables.fois), variables.crime, true),
-    )
-    Then('il est recherché avec <étoiles> étoile(s)', () => {
-      expect(wanted.stars).toBe(Number(variables['étoiles']))
-    })
-  })
+  const notWanted = () => {
+    wanted = new WantedLevel()
+  }
 
-  Scenario('Un crime sans témoin ne compte pas', ({ When, Then }) => {
+  ScenarioOutline(
+    'Les crimes vus par un témoin font monter le niveau de recherche',
+    ({ Given, When, Then }, variables) => {
+      Given("un joueur qui n'est pas recherché", notWanted)
+      When('il commet <fois> fois le crime "<crime>" devant un témoin', () =>
+        commit(Number(variables.fois), variables.crime, true),
+      )
+      Then('il est recherché avec <étoiles> étoile(s)', () => {
+        expect(wanted.stars).toBe(Number(variables['étoiles']))
+      })
+    },
+  )
+
+  Scenario('Un crime sans témoin ne compte pas', ({ Given, When, Then }) => {
+    Given("un joueur qui n'est pas recherché", notWanted)
     When('il commet {int} fois le crime {string} sans témoin', (_, times: number, label: string) =>
       commit(times, label, false),
     )
@@ -59,15 +67,13 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
     })
   })
 
-  Scenario('Repéré par la police, le joueur doit à nouveau se cacher', ({ Given, When, And, Then }) => {
+  Scenario('Repéré par la police, le joueur doit à nouveau se cacher', ({ Given, And, When, Then }) => {
     Given('un joueur recherché avec {int} étoile\\(s\\)', (_, stars: number) => wantedWith(stars))
-    When('la police le perd de vue pendant {int} secondes, dans la zone de recherche', (_, seconds: number) =>
-      unseen(seconds, 'dans'),
-    )
-    And('la police le repère', () => {
+    And("la police, après l'avoir perdu de vue {int} secondes, vient de le repérer", (_, seconds: number) => {
+      unseen(seconds, 'dans')
       wanted.update(0.1, true, 0, 0)
     })
-    And('la police le perd de vue pendant {int} secondes, dans la zone de recherche', (_, seconds: number) =>
+    When('la police le perd de vue pendant {int} secondes, dans la zone de recherche', (_, seconds: number) =>
       unseen(seconds, 'dans'),
     )
     Then('il est recherché avec {int} étoile\\(s\\)', (_, stars: number) => {

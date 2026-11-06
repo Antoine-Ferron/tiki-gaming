@@ -138,16 +138,53 @@ reprend le sous-ensemble de l'API Rapier utilisé par le jeu, au-dessus de **can
 | Simulation | `game/*.test.ts`, `systems/*.test.ts`, `entities/*.test.ts` | parties sans WebGL sur une portion de la vraie ville (`game/testing/harness.ts`, `game/fixtures`) : véhicules, joueur, trafic, missions, combat, police. Le harnais démarre une ville vide et fixe la graine de `Math.random` : chaque fichier tourne en moins de 3 s |
 | Accueil | `MiniGtaGame.test.tsx` | invité, sauvegarde, sauvegarde corrompue, classement, erreur du SDK, écran tactile |
 | Logique client | `core/`, `systems/`, `world/` | boucle à pas fixe, RNG, bus d'événements, armes, niveau de recherche, missions, reconstruction du monde |
-| BDD, back | `backend/src/test/resources/.../mini_gta/features/*.feature` (Cucumber JVM, `MiniGtaFeaturesTest`) | R1, R3, R5, R7 (frais), R8 (gains), R9, R10 et GPS, en HTTP sur l'application réelle démarrée par la suite |
+| BDD, back | `backend/src/test/resources/.../mini_gta/features/*.feature` (Cucumber JVM, `MiniGtaFeaturesTest`) | R1, R3, R5, R7 (frais), R8 (gains et plafond), R9, R10 et GPS, en HTTP sur l'application réelle démarrée par la suite |
 | BDD, front | `features/*.feature` (vitest-cucumber, `*.steps.test.ts`) | R2 et sauvegarde corrompue, R4, R6, R7 (armes perdues à l'arrestation), R8 (score envoyé, invité) |
+| Propriétés et fuzzing | `domain/save.property.test.ts`, `systems/*.property.test.ts` (fast-check), `TransactionsPropertyTest` (graine fixe) | toute donnée stockée est acceptée ou refusée sans exception, aller-retour JSON, score jamais au-delà du plafond, saisie du chat, niveau de recherche borné, règles d'argent sur 2 000 progressions générées |
+| Fake du serveur | `game/testing/fakeApi.test.ts` | le fake utilisé par les simulations applique les mêmes règles d'armurerie que `Transactions.java` |
+| Contrat | `frontend/tests/contract/backend.pact.test.ts` (Pact), rejoué par `PactProviderTest` | missions, réussite d'une mission, achat, réapparition, progression invalide (400) |
+| Intégration | `frontend/tests/integration/mini-gta.test.ts` (Testcontainers, vraie base, migrations rejouées) | plafond du score aux valeurs limites, classement, progression `jsonb` sous RLS |
+| E2E | `frontend/e2e/mini-gta.spec.ts` (Playwright, 3 navigateurs, axe) | accueil invité, sauvegarde reprise ou corrompue, classement en panne, écran étroit, accessibilité |
+| Mutation | `stryker.config.mjs`, profil `mutation` du `pom.xml` (seuil 75 %) | front : sauvegarde, session, missions, balistique, recherche ; back : règles d'argent, RNG, outils, GPS |
 
-Les scénarios Gherkin, en français, reprennent les règles de la section 2 avec leurs valeurs limites. Les
+Les tests de simulation partagent une partie par fichier (coûteuse à construire) ; chaque test pose ses propres
+préconditions, et la suite passe dans un ordre mélangé (`--sequence.shuffle`). La simulation reçoit son temps en
+paramètre (pas fixe de 60 Hz, `update(dt)`) : seule l'interface lit l'horloge (`performance.now()`, fondus du
+HUD et du chat), testée avec `vi.useFakeTimers`.
+
+Les scénarios Gherkin, en français, reprennent les règles de la section 2 avec leurs valeurs limites. Ils
+n'emploient que le vocabulaire du joueur (noms des missions et des armes, « solde », « caution ») : la traduction
+vers les identifiants de l'API se fait dans les étapes. Le rapport `backend/target/cucumber/mini-gta.html` (artefact
+CI des rapports BDD) en est la documentation vivante. Les
 messages d'erreur du contrôleur (« Mission inconnue. »…) sont remplacés par « Requête invalide. » par le
 gestionnaire d'erreurs de la plateforme : les scénarios de refus vérifient donc le code HTTP.
 
 `game/fixtures/world-spawn.json` est extrait de `GET /world` dans un rayon de 350 m autour du départ, terrain
 retiré. Il faut le régénérer si le format du monde change.
 
+### Lexique
+
+Le code est en anglais. Chaque terme des règles et des scénarios correspond à un seul identifiant :
+
+| Terme métier | Front | Back |
+|--------------|-------|------|
+| nouvelle partie | `newSave()` | `Progress.initial()` |
+| solde | `money` | `Progress.money` |
+| score, argent gagné | `totalEarned`, `scoreToSubmit()` | `Progress.totalEarned` |
+| récompense de mission | `completeMission()` | `Transactions.completeMission()`, `MissionReward` |
+| armurerie, achat | `purchase()` | `Transactions.purchase()`, `Purchase` |
+| gilet | `armor` | `Purchase.Item.ARMOR` |
+| lot de munitions | `ammoPack`, `ammoPrice` | `WeaponDef.ammoPack()`, `WeaponDef.ammoPrice()` |
+| frais d'hôpital, caution | `respawn('dead' \| 'busted')` | `Transactions.respawn()`, `Respawn.Reason` |
+| billets | `addMoney()` | — |
+| niveau de recherche, étoiles | `WantedLevel`, `stars` | — |
+| témoin | `witnessed` | — |
+| zone de recherche | `searchRadius` | — |
+| graine | — | `MiniGtaWorld.SEED` |
+| donneur de missions | `missionGivers` | `Locations.missionGivers()` |
+| tremplin | `ramps` | `Ramp`, `RampKind` |
+| bâtiment ouvert | `hollow` | `Building.doorSide`, `Building.floorHeight` |
+
 ## 7. Hors périmètre
 
-Contrôles tactiles, multijoueur, tables Supabase dédiées, smoke test navigateur en CI, choix de la graine.
+Contrôles tactiles, multijoueur, tables Supabase dédiées, partie jouée dans un navigateur en CI (WebGL : la simulation est testée par le harnais), choix de la graine.

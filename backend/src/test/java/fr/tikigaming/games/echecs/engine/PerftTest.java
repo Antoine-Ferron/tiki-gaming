@@ -30,7 +30,7 @@ class PerftTest {
         "'rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8', 2, 1486, position 5"
     })
     void leNombreDeCoupsLegauxCorrespondAuxValeursDeReference(String fen, int depth, long expected, String name) {
-        assertThat(perft(Fen.parse(fen), depth)).isEqualTo(expected);
+        assertThat(perft(Fen.parse(fen), depth)).as(name).isEqualTo(expected);
     }
 
     /** Nombre de suites de coups légaux de longueur {@code depth} (une promotion compte pour 4 coups). */

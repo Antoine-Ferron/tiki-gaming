@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { Vector3 } from 'three'
 import { newSave } from '../domain/save'
 import { useGameStore } from '../state/gameStore'
@@ -12,19 +12,57 @@ vi.mock('../net/api', () => import('./testing/fakeApi'))
 // Simulations longues : la suite complète tourne en parallèle.
 vi.setConfig({ testTimeout: 60_000 })
 
+const PEDESTRIANS = 6
 let t: TestGame
 let game: TestGame['game']
+let pedSettings: { density: number }
 
 beforeAll(async () => {
   useGameStore.getState().load({ ...newSave(), money: 1000 })
-  t = await createTestGame({ traffic: 4, pedestrians: 6 })
+  t = await createTestGame({ traffic: 4, pedestrians: PEDESTRIANS })
   game = t.game
+  pedSettings = (await import('../systems/Pedestrians')).PED_SETTINGS
 }, 60_000)
 
 afterAll(() => t?.dispose())
 
 let spawned = 0
 let previous: Vehicle | null = null
+
+/** Retire tout le trafic : voitures qui roulent et voitures garées. */
+function clearTraffic() {
+  for (const v of [...game.traffic.cars, ...game.traffic.parked]) {
+    game.traffic.cars.delete(v)
+    game.traffic.parked.delete(v)
+    game.removeVehicle(v)
+  }
+}
+
+/** Rues vides pour les essais de conduite : trafic retiré et figé, piétons retirés, aucun ne réapparaît. */
+function emptyStreets() {
+  game.debug.freezeTraffic = true
+  pedSettings.density = 0
+  game.peds.dispose()
+}
+
+/** Une voiture du trafic qui roule avec son conducteur, en laissant le trafic se remplir au besoin. */
+function trafficCar() {
+  const find = () => [...game.traffic.cars].find((v) => v.mode === 'kinematic' && v.driver && !v.destroyed)
+  t.until(() => !!find(), 10)
+  return find()
+}
+
+beforeEach(() => {
+  // Chaque scénario repart à pied du point de départ, sans recherche. Les véhicules laissés par les scénarios
+  // précédents (épaves, véhicules d'essai, trafic apparu ailleurs dans la ville) sont retirés : seuls restent
+  // les véhicules de départ, et le trafic repart de zéro autour du joueur.
+  game.debug.freezeTraffic = false
+  pedSettings.density = PEDESTRIANS
+  t.reset()
+  clearTraffic()
+  for (const v of [...game.vehicles]) if (!v.persistent) game.removeVehicle(v)
+  previous = null
+})
 
 /**
  * Place le joueur à côté d'un véhicule neuf (chacun à sa place) et l'y fait monter. Le véhicule du test
@@ -69,6 +107,9 @@ describe('rendu et streaming du monde', () => {
 })
 
 describe('véhicules', () => {
+  // Essais de conduite sur une rue dégagée : ni voiture ni piéton ne gêne ou ne surgit.
+  beforeEach(emptyStreets)
+
   test('l’hélicoptère décolle quand on monte le collectif', () => {
     const heli = drive('heli')
     const y0 = heli.position.y
@@ -82,7 +123,11 @@ describe('véhicules', () => {
   })
 
   test('l’hélicoptère avance en piquant du nez', () => {
-    const heli = game.player.vehicle!
+    const heli = drive('heli')
+    const y0 = heli.position.y
+    t.key('ShiftLeft', true)
+    t.until(() => heli.position.y > y0 + 3, 4)
+    t.key('ShiftLeft', false)
     const p0 = heli.position.clone()
 
     t.key('ShiftLeft', true)
@@ -93,7 +138,11 @@ describe('véhicules', () => {
   })
 
   test('l’avion prend de la vitesse au sol avec les gaz', () => {
-    const plane = drive('plane', game.city.locations.planeSpawn)
+    // Sur la piste, 40 m devant l'avion de départ (et non sur lui) : le joueur monte bien dans l'avion d'essai.
+    const ps = game.city.locations.planeSpawn
+    const heading = ps.heading ?? 0
+    const plane = drive('plane', { x: ps.x + Math.sin(heading) * 40, z: ps.z + Math.cos(heading) * 40, heading })
+    expect(game.player.vehicle).toBe(plane)
 
     t.hold('ShiftLeft', 2)
     t.simulate(3)
@@ -181,6 +230,9 @@ describe('véhicules', () => {
 })
 
 describe('conduite', () => {
+  // Essais de conduite sur une rue dégagée : ni voiture ni piéton ne gêne ou ne surgit.
+  beforeEach(emptyStreets)
+
   /** Point d'une rue proche du départ, son axe et l'îlot le plus proche. */
   function street() {
     const s = game.city.locations.spawn
@@ -294,9 +346,10 @@ describe('conduite', () => {
 
 describe('joueur', () => {
   test('voler une voiture du trafic éjecte son conducteur', () => {
-    if (game.player.state === 'vehicle') game.player.exitVehicle(true)
-    const victim = [...game.vehicles].find((v) => v.mode === 'kinematic' && v.driver && !v.destroyed)
-    if (!victim) return
+    const victim = trafficCar()!
+    expect(victim).toBeDefined()
+    // Trafic figé le temps de s'approcher : la voiture visée ne repart pas.
+    game.debug.freezeTraffic = true
     game.player.respawnAt(victim.position.x + 2.5, victim.position.y + 0.2, victim.position.z)
     t.simulate(0.1)
 
@@ -307,6 +360,10 @@ describe('joueur', () => {
   })
 
   test('le joueur sort par la touche F, une fois le véhicule ralenti', () => {
+    drive('sedan')
+    t.hold('KeyW', 2)
+    expect(game.player.state).toBe('vehicle')
+
     // On ne sort pas d'un véhicule lancé à plus de 8 m/s : frein à main d'abord.
     t.hold('Space', 3)
     t.press('KeyF')
@@ -372,9 +429,9 @@ describe('joueur', () => {
 
 describe('trafic et piétons', () => {
   test('un véhicule du trafic percuté devient physique', () => {
-    const traffic = [...game.vehicles].find((v) => v.mode === 'kinematic' && !v.destroyed)
+    const traffic = trafficCar()!
+    expect(traffic).toBeDefined()
     const other = drive('sedan')
-    if (!traffic) return
 
     game.traffic.onBumped(traffic, other)
 
@@ -382,7 +439,7 @@ describe('trafic et piétons', () => {
   })
 
   test('un piéton fauché par une voiture rapide est projeté', () => {
-    const car = game.player.vehicle!
+    const car = drive('sedan')
     t.hold('KeyW', 2)
     t.simulate(0.5)
 

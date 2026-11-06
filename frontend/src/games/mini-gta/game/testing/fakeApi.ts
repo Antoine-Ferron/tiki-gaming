@@ -1,3 +1,4 @@
+import { MAX_SCORE } from '../../domain/save'
 import { TERRAIN_CELLS } from '../../world/constants'
 import type { MissionDto, Progress, PurchaseItem, WorldDto } from '../../net/api'
 import type { WeaponDef, WeaponId } from '../../systems/weapons'
@@ -21,7 +22,12 @@ function flatTerrain(): string {
 const defs = weapons as unknown as Record<WeaponId, WeaponDef & { price: number; ammoPrice: number; ammoPack: number }>
 const catalog = missions as unknown as MissionDto[]
 
-const gain = (p: Progress, n: number): Progress => ({ ...p, money: p.money + n, totalEarned: p.totalEarned + n })
+// Comme Progress.earn : le solde reçoit tout le gain, les gains cumulés (le score) s'arrêtent au plafond.
+const gain = (p: Progress, n: number): Progress => ({
+  ...p,
+  money: p.money + n,
+  totalEarned: Math.max(p.totalEarned, Math.min(MAX_SCORE, p.totalEarned + n)),
+})
 const spend = (p: Progress, n: number): Progress => ({ ...p, money: Math.max(0, p.money - n) })
 
 /** Appels reçus, pour vérifier ce que le jeu demande au serveur. */
@@ -69,10 +75,11 @@ export const api = {
     serve('purchase', [progress, item, weapon], () => {
       const d = weapon ? defs[weapon] : undefined
       const price = item === 'armor' ? 250 : item === 'weapon' ? d!.price : d!.ammoPrice
-      const rounds = item === 'armor' ? 0 : d!.ammoPack
+      // Comme Transactions.purchase : une arme donne deux chargeurs (un lot si elle se lance), des munitions un lot.
+      const rounds = item === 'armor' ? 0 : item === 'weapon' && !d!.thrown ? d!.magazine * 2 : d!.ammoPack
       if (progress.money < price) return { ok: false, price, rounds: 0, progress }
-      const next = spend(progress, price)
-      return { ok: true, price, rounds, progress: item === 'armor' ? { ...next, armor: 100 } : next }
+      // Le serveur ne fait que débiter le gilet : c'est le jeu qui équipe le personnage.
+      return { ok: true, price, rounds, progress: spend(progress, price) }
     }),
   respawn: (progress: Progress, reason: 'dead' | 'busted') =>
     serve('respawn', [progress, reason], () => {

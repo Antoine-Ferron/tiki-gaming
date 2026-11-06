@@ -26,7 +26,7 @@ public final class DameJsonTypes {
             if (!parser.hasToken(JsonToken.VALUE_STRING)) {
                 return (String) context.handleUnexpectedToken(String.class, parser);
             }
-            return parser.getText();
+            return parser.getString();
         }
     }
 }

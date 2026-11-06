@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { mockPlatform } from './fixtures'
 
@@ -46,5 +47,22 @@ test.describe('Tic-Tac-Toe', () => {
     await expect(page.getByRole('status')).toContainText('Tour du joueur X')
     await expect(page.getByRole('gridcell', { name: 'Ligne 1, colonne 1, vide' })).toBeEnabled()
     await expect(page.getByLabel('Score de la session')).toContainText('X 1')
+  })
+
+  test('reste accessible au clavier et sans violation WCAG critique', async ({ page }) => {
+    await page.goto('/games/tic-tac-toe')
+
+    await expect(page.getByRole('grid', { name: 'Grille de Tic-Tac-Toe' })).toBeVisible()
+    const { violations } = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+    const blocking = violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical')
+    expect(blocking).toEqual([])
+
+    const firstCell = page.getByRole('gridcell', { name: 'Ligne 1, colonne 1, vide' })
+    await firstCell.focus()
+    await expect(firstCell).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('gridcell', { name: 'Ligne 1, colonne 1, X' })).toBeVisible()
   })
 })

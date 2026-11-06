@@ -76,24 +76,26 @@ export default function TicTacToeGame({ ctx }: GameProps) {
           </>
         )}
         <div className="tic-tac-toe-board" role="grid" aria-label="Grille de Tic-Tac-Toe">
-          {Array.from({ length: 3 }, (_, row) =>
-            Array.from({ length: 3 }, (_, column) => {
-              const mark = game.cell(row, column)
-              return (
-                <button
-                  key={`${row}-${column}`}
-                  type="button"
-                  role="gridcell"
-                  className={mark ? `mark-${mark}` : undefined}
-                  aria-label={`Ligne ${row + 1}, colonne ${column + 1}${mark ? `, ${mark}` : ', vide'}`}
-                  disabled={mark !== undefined || status !== 'IN_PROGRESS'}
-                  onClick={() => play(row, column)}
-                >
-                  {mark ?? ''}
-                </button>
-              )
-            }),
-          )}
+          {Array.from({ length: 3 }, (_, row) => (
+            <div key={row} role="row">
+              {Array.from({ length: 3 }, (_, column) => {
+                const mark = game.cell(row, column)
+                return (
+                  <button
+                    key={`${row}-${column}`}
+                    type="button"
+                    role="gridcell"
+                    className={mark ? `mark-${mark}` : undefined}
+                    aria-label={`Ligne ${row + 1}, colonne ${column + 1}${mark ? `, ${mark}` : ', vide'}`}
+                    disabled={mark !== undefined || status !== 'IN_PROGRESS'}
+                    onClick={() => play(row, column)}
+                  >
+                    {mark ?? ''}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
         </div>
       </div>
       <button type="button" onClick={restart}>

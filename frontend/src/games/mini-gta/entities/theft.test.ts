@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createTestGame, type TestGame } from '../game/testing/harness'
 import type { Vehicle } from './Vehicle'
 import { Rng } from '../core/rng'
@@ -21,6 +21,9 @@ beforeAll(async () => {
 }, 60_000)
 
 afterAll(() => t?.dispose())
+
+// Sans recherche ni policier laissés par un vol précédent (voiture de police volée) : pas d'arrestation surprise.
+beforeEach(() => t.reset())
 
 afterEach(() => {
   for (const k of ['KeyW', 'KeyF']) t.key(k, false)

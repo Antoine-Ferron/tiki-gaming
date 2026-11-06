@@ -34,11 +34,11 @@ Vitest ou Playwright, ou du scénario Gherkin).
 | TC-YAMS-08 | REQ-YAMS-04 | erreur | BDD | `frontend/src/games/yams/features/feuille-de-score.feature` › Une case déjà jouée ne peut pas être rejouée | PASSED | — |
 | TC-YAMS-09 | REQ-YAMS-05 | nominal | unitaire (Fake) | `frontend/src/games/yams/session.test.ts` › envoie une seule fois le total du joueur 1 quand les deux feuilles sont complètes | PASSED | — |
 | TC-YAMS-10 | REQ-YAMS-05 | erreur | unitaire (Fake) | `frontend/src/games/yams/session.test.ts` › n’enregistre aucun score en invité | PASSED | — |
-| TC-YAMS-11 | REQ-YAMS-06 | nominal | intégration (Testcontainers) | `frontend/tests/integration/yams.test.ts` › score accepté (375, le plafond) : la sauvegarde est effacée et le score enregistré | FAILED | BUG-YAMS-02 |
+| TC-YAMS-11 | REQ-YAMS-06 | nominal | intégration (Testcontainers) | `frontend/tests/integration/yams.test.ts` › score accepté (375, le plafond) : la sauvegarde est effacée et le score enregistré | PASSED | BUG-YAMS-02 |
 | TC-YAMS-12 | REQ-YAMS-06 | erreur | intégration (Testcontainers) | `frontend/tests/integration/yams.test.ts` › score refusé (376, au-dessus du plafond) : rien n’est écrit, la sauvegarde effacée revient | PASSED | — |
 
-TC-YAMS-11 est `PASSED` sur la branche, mais `FAILED` quand on le rejoue sur la dernière version de `dev` (04/11/2026) :
-c'est la dernière exécution qui compte, d'où l'anomalie BUG-YAMS-02.
+TC-YAMS-11 a échoué sur `dev` le 04/11/2026 (anomalie BUG-YAMS-02). Corrigé dans la PR #124 (`27d8da4f`), il repasse
+le 05/11/2026 : 5 tests d'intégration sur 5, en local et en CI.
 
 ## Anomalies
 
@@ -47,8 +47,8 @@ P0 immédiate → P3 basse. Statut : cycle de vie ISTQB (New → Assigned → Op
 
 | Anomalie | Titre | Sévérité | Priorité | Statut | Correctif |
 |----------|-------|----------|----------|--------|-----------|
-| BUG-YAMS-01 | [Feuille de score][Tests BDD en ordre aléatoire] une étape « Alors » s'exécute avant son « Quand » au lieu de suivre l'ordre du scénario | S2 | P1 | Closed | 474250e0, trouvé par le test anti-flaky (`--sequence.shuffle`) |
-| BUG-YAMS-02 | [Fin de partie][Score de 375] l'enregistrement est refusé (« permission denied for table scores ») au lieu d'être accepté, sur `dev` depuis la migration `scores_server_only` | S2 | P1 | Open | — |
+| BUG-YAMS-01 | [Feuille de score][Tests BDD en ordre aléatoire] une étape « Alors » s'exécute avant son « Quand » au lieu de suivre l'ordre du scénario | S2 | P1 | Closed | PR #124 (`27d8da4f`), trouvé par le test anti-flaky (`--sequence.shuffle`) |
+| BUG-YAMS-02 | [Fin de partie][Score de 375] l'enregistrement est refusé (« permission denied for table scores ») au lieu d'être accepté, sur `dev` depuis la migration `scores_server_only` | S2 | P1 | Closed | PR #124 (`27d8da4f`), trouvé en rejouant l'intégration sur `dev` |
 
 ## Scénarios détaillés
 
@@ -76,13 +76,13 @@ Préconditions, données et étapes de chaque cas, pour qu'il soit reproductible
 |----------|---------|
 | Titre | [Feuille de score][Tests BDD en ordre aléatoire] une étape « Alors » s'exécute avant son « Quand » au lieu de suivre l'ordre du scénario |
 | Cas de test | TC-YAMS-02 (et tous les scénarios de `feuille-de-score.feature`) |
-| Reproduction | 1. Se placer sur le commit `eac280f5` · 2. Depuis `frontend/`, lancer `npx vitest run src/games/yams --sequence.shuffle` plusieurs fois avec des graines différentes · 3. Selon la graine, des étapes d'un scénario s'exécutent dans le désordre et le scénario échoue |
+| Reproduction | 1. Retirer `{ shuffle: false }` du bloc BDD de `feuille-de-score.steps.test.ts` · 2. Depuis `frontend/`, lancer `npx vitest run src/games/yams --sequence.shuffle` plusieurs fois avec des graines différentes · 3. Selon la graine, des étapes d'un scénario s'exécutent dans le désordre et le scénario échoue |
 | Attendu | Les étapes d'un scénario s'exécutent dans l'ordre Étant donné → Quand → Alors, quel que soit l'ordre des fichiers et des tests |
 | Cause | Le mélange aléatoire de Vitest s'appliquait aussi aux étapes d'un même scénario, qui partagent un état (feuille, dés) |
 | Sévérité · Priorité | S2 (aucun impact joueur, mais la CI peut échouer au hasard) · P1 (à corriger dans le sprint : un test instable fait perdre confiance dans toute la suite) |
-| Correctif | `474250e0` : les scénarios restent mélangés entre eux, mais les étapes d'un scénario gardent leur ordre (`shuffle: false` sur le bloc BDD) |
+| Correctif | PR #124 (`27d8da4f`) : les scénarios restent mélangés entre eux, mais les étapes d'un scénario gardent leur ordre (`shuffle: false` sur le bloc BDD) |
 | Re-test | 100 exécutions avec `--sequence.shuffle --sequence.seed=1` à `100` : 100 sur 100 vertes (81 tests à chaque fois) |
-| Cycle de vie | New → Open → Fixed (`474250e0`) → Retest (100 / 100) → **Closed** |
+| Cycle de vie | New → Open → Fixed (PR #124) → Retest (100 / 100) → **Closed** |
 
 ### BUG-YAMS-02 · Score de 375 refusé sur `dev`
 
@@ -95,5 +95,7 @@ Préconditions, données et étapes de chaque cas, pour qu'il soit reproductible
 | Observé | `error: permission denied for table scores` à la ligne 51 de `yams.test.ts` ; 1 test en échec sur 5 (exécution du 04/11/2026) |
 | Cause | La migration `20261104120000_scores_server_only` de `dev` réserve l'écriture des scores au backend (`service_role`). Le test écrit encore le score en tant que joueur connecté (`as(db, alice, …)`) |
 | Sévérité · Priorité | S2 (le jeu n'est pas touché : c'est le test qui suit l'ancienne règle) · P1 (la CI de la PR sera rouge tant qu'il n'est pas adapté) |
-| Correctif prévu | Écrire le score comme le backend (`asServer`, avec `user_id`), et attendre le code `23514` au-dessus du plafond, comme `sudoku.test.ts` |
-| Cycle de vie | New → **Open** (à corriger, puis Retest et Closed) |
+| Faux positif trouvé | TC-YAMS-12 (376 refusé) restait vert pour une mauvaise raison : il attendait `42501`, qui venait désormais du refus de droit d'insertion et non plus du plafond. Il attend maintenant `23514`, le refus du plafond par le trigger |
+| Correctif | PR #124 (`27d8da4f`) : le test écrit le score comme le backend (`asServer`, avec `user_id`), comme `sudoku.test.ts`, et attend `23514` au-dessus du plafond |
+| Re-test | 05/11/2026 : 5 tests d'intégration sur 5 verts, en local et dans la CI de la PR #124 |
+| Cycle de vie | New → Open → Fixed (PR #124) → Retest (5 / 5) → **Closed** |

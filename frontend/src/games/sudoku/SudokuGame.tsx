@@ -4,6 +4,7 @@ import { Leaderboard } from '@/components/Leaderboard'
 import type { GameProps, LeaderboardEntry } from '../types'
 import { ApiError, apiGet, apiPost } from '@/lib/api'
 import { DIFFICULTIES, formatTime, type Difficulty, type Grid } from './logic'
+import { DEFAULT_MAX_MISTAKES, mistakesLabel, mistakesWarning } from './mistakes'
 import './sudoku.css'
 
 // La partie (grille, solution, erreurs, chrono) vit sur le serveur : on ne garde que son identifiant.
@@ -15,13 +16,15 @@ type GameState = {
   puzzle: Grid
   values: Grid
   mistakes: number
+  maxMistakes: number
+  lost: boolean
   seconds: number
 }
 type PuzzleResponse = { gameId: string; difficulty: Difficulty; puzzle: Grid }
-type MoveResult = { correct: boolean; mistakes: number; complete: boolean }
+type MoveResult = { correct: boolean; mistakes: number; complete: boolean; lost: boolean }
 type CheckResult = { solved: boolean; score: number }
 
-type Phase = 'idle' | 'playing' | 'over'
+type Phase = 'idle' | 'playing' | 'over' | 'lost'
 
 export default function SudokuGame({ ctx }: GameProps) {
   const [phase, setPhase] = useState<Phase>('idle')
@@ -32,6 +35,7 @@ export default function SudokuGame({ ctx }: GameProps) {
   const [selected, setSelected] = useState<number | null>(null)
   const [seconds, setSeconds] = useState(0)
   const [mistakes, setMistakes] = useState(0)
+  const [maxMistakes, setMaxMistakes] = useState(DEFAULT_MAX_MISTAKES)
   const [score, setScore] = useState(0)
   const [hasSave, setHasSave] = useState(false)
   const [best, setBest] = useState<number | null>(null)
@@ -74,10 +78,11 @@ export default function SudokuGame({ ctx }: GameProps) {
     setValues(state.values)
     setSeconds(state.seconds)
     setMistakes(state.mistakes)
+    setMaxMistakes(state.maxMistakes)
     setSelected(null)
     setError(null)
     setNotice(null)
-    setPhase('playing')
+    setPhase(state.lost ? 'lost' : 'playing')
   }
 
   async function start(level: Difficulty) {
@@ -85,7 +90,7 @@ export default function SudokuGame({ ctx }: GameProps) {
       const game = await apiGet<PuzzleResponse>(`/games/sudoku/puzzle?difficulty=${level}`)
       await ctx.save({ gameId: game.gameId } satisfies Save)
       setHasSave(true)
-      open({ ...game, values: game.puzzle, mistakes: 0, seconds: 0 })
+      open({ ...game, values: game.puzzle, mistakes: 0, maxMistakes: DEFAULT_MAX_MISTAKES, lost: false, seconds: 0 })
     } catch (e) {
       setError((e as Error).message)
     }
@@ -96,7 +101,9 @@ export default function SudokuGame({ ctx }: GameProps) {
       const s = await ctx.loadSave<Save>()
       if (!s?.gameId) return
       try {
-        open(await apiGet<GameState>(`/games/sudoku/${s.gameId}`))
+        const state = await apiGet<GameState>(`/games/sudoku/${s.gameId}`)
+        open(state)
+        if (state.lost) await abandon()
       } catch (e) {
         if (!(e instanceof ApiError) || e.status !== 400) throw e
         // Partie inconnue du serveur (expirée ou serveur redémarré) : la sauvegarde ne sert plus.
@@ -107,6 +114,12 @@ export default function SudokuGame({ ctx }: GameProps) {
     } catch (e) {
       setError((e as Error).message)
     }
+  }
+
+  // Partie perdue : plus rien à reprendre, aucun score n'est envoyé.
+  async function abandon() {
+    setHasSave(false)
+    await ctx.clearSave()
   }
 
   async function finish(finalMistakes: number) {
@@ -129,6 +142,11 @@ export default function SudokuGame({ ctx }: GameProps) {
     try {
       const move = await apiPost<MoveResult>(`/games/sudoku/${gameId}/moves`, { cell: selected, value: n })
       setMistakes(move.mistakes)
+      if (move.lost) {
+        setPhase('lost')
+        await abandon()
+        return
+      }
       if (!move.correct) {
         setNotice('Ce chiffre n’est pas le bon.')
         return
@@ -177,9 +195,9 @@ export default function SudokuGame({ ctx }: GameProps) {
           <>
             <p className="sudoku-stats">
               <span>Temps : {formatTime(seconds)}</span>
-              <span>Erreurs : {mistakes}</span>
+              <span>Erreurs : {mistakesLabel(mistakes, maxMistakes)}</span>
             </p>
-            <div className="sudoku-grid" role="grid" tabIndex={-1} aria-label="Grille de sudoku" onKeyDown={onKeyDown}>
+            <div className="sudoku-grid" role="group" aria-label="Grille de sudoku" onKeyDown={onKeyDown}>
               {values.map((v, i) => {
                 const fixed = puzzle[i] !== 0
                 const classes = ['sudoku-cell']
@@ -214,10 +232,21 @@ export default function SudokuGame({ ctx }: GameProps) {
                 {notice}
               </p>
             )}
+            {mistakesWarning(mistakes, maxMistakes) && (
+              <p className="error">{mistakesWarning(mistakes, maxMistakes)}</p>
+            )}
             <p className="muted">Sélectionne une case, puis tape un chiffre au clavier ou utilise le pavé.</p>
           </>
         ) : (
           <>
+            {phase === 'lost' && (
+              <>
+                <p className="result">Partie perdue : plus de {maxMistakes} erreurs.</p>
+                <p className="muted">
+                  Aucun score n’est enregistré. Lance une nouvelle partie pour retenter ta chance.
+                </p>
+              </>
+            )}
             {phase === 'over' && (
               <>
                 <p className="result">

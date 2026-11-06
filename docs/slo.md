@@ -17,6 +17,7 @@ les patrons de résilience sont décrits plus bas.
 | Envoi d'un score (`POST /api/scores` → `public.scores`) | latence | P95 < 300 ms, P99 < 500 ms | P95 < 1 s |
 | Session (`GET /api/auth/session`, backend Java) | latence | P95 < 300 ms, P99 < 500 ms | P95 < 1 s |
 | Vérification d'une partie de Rush Hour (`POST /api/games/rush-hour/levels/{level}/results`, niveau 20 = pire cas) | latence | P95 < 300 ms, P99 < 500 ms | P95 < 1 s |
+| Expédition de Prismine (`/api/games/prismine/runs`, [résultats](games/prismine/rapport-charge-k6.md)) | latence | P95 < 300 ms, P99 < 500 ms | P95 < 1 s |
 | Toutes les requêtes du lobby | taux d'erreur (5xx, timeouts) | < 1 % | < 2 % |
 | Plateforme | disponibilité mensuelle | **99,5 %** | **99,0 %** |
 
@@ -90,6 +91,7 @@ Le backend appelle Supabase ; une panne de Supabase ne doit pas bloquer le backe
 | Timeouts | `spring.http.clients` (application.yml) | connexion 2 s, lecture 3 s : un appel lent est abandonné au lieu de bloquer un thread | `SupabaseScoresChaosTest` |
 | Disjoncteur (circuit breaker) | `fr.tikigaming.resilience.CircuitBreaker`, devant l'insertion des scores | 5 pannes consécutives → ouvert 30 s : réponse 503 immédiate, sans appel réseau ; puis un appel d'essai (semi-ouvert) referme ou rouvre | `CircuitBreakerTest` (horloge simulée), `SupabaseScoresChaosTest` |
 | Dégradation gracieuse | front, `scoreQueue` | un score refusé pour panne (502, 503, coupure) est gardé sur l'appareil et renvoyé à la partie suivante | `scores.feature`, E2E « Supabase en panne » |
+| Disjoncteur de Prismine | `PrismineSupabase`, devant tous les appels du jeu à Supabase | 5 pannes consécutives → ouvert 30 s : 503 immédiat, sans appel réseau | `PrismineSupabaseBreakerTest`, `PrismineSupabaseChaosTest` |
 
 `SupabaseScoresChaosTest` place **Toxiproxy** (Testcontainers) entre le client et un faux PostgREST, puis injecte :
 

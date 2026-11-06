@@ -65,8 +65,8 @@ class SpecialMovesTest {
     })
     void leRoqueNEstPermisQueSiLesSixConditionsSontReunies(String fen, String castlings, String why) {
         var king = Game.legalDestinations(Fen.parse(fen), Square.of("e1"));
-        assertThat(king.contains(Square.of("g1"))).as("petit roque").isEqualTo(castlings.contains("g1"));
-        assertThat(king.contains(Square.of("c1"))).as("grand roque").isEqualTo(castlings.contains("c1"));
+        assertThat(king.contains(Square.of("g1"))).as("petit roque : " + why).isEqualTo(castlings.contains("g1"));
+        assertThat(king.contains(Square.of("c1"))).as("grand roque : " + why).isEqualTo(castlings.contains("c1"));
     }
 
     @Test
@@ -82,7 +82,9 @@ class SpecialMovesTest {
         "'8/8/8/K2pP2r/8/8/8/7k w - d6 0 2', e6, S5 : les deux pions quitteraient la rangée et découvriraient le roi"
     })
     void laPriseEnPassantNEstPasToujoursPermise(String fen, String expected, String why) {
-        assertThat(Game.legalDestinations(Fen.parse(fen), Square.of("e5"))).containsExactly(Square.of(expected));
+        assertThat(Game.legalDestinations(Fen.parse(fen), Square.of("e5")))
+                .as(why)
+                .containsExactly(Square.of(expected));
     }
 
     @ParameterizedTest(name = "{2}")
@@ -96,10 +98,10 @@ class SpecialMovesTest {
         var position = Fen.parse(fen);
         var king = Game.legalDestinations(position, Square.of(position.turn() == Color.WHITE ? "e1" : "e8"));
         assertThat(king.contains(Square.of("g1")) || king.contains(Square.of("g8")))
-                .as("petit roque")
+                .as("petit roque : " + why)
                 .isEqualTo(castlings.contains("g1"));
         assertThat(king.contains(Square.of("c1")) || king.contains(Square.of("c8")))
-                .as("grand roque")
+                .as("grand roque : " + why)
                 .isEqualTo(castlings.contains("c1"));
     }
 
