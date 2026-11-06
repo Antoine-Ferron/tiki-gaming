@@ -1,11 +1,14 @@
-# Dames — bilan du lot livré
+# Dames — fonctionnalité et preuves de qualité
 
 État documentaire au **6 novembre 2026**, sur la base `dev` :
 [`659d4fb937c3004f94e37265064b1b1a0caa952b`](https://github.com/EAnathos/tiki-gaming/commit/659d4fb937c3004f94e37265064b1b1a0caa952b).
-Issue : [#18](https://github.com/EAnathos/tiki-gaming/issues/18), ouverte.
+Issue : [#18](https://github.com/EAnathos/tiki-gaming/issues/18).
+Les extensions du 6 novembre sont conservées sur `game/dame/bilan-qualite`, sans nouvelle PR ; elles ne sont pas annoncées comme fusionnées dans `dev`.
 
 ## Parcourir le dossier
 
+- [Nulles et reprise durable](nulles-et-reprise.md) : règles FMJD et sauvegarde du plateau.
+- [Performance et résilience](performance-resilience.md) : k6 et pannes Toxiproxy réelles.
 - [Bilan de qualité](qualite.md) : mesures datées, rapports CI et commandes de reproduction.
 - [Matrice exigences/tests](rtm-matrix.md) : cas de référence et origine des résultats.
 - [Cahier de recette](recette.md) : six parcours exécutés par l’agent, avec preuves ; validation humaine non prononcée.
@@ -18,14 +21,14 @@ avec 20 pions par camp, puis jouent alternativement.
 
 Le serveur applique les déplacements, prises obligatoires et majoritaires,
 rafles, dames volantes, promotions en fin de coup et victoires par élimination
-ou blocage. Un coup refusé conserve l'état de la partie.
+ou blocage, ainsi que les nulles automatiques FMJD. Un coup refusé conserve l'état de la partie.
 Les noms, dates et résultat sont enregistrés dans PostgreSQL ; le gagnant est
 calculé par le moteur Java, jamais fourni par le navigateur.
 
 L'interface permet la sélection à la souris et au clavier, une revanche et
-la reprise après rechargement tant que la session serveur reste valide.
+la reprise dans le même navigateur après fermeture ou redémarrage du serveur, si la base est conservée.
 Elle réutilise le client HTTP de la plateforme, ses cookies et sa protection
-CSRF. Un UUID connu ne suffit pas à accéder à la rencontre d'une autre session.
+CSRF. Un UUID connu ne suffit pas : un cookie privé au navigateur autorise la reprise.
 
 ## Architecture et frontières
 
@@ -33,9 +36,8 @@ CSRF. Un UUID connu ne suffit pas à accéder à la rencontre d'une autre sessio
 flowchart LR
     UI[React] --> API[API Spring et session]
     API --> GAME[Moteur Java pur]
-    API --> SERVICE[MatchService]
-    SERVICE --> PORT[Port MatchRepository]
-    ADAPTER[SupabaseMatchRepository] -. implémente .-> PORT
+    API --> PORT[Port GameSaveRepository]
+    ADAPTER[SupabaseGameSaveRepository] -. implémente .-> PORT
     ADAPTER --> REST[PostgREST]
     REST --> DB[(PostgreSQL)]
 ```
@@ -46,11 +48,7 @@ placent à ces frontières ; les règles métier s'exécutent réellement.
 Voir [architecture](architecture.md), [rencontres](rencontres.md),
 [persistance](persistance.md) et [contrat API](api.md).
 
-Le plateau est conservé dans la session serveur ; seul l'UUID est mémorisé
-dans l'onglet. La base contient les métadonnées et le résultat, pas le plateau.
-À la victoire, l'écriture du résultat précède la validation du nouvel état de
-session. Les écritures conditionnelles et contraintes SQL empêchent de
-remplacer un résultat terminé.
+Le plateau, l'historique de nulle, la version et le résultat sont sauvegardés dans PostgreSQL à chaque coup. Une transaction compare la version attendue et conserve ensemble le plateau et le résultat. Le navigateur mémorise l'UUID dans `localStorage` et un cookie de reprise `HttpOnly` valable 30 jours ; seule son empreinte SHA-256 est stockée en base. Une nouvelle partie remplace le cookie et l'identifiant locaux. `MatchService` et `MatchRepository` restent le cas d'usage de métadonnées testé indépendamment.
 
 ## Lancer la démo sur une base jetable
 
@@ -73,9 +71,7 @@ sur une base vide ; ils ne configurent pas un déploiement de production.
 
 Si le backend ne démarre pas, vérifier Docker et le port 8080 ; si Vite refuse
 de démarrer, vérifier le port 5173. Lire l'erreur du terminal concerné.
-Après un redémarrage du backend, une ancienne session peut demander de créer
-une nouvelle rencontre. Arrêter chaque processus avec `Ctrl+C` : les conteneurs
-du backend sont fermés et leurs données détruites.
+Attention : ce script de démonstration détruit sa base au `Ctrl+C`. Le relancer crée donc une base vide ; la reprise durable nécessite de conserver PostgreSQL entre deux démarrages Java. Les tests d’intégration vérifient la reprise sur une base conservée.
 Voir [les détails et limites de la démo](interface-e2e.md).
 
 ## Livraisons et contribution
@@ -103,18 +99,15 @@ Exemples de traces conservées dans l'historique de `dev` :
 
 ## Limites du lot et suites possibles
 
-- Les règles de partie nulle restent à spécifier et à implémenter.
 - Pas de multijoueur réseau, d'IA ni de classement de scores Dames.
-- Pas de reprise durable du plateau après perte de session ou redémarrage ;
-  une rencontre abandonnée reste enregistrée en cours.
-- Une session possède une seule partie courante ; aucune garantie de
-  coordination multi-nœuds n'est revendiquée.
+- La reprise reste liée à ce navigateur, sans transfert entre appareils. Effacer le cookie supprime l’accès ; les anciennes parties créées avant cette extension n’ont pas de sauvegarde de plateau.
+- Les rencontres abandonnées restent en cours ; aucune purge automatique n’est ajoutée.
+- La comparaison de versions en base protège les écritures concurrentes ; aucun test complet de déploiement distribué n’est revendiqué.
 - La suite Playwright de CI simule l'API. Pact et les IT apportent des preuves
   complémentaires. Une [campagne ponctuelle par l’agent](preuves/2026-11-06/README.md)
   a depuis exercé six parcours avec le vrai backend et la vraie base ; elle
   ne remplace pas une validation humaine ni une suite CI complète sur ces services.
-- Les mesures k6 collectives ne donnent pas une latence propre aux Dames.
-  Une campagne de charge et des pannes réseau réelles Dames sont des suites possibles.
+- Les mesures k6 locales ciblent les Dames ; elles ne prouvent pas la capacité du déploiement de production.
 
 Les documents historiques conservent leurs mesures et leurs étapes futures
 telles qu'elles avaient été annoncées. Ce bilan indique ce qui a depuis été

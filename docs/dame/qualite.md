@@ -2,12 +2,16 @@
 
 Ce bilan distingue les résultats rejoués le **6 novembre 2026**, les mesures
 historiques des lots livrés et les contrôles collectifs de plateforme.
-Les fichiers de production et de tests n'ont pas été modifiés pour ce bilan.
+Les sections historiques ci-dessous décrivent le bilan initial. Les extensions de la branche sont décrites dans [nulles et reprise](nulles-et-reprise.md) et [performance et résilience](performance-resilience.md) ; leurs résultats ne remplacent pas rétroactivement les preuves anciennes.
 
-## Mesures locales du 6 novembre 2026
+## Extensions conservées sur la branche
+
+Le [bilan des extensions](preuves/2026-11-06-extensions/README.md) contient les vérifications de la sauvegarde durable, des règles de nulle, du redémarrage réel et du navigateur. Il distingue les mesures de couverture, les mutations du cœur et les profils k6. La CI et les seuils collectifs restent inchangés ; ces résultats locaux ne sont pas présentés comme une nouvelle livraison fusionnée.
+
+## Mesures initiales du 6 novembre 2026, avant les extensions
 
 Base de code : [`659d4fb937c3004f94e37265064b1b1a0caa952b`](https://github.com/EAnathos/tiki-gaming/commit/659d4fb937c3004f94e37265064b1b1a0caa952b).
-Les changements ultérieurs de cette branche sont documentaires.
+Cette référence précède les extensions fonctionnelles de la branche.
 
 | Preuve | Sélection                                  | Résultat                                 | Durée de commande observée     |
 | ------ | ------------------------------------------ | ---------------------------------------- | ------------------------------ |
@@ -161,7 +165,7 @@ dans [interface-e2e.md](interface-e2e.md) ; il ne modifie pas les assertions CI.
 | Table privée                | Rôles SQL réels, RLS, contraintes et concurrence dans les IT     | Un fake ne valide pas ces mécanismes                                                                |
 | Accessibilité               | Parcours clavier et axe sur formulaire/damier à 360 px           | Pas de certification WCAG exhaustive ni de campagne lecteur d'écran revendiquée                     |
 | SonarQube / ZAP             | Jobs collectifs réussis sur le run cité                          | Aucun chiffre Sonar par fichier ni audit DAST exhaustif des routes Dames déduit du seul voyant vert |
-| k6 / résilience             | Jobs collectifs ; stubs de panne et réponse perdue Dames         | Pas de P95 Dames mesuré, ni de coupure réelle Toxiproxy Dames dans ce lot                           |
+| k6 / résilience             | Jobs collectifs ; stubs de panne et réponse perdue Dames         | Bilan initial ; complété depuis par [k6 et Toxiproxy Dames](performance-resilience.md)              |
 
 ## Lien avec les enseignements et prochaines preuves
 
@@ -170,13 +174,13 @@ dans [interface-e2e.md](interface-e2e.md) ; il ne modifie pas les assertions CI.
 | J1 : TDD, frontières, architecture et doublures | Moteur, rencontres, journal RED/GREEN et tests déterministes | Livré                                                                                       |
 | J2 : BDD, vraie persistance, analyse statique   | Cucumber sur domaine, Testcontainers, contrôles collectifs   | Livré, limites des métriques précisées ci-dessus                                            |
 | J3 : E2E, RTM et UAT                            | Playwright, [matrice](rtm-matrix.md), [recette](recette.md)  | Automatisation livrée ; six parcours vérifiés par l’agent, validation humaine non prononcée |
-| J4 : k6, pannes réseau, exploitation            | Scripts de démo et tests de panne simulée                    | Campagne k6 et Toxiproxy Dames à prévoir séparément                                         |
+| J4 : k6, pannes réseau, exploitation            | Scripts de démo et tests de panne simulée                    | [Campagne Dames ajoutée sur la branche](performance-resilience.md)                          |
 | J4 : sécurité et accessibilité                  | Session/CSRF, RLS et axe                                     | Preuves ciblées ; audit complet et procédure de production non revendiqués                  |
 | J5 : traçabilité individuelle                   | [PR et commits du bilan](README.md)                          | Contributions distinguées de la plateforme et des corrections du reviewer                   |
 
 Les nouveaux documents rendent les preuves consultables ; ils n'ajoutent pas
 de fonctionnalités et ne simulent pas un atelier métier passé. La campagne
-de recette par l’agent ci-dessous ne remplace pas une acceptation humaine. La stabilisation des règles de nulle reste
+de recette par l’agent ci-dessous ne remplace pas une acceptation humaine. Dans le bilan initial, la stabilisation des règles de nulle restait
 hors de cette livraison documentaire.
 
 ## Campagne navigateur réelle du 6 novembre 2026

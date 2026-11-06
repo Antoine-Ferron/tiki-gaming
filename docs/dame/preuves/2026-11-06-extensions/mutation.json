@@ -1,0 +1,75 @@
+{
+  "date": "2026-11-06",
+  "sourceCommit": "4cc52b5a",
+  "mutators": "STRONGER",
+  "thresholdPercent": 75,
+  "scope": ["Game", "GameRules", "DrawState"],
+  "classes": {
+    "fr.tikigaming.games.dame.GameRules": {
+      "KILLED": 113,
+      "SURVIVED": 5
+    },
+    "fr.tikigaming.games.dame.DrawState": {
+      "SURVIVED": 3,
+      "KILLED": 88
+    },
+    "fr.tikigaming.games.dame.Game": {
+      "KILLED": 13
+    }
+  },
+  "total": 222,
+  "statuses": {
+    "KILLED": 214,
+    "SURVIVED": 8
+  },
+  "survivors": [
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "apply",
+      "line": 57,
+      "description": "removed conditional - replaced equality check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "apply",
+      "line": 58,
+      "description": "removed conditional - replaced equality check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "apply",
+      "line": 75,
+      "description": "removed conditional - replaced equality check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "manJumps",
+      "line": 130,
+      "description": "Replaced integer multiplication with division"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "manJumps",
+      "line": 131,
+      "description": "Replaced integer multiplication with division"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 10,
+      "description": "changed conditional boundary"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 10,
+      "description": "removed conditional - replaced comparison check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "countdown",
+      "line": 48,
+      "description": "changed conditional boundary"
+    }
+  ]
+}

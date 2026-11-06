@@ -32,3 +32,16 @@ mvn -B -ntp -f backend/pom.xml -Pintegration \
 - Réponse d'écriture perdue : l'écriture peut avoir abouti. Une relecture confirme le résultat, et une seconde clôture reste refusée.
 
 Exécution locale du 6 novembre 2026 : **3 tests passés**, sans tests ignorés, en 10,80 s pour la classe. Le délai réduit appartient au test ; il ne change pas les délais réseau de la plateforme. Aucun circuit breaker propre aux Dames n'est revendiqué.
+
+## Mesures de la version avec sauvegarde durable
+
+Campagne locale du 6 novembre 2026 sur `3656fb2f` (backend de `378b7ea0`), après arrêt des tests lourds : Java 21, k6 2.3.0 dans Docker, PostgreSQL et PostgREST réels de la démo sur le port 8086. Le profil court a servi d'échauffement ; ces chiffres ne sont pas des mesures de production.
+
+| Profil            | Parcours | Requêtes | Erreurs HTTP | P95 création | P95 lecture | P95 coup |
+| ----------------- | -------: | -------: | -----------: | -----------: | ----------: | -------: |
+| Smoke, 1 VU, 10 s |       18 |       90 |          0 % |     37,70 ms |    32,41 ms | 22,41 ms |
+| Load, 10 VU, 60 s |    1 070 |    5 350 |          0 % |     36,00 ms |    18,99 ms | 37,43 ms |
+
+Toutes les vérifications fonctionnelles et tous les seuils passent. Les rapports [smoke](preuves/2026-11-06-extensions/k6-smoke.json) et [load](preuves/2026-11-06-extensions/k6-load.json) conservent les mesures exportées par k6.
+
+La suite de panne a été étendue à **4 tests passés** pour contrôler aussi le nouveau stockage atomique : coupure avant sauvegarde, puis réponse perdue après sauvegarde, relecture de la version et refus du doublon. Elle fait partie des **73 intégrations Dames passées** dans la vérification complète. Le parcours de charge ne remplace pas ces scénarios d'erreur : il ne soumet que des coups légaux.

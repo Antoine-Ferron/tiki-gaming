@@ -1,0 +1,13 @@
+{
+  "at": "2026-11-06T13:34:59.833Z",
+  "browser": "156.0.8078.4",
+  "status": "PASSED_AGENT",
+  "realBackend": true,
+  "realPostgreSQL": true,
+  "matchId": "7d0233dd-456d-41c3-82ba-8477dd6d77ce",
+  "versionBeforeClose": 1,
+  "versionAfterReopen": 1,
+  "sessionCookiePreserved": false,
+  "recoveryCookieHttpOnly": true,
+  "unexpectedCreations": 0
+}

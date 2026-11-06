@@ -1,0 +1,173 @@
+{
+  "date": "2026-11-06",
+  "sourceCommit": "378b7ea0",
+  "mutators": "STRONGER",
+  "thresholdPercent": 75,
+  "scope": ["Game", "GameRules", "DrawState"],
+  "classes": {
+    "fr.tikigaming.games.dame.GameRules": {
+      "KILLED": 113,
+      "SURVIVED": 5
+    },
+    "fr.tikigaming.games.dame.DrawState": {
+      "SURVIVED": 19,
+      "KILLED": 71,
+      "TIMED_OUT": 1
+    },
+    "fr.tikigaming.games.dame.Game": {
+      "KILLED": 13
+    }
+  },
+  "total": 222,
+  "statuses": {
+    "KILLED": 197,
+    "SURVIVED": 24,
+    "TIMED_OUT": 1
+  },
+  "survivors": [
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "apply",
+      "line": 57,
+      "description": "removed conditional - replaced equality check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "apply",
+      "line": 58,
+      "description": "removed conditional - replaced equality check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "apply",
+      "line": 75,
+      "description": "removed conditional - replaced equality check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "manJumps",
+      "line": 130,
+      "description": "Replaced integer multiplication with division"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.GameRules",
+      "method": "manJumps",
+      "line": 131,
+      "description": "Replaced integer multiplication with division"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 10,
+      "description": "changed conditional boundary"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 18,
+      "description": "removed conditional - replaced equality check with false"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 10,
+      "description": "removed conditional - replaced comparison check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 10,
+      "description": "removed conditional - replaced comparison check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 10,
+      "description": "removed conditional - replaced comparison check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 10,
+      "description": "removed conditional - replaced comparison check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 10,
+      "description": "removed conditional - replaced comparison check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "<init>",
+      "line": 10,
+      "description": "removed conditional - replaced comparison check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "after",
+      "line": 31,
+      "description": "removed conditional - replaced equality check with false"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "countdown",
+      "line": 48,
+      "description": "changed conditional boundary"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "lambda$key$3",
+      "line": 75,
+      "description": "Replaced integer multiplication with division"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "lambda$key$3",
+      "line": 74,
+      "description": "removed conditional - replaced equality check with false"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "lambda$key$3",
+      "line": 75,
+      "description": "removed conditional - replaced equality check with false"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "lambda$key$3",
+      "line": 74,
+      "description": "removed conditional - replaced equality check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "lambda$key$3",
+      "line": 75,
+      "description": "removed conditional - replaced equality check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "lambda$new$0",
+      "line": 19,
+      "description": "removed conditional - replaced equality check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "lambda$new$0",
+      "line": 19,
+      "description": "removed conditional - replaced comparison check with false"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "lambda$new$0",
+      "line": 19,
+      "description": "removed conditional - replaced comparison check with true"
+    },
+    {
+      "class": "fr.tikigaming.games.dame.DrawState",
+      "method": "limit",
+      "line": 64,
+      "description": "removed conditional - replaced equality check with true"
+    }
+  ]
+}

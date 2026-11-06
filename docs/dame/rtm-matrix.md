@@ -52,7 +52,7 @@ de ce bilan, mais aucun nouveau contrôle CI n'est revendiqué.
 Les cas limites sont des représentants, pas un inventaire exhaustif. Par
 exemple, les rafles incomplètes, captures répétées, deux camps et dates invalides
 disposent d'autres tests dans les mêmes suites.
-Les nulles, la sauvegarde durable du plateau et le multijoueur réseau sont
+À la référence initiale B06, les nulles, la sauvegarde durable du plateau et le multijoueur réseau étaient
 hors du lot : ils ne sont pas déclarés « couverts » par cette matrice.
 
 ## Preuves complémentaires et navigation inverse
@@ -85,3 +85,15 @@ sur `ea9cf0c7`, exécute les six fiches du cahier dans Chromium avec les vrais
 services. Les statuts de la table automatisée ci-dessus restent rattachés à
 B06/F06/CI05 ; les nouvelles observations sont consignées dans les fiches UAT,
 avec la mention **PASSED (agent)** et sans signature humaine implicite.
+
+## Extensions de la branche du 6 novembre
+
+Ces exigences complètent la référence B06 ; les résultats de leur exécution sont consignés dans [nulles et reprise](nulles-et-reprise.md) et [performance et résilience](performance-resilience.md).
+
+| Exigence                                            | Test nominal                                                                                   | Frontière ou échec                                                                                                           |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| REQ-DAME-18 — Nulles automatiques                   | `DrawTest.thirdOccurrenceEndsTheGameButSecondDoesNot`                                          | `DrawStateTest.victoryOnTheLastAllowedMoveTakesPrecedenceOverADraw` ; `restoredCountersEndExactlyAtTheBoundary`              |
+| REQ-DAME-19 — Reprise privée après perte de session | `DameApiPersistenceIT.aNewSessionRecoversTheDurableBoardWithTheBrowserCookieAndStillNeedsCsrf` | `DameApiHttpTest.recoveryCookieIsPrivatePersistentAndSecureOnHttps`                                                          |
+| REQ-DAME-20 — Plateau et résultat atomiques         | `DameGameSaveIT.finalResultAndBoardAreCommittedTogetherAndCannotBeOverwritten`                 | `invalidSnapshotRollsBackTheResultInTheSameTransaction` ; `simultaneousCommandsFromTwoProcessesCanAdvanceTheVersionOnlyOnce` |
+| REQ-DAME-21 — Résilience aux pannes réelles         | `DameStorageChaosIT.slowReadTimesOutAndThenRecovers`                                           | `durableBoardSurvivesCutAndLostReplyWithoutApplyingTheMoveTwice`                                                             |
+| REQ-DAME-22 — Performance du parcours               | `quality/k6/dame.js`, profils smoke et load                                                    | P95 de chaque opération < 300 ms ; erreurs HTTP < 1 % ; vérifications fonctionnelles = 100 %                                 |

@@ -1,0 +1,220 @@
+{
+  "date": "2026-11-06",
+  "backendCommit": "378b7ea0",
+  "frontendCommit": "3656fb2f",
+  "ciClaimed": false,
+  "backend": {
+    "command": "mvn -B -ntp -f backend/pom.xml -Pintegration '-Dit.test=fr/tikigaming/games/dame/**/*IT' verify",
+    "result": "BUILD SUCCESS",
+    "allSurefireTests": 7082,
+    "allCoverageChecksPassed": true,
+    "dameSurefire": {
+      "tests": 447,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "classes": [
+        {
+          "name": "fr.tikigaming.games.dame.DrawTest",
+          "tests": 2
+        },
+        {
+          "name": "fr.tikigaming.games.dame.InitialPlacementTest",
+          "tests": 13
+        },
+        {
+          "name": "fr.tikigaming.games.dame.KingMovementTest",
+          "tests": 45
+        },
+        {
+          "name": "fr.tikigaming.games.dame.persistence.SupabaseMatchRepositoryTest",
+          "tests": 29
+        },
+        {
+          "name": "fr.tikigaming.games.dame.BoardTest",
+          "tests": 27
+        },
+        {
+          "name": "fr.tikigaming.games.dame.bdd.DameBddTest",
+          "tests": 12
+        },
+        {
+          "name": "fr.tikigaming.games.dame.matches.MatchServiceDoublesTest",
+          "tests": 13
+        },
+        {
+          "name": "fr.tikigaming.games.dame.GameResetTest",
+          "tests": 10
+        },
+        {
+          "name": "fr.tikigaming.games.dame.MultipleCaptureTest",
+          "tests": 17
+        },
+        {
+          "name": "fr.tikigaming.games.dame.GameEndTest",
+          "tests": 17
+        },
+        {
+          "name": "fr.tikigaming.games.dame.DrawStateTest",
+          "tests": 21
+        },
+        {
+          "name": "fr.tikigaming.games.dame.TurnManagementTest",
+          "tests": 4
+        },
+        {
+          "name": "fr.tikigaming.games.dame.api.DameApiHttpTest",
+          "tests": 34
+        },
+        {
+          "name": "fr.tikigaming.games.dame.matches.MatchServiceTest",
+          "tests": 11
+        },
+        {
+          "name": "fr.tikigaming.games.dame.matches.GameSaveTest",
+          "tests": 6
+        },
+        {
+          "name": "fr.tikigaming.games.dame.api.DamePactProviderTest",
+          "tests": 6
+        },
+        {
+          "name": "fr.tikigaming.games.dame.PromotionTest",
+          "tests": 21
+        },
+        {
+          "name": "fr.tikigaming.games.dame.SimpleMovementTest",
+          "tests": 8
+        },
+        {
+          "name": "fr.tikigaming.games.dame.persistence.SupabaseGameSaveRepositoryTest",
+          "tests": 20
+        },
+        {
+          "name": "fr.tikigaming.games.dame.SingleCaptureTest",
+          "tests": 15
+        },
+        {
+          "name": "fr.tikigaming.games.dame.api.DameApplicationServiceTest",
+          "tests": 31
+        },
+        {
+          "name": "fr.tikigaming.games.dame.PositionTest",
+          "tests": 15
+        },
+        {
+          "name": "fr.tikigaming.games.dame.MandatoryCaptureTest",
+          "tests": 6
+        },
+        {
+          "name": "fr.tikigaming.games.dame.matches.MatchTest",
+          "tests": 36
+        },
+        {
+          "name": "fr.tikigaming.games.dame.InvalidMoveTest",
+          "tests": 26
+        },
+        {
+          "name": "fr.tikigaming.games.dame.api.DameRecoveryTest",
+          "tests": 2
+        }
+      ]
+    },
+    "dameIntegration": {
+      "tests": 73,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "classes": [
+        {
+          "name": "fr.tikigaming.games.dame.api.DameServerRestartIT",
+          "tests": 1
+        },
+        {
+          "name": "fr.tikigaming.games.dame.persistence.SupabaseMatchRepositoryIT",
+          "tests": 53
+        },
+        {
+          "name": "fr.tikigaming.games.dame.persistence.DameGameSaveIT",
+          "tests": 10
+        },
+        {
+          "name": "fr.tikigaming.games.dame.persistence.DameStorageChaosIT",
+          "tests": 4
+        },
+        {
+          "name": "fr.tikigaming.games.dame.api.DameApiPersistenceIT",
+          "tests": 5
+        }
+      ]
+    },
+    "dameCoverage": {
+      "fr/tikigaming/games/dame/persistence": {
+        "BRANCH": {
+          "covered": 40,
+          "missed": 2
+        },
+        "LINE": {
+          "covered": 132,
+          "missed": 0
+        }
+      },
+      "fr/tikigaming/games/dame/api": {
+        "BRANCH": {
+          "covered": 46,
+          "missed": 4
+        },
+        "LINE": {
+          "covered": 170,
+          "missed": 6
+        }
+      },
+      "fr/tikigaming/games/dame/matches": {
+        "BRANCH": {
+          "covered": 27,
+          "missed": 0
+        },
+        "LINE": {
+          "covered": 51,
+          "missed": 0
+        }
+      },
+      "fr/tikigaming/games/dame": {
+        "BRANCH": {
+          "covered": 185,
+          "missed": 11
+        },
+        "LINE": {
+          "covered": 235,
+          "missed": 1
+        }
+      }
+    }
+  },
+  "frontend": {
+    "allTests": 2422,
+    "dameTests": 19,
+    "linesPercent": 93.5,
+    "branchesPercent": 87.73,
+    "format": "PASSED",
+    "lint": "PASSED (0 errors, 1 existing warning in EchecsGame.tsx)",
+    "build": "PASSED",
+    "e2e": {
+      "chromium": 6,
+      "webkit": 6,
+      "firefox": 6,
+      "firefoxNote": "Initial launch failed on macOS profile lookup; rerun passed with a temporary CFFIXED_USER_HOME."
+    }
+  },
+  "followUp": {
+    "testCommit": "4cc52b5a",
+    "command": "mvn -B -ntp -f backend/pom.xml -Dtest=DrawStateTest,DrawTest test",
+    "tests": 32,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "addedCases": 9,
+    "dameSurefireCasesAfterAddition": 456,
+    "note": "La vérification complète précédente reste celle de 378b7ea0 ; seul le fichier de tests DrawStateTest a ensuite changé."
+  }
+}
