@@ -338,6 +338,11 @@
                 <param>fr.tikigaming.games.prismine.PrismineScoreValidator</param>
                 <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*</param>
+                <param>fr.tikigaming.games.mini_gta.progress.*</param>
+                <param>fr.tikigaming.games.mini_gta.core.*</param>
+                <param>fr.tikigaming.games.mini_gta.world.Navigation</param>
+                <param>fr.tikigaming.games.mini_gta.world.MinHeap</param>
+                <param>fr.tikigaming.games.mini_gta.world.WorldConstants</param>
               </targetClasses>
               <targetTests>
                 <param>fr.tikigaming.auth.*Test</param>
@@ -347,6 +352,10 @@
                 <param>fr.tikigaming.games.rush_hour.*Test</param>
                 <param>fr.tikigaming.games.prismine.*Test</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*Test</param>
+                <param>fr.tikigaming.games.mini_gta.progress.*Test</param>
+                <param>fr.tikigaming.games.mini_gta.core.*Test</param>
+                <param>fr.tikigaming.games.mini_gta.world.*Test</param>
+                <param>fr.tikigaming.games.mini_gta.api.*Test</param>
               </targetTests>
               <mutators>
                 <mutator>STRONGER</mutator>

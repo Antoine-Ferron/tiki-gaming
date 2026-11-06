@@ -54,6 +54,7 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-RH-08 | Rush Hour : on joue à la souris (glisser-déposer calé sur une case) et au clavier (flèches dans le sens du véhicule) | Contrôles C1, C2 |
 | REQ-RH-09 | Rush Hour : le jeu et le serveur appliquent les mêmes niveaux, les mêmes règles et le même barème | Contrat partagé (shared/games/rush-hour/contrat.json) |
 | REQ-RH-10 | Rush Hour : un client ne peut pas faire vérifier plus de 60 parties par minute (429 au-delà), sans gêner les autres | Sécurité, OWASP API4 (docs/games/rush-hour/rapport-securite.md) |
+| REQ-TTT-06 | Tic-Tac-Toe : la grille et les annonces de partie sont utilisables au clavier et sans violation WCAG sérieuse ou critique | Accessibilité |
 | REQ-TTT-01 | Tic-Tac-Toe : la page affiche une grille 3×3 jouable | Interface du jeu |
 | REQ-TTT-02 | Tic-Tac-Toe : les joueurs X et O jouent à tour de rôle et une case occupée ne peut pas être rejouée | Règles du jeu |
 | REQ-TTT-03 | Tic-Tac-Toe : une ligne, colonne ou diagonale complète termine la partie avec le bon gagnant | Règles du jeu |
@@ -67,6 +68,25 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | REQ-PRIS-06 | Prismine : un joueur a une seule expédition en cours, qu'il reprend après un rechargement ; une requête illisible ou visant l'expédition d'un autre est refusée | Expérience joueur, sécurité |
 | REQ-PRIS-07 | Prismine : un étage validé en moins de 5 s est signalé une seule fois à l'audit, et une expédition inactive depuis plus de 24 h est purgée | Anti-triche, exploitation |
 | REQ-PRIS-08 | Prismine : le score d'un joueur est classé une seule fois avec sa durée, jamais pour un invité, et une panne de stockage est signalée | Règles du classement |
+| REQ-LEM-01 | LemurTiki : le maki rebondit sur une branche touchée en descendant (selon sa largeur), la traverse en montant, et les bords de l'écran sont reliés | EF-1.2 à EF-1.6 (docs/games/lemur/specification.md) |
+| REQ-LEM-02 | LemurTiki : la caméra suit le maki qui dépasse le milieu de l'écran et ne redescend jamais | EF-2 |
+| REQ-LEM-03 | LemurTiki : une branche est toujours à portée de saut et dans l'écran ; les branches passées sous l'écran disparaissent | EF-3.1, EF-3.2 |
+| REQ-LEM-04 | LemurTiki : la fossa accélère tous les 100 m jusqu'à 20 m/s et ne reste jamais à plus de 40 m sous l'écran | EF-5.2, EF-5.3 |
+| REQ-LEM-05 | LemurTiki : la partie se termine quand le maki tombe sous l'écran ou que la fossa l'attrape, puis plus rien ne bouge | EF-6.1 à EF-6.3 |
+| REQ-LEM-06 | LemurTiki : le score vaut les mètres entiers atteints + 10 par gousse de vanille, plafonné à 100 000 | EF-6.4, EF-6.5 |
+| REQ-LEM-07 | LemurTiki : le score d'une partie terminée part une seule fois au classement ; un invité est invité à se connecter ; une panne affiche un message sans empêcher de rejouer | EF-8.1, EF-8.3, EF-8.5 |
+| REQ-LEM-08 | LemurTiki : une partie commence au pied du baobab, se dirige au clavier (AZERTY et QWERTY), se met en pause (aussi quand l'onglet est masqué) et se termine sur un écran de fin qui permet de rejouer | EF-1.1, EF-5.1, EF-7.1 à EF-7.7 |
+| REQ-GTA-01 | MiniGTA : la ville est la même pour tous (graine fixe) et le GPS mène exactement à la destination | Règle R1 (docs/games/mini-gta/regles.md) |
+| REQ-GTA-02 | MiniGTA : une nouvelle partie commence avec 500 $, sans armure ; une sauvegarde corrompue ou d'une autre version donne une nouvelle partie | Règle R2, Sauvegarde |
+| REQ-GTA-03 | MiniGTA : chaque mission paie sa récompense une seule fois (800, 1 500, 2 500, 3 000 $) | Règle R3 |
+| REQ-GTA-04 | MiniGTA : les billets ramassés s'ajoutent à l'argent et au score, une seule fois | Règle R4 |
+| REQ-GTA-05 | MiniGTA : l'armurerie vend au prix affiché ; un achat sans les fonds est refusé, sans débit | Règle R5 |
+| REQ-GTA-06 | MiniGTA : les crimes vus font monter le niveau de recherche (1 à 5 étoiles), qui retombe hors de vue | Règle R6 |
+| REQ-GTA-07 | MiniGTA : frais d'hôpital (10 %, 100 $ min.) ou caution (15 %, 200 $ min.) sans solde négatif ; l'arrestation coûte les armes | Règle R7 |
+| REQ-GTA-08 | MiniGTA : le score est tout l'argent gagné, jamais diminué par les dépenses, plafonné à 1 000 000 et envoyé s'il bat le précédent | Règle R8 |
+| REQ-GTA-09 | MiniGTA : des tremplins de chaque matière, hors des routes du trafic, des bâtiments et de l'eau | Règle R9 |
+| REQ-GTA-10 | MiniGTA : environ un bâtiment ordinaire sur cinq a un rez-de-chaussée accessible, porte côté rue | Règle R10 |
+| REQ-GTA-11 | MiniGTA : l'accueil propose de jouer ou de continuer en invité, et explique qu'il faut un ordinateur sur un écran trop étroit | Plateforme (regles.md § 3) |
 
 ## Cas de test
 
@@ -170,6 +190,8 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-RH-25 | REQ-RH-08 | erreur | composant | `frontend/src/games/rush-hour/RushHourGame.test.tsx` › une flèche dans l’autre axe ne fait rien | PASSED | — |
 | TC-RH-26 | REQ-RH-08 | nominal | unitaire (BVA) | `frontend/src/games/rush-hour/components/drag.test.ts` › décalage de $offset case(s) → $delta | PASSED | BUG-04 |
 | TC-RH-27 | REQ-RH-08 | erreur | E2E (3 navigateurs) | `frontend/e2e/rush-hour.spec.ts` › un glissé de moins d’une demi-case n’est pas un coup | PASSED | — |
+| TC-TTT-11 | REQ-TTT-06 | nominal | E2E + axe-core | `frontend/e2e/tic-tac-toe.spec.ts` › reste accessible au clavier et sans violation WCAG critique | PASSED | — |
+| TC-TTT-12 | REQ-TTT-06 | erreur | E2E + axe-core | `frontend/e2e/tic-tac-toe.spec.ts` › reste accessible au clavier et sans violation WCAG critique | PASSED | — |
 | TC-TTT-01 | REQ-TTT-01 | nominal | E2E Playwright | `frontend/e2e/tic-tac-toe.spec.ts` › joue une partie et affiche le gagnant et le score de session | PASSED | — |
 | TC-TTT-02 | REQ-TTT-01 | erreur | E2E Playwright | `frontend/e2e/tic-tac-toe.spec.ts` › rejoue une partie en conservant le score de session | PASSED | — |
 | TC-TTT-03 | REQ-TTT-02 | nominal | composant | `frontend/src/games/tic-tac-toe/TicTacToeGame.test.tsx` › allows alternating moves on the board | PASSED | — |
@@ -236,6 +258,96 @@ du test Vitest ou Playwright, scénario Gherkin, méthode JUnit). La recette man
 | TC-PRIS-28 | REQ-PRIS-08 | erreur | unitaire (backend) | `backend/src/test/java/fr/tikigaming/games/prismine/SupabaseAdaptersTest.java` › storesRunsAndScoresInSupabaseAndReportsItsFailures | PASSED | — |
 | TC-PRIS-29 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/prismine.spec.ts` › l’écran de jeu est conforme WCAG 2.1 AA | PASSED | — |
 | TC-PRIS-30 | REQ-ERR-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/prismine.spec.ts` › un refus du serveur est expliqué au joueur, qui peut continuer | PASSED | — |
+| TC-LEM-01 | REQ-LEM-01 | nominal | BDD | `frontend/src/games/lemur/features/deplacement.feature` › Le maki rebondit sur une branche touchée en descendant | PASSED | — |
+| TC-LEM-02 | REQ-LEM-01 | erreur | BDD | `frontend/src/games/lemur/features/deplacement.feature` › Le maki traverse une branche en montant | PASSED | — |
+| TC-LEM-03 | REQ-LEM-01 | nominal | BDD | `frontend/src/games/lemur/features/deplacement.feature` › Le joueur dirige le maki, et les bords sont reliés | PASSED | — |
+| TC-LEM-04 | REQ-LEM-01 | erreur | unitaire (BVA) | `frontend/src/games/lemur/domain/game.test.ts` › $cas (x = $x) → rebond : $attendu | PASSED | — |
+| TC-LEM-05 | REQ-LEM-01 | erreur | unitaire (BVA) | `frontend/src/games/lemur/domain/game.test.ts` › bord relié — $cas (x = $x) → rebond : $attendu | PASSED | — |
+| TC-LEM-06 | REQ-LEM-01 | nominal | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › le maki reste toujours dans la largeur de l'écran, quelle que soit la direction (EF-1.5) | PASSED | — |
+| TC-LEM-07 | REQ-LEM-02 | nominal | BDD | `frontend/src/games/lemur/features/camera.feature` › La caméra suit le maki qui dépasse le milieu de l'écran | PASSED | — |
+| TC-LEM-08 | REQ-LEM-02 | erreur | BDD | `frontend/src/games/lemur/features/camera.feature` › La caméra ne redescend jamais | PASSED | — |
+| TC-LEM-09 | REQ-LEM-02 | erreur | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › la caméra et la hauteur maximale ne redescendent jamais (EF-2, EF-6.4) | PASSED | — |
+| TC-LEM-10 | REQ-LEM-03 | nominal | BDD | `frontend/src/games/lemur/features/branches.feature` › Des branches attendent toujours au-dessus de l'écran | PASSED | — |
+| TC-LEM-11 | REQ-LEM-03 | erreur | BDD | `frontend/src/games/lemur/features/branches.feature` › Les branches passées sous l'écran disparaissent | PASSED | — |
+| TC-LEM-12 | REQ-LEM-03 | nominal | BDD | `frontend/src/games/lemur/features/branches.feature` › Une branche est toujours à portée de saut | PASSED | — |
+| TC-LEM-13 | REQ-LEM-03 | nominal | unitaire (BVA) | `frontend/src/games/lemur/domain/branches.test.ts` › à $hauteur m avec le tirage $tirage → $ecart m | PASSED | — |
+| TC-LEM-14 | REQ-LEM-03 | erreur | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › les branches restent à portée de saut et dans la largeur de l’écran, pour tout tirage (EF-3.2) | PASSED | — |
+| TC-LEM-15 | REQ-LEM-04 | nominal | BDD | `frontend/src/games/lemur/features/fossa.feature` › La fossa accélère avec la hauteur, jusqu'à un maximum | PASSED | — |
+| TC-LEM-16 | REQ-LEM-04 | erreur | BDD | `frontend/src/games/lemur/features/fossa.feature` › La fossa ne reste jamais à plus de 40 m sous l'écran | PASSED | — |
+| TC-LEM-17 | REQ-LEM-04 | nominal | unitaire (BVA) | `frontend/src/games/lemur/domain/fossa.test.ts` › maki monté à $hauteur m → $vitesse m/s | PASSED | — |
+| TC-LEM-18 | REQ-LEM-04 | erreur | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › la fossa ne ralentit jamais en montant, et reste entre 4 et 20 m/s (EF-5.2) | PASSED | — |
+| TC-LEM-19 | REQ-LEM-05 | erreur | BDD | `frontend/src/games/lemur/features/fin.feature` › Le maki tombe sous l'écran | PASSED | — |
+| TC-LEM-20 | REQ-LEM-05 | erreur | BDD | `frontend/src/games/lemur/features/fin.feature` › La fossa rattrape le maki | PASSED | — |
+| TC-LEM-21 | REQ-LEM-05 | nominal | BDD | `frontend/src/games/lemur/features/fin.feature` › Après la fin, plus rien ne bouge | PASSED | — |
+| TC-LEM-22 | REQ-LEM-05 | nominal | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › une partie terminée ne change plus, quoi que fasse le joueur (EF-6.3) | PASSED | — |
+| TC-LEM-23 | REQ-LEM-05 | nominal | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › une partie en cours avance toujours : la gravité ou un rebond change la vitesse du maki (EF-1) | PASSED | — |
+| TC-LEM-24 | REQ-LEM-06 | nominal | BDD | `frontend/src/games/lemur/features/score.feature` › Le score compte la hauteur maximale et la vanille | PASSED | — |
+| TC-LEM-25 | REQ-LEM-06 | nominal | BDD | `frontend/src/games/lemur/features/score.feature` › La hauteur maximale suit le maki sans jamais redescendre | PASSED | — |
+| TC-LEM-26 | REQ-LEM-06 | erreur | propriété (fast-check) | `frontend/src/games/lemur/domain/lemur.property.test.ts` › le score est un entier entre 0 et 100 000, qui ne baisse pas quand on monte plus haut (EF-6.4, EF-6.5) | PASSED | — |
+| TC-LEM-27 | REQ-LEM-07 | nominal | BDD | `frontend/src/games/lemur/features/plateforme.feature` › Le score d'une partie terminée est envoyé une fois | PASSED | — |
+| TC-LEM-28 | REQ-LEM-07 | nominal | unitaire (Spy) | `frontend/src/games/lemur/application/finish.test.ts` › envoie le score une seule fois, avec la hauteur, la vanille, la cause et la durée (EF-8.1) | PASSED | — |
+| TC-LEM-29 | REQ-LEM-07 | erreur | BDD | `frontend/src/games/lemur/features/plateforme.feature` › Un invité joue sans être classé | PASSED | — |
+| TC-LEM-30 | REQ-LEM-07 | erreur | BDD (panne simulée, Fake) | `frontend/src/games/lemur/features/plateforme.feature` › Une coupure réseau n'empêche pas de rejouer | PASSED | — |
+| TC-LEM-31 | REQ-LEM-07 | erreur | unitaire (Stub) | `frontend/src/games/lemur/application/finish.test.ts` › $cas : affiche le message au joueur sans rejeter, pour qu’il puisse rejouer (EF-8.5) | PASSED | — |
+| TC-LEM-32 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/lemur.spec.ts` › aucune violation d’accessibilité WCAG 2.1 AA sérieuse ou critique sur la page du jeu | PASSED | — |
+| TC-LEM-33 | REQ-LEM-08 | nominal | BDD | `frontend/src/games/lemur/features/debut.feature` › Une partie commence au pied du baobab | PASSED | — |
+| TC-LEM-34 | REQ-LEM-08 | nominal | BDD | `frontend/src/games/lemur/features/debut.feature` › Le maki rebondit tout de suite sur sa première branche | PASSED | — |
+| TC-LEM-35 | REQ-LEM-08 | nominal | unitaire (BVA) | `frontend/src/games/lemur/controls.test.ts` › $touche → $commande | PASSED | — |
+| TC-LEM-36 | REQ-LEM-08 | nominal | composant (faux minuteurs) | `frontend/src/games/lemur/LemurGame.test.tsx` › Jouer lance une partie à 0 m, et le maki grimpe tout seul de branche en branche (EF-7.2) | PASSED | — |
+| TC-LEM-37 | REQ-LEM-08 | nominal | composant (faux minuteurs) | `frontend/src/games/lemur/LemurGame.test.tsx` › Échap met la partie en pause et la fige, P la reprend (EF-7.3, EF-7.5) | PASSED | — |
+| TC-LEM-38 | REQ-LEM-08 | erreur | composant | `frontend/src/games/lemur/LemurGame.test.tsx` › se met en pause tout seul quand l’onglet est masqué (EF-7.6) | PASSED | — |
+| TC-LEM-39 | REQ-LEM-08 | erreur | composant (faux minuteurs) | `frontend/src/games/lemur/LemurGame.test.tsx` › quand la fossa attrape le maki, l’écran de fin donne la cause, le score et invite l’invité à se connecter (EF-7.7, EF-8.3) | PASSED | — |
+| TC-LEM-40 | REQ-LEM-08 | nominal | unitaire (Fake du canvas) | `frontend/src/games/lemur/render.test.ts` › place une branche à l’écran selon la caméra : axe y du monde vers le haut, de l’écran vers le bas | PASSED | — |
+| TC-LEM-41 | REQ-LEM-08 | nominal | E2E (3 navigateurs, page.clock) | `frontend/e2e/lemur.spec.ts` › une partie complète : le maki rebondit, la fossa l’attrape, puis Rejouer relance à 0 m | PASSED | — |
+| TC-GTA-01 | REQ-GTA-01 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Deux joueurs reçoivent la même ville | PASSED | — |
+| TC-GTA-02 | REQ-GTA-01 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Le GPS mène exactement à la destination | PASSED | — |
+| TC-GTA-03 | REQ-GTA-01 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/ville.feature` › Le GPS refuse une destination illisible | PASSED | — |
+| TC-GTA-04 | REQ-GTA-02 | nominal | BDD front | `frontend/src/games/mini-gta/features/nouvelle-partie.feature` › Une nouvelle partie commence avec 500 $, sans armure et les poings en main | PASSED | — |
+| TC-GTA-05 | REQ-GTA-02 | erreur | BDD front (plan, 4 défauts) | `frontend/src/games/mini-gta/features/nouvelle-partie.feature` › Une sauvegarde corrompue ou d'une autre version donne une nouvelle partie | PASSED | — |
+| TC-GTA-06 | REQ-GTA-02 | erreur | propriété (fuzzing) | `frontend/src/games/mini-gta/domain/save.property.test.ts` › fuzzing : n’importe quelle donnée stockée est acceptée ou refusée, jamais une exception | PASSED | — |
+| TC-GTA-07 | REQ-GTA-02 | nominal | E2E (3 navigateurs) | `frontend/e2e/mini-gta.spec.ts` › une sauvegarde invitée est reprise : argent, gains, missions et « Continuer » | PASSED | — |
+| TC-GTA-08 | REQ-GTA-02 | erreur | E2E (3 navigateurs) | `frontend/e2e/mini-gta.spec.ts` › une sauvegarde corrompue donne une nouvelle partie au lieu d’une erreur | PASSED | — |
+| TC-GTA-09 | REQ-GTA-03 | nominal | BDD back (plan, 4 missions) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/missions.feature` › Chaque mission paie sa récompense | PASSED | — |
+| TC-GTA-10 | REQ-GTA-03 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/missions.feature` › Une mission déjà terminée ne paie plus rien | PASSED | — |
+| TC-GTA-11 | REQ-GTA-03 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/missions.feature` › Une mission qui n'existe pas n'est jamais payée | PASSED | — |
+| TC-GTA-12 | REQ-GTA-03 | nominal | propriété (fuzzing déterministe) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsPropertyTest.java` › uneMissionPaieUneSeuleFoisEtLeScoreMonteDeSaRecompense | PASSED | — |
+| TC-GTA-13 | REQ-GTA-04 | nominal | BDD front | `frontend/src/games/mini-gta/features/billets.feature` › Les billets ramassés s'ajoutent à l'argent et au score | PASSED | — |
+| TC-GTA-14 | REQ-GTA-04 | erreur | simulation (harnais) | `frontend/src/games/mini-gta/systems/Pickups.test.ts` › des billets ne se ramassent qu’une fois | PASSED | — |
+| TC-GTA-15 | REQ-GTA-05 | nominal | BDD back (plan, 6 armes) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/armurerie.feature` › Chaque arme a son prix | PASSED | — |
+| TC-GTA-16 | REQ-GTA-05 | nominal | BDD back (plan, 5 lots) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/armurerie.feature` › Les munitions se vendent par lots | PASSED | — |
+| TC-GTA-17 | REQ-GTA-05 | erreur | BDD back (BVA 0/299/300/301) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/armurerie.feature` › Un achat sans les fonds est refusé, sans débit | PASSED | — |
+| TC-GTA-18 | REQ-GTA-05 | erreur | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/armurerie.feature` › L'armurerie ne vend ni les poings ni de munitions pour une arme blanche | PASSED | — |
+| TC-GTA-19 | REQ-GTA-05 | nominal | propriété (fuzzing déterministe) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsPropertyTest.java` › unAchatNePasseQueSiLeSoldeCouvreLePrixEtNeToucheJamaisAuScore | PASSED | — |
+| TC-GTA-20 | REQ-GTA-05 | nominal | unitaire (doublure Fake) | `frontend/src/games/mini-gta/game/testing/fakeApi.test.ts` › le gilet est débité sans que le serveur ne touche à l’armure | PASSED | BUG-08 |
+| TC-GTA-21 | REQ-GTA-06 | nominal | BDD front (plan, 8 cas) | `frontend/src/games/mini-gta/features/recherche.feature` › Les crimes vus par un témoin font monter le niveau de recherche | PASSED | — |
+| TC-GTA-22 | REQ-GTA-06 | erreur | BDD front | `frontend/src/games/mini-gta/features/recherche.feature` › Un crime sans témoin ne compte pas | PASSED | — |
+| TC-GTA-23 | REQ-GTA-06 | nominal | BDD front (BVA 17/18 s, 23/24 s) | `frontend/src/games/mini-gta/features/recherche.feature` › Hors de vue de la police, le niveau finit par retomber | PASSED | — |
+| TC-GTA-24 | REQ-GTA-06 | erreur | propriété (fast-check) | `frontend/src/games/mini-gta/systems/Wanted.property.test.ts` › quels que soient les crimes, le niveau reste entre 0 et 5 étoiles et ne baisse jamais sur un crime | PASSED | — |
+| TC-GTA-25 | REQ-GTA-07 | nominal | BDD back (BVA 994/995/1004/1005) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/reapparition.feature` › Les frais d'hôpital sont de 10 % de l'argent, 100 $ minimum | PASSED | — |
+| TC-GTA-26 | REQ-GTA-07 | nominal | BDD back (BVA 1336/1337) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/reapparition.feature` › La caution est de 15 % de l'argent, 200 $ minimum | PASSED | — |
+| TC-GTA-27 | REQ-GTA-07 | erreur | propriété (fuzzing déterministe) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsPropertyTest.java` › uneReapparitionCouteAuMoinsLeMinimumSansJamaisLaisserDeDette | PASSED | — |
+| TC-GTA-28 | REQ-GTA-07 | nominal | BDD front (harnais) | `frontend/src/games/mini-gta/features/arrestation.feature` › Arrêté, il perd ses armes sauf les poings et sort du commissariat | PASSED | — |
+| TC-GTA-29 | REQ-GTA-08 | nominal | BDD front (plan, 7 cas) | `frontend/src/games/mini-gta/features/score.feature` › Le score envoyé est l'argent gagné, seulement s'il bat le dernier envoyé | PASSED | — |
+| TC-GTA-30 | REQ-GTA-08 | erreur | BDD front | `frontend/src/games/mini-gta/features/score.feature` › Un invité garde sa sauvegarde mais n'envoie aucun score | PASSED | — |
+| TC-GTA-31 | REQ-GTA-08 | nominal | BDD back (API réelle) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/score.feature` › Les dépenses ne font pas baisser le score | PASSED | — |
+| TC-GTA-32 | REQ-GTA-08 | erreur | intégration (Testcontainers) | `frontend/tests/integration/mini-gta.test.ts` › refuse 1 000 001 $ gagnés (> plafond), même pour le backend | PASSED | — |
+| TC-GTA-33 | REQ-GTA-08 | nominal | intégration (Testcontainers) | `frontend/tests/integration/mini-gta.test.ts` › le classement garde la meilleure partie de chaque joueur | PASSED | — |
+| TC-GTA-34 | REQ-GTA-09 | nominal | BDD back (ville générée) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/tremplins-et-batiments.feature` › La ville a des tremplins de chaque matière | PASSED | — |
+| TC-GTA-35 | REQ-GTA-09 | erreur | BDD back (ville générée) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/tremplins-et-batiments.feature` › Les tremplins restent hors du trafic | PASSED | — |
+| TC-GTA-36 | REQ-GTA-10 | nominal | BDD back (ville générée) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/tremplins-et-batiments.feature` › Environ un bâtiment ordinaire sur cinq est ouvert | PASSED | — |
+| TC-GTA-37 | REQ-GTA-10 | erreur | BDD back (ville générée) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/tremplins-et-batiments.feature` › Seul le rez-de-chaussée d'un bâtiment ouvert est accessible | PASSED | — |
+| TC-GTA-38 | REQ-GTA-11 | nominal | E2E (3 navigateurs) | `frontend/e2e/mini-gta.spec.ts` › un invité sans sauvegarde peut lancer une nouvelle partie et est invité à se connecter | PASSED | — |
+| TC-GTA-39 | REQ-GTA-11 | erreur | E2E (3 navigateurs, 340 px) | `frontend/e2e/mini-gta.spec.ts` › sous 360 px, le jeu explique qu’il se joue sur ordinateur au lieu de proposer « Jouer » | PASSED | — |
+| TC-GTA-40 | REQ-ERR-01 | erreur | E2E (3 navigateurs) | `frontend/e2e/mini-gta.spec.ts` › classement indisponible : un message lisible, et la partie reste jouable | PASSED | — |
+| TC-GTA-41 | REQ-A11Y-01 | nominal | E2E + axe-core | `frontend/e2e/mini-gta.spec.ts` › aucune violation d’accessibilité sérieuse sur l’accueil | PASSED | — |
+| TC-GTA-42 | REQ-API-01 | nominal | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une mission réussie est payée et renvoie la progression à sauvegarder | PASSED | — |
+| TC-GTA-43 | REQ-API-01 | erreur | contrat (Pact, consumer) | `frontend/tests/contract/backend.pact.test.ts` › une progression invalide est refusée (400) | PASSED | — |
+| TC-GTA-44 | REQ-SEC-01 | erreur | système (@SpringBootTest) | `backend/src/test/java/fr/tikigaming/games/mini_gta/api/MiniGtaJourneyTest.java` › unPostSansJetonCsrfEstRefuse | PASSED | — |
+| TC-GTA-45 | REQ-GTA-08 | erreur | BDD back (plan, BVA 996 999 / 997 000 / 997 001 / 1 000 000) | `backend/src/test/resources/fr/tikigaming/games/mini_gta/features/score.feature` › Le score s'arrête à 1 000 000, l'argent gagné reste au joueur | PASSED | BUG-12 |
+| TC-GTA-46 | REQ-GTA-08 | erreur | unitaire (BVA) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsTest.java` › lesGainsCumulesSArretentAuPlafondDuScore | PASSED | BUG-12 |
+| TC-GTA-47 | REQ-GTA-07 | erreur | propriété (fuzzing déterministe, jusqu'à Integer.MAX_VALUE) | `backend/src/test/java/fr/tikigaming/games/mini_gta/progress/TransactionsPropertyTest.java` › uneRecompenseNeFaitJamaisBaisserNiLeSoldeNiLeScoreMemeAuxBornesDesEntiers | PASSED | BUG-13 |
+| TC-GTA-48 | REQ-GTA-08 | erreur | unitaire (doublure Fake) | `frontend/src/games/mini-gta/game/testing/fakeApi.test.ts` › fakeApi : mêmes règles de mission que le serveur | PASSED | BUG-12 |
+| TC-GTA-49 | REQ-GTA-02 | nominal | unitaire | `frontend/src/games/mini-gta/systems/weapons.test.ts` › starts with fists only, as a new game (R2) | PASSED | BUG-09 |
 
 ## Anomalies
 
@@ -250,3 +362,10 @@ P0 immédiate → P3 basse (matrice dans [CONTRIBUTING.md](../CONTRIBUTING.md#an
 | BUG-04 | [Rush Hour][Glisser-déposer] une demi-case vers la gauche ou le haut laisse le véhicule en place au lieu de le déplacer d'une case comme vers la droite ou le bas | S3 | P2 | Closed | 97f4fc24, trouvé par le test rouge de dropDelta (415d7f95) |
 | BUG-05 | [Rush Hour][Choix du niveau] le nom lu des boutons de niveau (« Niveau 1, à jouer ») ne contient pas leur texte visible au lieu de le contenir (WCAG 2.5.3) | S2 | P2 | Closed | 87ad47ab, trouvé par l'audit axe (d8c9b25c) |
 | BUG-06 | [Rush Hour][Vérification d'une partie] à 200 vérifications par seconde du niveau 20, P95 de 2,7 s et 2 059 itérations abandonnées au lieu de P95 < 300 ms (solveur relancé à chaque requête, même pour une partie truquée) | S2 | P2 | Closed | 214b828f et 54bc0adc, test 959b77ef, trouvé par k6 (profil stress) |
+| BUG-07 | [MiniGTA][Refus de l'API] le joueur lit « Requête invalide. » au lieu du message du contrôleur (« Mission inconnue. », « Coordonnées invalides. », « Cet article n'est pas vendu. ») | S3 | P3 | New | — (ApiExceptionHandler, plateforme ; trouvé par les scénarios BDD) |
+| BUG-08 | [MiniGTA][Fake du serveur] l'achat d'une arme donne un lot de munitions (36 au pistolet) au lieu de deux chargeurs (24), et le gilet remet l'armure à 100 au lieu de seulement débiter | S2 | P2 | Closed | 658e855b, test rouge acfabdb2 |
+| BUG-09 | [MiniGTA][Nouvelle partie] le joueur démarre avec un pistolet (12 + 48 balles) au lieu des seuls poings (R2) | S3 | P2 | Closed | 736be2f5, tests rouges 4e090112 (BDD) et 2bce07b7 (unitaire) ; la règle R2 écrite fait foi |
+| BUG-10 | [MiniGTA][Tests de simulation] 17 tests échouent dès que l'ordre d'exécution est mélangé au lieu de passer dans tout ordre (état partagé entre tests) | S2 | P1 | Closed | 1abf9b0f, trouvé par `vitest --sequence.shuffle` |
+| BUG-11 | [MiniGTA][Trafic en pente] une voiture du trafic sur une route en pente part en position NaN au lieu de suivre la route (copie d'un Quaternion par décomposition) | S1 | P1 | Closed | 981e04d1, test rouge 25444da6, trouvé en isolant les tests de simulation |
+| BUG-12 | [MiniGTA][Mission réussie] le serveur renvoie plus de 1 000 000 $ de gains cumulés au lieu de s'arrêter au plafond du score (R8) | S2 | P2 | Closed | 1ceeb6a6, tests rouges ecca4a81 (BDD) et 526470f6 (unitaire) |
+| BUG-13 | [MiniGTA][Mission réussie] un solde proche de Integer.MAX_VALUE déborde en négatif au lieu de rester positif (R7) | S2 | P2 | Closed | 58819f54, test rouge a0c2470f (propriété) |

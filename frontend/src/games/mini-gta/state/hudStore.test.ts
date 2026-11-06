@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createTestGame, type TestGame } from '../game/testing/harness'
+import { addWeapon, createInventory, slotOf } from '../systems/weapons'
 import { publishHud, useHudStore } from './hudStore'
 
 vi.mock('../net/api', () => import('../game/testing/fakeApi'))
@@ -12,6 +13,14 @@ beforeAll(async () => {
 }, 60_000)
 
 afterAll(() => t?.dispose())
+
+beforeEach(() => {
+  // Chaque scénario part à pied, poings en main, un pistolet chargé dans l'inventaire et sans recherche.
+  t.reset()
+  t.game.player.inventory = createInventory()
+  if (!slotOf(t.game.player.inventory, 'pistol')) addWeapon(t.game.player.inventory, 'pistol', 60)
+  t.game.combat.select('fists')
+})
 
 describe('publication du HUD', () => {
   test('à pied : santé, arme courante et aucune donnée de véhicule', () => {
@@ -39,7 +48,6 @@ describe('publication du HUD', () => {
     publishHud(t.game)
 
     expect(useHudStore.getState()).toMatchObject({ weapon: 'pistol', clip: 12, ammo: 48 })
-    t.game.combat.select('fists')
   })
 
   test('en voiture : vitesse en km/h, nom et état du véhicule', () => {

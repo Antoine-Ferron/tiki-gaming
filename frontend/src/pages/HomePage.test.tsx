@@ -31,7 +31,7 @@ describe('HomePage', () => {
     renderPage(<HomePage />)
 
     fireEvent.click(chip('Thème', 'Réflexion'))
-    expect(titles()).toEqual(['Rush Hour', 'Mastermind', 'Sudoku', 'Prismine'])
+    expect(titles()).toEqual(['Rush Hour', 'Mastermind', 'Sudoku', 'Prismine', '2048'])
 
     fireEvent.click(chip('Thème', 'Tous'))
     expect(titles()).toHaveLength(games.length)

@@ -90,6 +90,14 @@ class NavigationTest {
         void rienAuDelaDuRayonMaximal() {
             assertTrue(nav.nearestNode(1000, 1000, 300).isEmpty());
         }
+
+        @Test
+        void unRayonDUneCelluleCouvreLesCellulesVoisines() {
+            // Cellules de 64 m : (190, 0) et (200, -10) sont dans la cellule voisine du nœud 1 (200, 0), en x puis
+            // en z. Un rayon maximal d'exactement une cellule suffit à le trouver.
+            assertEquals(1, nav.nearestNode(190, 0, 64).orElseThrow().id);
+            assertEquals(1, nav.nearestNode(200, -10, 64).orElseThrow().id);
+        }
     }
 
     @Nested
@@ -106,6 +114,22 @@ class NavigationTest {
         void rienAuDelaDuRayonMaximal() {
             assertTrue(nav.nearestEdge(1000, 1000, 100).isEmpty());
         }
+
+        @Test
+        void unLongTronconEstTrouveLoinDeSesExtremites() {
+            // (200, 103) : le milieu de l'autoroute e3 (400 m), à plus de deux cellules de ses deux extrémités.
+            Navigation.EdgeHit hit = nav.nearestEdge(200, 103, 64).orElseThrow();
+            assertEquals(3, hit.edge().id());
+            assertEquals(3, hit.d(), 1e-9);
+        }
+
+        @Test
+        void leTronconLePlusProcheGagneParmiPlusieurs() {
+            // (150, 40) : e0 à 40 m, e3 à 60 m, tous deux dans la zone de recherche.
+            Navigation.EdgeHit hit = nav.nearestEdge(150, 40).orElseThrow();
+            assertEquals(0, hit.edge().id());
+            assertEquals(40, hit.d(), 1e-9);
+        }
     }
 
     @Test
@@ -119,6 +143,17 @@ class NavigationTest {
         assertEquals(List.of(0, 1, 3), ids);
         // minR = 250 : l'extrémité la plus lointaine de chacun est à moins de 250 m.
         assertTrue(nav.edgesInRing(200, 0, 250, 150).isEmpty());
+    }
+
+    @Test
+    void edgesInRingInclutSesDeuxFrontieres() {
+        // Depuis (200, 0) : e3 est exactement à maxR = 100 ; l'extrémité lointaine de e0 et de e1 est exactement à
+        // minR = 200. Les trois sont gardés (bornes incluses).
+        List<Integer> ids = nav.edgesInRing(200, 0, 200, 100).stream()
+                .map(RoadEdge::id)
+                .sorted()
+                .toList();
+        assertEquals(List.of(0, 1, 3), ids);
     }
 
     @Test

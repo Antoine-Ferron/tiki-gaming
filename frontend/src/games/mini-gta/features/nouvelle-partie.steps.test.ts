@@ -13,6 +13,14 @@ const feature = await loadFeature('src/games/mini-gta/features/nouvelle-partie.f
 
 const player = { id: 'p1', username: 'alice' }
 
+/** Défauts d'une sauvegarde, décrits comme au joueur, et le champ abîmé correspondant. */
+const DEFECTS: Record<string, Record<string, number>> = {
+  "d'une autre version du jeu": { version: 2 },
+  'avec un solde négatif': { money: -1 },
+  'avec des gains non entiers': { totalEarned: 12.5 },
+  'avec une armure au-delà de 100': { armor: 101 },
+}
+
 describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
   let deps: ReturnType<typeof fakeDeps>
   let save: MiniGtaSave
@@ -46,6 +54,9 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
       expect(save.inventory).toBeNull()
       expect(createInventory().current).toBe('fists')
     })
+    And('il ne possède aucune autre arme', () => {
+      expect(createInventory().weapons.map((w) => w.id)).toEqual(['fists'])
+    })
     And("aucune mission n'est terminée", () => {
       expect(save.completedMissions).toEqual([])
     })
@@ -67,9 +78,10 @@ describeFeature(feature, ({ Scenario, ScenarioOutline }) => {
   ScenarioOutline(
     "Une sauvegarde corrompue ou d'une autre version donne une nouvelle partie",
     ({ Given, When, Then, And }, variables) => {
-      Given('une sauvegarde dont le champ "<champ>" vaut <valeur>', () =>
-        stored({ money: 2400, totalEarned: 2400, [variables.champ]: Number(variables.valeur) }),
-      )
+      Given('une sauvegarde <défaut>', () => {
+        expect(DEFECTS).toHaveProperty([variables['défaut']])
+        stored({ money: 2400, totalEarned: 2400, ...DEFECTS[variables['défaut']] })
+      })
       When('le jeu charge la sauvegarde', load)
       Then('il a 500 $', () => {
         expect(save.money).toBe(500)

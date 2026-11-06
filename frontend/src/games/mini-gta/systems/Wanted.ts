@@ -46,10 +46,7 @@ export class WantedLevel {
     this.heat += CRIMES[crime]
     const before = this.stars
     this.stars = Math.max(this.stars, minStars, this.starsFor(this.heat))
-    if (before === 0 && this.stars > 0) {
-      this.lastSeen = { x, z }
-      this.unseen = 0
-    }
+    // Le niveau monte (y compris la première étoile) : la recherche repart du lieu du crime.
     if (this.stars > before) {
       this.searching = false
       this.unseen = 0

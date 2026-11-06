@@ -6,12 +6,14 @@ import echecs from './echecs'
 import dame from './dame'
 import prismine from './prismine'
 import mastermind from './mastermind'
+import lemur from './lemur'
 import rushHour from './rush-hour'
 import yams from './yams'
 import sdvCivilisation from './sdv-civilisation'
 import sudoku from './sudoku'
 import miniGta from './mini-gta'
 import ticTacToe from './tic-tac-toe'
+import game2048 from './game-2048'
 
 /**
  * Catalogue des jeux de la plateforme.
@@ -32,6 +34,8 @@ export const games: GameDefinition[] = [
   dame,
   ticTacToe,
   prismine,
+  lemur,
+  game2048,
 ]
 
 export function getGame(slug: string): GameDefinition | undefined {
