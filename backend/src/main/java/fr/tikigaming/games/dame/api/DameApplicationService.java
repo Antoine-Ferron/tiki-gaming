@@ -5,12 +5,16 @@ import fr.tikigaming.games.dame.DrawState;
 import fr.tikigaming.games.dame.Game;
 import fr.tikigaming.games.dame.GameStatus;
 import fr.tikigaming.games.dame.Move;
+import fr.tikigaming.games.dame.matches.GameSave;
+import fr.tikigaming.games.dame.matches.GameSaveRepository;
 import fr.tikigaming.games.dame.matches.Match;
-import fr.tikigaming.games.dame.matches.MatchRepository;
-import fr.tikigaming.games.dame.matches.MatchService;
 import jakarta.servlet.http.HttpSession;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Clock;
-import java.util.NoSuchElementException;
+import java.util.HexFormat;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -18,16 +22,22 @@ import org.springframework.http.HttpStatus;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
-/** Orchestration HTTP/session autour du moteur pur et du service de rencontres. */
+/** Orchestration : le stockage fait autorité, y compris après perte de session. */
 public final class DameApplicationService {
-
     static final String ATTRIBUTE = "dame.current";
-    static final String HISTORY = "dame.history";
-    private final MatchService matches;
+    static final String OWNER = "dame.owner";
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private final GameSaveRepository repository;
+    private final Clock clock;
+    private final Supplier<UUID> ids;
     private final ObjectMapper mapper;
 
-    public DameApplicationService(MatchRepository repository, Clock clock, Supplier<UUID> ids, ObjectMapper mapper) {
-        matches = new MatchService(repository, clock, ids);
+    public record State(DameGameView view, DrawState history) {}
+
+    public DameApplicationService(GameSaveRepository repository, Clock clock, Supplier<UUID> ids, ObjectMapper mapper) {
+        this.repository = Objects.requireNonNull(repository);
+        this.clock = Objects.requireNonNull(clock);
+        this.ids = Objects.requireNonNull(ids);
         this.mapper = Objects.requireNonNull(mapper);
     }
 
@@ -35,97 +45,100 @@ public final class DameApplicationService {
         synchronized (session) {
             Match match;
             try {
-                match = matches.start(whiteName, blackName);
+                match = Match.start(ids.get(), whiteName, blackName, clock.instant());
             } catch (IllegalArgumentException error) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, error.getMessage());
             }
+            byte[] bytes = new byte[32];
+            RANDOM.nextBytes(bytes);
+            String token = HexFormat.of().formatHex(bytes);
             Game game = new Game();
             DameGameView view = DameGameView.of(match, game, 0);
-            commit(session, view, game.drawState());
+            persist(match, view, game.drawState(), hash(token));
+            session.setAttribute(OWNER, token);
+            commit(session, view);
             return view;
         }
     }
 
     public DameGameView read(HttpSession session, UUID id) {
-        if (session == null) throw notFound();
-        synchronized (session) {
-            return owned(session, id);
-        }
+        State state = owned(session, id);
+        commit(session, state.view());
+        return state.view();
     }
 
     public DameGameView play(HttpSession session, UUID id, int version, Move move) {
         if (session == null) throw notFound();
         synchronized (session) {
-            DameGameView before = owned(session, id);
-            if (before.version() != version || before.status() != GameStatus.IN_PROGRESS) {
+            State state = owned(session, id);
+            DameGameView before = state.view();
+            if (before.version() != version
+                    || before.status() != GameStatus.IN_PROGRESS
+                    || version == Integer.MAX_VALUE) {
                 throw conflict();
             }
-            int nextVersion;
-            try {
-                nextVersion = Math.addExact(version, 1);
-            } catch (ArithmeticException overflow) {
-                throw conflict();
-            }
-            // Le jeu reconstruit est une copie : un refus ou une panne ne modifie pas la session.
-            Game next = before.game(history(session));
+            Game next = before.game(state.history());
             try {
                 next.play(move);
             } catch (IllegalArgumentException error) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, error.getMessage());
             }
-            Match match = next.status() == GameStatus.IN_PROGRESS ? metadata(before) : recordResult(before.id(), next);
-            DameGameView after = DameGameView.of(match, next, nextVersion);
-            commit(session, after, next.drawState());
+            Match match = metadata(before);
+            if (next.status() != GameStatus.IN_PROGRESS) match = match.finish(next.status(), clock.instant());
+            DameGameView after = DameGameView.of(match, next, version + 1);
+            persist(match, after, next.drawState(), ownerHash(session));
+            commit(session, after);
             return after;
         }
     }
 
-    private Match recordResult(UUID id, Game game) {
+    private void persist(Match match, DameGameView view, DrawState history, String ownerHash) {
         try {
-            return matches.finish(id, game);
-        } catch (IllegalStateException alreadyRecorded) {
-            // Une réponse peut être perdue après une écriture réussie : confirmer le même gagnant est sûr.
-            Match recorded = find(id);
-            if (recorded.status() != game.status()) throw conflict();
-            return recorded;
-        } catch (NoSuchElementException missing) {
-            throw notFound();
+            repository.save(new GameSave(
+                    match, ownerHash, view.version(), mapper.writeValueAsString(new State(view, history))));
+        } catch (IllegalStateException stale) {
+            throw conflict();
         }
     }
 
-    private Match find(UUID id) {
+    private State owned(HttpSession session, UUID id) {
+        GameSave saved = repository.findOwned(id, ownerHash(session)).orElseThrow(DameApplicationService::notFound);
         try {
-            return matches.find(id);
-        } catch (NoSuchElementException missing) {
-            throw notFound();
-        }
-    }
-
-    private DameGameView owned(HttpSession session, UUID id) {
-        Object stored = session.getAttribute(ATTRIBUTE);
-        if (!(stored instanceof String json)) throw notFound();
-        try {
-            DameGameView view = mapper.readValue(json, DameGameView.class);
-            if (view == null
+            State state = mapper.readValue(saved.state(), State.class);
+            DameGameView view = state.view();
+            if (state.history() == null
                     || !id.equals(view.id())
-                    || view.version() < 0
-                    || view.status() != view.game(history(session)).status()) {
+                    || view.version() != saved.version()
+                    || !metadata(view).equals(saved.match())
+                    || view.status() != view.game(state.history()).status()) {
                 throw notFound();
             }
-            return view;
-        } catch (JacksonException | IllegalArgumentException invalidState) {
+            return state;
+        } catch (JacksonException | IllegalArgumentException | NullPointerException damaged) {
             throw notFound();
         }
     }
 
-    private DrawState history(HttpSession session) {
-        Object stored = session.getAttribute(HISTORY);
-        return stored instanceof String json ? mapper.readValue(json, DrawState.class) : null;
+    private static String ownerHash(HttpSession session) {
+        if (session == null
+                || !(session.getAttribute(OWNER) instanceof String token)
+                || !token.matches("[0-9a-f]{64}")) {
+            throw notFound();
+        }
+        return hash(token);
     }
 
-    private void commit(HttpSession session, DameGameView view, DrawState history) {
+    static String hash(String token) {
+        try {
+            return HexFormat.of()
+                    .formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 indisponible", impossible);
+        }
+    }
+
+    private void commit(HttpSession session, DameGameView view) {
         session.setAttribute(ATTRIBUTE, mapper.writeValueAsString(view));
-        session.setAttribute(HISTORY, mapper.writeValueAsString(history));
     }
 
     private static Match metadata(DameGameView view) {
@@ -139,7 +152,7 @@ public final class DameApplicationService {
     }
 
     private static ApiException notFound() {
-        return new ApiException(HttpStatus.NOT_FOUND, "Rencontre introuvable dans cette session.");
+        return new ApiException(HttpStatus.NOT_FOUND, "Rencontre introuvable dans ce navigateur.");
     }
 
     private static ApiException conflict() {

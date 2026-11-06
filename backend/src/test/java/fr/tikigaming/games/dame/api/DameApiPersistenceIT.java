@@ -12,8 +12,10 @@ import fr.tikigaming.games.dame.GameStatus;
 import fr.tikigaming.games.dame.Piece;
 import fr.tikigaming.games.dame.Player;
 import fr.tikigaming.games.dame.Position;
+import fr.tikigaming.games.dame.matches.GameSaveRepository;
 import fr.tikigaming.games.dame.matches.MatchRepository;
 import fr.tikigaming.games.dame.persistence.DameDatabase;
+import fr.tikigaming.games.dame.persistence.SupabaseGameSaveRepository;
 import fr.tikigaming.games.dame.persistence.SupabaseMatchRepository;
 import jakarta.servlet.http.Cookie;
 import java.sql.Connection;
@@ -66,6 +68,17 @@ class DameApiPersistenceIT {
     static class Persistence {
         @Bean
         @Primary
+        GameSaveRepository liveGameSaves() throws Exception {
+            return new SupabaseGameSaveRepository(
+                    RestClient.builder()
+                            .baseUrl(DATABASE.restUrl())
+                            .defaultHeader("Authorization", "Bearer " + DATABASE.serviceToken())
+                            .build(),
+                    JSON);
+        }
+
+        @Bean
+        @Primary
         MatchRepository liveDameRepository() throws Exception {
             return new SupabaseMatchRepository(
                     RestClient.builder()
@@ -89,7 +102,7 @@ class DameApiPersistenceIT {
     void setUp() throws Exception {
         try (Connection connection = DATABASE.connect();
                 var statement = connection.createStatement()) {
-            statement.execute("truncate public.dame_matches");
+            statement.execute("truncate public.dame_matches cascade");
         }
         owner = new MockHttpSession();
         csrf = mvc.perform(get("/api/auth/session").session(owner))
@@ -128,11 +141,18 @@ class DameApiPersistenceIT {
                         new Position(6, 1), new Piece(Player.WHITE, false),
                         new Position(5, 2), new Piece(Player.BLACK, false))),
                 Player.WHITE);
-        // Fixture de milieu de partie dans la session de test, aucune route publique d'injection de plateau.
-        owner.setAttribute(
-                DameApplicationService.ATTRIBUTE,
-                JSON.writeValueAsString(
-                        DameGameView.of(repository.findById(created.id()).orElseThrow(), nearVictory, 7)));
+        // Fixture de milieu de partie dans la base de test, aucune route publique d'injection de plateau.
+        try (Connection connection = DATABASE.connect();
+                var query = connection.prepareStatement(
+                        "update dame_game_saves set version = 7, state = ?::jsonb where id = ?")) {
+            query.setString(
+                    1,
+                    JSON.writeValueAsString(new DameApplicationService.State(
+                            DameGameView.of(repository.findById(created.id()).orElseThrow(), nearVictory, 7),
+                            nearVictory.drawState())));
+            query.setObject(2, created.id());
+            query.executeUpdate();
+        }
 
         String path = ROOT + "/" + created.id();
         mvc.perform(
@@ -258,5 +278,31 @@ class DameApiPersistenceIT {
                 .andExpect(status().isNotFound());
         assertThat(repository.findById(created.id()).orElseThrow().status()).isEqualTo(GameStatus.IN_PROGRESS);
         assertThat(stranger.getAttribute(DameApplicationService.ATTRIBUTE)).isNull();
+    }
+
+    @Test
+    void aNewSessionRecoversTheDurableBoardWithTheBrowserCookieAndStillNeedsCsrf() throws Exception {
+        DameGameView created = create();
+        String path = ROOT + "/" + created.id();
+        Cookie recovery = new Cookie(DameController.COOKIE, (String) owner.getAttribute(DameApplicationService.OWNER));
+        String move = "{\"version\":0,\"from\":{\"row\":6,\"column\":1},\"landings\":[{\"row\":5,\"column\":0}]}";
+        mvc.perform(post(path + "/moves")
+                        .session(owner)
+                        .cookie(csrf)
+                        .header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(move))
+                .andExpect(status().isOk());
+        owner.invalidate();
+        mvc.perform(get(path).cookie(recovery))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(1))
+                .andExpect(jsonPath("$.currentPlayer").value("BLACK"));
+        mvc.perform(get(path)).andExpect(status().isNotFound());
+        mvc.perform(post(path + "/moves")
+                        .cookie(recovery)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(move))
+                .andExpect(status().isForbidden());
     }
 }

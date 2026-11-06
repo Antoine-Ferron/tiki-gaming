@@ -11,6 +11,20 @@ import tools.jackson.databind.ObjectMapper;
 public class DamePersistenceConfiguration {
 
     @Bean
+    SupabaseGameSaveRepository dameGameSaveRepository(
+            RestClient.Builder builder, TikiProperties props, ObjectMapper mapper) {
+        String key = props.supabase().serviceRoleKey();
+        return new SupabaseGameSaveRepository(
+                builder.baseUrl(props.supabase().url() + "/rest/v1")
+                        .defaultHeaders(headers -> {
+                            headers.set("apikey", key);
+                            headers.setBearerAuth(key);
+                        })
+                        .build(),
+                mapper);
+    }
+
+    @Bean
     SupabaseMatchRepository dameMatchRepository(RestClient.Builder builder, TikiProperties props, ObjectMapper mapper) {
         String key = props.supabase().serviceRoleKey();
         RestClient rest = builder.baseUrl(props.supabase().url() + "/rest/v1")

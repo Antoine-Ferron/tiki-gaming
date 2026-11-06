@@ -130,7 +130,29 @@ class DameApiHttpTest {
                 .andExpect(jsonPath("$.version").value(1))
                 .andExpect(jsonPath("$.currentPlayer").value("BLACK"));
         mvc.perform(command(path + "/moves", owner, MOVE)).andExpect(status().isConflict());
-        assertThat(repository.writes).isEqualTo(1);
+        assertThat(repository.writes).isEqualTo(2);
+    }
+
+    @Test
+    void recoveryCookieIsPrivatePersistentAndSecureOnHttps() throws Exception {
+        var result = mvc.perform(command(ROOT, owner, START).secure(true))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String header = result.getResponse().getHeaders("Set-Cookie").stream()
+                .filter(value -> value.startsWith(DameController.COOKIE + "="))
+                .findFirst()
+                .orElseThrow();
+        assertThat(header).contains("HttpOnly", "Secure", "SameSite=Strict", "Path=/api/games/dame", "Max-Age=2592000");
+        String token = (String) owner.getAttribute(DameApplicationService.OWNER);
+        var view = JSON.readValue(result.getResponse().getContentAsByteArray(), DameGameView.class);
+        assertThat(repository.saves.get(view.id()).ownerHash()).isNotEqualTo(token);
+        mvc.perform(get(ROOT + "/" + view.id()).cookie(new Cookie(DameController.COOKIE, token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(view.id().toString()));
+        mvc.perform(get(ROOT + "/" + view.id()).cookie(new Cookie(DameController.COOKIE, "b".repeat(64))))
+                .andExpect(status().isNotFound());
+        mvc.perform(get(ROOT + "/" + view.id()).cookie(new Cookie(DameController.COOKIE, "invalid")))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -264,9 +286,7 @@ class DameApiHttpTest {
                         new Position(6, 1), new Piece(Player.WHITE, false),
                         new Position(5, 2), new Piece(Player.BLACK, false))),
                 Player.WHITE);
-        owner.setAttribute(
-                DameApplicationService.ATTRIBUTE,
-                JSON.writeValueAsString(DameGameView.of(repository.rows.get(created.id()), nearVictory, 0)));
+        repository.fixture(DameGameView.of(repository.rows.get(created.id()), nearVictory, 0), nearVictory.drawState());
         String win = MOVE.replace("\"row\":5,\"column\":0", "\"row\":4,\"column\":3");
         String path = ROOT + "/" + created.id() + "/moves";
 

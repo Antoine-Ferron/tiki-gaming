@@ -148,8 +148,8 @@ export default function DameGame() {
           )}
         </form>
         <p className="muted">
-          Les noms sont enregistrés au démarrage et le résultat à la fin. Le plateau dépend de ta session ; son
-          expiration empêche de reprendre la partie.
+          Ta partie est sauvegardée après chaque coup. Tu peux la reprendre dans ce navigateur pendant 30 jours, même
+          après l’avoir fermé. Effacer ses données supprime l’accès à la partie.
         </p>
       </section>
     )

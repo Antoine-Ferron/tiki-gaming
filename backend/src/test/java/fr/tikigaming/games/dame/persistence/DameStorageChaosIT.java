@@ -7,6 +7,7 @@ import eu.rekawek.toxiproxy.Proxy;
 import eu.rekawek.toxiproxy.ToxiproxyClient;
 import eu.rekawek.toxiproxy.model.ToxicDirection;
 import fr.tikigaming.games.dame.GameStatus;
+import fr.tikigaming.games.dame.matches.GameSave;
 import fr.tikigaming.games.dame.matches.Match;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -29,6 +30,7 @@ class DameStorageChaosIT {
     private static ToxiproxyContainer container;
     private static Proxy proxy;
     private static SupabaseMatchRepository repository;
+    private static SupabaseGameSaveRepository saves;
 
     @BeforeAll
     static void start() throws Exception {
@@ -42,13 +44,13 @@ class DameStorageChaosIT {
         var factory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build());
         factory.setReadTimeout(Duration.ofMillis(400));
-        repository = new SupabaseMatchRepository(
-                RestClient.builder()
-                        .baseUrl("http://" + container.getHost() + ":" + container.getMappedPort(8666))
-                        .defaultHeader("Authorization", "Bearer " + DATABASE.serviceToken())
-                        .requestFactory(factory)
-                        .build(),
-                JsonMapper.builder().build());
+        RestClient rest = RestClient.builder()
+                .baseUrl("http://" + container.getHost() + ":" + container.getMappedPort(8666))
+                .defaultHeader("Authorization", "Bearer " + DATABASE.serviceToken())
+                .requestFactory(factory)
+                .build();
+        repository = new SupabaseMatchRepository(rest, JsonMapper.builder().build());
+        saves = new SupabaseGameSaveRepository(rest, JsonMapper.builder().build());
     }
 
     @AfterEach
@@ -104,5 +106,22 @@ class DameStorageChaosIT {
         assertThat(repository.findById(initial.id())).contains(finished);
         assertThatThrownBy(() -> repository.save(finished)).isInstanceOf(IllegalStateException.class);
         assertThat(repository.findById(initial.id())).contains(finished);
+    }
+
+    @Test
+    void durableBoardSurvivesCutAndLostReplyWithoutApplyingTheMoveTwice() throws Exception {
+        Match match = Match.start(UUID.randomUUID(), "A", "B", Instant.parse("2026-11-06T10:00:00Z"));
+        String owner = "c".repeat(64);
+        saves.save(new GameSave(match, owner, 0, "{\"view\":{\"version\":0},\"history\":{}}"));
+        GameSave next = new GameSave(match, owner, 1, "{\"view\":{\"version\":1},\"history\":{}}");
+        proxy.disable();
+        assertThatThrownBy(() -> saves.save(next)).isInstanceOf(MatchStorageException.class);
+        proxy.enable();
+        assertThat(saves.findOwned(match.id(), owner).orElseThrow().version()).isZero();
+        proxy.toxics().latency("lost-board-reply", ToxicDirection.DOWNSTREAM, 3000);
+        assertThatThrownBy(() -> saves.save(next)).isInstanceOf(MatchStorageException.class);
+        proxy.toxics().get("lost-board-reply").remove();
+        assertThat(saves.findOwned(match.id(), owner).orElseThrow().version()).isEqualTo(1);
+        assertThatThrownBy(() -> saves.save(next)).isInstanceOf(IllegalStateException.class);
     }
 }

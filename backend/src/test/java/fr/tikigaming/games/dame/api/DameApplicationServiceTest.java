@@ -64,7 +64,7 @@ class DameApplicationServiceTest {
         session.setAttribute(
                 DameApplicationService.ATTRIBUTE,
                 JSON.writeValueAsString(DameGameView.of(repository.rows.get(initial.id()), game, 9)));
-        session.setAttribute(DameApplicationService.HISTORY, JSON.writeValueAsString(game.drawState()));
+        repository.fixture(DameGameView.of(repository.rows.get(initial.id()), game, 9), game.drawState());
         DameGameView result =
                 service.play(session, initial.id(), 9, new Move(new Position(0, 1), List.of(new Position(1, 0))));
         assertThat(result.status()).isEqualTo(GameStatus.DRAW);
@@ -92,7 +92,7 @@ class DameApplicationServiceTest {
         assertThat(view.legalMoves()).hasSize(9);
         assertThat(repository.rows.get(view.id()).status()).isEqualTo(GameStatus.IN_PROGRESS);
         assertThat(service.read(session, view.id())).isEqualTo(view);
-        assertThat(repository.reads).isZero();
+        assertThat(repository.reads).isEqualTo(1);
     }
 
     @Test
@@ -156,7 +156,7 @@ class DameApplicationServiceTest {
         DameGameView view = start();
         assertApi(() -> service.read(session, new UUID(0, 999)), HttpStatus.NOT_FOUND);
         assertThat(service.read(session, view.id())).isEqualTo(view);
-        assertThat(repository.reads).isZero();
+        assertThat(repository.reads).isEqualTo(2);
     }
 
     @ParameterizedTest
@@ -180,7 +180,7 @@ class DameApplicationServiceTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"negative-version", "inconsistent-status", "duplicate-square"})
-    void aDamagedSnapshotIsRefusedWithoutTouchingTheDatabase(String damage) {
+    void aDamagedPersistedSnapshotIsRefusedWithoutWriting(String damage) {
         DameGameView initial = start();
         ObjectNode snapshot = JSON.valueToTree(initial);
         switch (damage) {
@@ -193,18 +193,25 @@ class DameApplicationServiceTest {
             default -> throw new AssertionError("Cas de test inconnu : " + damage);
         }
         String corrupted = JSON.writeValueAsString(snapshot);
-        session.setAttribute(DameApplicationService.ATTRIBUTE, corrupted);
+        var saved = repository.saves.get(initial.id());
+        var envelope = JSON.createObjectNode();
+        envelope.set("view", JSON.readTree(corrupted));
+        envelope.set("history", JSON.valueToTree(new Game().drawState()));
+        repository.saves.put(
+                initial.id(),
+                new fr.tikigaming.games.dame.matches.GameSave(
+                        saved.match(), saved.ownerHash(), saved.version(), JSON.writeValueAsString(envelope)));
 
         assertApi(() -> service.read(session, initial.id()), HttpStatus.NOT_FOUND);
         assertApi(() -> service.play(session, initial.id(), 0, ordinaryMove()), HttpStatus.NOT_FOUND);
-        assertThat(session.getAttribute(DameApplicationService.ATTRIBUTE)).isEqualTo(corrupted);
-        assertThat(repository.reads).isZero();
+        assertThat(repository.saves.get(initial.id()).state()).isEqualTo(JSON.writeValueAsString(envelope));
+        assertThat(repository.reads).isEqualTo(2);
         assertThat(repository.writes).isEqualTo(1);
         assertThat(repository.rows.get(initial.id()).status()).isEqualTo(GameStatus.IN_PROGRESS);
     }
 
     @Test
-    void anOrdinaryMoveAdvancesTheServerStateButDoesNotWriteAnUnfinishedResult() {
+    void anOrdinaryMovePersistsTheBoardAndKeepsTheMatchUnfinished() {
         DameGameView initial = start();
 
         DameGameView next = service.play(session, initial.id(), 0, ordinaryMove());
@@ -215,8 +222,8 @@ class DameApplicationServiceTest {
         assertThat(next.board().pieces()).hasSize(40);
         assertThat(next.game().board().pieceAt(new Position(5, 0))).contains(new Piece(Player.WHITE, false));
         assertThat(next.game().board().pieceAt(new Position(6, 1))).isEmpty();
-        assertThat(repository.writes).isEqualTo(1);
-        assertThat(repository.reads).isZero();
+        assertThat(repository.writes).isEqualTo(2);
+        assertThat(repository.reads).isEqualTo(1);
         assertThat(service.read(session, initial.id())).isEqualTo(next);
         assertThat(initial.game().board().pieceAt(new Position(6, 1))).isPresent();
     }
@@ -303,7 +310,7 @@ class DameApplicationServiceTest {
         repository.rows.remove(before.id());
 
         assertApi(() -> service.play(session, before.id(), 7, winningMove(Player.WHITE)), HttpStatus.NOT_FOUND);
-        assertThat(service.read(session, before.id())).isEqualTo(before);
+        assertApi(() -> service.read(session, before.id()), HttpStatus.NOT_FOUND);
         assertThat(repository.rows).isEmpty();
         assertThat(repository.writes).isEqualTo(1);
     }
@@ -315,13 +322,10 @@ class DameApplicationServiceTest {
 
         assertThatThrownBy(() -> service.play(session, before.id(), 7, winningMove(Player.WHITE)))
                 .isInstanceOf(MatchStorageException.class);
-        assertThat(service.read(session, before.id())).isEqualTo(before);
+        assertThat(service.read(session, before.id()).winner()).isEqualTo(Player.WHITE);
         assertThat(repository.rows.get(before.id()).status()).isEqualTo(GameStatus.WHITE_WON);
-
         repository.failAfterWrite = false;
-        assertThat(service.play(session, before.id(), 7, winningMove(Player.WHITE))
-                        .winner())
-                .isEqualTo(Player.WHITE);
+        assertApi(() -> service.play(session, before.id(), 7, winningMove(Player.WHITE)), HttpStatus.CONFLICT);
         assertThat(repository.writes).isEqualTo(2);
     }
 
@@ -331,18 +335,17 @@ class DameApplicationServiceTest {
         Match recorded = repository.rows.get(before.id()).finish(GameStatus.BLACK_WON, NOW);
         repository.rows.put(before.id(), recorded);
 
-        assertApi(() -> service.play(session, before.id(), 7, winningMove(Player.WHITE)), HttpStatus.CONFLICT);
-        assertThat(service.read(session, before.id())).isEqualTo(before);
+        assertApi(() -> service.play(session, before.id(), 7, winningMove(Player.WHITE)), HttpStatus.NOT_FOUND);
+        assertApi(() -> service.read(session, before.id()), HttpStatus.NOT_FOUND);
         assertThat(repository.rows.get(before.id())).isEqualTo(recorded);
     }
 
     @Test
     void aVersionOverflowIsRefusedBeforeMutatingTheSession() {
         DameGameView initial = start();
-        session.setAttribute(
-                DameApplicationService.ATTRIBUTE,
-                JSON.writeValueAsString(
-                        DameGameView.of(repository.rows.get(initial.id()), new Game(), Integer.MAX_VALUE)));
+        repository.fixture(
+                DameGameView.of(repository.rows.get(initial.id()), new Game(), Integer.MAX_VALUE),
+                new Game().drawState());
 
         assertApi(() -> service.play(session, initial.id(), Integer.MAX_VALUE, ordinaryMove()), HttpStatus.CONFLICT);
         assertThat(service.read(session, initial.id()).version()).isEqualTo(Integer.MAX_VALUE);
@@ -356,7 +359,7 @@ class DameApplicationServiceTest {
                         new Position(5, 2), new Piece(Player.BLACK, false))),
                 camp);
         DameGameView before = DameGameView.of(repository.rows.get(initial.id()), game, 7);
-        session.setAttribute(DameApplicationService.ATTRIBUTE, JSON.writeValueAsString(before));
+        repository.fixture(before, game.drawState());
         return before;
     }
 

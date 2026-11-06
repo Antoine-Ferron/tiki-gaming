@@ -87,7 +87,7 @@ class SupabaseMatchRepositoryIT {
     void isolateTestData() throws SQLException {
         try (Connection connection = DATABASE.connect();
                 var statement = connection.createStatement()) {
-            statement.execute("truncate public.dame_matches");
+            statement.execute("truncate public.dame_matches cascade");
         }
     }
 

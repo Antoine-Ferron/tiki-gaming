@@ -1,6 +1,6 @@
 package fr.tikigaming.games.dame.api;
 
-import fr.tikigaming.games.dame.matches.MatchRepository;
+import fr.tikigaming.games.dame.matches.GameSaveRepository;
 import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -11,7 +11,7 @@ import tools.jackson.databind.ObjectMapper;
 @Configuration(proxyBeanMethods = false)
 public class DameApiConfiguration {
     @Bean
-    DameApplicationService dameApplicationService(MatchRepository repository, ObjectMapper mapper) {
+    DameApplicationService dameApplicationService(GameSaveRepository repository, ObjectMapper mapper) {
         return new DameApplicationService(repository, Clock.tickMillis(ZoneOffset.UTC), UUID::randomUUID, mapper);
     }
 }

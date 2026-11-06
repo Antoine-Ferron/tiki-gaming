@@ -18,7 +18,7 @@ const savedKey = 'tiki.dame.match'
 
 beforeEach(() => {
   vi.resetAllMocks()
-  sessionStorage.clear()
+  localStorage.clear()
   start.mockResolvedValue(INITIAL)
   read.mockResolvedValue(NEXT)
   play.mockResolvedValue(NEXT)
@@ -37,7 +37,7 @@ async function create() {
 test('demande les noms avant toute création puis affiche le damier et envoie un coup sans plateau', async () => {
   await create()
   expect(start).toHaveBeenCalledExactlyOnceWith({ whiteName: 'Chérif', blackName: 'Amadou' })
-  expect(sessionStorage.getItem(savedKey)).toBe(INITIAL.id)
+  expect(localStorage.getItem(savedKey)).toBe(INITIAL.id)
   expect(screen.getByRole('group', { name: 'Damier de dix lignes et dix colonnes' })).toBeVisible()
   expect(cell('E7')).toHaveAccessibleName(/dame noir/)
   fireEvent.click(cell('B4'))
@@ -74,7 +74,7 @@ test('une création refusée conserve les noms et permet de réessayer', async (
 })
 
 test('une relecture reprend la rencontre de cet onglet sans créer une nouvelle ligne', async () => {
-  sessionStorage.setItem(savedKey, INITIAL.id)
+  localStorage.setItem(savedKey, INITIAL.id)
   render(<DameGame />)
   await screen.findByText('Amadou · Noirs à jouer')
   expect(read).toHaveBeenCalledWith(INITIAL.id)
@@ -82,11 +82,11 @@ test('une relecture reprend la rencontre de cet onglet sans créer une nouvelle 
 })
 
 test('une rencontre absente de la session efface seulement son identifiant local', async () => {
-  sessionStorage.setItem(savedKey, INITIAL.id)
+  localStorage.setItem(savedKey, INITIAL.id)
   read.mockRejectedValue(new ApiError(404, 'Rencontre introuvable.'))
   render(<DameGame />)
   await screen.findByRole('heading', { name: 'Les joueurs' })
-  expect(sessionStorage.getItem(savedKey)).toBeNull()
+  expect(localStorage.getItem(savedKey)).toBeNull()
   expect(start).not.toHaveBeenCalled()
 })
 
