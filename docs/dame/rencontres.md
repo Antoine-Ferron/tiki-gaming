@@ -1,5 +1,9 @@
 # Rencontres locales — issue #18
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 ## Périmètre convenu le 4 novembre 2026
 
 Avant les tests d'intégration, ajouter la gestion des rencontres en TDD unitaire :

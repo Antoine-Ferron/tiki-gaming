@@ -1,5 +1,9 @@
 # Exemples métier en Gherkin — issue #18
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 ## Statut
 
 Les deux fichiers `.feature` sont maintenant exécutés par `DameBddTest` avec

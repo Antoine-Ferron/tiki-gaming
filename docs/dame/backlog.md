@@ -1,5 +1,9 @@
 # Backlog TDD proposé — issue #18
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 Ces US sont des sous-tâches documentaires : aucune issue GitHub créée. Les règles ci-dessous constituent la spécification proposée à confirmer pour les détails internationaux. Coordonnées et orientation sont des conventions internes proposées.
 
 Avancement de cette première PR : les comportements métier testés des US-01 à US-12 sont GREEN, avec **224 cas unitaires réussis**. Le RED `2b95d64` précède le GREEN `8f73f29`. Les 220 cas initiaux passent sans affaiblissement des assertions ; quatre régressions US-11 couvrent le statut d'une position déjà terminée lors de sa reconstruction. `mvn clean verify` passe 847 cas avec les tests collectifs et les seuils JaCoCo ; le domaine est couvert à 100 % des lignes et branches. L'intégration API/SDK/interface et ses tests seront livrés séparément. Les nulles restent à spécifier ; ces résultats ne déclarent pas l'issue #18 terminée. Voir l'[index métier](tests-metier.md) et le [journal TDD](journal-tdd.md).

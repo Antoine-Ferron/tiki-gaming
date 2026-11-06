@@ -1,5 +1,9 @@
 # Interface et parcours navigateur — issue #18
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 L'interface a été préparée sur `game/dame/interface-e2e`, après les cinq commits
 de `game/dame/api`. Ces dix commits sont maintenant regroupés avec la
 persistance dans **la PR #116**, sur `game/dame/rencontres`, afin de relire et

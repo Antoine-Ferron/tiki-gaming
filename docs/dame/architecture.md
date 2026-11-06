@@ -1,5 +1,9 @@
 # Domaine Dames et tests unitaires — issue #18
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 ## Livraison initiale — PR #93
 
 La branche `game/dame/tests-unitaires`, fusionnée dans `dev` par la PR #93, livre le moteur Java pur et ses tests unitaires. Elle part de `dev` à `0317320` et reprend les étapes TDD du travail original en conservant l'auteur et leur ordre. Le travail complet reste conservé sur `game/dame/implementation` ; API, SDK, interface et tests d'intégration feront l'objet d'une livraison séparée.

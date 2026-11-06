@@ -1,5 +1,9 @@
 # Mutation testing du moteur Dames
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 Mesure locale du 4 novembre 2026 sur la branche `game/dame/tests-unitaires`, avec PIT fourni par le dépôt et les mutateurs `STRONGER`. Aucun mutateur, seuil ou exclusion n'est modifié pour faire passer le résultat.
 
 ## Résultat par périmètre

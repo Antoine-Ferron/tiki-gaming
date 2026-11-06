@@ -1,5 +1,9 @@
 # Journal TDD — US-01
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 Les entrées antérieures au 4 novembre proviennent du travail original de `game/dame/implementation` et décrivent son contexte historique, y compris des étapes frontend absentes de cette première PR. Le périmètre courant est le moteur Java et ses seuls tests unitaires ; voir l'[architecture](architecture.md).
 
 ## 2 novembre 2026 — premier test, RED

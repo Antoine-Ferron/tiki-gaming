@@ -1,5 +1,9 @@
 # API des rencontres — issue #18
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 ## Périmètre et branche
 
 L'API a été préparée sur `game/dame/api`, puis l'interface et les E2E sur

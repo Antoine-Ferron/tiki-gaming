@@ -1,5 +1,9 @@
 # Suite de spécification métier — US-01 à US-12
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 Cette première PR livre uniquement le moteur Java et ses tests unitaires. API, SDK, interface et tests d'intégration sont conservés pour une PR séparée. Le moteur satisfait 224 cas métier ; l'issue #18 reste ouverte, notamment pour l'intégration et les règles de nulle.
 
 ## Résultats observés

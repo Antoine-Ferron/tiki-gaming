@@ -1,5 +1,9 @@
 # Stratégie des tests unitaires — dames internationales
 
+> **Document historique des étapes de développement.** Les mesures et les
+> mentions « à réaliser » ci-dessous se rapportent à leurs lots respectifs.
+> Pour le périmètre livré et les limites actuelles, voir le [bilan Dames](README.md).
+
 ## Périmètre et choix des doublures
 
 Cette première PR porte sur le métier pur : 224 cas JUnit 5/AssertJ, sans Spring, I/O, base, réseau, attente ou état global partagé. `Board`, `Piece`, `Position` et `GameRules` sont exécutés réellement. `DameTestSupport` construit des fixtures explicites, sans calculer les résultats attendus avec le moteur.
