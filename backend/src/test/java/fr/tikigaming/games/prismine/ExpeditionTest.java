@@ -40,6 +40,21 @@ class ExpeditionTest {
     }
 
     @Test
+    void refusesAnEntryOutsideTheGalleryAtBothBoundaries() {
+        int count = Engine.entryCount(ONE_PRISM.spec().size());
+
+        for (int outside : new int[] {-1, count}) {
+            assertThatThrownBy(() -> Expedition.fire(newRun(), ONE_PRISM, outside))
+                    .isInstanceOf(ApiException.class)
+                    .hasMessage(Expedition.UNKNOWN_ENTRY)
+                    .extracting("status")
+                    .isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
+        assertThat(Expedition.fire(newRun(), ONE_PRISM, 0).probes()).hasSize(1);
+        assertThat(Expedition.fire(newRun(), ONE_PRISM, count - 1).probes()).hasSize(1);
+    }
+
+    @Test
     void probeCostsOilAndIsRefusedOnAKnownEntryOrWithAnEmptyLamp() {
         Run run = Expedition.fire(newRun(), ONE_PRISM, HAUT_D);
         assertThat(run.oil()).isEqualTo(Expedition.START_OIL - Expedition.PROBE_COST);
