@@ -1,8 +1,8 @@
 # language: fr
 Fonctionnalité: Réapparition après une mort ou une arrestation (R7)
-  Pour que mourir ou se faire arrêter ait un coût
   En tant que joueur
   Je veux payer des frais d'hôpital ou une caution, sans jamais finir à découvert
+  Afin que mourir ou se faire arrêter ait un coût
 
   Plan du scénario: Les frais d'hôpital sont de 10 % de l'argent, 100 $ minimum
     Étant donné un joueur qui a <solde> $

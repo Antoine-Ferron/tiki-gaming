@@ -27,6 +27,14 @@ import {
 export type Vec = { x: number; y: number; z: number }
 export type Rot = { x: number; y: number; z: number; w: number }
 
+/**
+ * Copie une rotation composante par composante. Un Quaternion de three.js expose x, y, z et w par des accesseurs
+ * du prototype : une copie par décomposition ({ ...q }) les perdrait.
+ */
+function copyRot(r: Rot): Rot {
+  return { x: r.x, y: r.y, z: r.z, w: r.w }
+}
+
 export const ActiveEvents = { NONE: 0, COLLISION_EVENTS: 1, CONTACT_FORCE_EVENTS: 2 } as const
 
 export const RigidBodyType = { Dynamic: 0, Fixed: 1, KinematicPositionBased: 2 } as const
@@ -102,7 +110,7 @@ export class RigidBodyDesc {
     return this
   }
   setRotation(r: Rot) {
-    this.rotation = { ...r }
+    this.rotation = copyRot(r)
     return this
   }
   setLinvel(x: number, y: number, z: number) {
@@ -156,7 +164,7 @@ export class ColliderDesc {
     return this
   }
   setRotation(r: Rot) {
-    this.rotation = { ...r }
+    this.rotation = copyRot(r)
     return this
   }
   setMass(m: number) {
@@ -447,7 +455,7 @@ export class RigidBody {
   setRotation(r: Rot, wake: boolean) {
     const b = this.cbody
     if (!b) {
-      this.fixedRot = { ...r }
+      this.fixedRot = copyRot(r)
       return
     }
     const origin = this.translation()
@@ -462,7 +470,7 @@ export class RigidBody {
   }
 
   setNextKinematicRotation(r: Rot) {
-    this.next = { pos: this.next?.pos ?? this.translation(), rot: { ...r } }
+    this.next = { pos: this.next?.pos ?? this.translation(), rot: copyRot(r) }
   }
 
   setBodyType(type: RigidBodyType, wake: boolean) {
