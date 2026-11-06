@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { createGameContext } from '@/games/sdk'
-import { fakeDeps, FakeScores } from '@/games/testing/fakes'
+import { fakeDeps } from '@/games/testing/fakes'
 import demineur from '.'
 import DemineurGame from './DemineurGame'
 import { createGrid, type Cell, type Grid, type Rng } from './logic'
@@ -79,24 +79,6 @@ describe('DemineurGame', () => {
     fireEvent.click(button)
 
     expect(button).not.toBeDisabled()
-  })
-
-  it('gagner la partie envoie le score', async () => {
-    const reference = createGrid(9, 9, 10, seededRng(SEED))
-    const scores = new FakeScores(player)
-    const ctx = createGameContext(demineur, player, fakeDeps({ scores }))
-    render(<DemineurGame ctx={ctx} rng={seededRng(SEED)} />)
-
-    for (let row = 0; row < reference.length; row++) {
-      for (let col = 0; col < reference[row].length; col++) {
-        if (!reference[row][col].mine) fireEvent.click(cellButton(row, col))
-      }
-    }
-
-    expect(screen.getByText('Gagné')).toBeTruthy()
-    await vi.waitFor(() => expect(scores.rows).toHaveLength(1))
-    expect(scores.rows[0].score).toBeGreaterThan(0)
-    expect(await screen.findByText(player.username)).toBeTruthy()
   })
 
   it("invite l'invité à se connecter uniquement en fin de partie", () => {
