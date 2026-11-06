@@ -48,7 +48,7 @@ class SupabaseAdaptersTest {
                 new TikiProperties.Supabase(URL, "anon", "service", "jwt-secret", Duration.ofHours(1)));
         RestClient.Builder builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        PrismineSupabase supabase = new PrismineSupabase(builder, props);
+        PrismineSupabase supabase = new PrismineSupabase(builder, props, 5, Duration.ofSeconds(30));
         runs = new SupabaseRunRepository(supabase, mapper);
         scores = new SupabaseScoreRegistry(supabase);
     }

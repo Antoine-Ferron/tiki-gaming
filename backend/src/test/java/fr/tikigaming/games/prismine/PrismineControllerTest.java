@@ -113,9 +113,8 @@ class PrismineControllerTest {
         other.setAttribute("tiki.user", new AuthUser("joueur-2", "autre@example.com"));
 
         mvc.perform(get(BASE + "/" + id).session(other)).andExpect(status().isNotFound());
-        for (String[] action : new String[][] {
-            {"/probes", "{\"entry\": 0}"}, {"/validation", "{\"guess\": \"\"}"}, {"/end", "{}"}
-        }) {
+        for (String[] action :
+                new String[][] {{"/probes", "{\"entry\": 0}"}, {"/validation", "{\"guess\": \"\"}"}, {"/end", "{}"}}) {
             mvc.perform(post(BASE + "/" + id + action[0])
                             .session(other)
                             .contentType(MediaType.APPLICATION_JSON)

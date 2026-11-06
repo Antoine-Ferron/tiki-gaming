@@ -1,6 +1,7 @@
 package fr.tikigaming.games.prismine;
 
 import java.time.Clock;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,7 +18,8 @@ class PrismineConfig {
     }
 
     @Bean
-    StartLimiter prismineStartLimiter() {
-        return new StartLimiter(CLOCK);
+    StartLimiter prismineStartLimiter(
+            @Value("${tiki.prismine.max-starts-per-window:" + StartLimiter.MAX_STARTS + "}") int maxStarts) {
+        return new StartLimiter(CLOCK, maxStarts);
     }
 }

@@ -17,6 +17,8 @@ export default {
     'src/games/mini-gta/systems/missions/runner.ts',
     'src/games/mini-gta/systems/ballistics.ts',
     'src/games/mini-gta/systems/Wanted.ts',
+    // Prismine : l'optique et l'expédition côté navigateur (prévisions et affichage du journal).
+    'src/games/prismine/{engine,expedition,labels}.ts',
     'src/games/errors.ts',
     'src/games/scoreQueue.ts',
     'src/games/sdk.ts',

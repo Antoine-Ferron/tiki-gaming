@@ -26,10 +26,16 @@ class StartLimiter {
     private static final int MAX_TRACKED = 10_000;
 
     private final Clock clock;
+    private final int maxStarts;
     private final Map<String, Deque<Instant>> starts = new HashMap<>();
 
     StartLimiter(Clock clock) {
+        this(clock, MAX_STARTS);
+    }
+
+    StartLimiter(Clock clock, int maxStarts) {
         this.clock = clock;
+        this.maxStarts = maxStarts;
     }
 
     /** Enregistre un démarrage pour {@code client}, ou lève une {@link ApiException} 429 si la limite est atteinte. */
@@ -42,7 +48,7 @@ class StartLimiter {
         }
         Deque<Instant> times = starts.computeIfAbsent(client, k -> new ArrayDeque<>());
         while (!times.isEmpty() && !times.peekFirst().isAfter(cutoff)) times.pollFirst();
-        if (times.size() >= MAX_STARTS) throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, TOO_MANY);
+        if (times.size() >= maxStarts) throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, TOO_MANY);
         times.addLast(now);
     }
 }
