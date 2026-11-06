@@ -8,7 +8,7 @@ Issue : [#18](https://github.com/EAnathos/tiki-gaming/issues/18), ouverte.
 
 - [Bilan de qualité](qualite.md) : mesures datées, rapports CI et commandes de reproduction.
 - [Matrice exigences/tests](rtm-matrix.md) : cas de référence et origine des résultats.
-- [Cahier de recette](recette.md) : six parcours manuels, encore à exécuter.
+- [Cahier de recette](recette.md) : six parcours exécutés par l’agent, avec preuves ; validation humaine non prononcée.
 
 ## Fonctionnalité disponible
 
@@ -109,8 +109,10 @@ Exemples de traces conservées dans l'historique de `dev` :
   une rencontre abandonnée reste enregistrée en cours.
 - Une session possède une seule partie courante ; aucune garantie de
   coordination multi-nœuds n'est revendiquée.
-- Les parcours Playwright simulent l'API. Pact et les IT apportent des preuves
-  complémentaires ; ils ne constituent pas un E2E automatisé navigateur/base réel.
+- La suite Playwright de CI simule l'API. Pact et les IT apportent des preuves
+  complémentaires. Une [campagne ponctuelle par l’agent](preuves/2026-11-06/README.md)
+  a depuis exercé six parcours avec le vrai backend et la vraie base ; elle
+  ne remplace pas une validation humaine ni une suite CI complète sur ces services.
 - Les mesures k6 collectives ne donnent pas une latence propre aux Dames.
   Une campagne de charge et des pannes réseau réelles Dames sont des suites possibles.
 

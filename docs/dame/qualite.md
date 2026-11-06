@@ -165,16 +165,30 @@ dans [interface-e2e.md](interface-e2e.md) ; il ne modifie pas les assertions CI.
 
 ## Lien avec les enseignements et prochaines preuves
 
-| Enseignement                                    | Réalisation ou document Dames                                | État                                                                       |
-| ----------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| J1 : TDD, frontières, architecture et doublures | Moteur, rencontres, journal RED/GREEN et tests déterministes | Livré                                                                      |
-| J2 : BDD, vraie persistance, analyse statique   | Cucumber sur domaine, Testcontainers, contrôles collectifs   | Livré, limites des métriques précisées ci-dessus                           |
-| J3 : E2E, RTM et UAT                            | Playwright, [matrice](rtm-matrix.md), [recette](recette.md)  | Automatisation livrée ; recette humaine à exécuter                         |
-| J4 : k6, pannes réseau, exploitation            | Scripts de démo et tests de panne simulée                    | Campagne k6 et Toxiproxy Dames à prévoir séparément                        |
-| J4 : sécurité et accessibilité                  | Session/CSRF, RLS et axe                                     | Preuves ciblées ; audit complet et procédure de production non revendiqués |
-| J5 : traçabilité individuelle                   | [PR et commits du bilan](README.md)                          | Contributions distinguées de la plateforme et des corrections du reviewer  |
+| Enseignement                                    | Réalisation ou document Dames                                | État                                                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| J1 : TDD, frontières, architecture et doublures | Moteur, rencontres, journal RED/GREEN et tests déterministes | Livré                                                                                       |
+| J2 : BDD, vraie persistance, analyse statique   | Cucumber sur domaine, Testcontainers, contrôles collectifs   | Livré, limites des métriques précisées ci-dessus                                            |
+| J3 : E2E, RTM et UAT                            | Playwright, [matrice](rtm-matrix.md), [recette](recette.md)  | Automatisation livrée ; six parcours vérifiés par l’agent, validation humaine non prononcée |
+| J4 : k6, pannes réseau, exploitation            | Scripts de démo et tests de panne simulée                    | Campagne k6 et Toxiproxy Dames à prévoir séparément                                         |
+| J4 : sécurité et accessibilité                  | Session/CSRF, RLS et axe                                     | Preuves ciblées ; audit complet et procédure de production non revendiqués                  |
+| J5 : traçabilité individuelle                   | [PR et commits du bilan](README.md)                          | Contributions distinguées de la plateforme et des corrections du reviewer                   |
 
 Les nouveaux documents rendent les preuves consultables ; ils n'ajoutent pas
-de fonctionnalités, ne simulent pas un atelier métier passé et ne remplacent
-pas l'exécution de la recette. La stabilisation des règles de nulle reste
+de fonctionnalités et ne simulent pas un atelier métier passé. La campagne
+de recette par l’agent ci-dessous ne remplace pas une acceptation humaine. La stabilisation des règles de nulle reste
 hors de cette livraison documentaire.
+
+## Campagne navigateur réelle du 6 novembre 2026
+
+Après le bilan initial, l’agent a exécuté les six fiches de recette sur une
+instance dédiée recompilée depuis `ea9cf0c7`, avec Chromium 156 et les vrais
+services PostgreSQL/PostgREST. Aucun plateau injecté et aucune réponse API simulée.
+Les six parcours ont passé les contrôles ; la partie complète a nécessité
+94 coups légaux et la lecture SQL confirme la victoire noire puis la revanche.
+
+Les [preuves datées](preuves/2026-11-06/README.md) comprennent captures,
+requêtes expurgées, séquence de coups et résultats SQL. Cette campagne ponctuelle
+complète les E2E CI à API simulée ; elle ne transforme pas la suite CI en E2E réel
+ni ne constitue une signature UAT humaine. Le [cahier](recette.md) identifie
+l’agent comme exécutant et conserve les réserves.

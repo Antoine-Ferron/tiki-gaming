@@ -64,7 +64,7 @@ hors du lot : ils ne sont pas déclarés « couverts » par cette matrice.
 | [DameApiPersistenceIT](../../backend/src/test/java/fr/tikigaming/games/dame/api/DameApiPersistenceIT.java)                                                                | REQ-DAME-10 à 14              | API Spring/CSRF avec dépôt et base réels                            |
 | [Pact consommateur](../../frontend/tests/contract/dame.pact.test.ts) et [fournisseur](../../backend/src/test/java/fr/tikigaming/games/dame/api/DamePactProviderTest.java) | REQ-DAME-10, 12 à 14, 16      | Six interactions de contrat ; dépôt fake côté fournisseur           |
 | [dame.spec.ts](../../frontend/e2e/dame.spec.ts)                                                                                                                           | REQ-DAME-09, 15 à 17          | Parcours visible, erreurs réseau, rechargement et axe ; API simulée |
-| [Cahier de recette](recette.md)                                                                                                                                           | Exigences précisées par fiche | Validation humaine, à réaliser séparément                           |
+| [Cahier de recette](recette.md)                                                                                                                                           | Exigences précisées par fiche | Six parcours vérifiés par l’agent ; acceptation humaine à confirmer |
 
 ## Gestion des écarts
 
@@ -77,3 +77,11 @@ conformément à [CONTRIBUTING](../../CONTRIBUTING.md).
 Aucune nouvelle anomalie n'est inventée pour compléter la matrice.
 La [PR #131](https://github.com/EAnathos/tiki-gaming/pull/131) reste une trace
 réelle de correction de la disponibilité de PostgreSQL, attribuée au reviewer.
+
+## Vérification complémentaire des parcours réels
+
+La [campagne du 6 novembre à 13:33 CET](preuves/2026-11-06/README.md),
+sur `ea9cf0c7`, exécute les six fiches du cahier dans Chromium avec les vrais
+services. Les statuts de la table automatisée ci-dessus restent rattachés à
+B06/F06/CI05 ; les nouvelles observations sont consignées dans les fiches UAT,
+avec la mention **PASSED (agent)** et sans signature humaine implicite.
