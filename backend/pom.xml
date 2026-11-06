@@ -332,6 +332,10 @@
                 <param>fr.tikigaming.games.dame.*</param>
                 <param>fr.tikigaming.games.mastermind.MastermindGame</param>
                 <param>fr.tikigaming.games.rush_hour.*</param>
+                <param>fr.tikigaming.games.prismine.Engine*</param>
+                <param>fr.tikigaming.games.prismine.Expedition*</param>
+                <param>fr.tikigaming.games.prismine.Floors*</param>
+                <param>fr.tikigaming.games.prismine.PrismineScoreValidator</param>
                 <param>fr.tikigaming.resilience.*</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*</param>
                 <param>fr.tikigaming.games.mini_gta.progress.*</param>
@@ -346,6 +350,7 @@
                 <param>fr.tikigaming.games.dame.*Test</param>
                 <param>fr.tikigaming.games.mastermind.MastermindGameTest</param>
                 <param>fr.tikigaming.games.rush_hour.*Test</param>
+                <param>fr.tikigaming.games.prismine.*Test</param>
                 <param>fr.tikigaming.games.sdv_civilisation.*Test</param>
                 <param>fr.tikigaming.games.mini_gta.progress.*Test</param>
                 <param>fr.tikigaming.games.mini_gta.core.*Test</param>

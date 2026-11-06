@@ -55,6 +55,9 @@ tiki:
     scores:
       failure-threshold: 5
       open-duration: 30s
+    prismine:
+      failure-threshold: 5
+      open-duration: 30s
 
 # Logs via SLF4J/Logback. En production, LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs les écrit en JSON (une ligne par log).
 logging:

@@ -64,6 +64,24 @@ describeDb('scores (droits, trigger et contraintes)', () => {
     })
   })
 
+  test('Prismine : le joueur ne peut rien insérer, le backend classe une seule fois chaque expédition', async () => {
+    await expect(
+      as(db, alice, () => db.query(`insert into public.scores (game_slug, score) values ('prismine', 150)`)),
+    ).rejects.toMatchObject({ code: '42501' })
+
+    // Une nouvelle tentative d'enregistrement de la même expédition (après une panne) est refusée en doublon.
+    const recordRun = () =>
+      asServer(db, () =>
+        db.query(
+          `insert into public.scores (game_slug, score, user_id, metadata) values ('prismine', 150, $1, '{"runId": "r1"}')`,
+          [alice],
+        ),
+      )
+    await recordRun()
+    await expect(recordRun()).rejects.toMatchObject({ code: '23505' })
+    expect(await scoresOf(alice)).toEqual([150])
+  })
+
   // Valeurs limites basses : -1 refusé, 0 accepté
   test('refuse un score négatif', async () => {
     await expect(recordScore(-1)).rejects.toMatchObject({ code: '23514' })
